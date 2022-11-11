@@ -1,9 +1,9 @@
-name: Run stgtic type checking
+name: static type checking
 
 on: [pull_request]
 
 jobs:
-  tests:
+  mypy:
     name: Run Unit Tests
     runs-on: ubuntu-latest
     steps:
@@ -14,6 +14,6 @@ jobs:
     - name: Install package
       run: |
         python -m pip install --upgrade pip
-        pip install airo_core[develop]
+        pip install ".[develop]"
     - name: Run type checker
       run: make mypy

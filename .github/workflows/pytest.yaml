@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.8, 3.9,3.10]
+        python-version: [3.8, 3.9,'3.10']
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
     - uses: actions/checkout@v2
@@ -20,6 +20,6 @@ jobs:
     - name: Install package
       run: |
         python -m pip install --upgrade pip
-        pip install airo_core[develop]
+        pip install ".[develop]"
     - name: Run Tests
       run: make pytest
