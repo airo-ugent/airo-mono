@@ -133,7 +133,3 @@ class SE3Container:
 
     def __str__(self) -> str:
         return str(f"SE3 -> \n {self.homogeneous_matrix}")
-
-
-def transform_position(homogeneous_transform_matrix: HomogeneousMatrixType, position: VectorType) -> VectorType:
-    raise NotImplementedError

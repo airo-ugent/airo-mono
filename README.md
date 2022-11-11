@@ -5,6 +5,7 @@
 - provide functionality that is required to quickly create robot behavior à la Folding competition @ IROS22
 - facilitate research by providing, wrapping or linking to common operations for Robotic Perception/control
 
+
 ## Developer guide
 ### Coding style and testing
 - formatting with black

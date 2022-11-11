@@ -12,4 +12,5 @@ setuptools.setup(
         "develop": ["pre-commit", "mypy", "pytest", "pytest-xdist", "pytest-cov"]  # multi-core testing  # coverage
     },
     packages=find_packages(),
+    package_data={"airo_core": ["py.typed", "version.txt"]},
 )
