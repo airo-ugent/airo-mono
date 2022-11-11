@@ -36,6 +36,9 @@ An initial layout might look like:
 ├── airo_ZED2i/
 │   └── airo_zed2i.py -> implements rgb-d camera interface for ZED2i cameras
 └── airo_drake/
+    ├── HW_adapters -> link the drake HW interface to our HW interface./
+    │   ├── robot?
+    │   └── gripper?
     └── -dual_arm -> creates configuration for dual-arm UR3e w/ 2F-85 grippers?
 ```
 ## Developer guide
