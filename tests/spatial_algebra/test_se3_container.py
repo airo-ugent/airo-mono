@@ -3,7 +3,7 @@ import pytest
 from scipy.spatial.transform import Rotation
 from spatialmath import SE3, SO3
 
-from airo_core.spatial_transforms import SE3Container
+from airo_core.spatial_algebra.se3 import SE3Container
 
 
 @pytest.fixture(autouse=True)
