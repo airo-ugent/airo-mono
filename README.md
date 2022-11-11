@@ -41,6 +41,10 @@ An initial layout might look like:
     │   └── gripper?
     └── -dual_arm -> creates configuration for dual-arm UR3e w/ 2F-85 grippers?
 ```
+
+inspiration sources:
+- Berkeley Autolab: [core](https://github.com/BerkeleyAutomation/autolab_core) [ur python](https://github.com/BerkeleyAutomation/ur5py)
+- CMU [frankapy](https://github.com/iamlab-cmu/frankapy) [paper](https://arxiv.org/abs/2011.02398?s=09)
 ## Developer guide
 ### Coding style and testing
 - formatting with black
