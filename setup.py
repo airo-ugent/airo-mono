@@ -1,0 +1,15 @@
+import setuptools
+from setuptools import find_packages
+
+setuptools.setup(
+    name="airo-core",
+    version="0.0.1",
+    description="core utilities, interfaces and base class for robotic manipulation at the Ghent University AI and Robotics Lab",
+    author="Thomas Lips",
+    author_email="thomas.lips@ugent.be",
+    install_requires=[
+        "numpy",
+        "spatialmath-python"
+    ],
+    packages=find_packages(),
+)

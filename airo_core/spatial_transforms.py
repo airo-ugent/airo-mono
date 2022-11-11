@@ -1,0 +1,123 @@
+from __future__ import annotations
+from typing import Optional # use class as type for class methods
+
+from airo_core.type_aliases import VectorType, QuaternionType, EulerAnglesType, HomogeneousMatrixType, RotationMatrixType, AxisAngleType
+from spatialmath import SE3, SO3, UnitQuaternion
+import numpy as np
+from scipy.spatial.transform import Rotation 
+
+
+class SE3Container:
+    """A container class for SE3 elements. These elements are used to represent the 3D Pose of an element A in a frame B, 
+    or stated differently the transform from frame B to frame A.
+
+    Conventions:
+    translations are in meters,rotations in radians.
+    quaternions are scalar-last and normalized.
+    euler angles are the angles of consecutive rotations around the original X-Y-Z axis (in that order).
+        
+    Note that ther exist many different types of euler angels that differ in the order of axes,
+    and in whether they rotate around the original and the new axes. We chose this convention as it is the most common in robotics 
+    and also easy to reason about. use the Scipy.transform.Rotation class if you need to convert from/to other formats.
+
+    This is a wrapper around the SE3 class of Peter Corke's Spatial Math Library: https://petercorke.github.io/spatialmath-python/
+    The scope if this class is not to perform arbitrary calculations on SE3 elements,
+    it is merely a 'simplified and more readable' wrapper 
+    that facilitates creating/retrieving position and/or orientations in various formats.
+
+    If you need support for calculations and/or more ways to create SE3 elements, use Peter Corke's Spatial Math Library directly. 
+    You can decide this on the fly as you can always access the SE3 attribute of this class or instantiate this class from an SE3 object
+    """
+    def __init__(self, se3: SE3) -> None:
+        self.se3 =se3
+
+    @classmethod 
+    def random(cls) -> SE3Container:
+        """A random SE3 element with translations in the [-1,1]^3 cube.
+        """
+        return cls(SE3.Rand())
+    
+    @classmethod
+    def from_translation(cls, translation: VectorType) -> SE3Container:
+        """creates a translation-only SE3 element
+        """
+        return cls(SE3.Trans(translation.tolist()))
+
+    @classmethod 
+    def from_homogeneous_matrix(cls, matrix: HomogeneousMatrixType) -> SE3Container:
+        return cls(SE3(matrix))
+
+    @classmethod
+    def from_rotation_matrix_and_translation(cls, rotation_matrix: RotationMatrixType, translation: Optional[VectorType] = None):
+        return cls(SE3.Rt(rotation_matrix,translation))
+
+    @classmethod
+    def from_quaternion_and_translation(cls,quaternion: QuaternionType, translation: Optional[VectorType] = None ) -> SE3Container:
+        q = UnitQuaternion(quaternion[3],quaternion[:3]) # scalar-first in math lib
+        return cls(SE3.Rt(q.R,translation))
+
+    @classmethod
+    def from_euler_angles_and_translation(cls, euler_angels: EulerAnglesType, translation: Optional[VectorType] = None) -> SE3Container:
+        # convert from extrinsic XYZ to rotmatrix
+        # bc SE3.Eul does not accept translation 
+        rot_matrix = Rotation.from_euler("xyz",euler_angels,degrees=False).as_matrix()
+        return cls.from_rotation_matrix_and_translation(rot_matrix, translation)
+
+    @classmethod
+    def from_orthogonal_base_vectors_and_translation(cls, x_axis, y_axis, z_axis, translation: Optional[VectorType] = None) -> SE3Container:
+        # create orientation matrix with base vectors as columns
+        orientation_matrix = np.zeros((3,3))
+        for i, axis in enumerate([x_axis, y_axis, z_axis]):
+            orientation_matrix[:,i] = axis / np.linalg.norm(axis)
+        
+        return cls(SE3.Rt(orientation_matrix, translation))
+
+    def get_orientation_as_quaternion(self) -> QuaternionType:
+        angle,vec = self.se3.angvec()
+        scalar_first_quaternion = UnitQuaternion.AngVec(angle,vec).A
+        return np.roll(scalar_first_quaternion,-1)
+
+    def get_orientation_as_euler_angles(self) -> EulerAnglesType:
+        zyx_ordered_angles = self.se3.eul()
+        # convert from intrinsic ZYZ  to extrinsic xyz
+        return Rotation.from_euler("ZYZ",zyx_ordered_angles,degrees=False).as_euler("xyz",degrees=False) 
+
+    def get_orientation_as_axis_angle(self) -> AxisAngleType:
+        angle, axis = self.se3.angvec()
+        return axis, angle
+
+    def get_orientation_as_rotation_vector(self) -> VectorType:
+        axis, angle = self.get_orientation_as_axis_angle()
+        return angle * axis 
+
+    @property
+    def rotation_matrix(self) -> RotationMatrixType:
+        return self.se3.R
+
+    @property
+    def homogeneous_matrix(self) -> HomogeneousMatrixType:
+        return self.se3.A
+
+    @property
+    def translation(self) -> VectorType:
+        #TODO: should this be named position or translation? 
+        return self.se3.t
+
+    def get_x_axis(self) -> VectorType:
+        """also called normal vector. This is the first column of the rotation matrix"""
+        return self.se3.n
+
+    def get_y_axis(self) -> VectorType:
+        """also colled orientation vector. This is the second column of the rotation matrix"""
+        return self.se3.o
+
+    def get_z_axis(self) -> VectorType:
+        """also called approach vector. This is the third column of the rotation matrix"""
+        return self.se3.a
+
+    def __str__(self) -> str:
+        return str(f"SE3 -> \n {self.homogeneous_matrix}")
+
+def transform_position(homogeneous_transform_matrix: HomogeneousMatrixType, position: VectorType) -> VectorType:
+    raise NotImplementedError
+
