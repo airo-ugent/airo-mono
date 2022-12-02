@@ -91,7 +91,7 @@ class SE3Container:
     def get_orientation_as_quaternion(self) -> QuaternionType:
         angle, vec = self.se3.angvec()
         scalar_first_quaternion = UnitQuaternion.AngVec(angle, vec).A
-        return np.roll(scalar_first_quaternion, -1)
+        return self.scalar_first_quaternion_to_scalar_last(scalar_first_quaternion)
 
     def get_orientation_as_euler_angles(self) -> EulerAnglesType:
         zyx_ordered_angles = self.se3.eul()
@@ -133,3 +133,13 @@ class SE3Container:
 
     def __str__(self) -> str:
         return str(f"SE3 -> \n {self.homogeneous_matrix}")
+
+    @staticmethod
+    def scalar_first_quaternion_to_scalar_last(scalar_first_quaternion: np.ndarray) -> QuaternionType:
+        scalar_last_quaternion = np.roll(scalar_first_quaternion,-1)
+        return scalar_last_quaternion
+
+    @staticmethod
+    def scalar_last_to_scalar_first(scalar_last_quaternion: QuaternionType) -> np.ndarray:
+        scalar_first_quaternion = np.roll(scalar_last_quaternion,1)
+        return scalar_first_quaternion
