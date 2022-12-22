@@ -26,6 +26,10 @@ First rotate around X, then around Y, finally around Z.
 """
 AxisAngleType = Tuple[VectorType, float]
 
+RotationVectorType = np.ndarray
+""" Rotation vector <x*theta,y*theta,z*theta> that represents a rotation around the <x,y,z> axis with angle <theta>
+"""
+
 HomogeneousMatrixType = np.ndarray
 """4x4 homogeneous transform matrix
 <<R,T>|<0,0,0,1>>

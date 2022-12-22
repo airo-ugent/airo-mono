@@ -50,6 +50,13 @@ def test_from_base_vectors():
     assert np.isclose(se3.rotation_matrix, rot_matrix).all()
 
 
+def test_from_rotation_vector():
+    angle, axis = SO3.Rand().angvec()
+    rot_vec = angle * axis
+    se3 = SE3Container.from_rotation_vector_and_translation(rot_vec)
+    assert np.isclose(se3.orientation_as_rotation_vector, rot_vec).all()
+
+
 def test_quaternions():
     quat = [0, 0, 0, 1.0]  # no rotation scalar-last
     se3 = SE3Container.from_quaternion_and_translation(quat)
@@ -84,3 +91,12 @@ def test_all_orientation_reprs_are_equivalent():
     assert np.isclose(Rotation.from_rotvec(se3.orientation_as_rotation_vector).as_matrix(), rot_matrix).all()
     assert np.isclose(Rotation.from_euler("xyz", se3.orientation_as_euler_angles).as_matrix(), rot_matrix).all()
     assert np.isclose(Rotation.from_quat(se3.orientation_as_quaternion).as_matrix(), rot_matrix).all()
+
+
+def test_quaternion_scalar_conversion():
+    se3 = SE3Container.random()
+    quat = se3.orientation_as_quaternion
+    assert np.isclose(
+        quat,
+        SE3Container.scalar_first_quaternion_to_scalar_last(SE3Container.scalar_last_quaternion_to_scalar_first(quat)),
+    ).all()

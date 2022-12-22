@@ -9,6 +9,7 @@ from airo_typing import (
     HomogeneousMatrixType,
     QuaternionType,
     RotationMatrixType,
+    RotationVectorType,
     VectorType,
 )
 from scipy.spatial.transform import Rotation
@@ -61,6 +62,12 @@ class SE3Container:
         return cls(SE3.Rt(rotation_matrix, translation))
 
     @classmethod
+    def from_rotation_vector_and_translation(
+        cls, rotation_vector: RotationVectorType, translation: Optional[VectorType] = None
+    ) -> SE3Container:
+        return cls(SE3.Rt(Rotation.from_rotvec(rotation_vector).as_matrix(), translation))
+
+    @classmethod
     def from_quaternion_and_translation(
         cls, quaternion: QuaternionType, translation: Optional[VectorType] = None
     ) -> SE3Container:
@@ -107,6 +114,8 @@ class SE3Container:
     @property
     def orientation_as_rotation_vector(self) -> VectorType:
         axis, angle = self.orientation_as_axis_angle
+        if axis is None:
+            return np.zeros(3)
         return angle * axis
 
     @property
@@ -146,6 +155,6 @@ class SE3Container:
         return scalar_last_quaternion
 
     @staticmethod
-    def scalar_last_to_scalar_first(scalar_last_quaternion: QuaternionType) -> np.ndarray:
+    def scalar_last_quaternion_to_scalar_first(scalar_last_quaternion: QuaternionType) -> np.ndarray:
         scalar_first_quaternion = np.roll(scalar_last_quaternion, 1)
         return scalar_first_quaternion
