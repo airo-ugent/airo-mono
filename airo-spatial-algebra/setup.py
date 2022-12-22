@@ -1,7 +1,6 @@
 import pathlib
 
 import setuptools
-from setuptools import find_packages
 
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
@@ -20,6 +19,6 @@ setuptools.setup(
             f"airo_typing @ file://localhost/{root_folder}/airo-typing",
         ]
     },
-    packages=find_packages(),
+    packages=setuptools.find_packages(),
     package_data={"airo_spatial_algebra": ["py.typed"]},
 )
