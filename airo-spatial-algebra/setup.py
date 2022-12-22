@@ -2,6 +2,9 @@ import pathlib
 
 import setuptools
 from setuptools import find_packages
+import pathlib
+import os
+root_folder = pathlib.Path(__file__).parents[1]
 
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
