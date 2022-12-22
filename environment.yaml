@@ -1,0 +1,9 @@
+name: airo-core
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - -e airo-typing/
+    - -e spatial-algebra/
