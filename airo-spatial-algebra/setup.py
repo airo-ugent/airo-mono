@@ -2,15 +2,12 @@ import setuptools
 from setuptools import find_packages
 
 setuptools.setup(
-    name="airo-core",
+    name="airo_spatial_algebra",
     version="0.0.1",
-    description="core utilities, interfaces and base class for robotic manipulation at the Ghent University AI and Robotics Lab",
+    description="code for working with SE3 poses,transforms,... for robotic manipulation at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
     install_requires=["numpy", "scipy", "spatialmath-python"],
-    extras_require={
-        "develop": ["pre-commit", "mypy", "pytest", "pytest-xdist", "pytest-cov"]  # multi-core testing  # coverage
-    },
     packages=find_packages(),
-    package_data={"airo_core": ["py.typed", "version.txt"]},
+    package_data={"airo_spatial_algebra": ["py.typed"]},
 )
