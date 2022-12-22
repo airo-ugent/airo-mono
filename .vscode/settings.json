@@ -1,8 +1,8 @@
 {
     "python.testing.pytestArgs": [
-        "test"
+        "**/test/*.py",
+        "**/tests/*.py",
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "ros.distro": "noetic"
 }
