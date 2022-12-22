@@ -1,11 +1,20 @@
 name: static type checking
 
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - ci
 
 jobs:
   mypy:
     name: Run MyPy
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [airo-typing,airo-spatial-algebra] #TODO: autodiscover?
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
@@ -14,6 +23,7 @@ jobs:
     - name: Install package
       run: |
         python -m pip install --upgrade pip
-        pip install ".[develop]"
+        pip install mypy
+        pip install ${{matrix.package}}/
     - name: Run type checker
-      run: make mypy
+      run: mypy ${{matrix.package}}/
