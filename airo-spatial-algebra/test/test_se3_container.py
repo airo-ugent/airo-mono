@@ -55,7 +55,7 @@ def test_quaternions():
     se3 = SE3Container.from_quaternion_and_translation(quat)
     assert np.isclose(se3.rotation_matrix, np.eye(3)).all()
     assert np.isclose(se3.translation, np.zeros(3)).all()
-    assert np.isclose(quat, se3.get_orientation_as_quaternion()).all()
+    assert np.isclose(quat, se3.orientation_as_quaternion).all()
 
 
 def test_euler():
@@ -63,14 +63,14 @@ def test_euler():
     rot_matrix = Rotation.from_euler("xyz", euler).as_matrix()
     se3 = SE3Container.from_euler_angles_and_translation(euler)
     assert np.isclose(se3.rotation_matrix, rot_matrix).all()
-    assert np.isclose(se3.get_orientation_as_euler_angles(), euler).all()
+    assert np.isclose(se3.orientation_as_euler_angles, euler).all()
 
 
 def test_get_axes_functions():
     se3 = SE3Container.random()
     hom_matrix = se3.homogeneous_matrix
-    for i, func in enumerate([se3.get_x_axis, se3.get_y_axis, se3.get_z_axis]):
-        assert np.isclose(func(), hom_matrix[:3, i]).all()
+    for i, atrr in enumerate([se3.x_axis, se3.y_axis, se3.z_axis]):
+        assert np.isclose(atrr, hom_matrix[:3, i]).all()
 
 
 def test_repr():
@@ -81,6 +81,6 @@ def test_repr():
 def test_all_orientation_reprs_are_equivalent():
     se3 = SE3Container.random()
     rot_matrix = se3.rotation_matrix
-    assert np.isclose(Rotation.from_rotvec(se3.get_orientation_as_rotation_vector()).as_matrix(), rot_matrix).all()
-    assert np.isclose(Rotation.from_euler("xyz", se3.get_orientation_as_euler_angles()).as_matrix(), rot_matrix).all()
-    assert np.isclose(Rotation.from_quat(se3.get_orientation_as_quaternion()).as_matrix(), rot_matrix).all()
+    assert np.isclose(Rotation.from_rotvec(se3.orientation_as_rotation_vector).as_matrix(), rot_matrix).all()
+    assert np.isclose(Rotation.from_euler("xyz", se3.orientation_as_euler_angles).as_matrix(), rot_matrix).all()
+    assert np.isclose(Rotation.from_quat(se3.orientation_as_quaternion).as_matrix(), rot_matrix).all()

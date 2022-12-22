@@ -87,22 +87,26 @@ class SE3Container:
 
         return cls(SE3.Rt(orientation_matrix, translation))
 
-    def get_orientation_as_quaternion(self) -> QuaternionType:
+    @property
+    def orientation_as_quaternion(self) -> QuaternionType:
         angle, vec = self.se3.angvec()
         scalar_first_quaternion = UnitQuaternion.AngVec(angle, vec).A
         return self.scalar_first_quaternion_to_scalar_last(scalar_first_quaternion)
 
-    def get_orientation_as_euler_angles(self) -> EulerAnglesType:
+    @property
+    def orientation_as_euler_angles(self) -> EulerAnglesType:
         zyx_ordered_angles = self.se3.eul()
         # convert from intrinsic ZYZ  to extrinsic xyz
         return Rotation.from_euler("ZYZ", zyx_ordered_angles, degrees=False).as_euler("xyz", degrees=False)
 
-    def get_orientation_as_axis_angle(self) -> AxisAngleType:
+    @property
+    def orientation_as_axis_angle(self) -> AxisAngleType:
         angle, axis = self.se3.angvec()
         return axis, angle
 
-    def get_orientation_as_rotation_vector(self) -> VectorType:
-        axis, angle = self.get_orientation_as_axis_angle()
+    @property
+    def orientation_as_rotation_vector(self) -> VectorType:
+        axis, angle = self.orientation_as_axis_angle
         return angle * axis
 
     @property
@@ -118,15 +122,18 @@ class SE3Container:
         # TODO: should this be named position or translation?
         return self.se3.t
 
-    def get_x_axis(self) -> VectorType:
+    @property
+    def x_axis(self) -> VectorType:
         """also called normal vector. This is the first column of the rotation matrix"""
         return self.se3.n
 
-    def get_y_axis(self) -> VectorType:
+    @property
+    def y_axis(self) -> VectorType:
         """also colled orientation vector. This is the second column of the rotation matrix"""
         return self.se3.o
 
-    def get_z_axis(self) -> VectorType:
+    @property
+    def z_axis(self) -> VectorType:
         """also called approach vector. This is the third column of the rotation matrix"""
         return self.se3.a
 
