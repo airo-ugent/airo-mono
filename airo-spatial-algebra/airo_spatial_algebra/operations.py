@@ -12,10 +12,10 @@ import numpy as np
 from airo_typing import HomogeneousMatrixType, PointsType
 
 
-class HomogeneousPoints:
+class _HomogeneousPoints:
     def __init__(self, points: PointsType):
         if not self.is_valid_points_type(points):
-            raise ValueError(f"Invalid argument for {HomogeneousPoints.__name__}.__init__ ")
+            raise ValueError(f"Invalid argument for {_HomogeneousPoints.__name__}.__init__ ")
         if self.is_single_point(points):
             self._homogeneous_points = np.concatenate([points, np.ones(1, dtype=np.float32)])
             self._homogeneous_points = self._homogeneous_points[np.newaxis, :]
@@ -72,6 +72,6 @@ def transform_points(homogeneous_transform_matrix: HomogeneousMatrixType, points
     Returns:
         PointsType: (3,) vector or (N,3) matrix.
     """
-    homogeneous_points = HomogeneousPoints(points)
+    homogeneous_points = _HomogeneousPoints(points)
     homogeneous_points.apply_transform(homogeneous_transform_matrix)
     return homogeneous_points.points
