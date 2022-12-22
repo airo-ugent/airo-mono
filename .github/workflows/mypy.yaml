@@ -4,8 +4,8 @@ on:
   pull_request:
   push:
     branches:
-      - master
-      - ci
+      - main
+      - ci-dev
 
 jobs:
   mypy:
