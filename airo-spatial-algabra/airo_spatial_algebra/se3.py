@@ -3,10 +3,7 @@ from __future__ import annotations
 from typing import Optional  # use class as type for class methods
 
 import numpy as np
-from scipy.spatial.transform import Rotation
-from spatialmath import SE3, UnitQuaternion
-
-from airo_core.type_aliases import (
+from airo_typing import (
     AxisAngleType,
     EulerAnglesType,
     HomogeneousMatrixType,
@@ -14,6 +11,8 @@ from airo_core.type_aliases import (
     RotationMatrixType,
     VectorType,
 )
+from scipy.spatial.transform import Rotation
+from spatialmath import SE3, UnitQuaternion
 
 
 class SE3Container:
@@ -136,10 +135,10 @@ class SE3Container:
 
     @staticmethod
     def scalar_first_quaternion_to_scalar_last(scalar_first_quaternion: np.ndarray) -> QuaternionType:
-        scalar_last_quaternion = np.roll(scalar_first_quaternion,-1)
+        scalar_last_quaternion = np.roll(scalar_first_quaternion, -1)
         return scalar_last_quaternion
 
     @staticmethod
     def scalar_last_to_scalar_first(scalar_last_quaternion: QuaternionType) -> np.ndarray:
-        scalar_first_quaternion = np.roll(scalar_last_quaternion,1)
+        scalar_first_quaternion = np.roll(scalar_last_quaternion, 1)
         return scalar_first_quaternion

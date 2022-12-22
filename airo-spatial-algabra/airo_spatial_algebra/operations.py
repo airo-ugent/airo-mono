@@ -9,8 +9,7 @@ i.e. the user can  call <transform>(points) where points is just a numpy array,
 """
 
 import numpy as np
-
-from airo_core.type_aliases import HomogeneousMatrixType, PointsType
+from airo_typing import HomogeneousMatrixType, PointsType
 
 
 class HomogeneousPoints:

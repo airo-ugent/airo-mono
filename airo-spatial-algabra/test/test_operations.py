@@ -1,8 +1,7 @@
 import numpy as np
 import pytest
-
-from airo_core.spatial_algebra.operations import HomogeneousPoints, transform_points
-from airo_core.spatial_algebra.se3 import SE3Container
+from airo_spatial_algebra.operations import HomogeneousPoints, transform_points
+from airo_spatial_algebra.se3 import SE3Container
 
 
 def test_helper_class_creation():

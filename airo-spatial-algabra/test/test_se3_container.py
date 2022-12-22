@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
+from airo_spatial_algebra import SE3Container
 from scipy.spatial.transform import Rotation
 from spatialmath import SE3, SO3
-
-from airo_core.spatial_algebra.se3 import SE3Container
 
 
 @pytest.fixture(autouse=True)
