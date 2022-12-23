@@ -4,7 +4,7 @@ import setuptools
 
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
-    name="airo_cameara_toolkit",
+    name="airo_camera_toolkit",
     version="0.0.1",
     description="Interfaces, and common functionality to work with RGB(D) cameras for robotic manipulation at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
@@ -14,8 +14,8 @@ setuptools.setup(
     ],
     extras_require={
         "external": [
-            f"airo_typing @ file://localhost/{root_folder}/airo-typing[external]",
-            f"airo_spatial_algebra @ file://localhost/{root_folder}/airo-spatial-algebra[external]",
+            f"airo_typing @ file://localhost/{root_folder}/airo-typing",
+            f"airo_spatial_algebra @ file://localhost/{root_folder}/airo-spatial-algebra",
         ]
     },
     packages=setuptools.find_packages(),
