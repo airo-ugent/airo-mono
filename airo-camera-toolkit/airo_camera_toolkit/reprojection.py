@@ -81,7 +81,7 @@ def reproject_to_frame(
     Returns: (3, N) np.array containing the coordinates of the point in the camera frame. Each column is a set of
                 coordinates.
     """
-
+    # TODO: make this more generic for 2D as well  (HomogeneousPoints class)
     homogeneous_coords = np.ones((coordinates.shape[0], 3))
     homogeneous_coords[:, :2] = coordinates
     homogeneous_coords = np.transpose(homogeneous_coords)
