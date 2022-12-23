@@ -13,6 +13,8 @@ from airo_typing import HomogeneousMatrixType, Vectors3DType
 
 
 class _HomogeneousPoints:
+    # TODO: extend to generic dimensions (1D,2D,3D).
+    # TODO: more apropaite name? this class mainly serves as 'input validation' and conversion to homogeneous coordinates
     def __init__(self, points: Vectors3DType):
         if not self.is_valid_points_type(points):
             raise ValueError(f"Invalid argument for {_HomogeneousPoints.__name__}.__init__ ")
