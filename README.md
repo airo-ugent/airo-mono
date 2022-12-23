@@ -1,4 +1,4 @@
-# airo_core
+# airo-mono
 ## rationale
 - create base classes / interfaces for abstracting (simulated) hardware to allow for interchanging different simulators/ hardware on the one hand and different 'decision making frameworks' on the other hand.
 - provide functionality that is required to quickly create robot behavior à la Folding competition @ IROS22
