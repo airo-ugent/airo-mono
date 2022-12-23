@@ -49,7 +49,7 @@ NumpyIntImageType = np.ndarray
 TorchImageType = np.ndarray
 """ an image in the torch format: RGB, float(0-1), (C,H,W)"""
 
-NumpyDepthMapType = np.ndarray[float]
+NumpyDepthMapType = np.ndarray
 """ a depth map (z-buffer),float, (H,W)"""
 
 CameraIntrinsicsMatrixType = np.ndarray
