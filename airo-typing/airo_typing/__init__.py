@@ -4,6 +4,7 @@ import numpy as np
 
 # TODO: see if we can specify the shape of these types for mypy
 
+# spatial algebra types
 VectorType = np.ndarray
 """ a (3,) np array that represents a 3D position/translation/direction
 """
@@ -34,3 +35,30 @@ HomogeneousMatrixType = np.ndarray
 """4x4 homogeneous transform matrix
 <<R,T>|<0,0,0,1>>
 """
+
+# camera related types
+
+OpenCVImageType = np.ndarray
+"""an image in the OpenCV format: BGR, uint8, (H,W,C)"""
+
+NumpyFloatImageType = np.ndarray
+""" an image in the numpy format: RGB, float (0-1), (H,W,C)"""
+
+NumpyIntImageType = np.ndarray
+""" an image in the numpy format: RGB, uint8 (0-255), (H,W,C)"""
+TorchImageType = np.ndarray
+""" an image in the torch format: RGB, float(0-1), (C,H,W)"""
+
+NumpyDepthMapType = np.ndarray[float]
+""" a depth map (z-buffer),float, (H,W)"""
+
+CameraIntrinsicsMatrixType = np.ndarray
+"""3x3 camera intrinsics matrix
+
+K = [[fx,s,cx],[0,fy,cy],[0,0,1]]
+see e.g. https://ksimek.github.io/2013/08/13/intrinsic/ for more details """
+
+
+CameraExtrinsicMatrixType = HomogeneousMatrixType
+"""4x4 camera extrinsic matrix,
+this is the homogeneous matrix that describes the camera pose in the world frame"""
