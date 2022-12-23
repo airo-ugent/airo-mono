@@ -14,8 +14,8 @@ setuptools.setup(
     ],
     extras_require={
         "external": [
-            f"airo_typing @ file://localhost/{root_folder}/airo-typing",
-            f"airo_typing @ file://localhost/{root_folder}/airo-spatial-algebra",
+            f"airo_typing @ file://localhost/{root_folder}/airo-typing[external]",
+            f"airo_spatial_algebra @ file://localhost/{root_folder}/airo-spatial-algebra[external]",
         ]
     },
     packages=setuptools.find_packages(),
