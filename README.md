@@ -1,4 +1,4 @@
-# airo_core
+# airo-mono
 ## rationale
 - create base classes / interfaces for abstracting (simulated) hardware to allow for interchanging different simulators/ hardware on the one hand and different 'decision making frameworks' on the other hand.
 - provide functionality that is required to quickly create robot behavior à la Folding competition @ IROS22
@@ -39,7 +39,7 @@ Formatting happens with black (code style), isort (sort imports and autoflake (r
 
 Packages can be typed (optional, but strongly recommended). For this, mypy is used.
 
-Docstrings should be formatted in reST (Sphinx) format ([most used](https://stackoverflow.com/questions/3898572/what-are-the-most-common-python-docstring-formats))
+Docstrings should be formatted in the [google docstring format](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
 
 Testing with pytest. Unittests should be grouped per package, as the CI pipeline will run them for each package in isolation. Also note that there should always be at least one test, since pytest will otherwise [throw an error](https://github.com/pytest-dev/pytest/issues/2393).
 
