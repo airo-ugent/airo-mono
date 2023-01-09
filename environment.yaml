@@ -6,4 +6,4 @@ dependencies:
   - pip
   - pip:
     - -e airo-typing/
-    - -e spatial-algebra/
+    - -e airo-spatial-algebra/
