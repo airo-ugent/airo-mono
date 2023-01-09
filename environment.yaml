@@ -1,4 +1,4 @@
-name: airo-core
+name: airo-mono
 channels:
   - conda-forge
 dependencies:
