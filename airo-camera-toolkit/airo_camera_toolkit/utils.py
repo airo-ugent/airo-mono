@@ -18,8 +18,9 @@ class ImageConverter:
 
     @staticmethod
     def _is_valid_image(image: object) -> bool:
+        if not isinstance(image, np.ndarray):
+            return False
         valid = True
-        valid = valid and isinstance(image, np.ndarray)
         valid = valid and image.ndim == 3
         valid = valid and np.max(image) <= 1.0
         valid = valid and np.min(image) >= 0.0
