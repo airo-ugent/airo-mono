@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import numpy as np
 import pyzed.sl as sl
 from airo_camera_toolkit.interfaces import DepthCamera, StereoRGBDCamera
 from airo_camera_toolkit.utils import ImageConverter
-from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, NumpyDepthMapType, NumpyFloatImageType
+from airo_typing import (
+    CameraIntrinsicsMatrixType,
+    HomogeneousMatrixType,
+    NumpyDepthMapType,
+    NumpyFloatImageType,
+    NumpyIntImageType,
+)
 
 
 class Zed2i(StereoRGBDCamera):
@@ -38,7 +46,7 @@ class Zed2i(StereoRGBDCamera):
         resolution: sl.RESOLUTION = RESOLUTION_2K,
         fps: int = 15,
         depth_mode: str = NEURAL_DEPTH_MODE,
-        serial_number: int = None,
+        serial_number: Optional[int] = None,
     ) -> None:
 
         self.camera = sl.Camera()
@@ -118,10 +126,12 @@ class Zed2i(StereoRGBDCamera):
         depth_map = self.depth_matrix.get_data()
         return depth_map
 
-    def get_depth_image(self) -> NumpyFloatImageType:
+    def get_depth_image(self) -> NumpyIntImageType:
         self._grab_latest_image()
         self.camera.retrieve_image(self.image_matrix, sl.VIEW.DEPTH)
         image = self.image_matrix.get_data()
+        image = image[:3]  # drop alpha channel
+        image = image[..., ::-1]  # BGR to RGB
         return image
 
     def get_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
@@ -177,6 +187,7 @@ if __name__ == "__main__":
     plt.show()
     dept_image = zed.get_depth_image()
     plt.imshow(dept_image)
+    print(dept_image.shape)
     # should seem reasonable
     plt.show()
     # measuring a specific value is prefered for checking the depth map output

@@ -65,7 +65,7 @@ class DepthCamera(Camera, abc.ABC):
         """
         raise NotImplementedError
 
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def get_depth_image(self) -> NumpyIntImageType:
         """an 8-bit (int) quantization of the latest depth map, which can be used for visualization"""
         raise NotImplementedError
