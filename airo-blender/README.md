@@ -1,3 +1,5 @@
+![Synthetic data generation box keypoints example](https://i.imgur.com/ZpH0grX.jpg)
+
 # airo-blender
 
 A Python package on top of the [Blender Python API](https://docs.blender.org/api/current/index.html) to

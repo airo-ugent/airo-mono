@@ -86,7 +86,7 @@ cylinder.rotation_euler.x = 3.14 / 2.0
 
 ### 1.3.2 Adding a material
 We have a simple scene now, unfortunately, it's pretty gray and boring right now.
-To make more interesting we need to add materials to our objects.
+To make it more interesting we need to add materials to our objects.
 
 Adding a red material to the cylinder can be done using these commands:
 ```python
@@ -108,8 +108,17 @@ import airo_blender as ab
 red = (1.0, 0.0, 0.0, 1.0)
 ab.add_material(cyclinder, red)
 ```
+> Note: by default Blender shows your scene in a fast to render "Solid" shading mode.
+> To see what your material will look like in the final render, change it to "Rendered" mode.
+> (Click the right-most little sphere in the top-right corner of the viewport.)
 
 ### 1.3.3 A nicer background
+By default, the Blender "world" has a pretty dark gray background.
+Let's set that to a brighter color.
+
+```python
+bpy.data.worlds["World"].node_tree.nodes["Background"].inputs["Color"].default_value = (0.02, 0.0, 1.0, 1.0)
+```
 
 ## 1.4 Rendering an image :camera:
 Rendering an image can be done simply by adding this line at the end of your scripts:
@@ -119,8 +128,47 @@ bpy.ops.render.render()
 When running your script Blender will now create your scene and then render it into an image.
 To view the rendered image, click on the `Rendering` tab in the top bar.
 
+By now your code should look something like this:
+```python
+import bpy
+import airo_blender as ab
 
-## 1.5 Enabling Blender's ray tracer: Cycles :high_brightness:
+# Create the cylinder
+bpy.ops.mesh.primitive_cylinder_add()
+
+# We can assign the blender Objects to variables for easy access
+cube = bpy.data.objects["Cube"]
+cylinder = bpy.data.objects["Cylinder"]
+
+# Playing the objects' properties
+cube.scale = (2.0, 2.0, 0.1)
+cube.location.z -= 0.1
+cylinder.scale = (0.5, 0.5, 1.0)
+cylinder.location.z = 0.5
+cylinder.rotation_euler.x = 3.14 / 2.0
+
+# Adding a nice material
+red = (1.0, 0.0, 0.0, 1.0)
+ab.add_material(cylinder, red)
+
+# Making the background brighter
+bpy.data.worlds["World"].node_tree.nodes["Background"].inputs["Color"].default_value = (1.0, 0.9, 0.7, 1.0)
+
+# Rendering the scene into an image
+bpy.ops.render.render()
+```
+
+## 1.5 Enabling Blender's phyiscally-based path tracer: Cycles :high_brightness:
+The rendered image should already look ok, but you might notice that some lighting effects are missing.
+This is because by default Blender uses its real-time renderer EEVEE.
+To tell Blender to use Cycles takes only one line of code:
+```python
+bpy.context.scene.render.engine = 'CYCLES'
+```
+Additionally, we want to tell Blender how much noise we can tolerate in the rendered output:
+```python
+bpy.context.scene.cycles.adaptive_threshold = 0.1
+```
 
 ## 1.6 Saving additional annotations :floppy_disk:
 
@@ -129,6 +177,6 @@ Congratulations, you've reached the end of the first tutorial and hopefully gene
 You now also understand the basics of synthetic data generation in Blender.
 As you've seen, Blender's Python API is pretty explicit and straightforward.
 
-In the following tutorials we will teach you how to add assets to your scene, add randomization and work with keypoint
+In the following tutorials, we will teach you how to add assets to your scene, add randomization and work with keypoint
 annotations!
 
