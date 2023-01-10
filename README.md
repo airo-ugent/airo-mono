@@ -34,6 +34,14 @@ If you want to make changes, you should probably clone this repo first
 and then install all relevant packages in [editable](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs) mode, so that any change you make is immediately 'visible' to your python interpreter. You can simply run `conda env create -f environment.yaml`, which does this for you (and also installs some binaries for convenience).
 
 ## Developer guide
+To set up your development environment, run:
+```
+conda env create -f environment.yaml
+conda activate airo-mono
+pip install -r dev-requirements.txt
+pre-commit install
+```
+
 ### Coding style and testing
 Formatting happens with black (code style), isort (sort imports and autoflake (remove unused imports and variables). Flake8 is used as linter. These are bundled with [pre-commit](https://pre-commit.com/) as configured in the `.pre-commit-config.yaml` file.
 

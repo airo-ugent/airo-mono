@@ -20,5 +20,7 @@ setuptools.setup(
         ]
     },
     packages=setuptools.find_packages(),
+    # include py.typed to declare type information is available, see
+    # https://mypy.readthedocs.io/en/stable/installed_packages.html#making-pep-561-compatible-packages
     package_data={"airo_spatial_algebra": ["py.typed"]},
 )
