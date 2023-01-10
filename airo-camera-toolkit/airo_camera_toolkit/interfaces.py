@@ -13,6 +13,7 @@ class Camera(abc.ABC):
     """Base class for all cameras
 
     We use the right-handed, y-down convention for the camera frame:
+    - origin is at the camera lens center
     - z-axis points forward (towards the scene)
     - x-axis points to the right
     - y-axis points down
@@ -28,9 +29,17 @@ class Camera(abc.ABC):
     cf https://scikit-image.org/docs/stable/user_guide/numpy_images.html#numpy-indexing
     """
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
+        """returns the intrinsics matrix of the camera:
+
+        [[fx, 0, cx],
+         [0, fy, cy],
+         [0, 0, 1]]
+
+        where all values are defined in pixels.
+        """
         raise NotImplementedError
 
 
@@ -78,13 +87,13 @@ class StereoRGBDCamera(RGBDCamera):
         raise NotImplementedError
 
     # TODO: check view argument value?
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def intrinsics_matrix(self, view: str = LEFT_RGB) -> CameraIntrinsicsMatrixType:
         raise NotImplementedError
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def pose_of_right_view_in_left_view(self) -> HomogeneousMatrixType:
         """
         get the transform of the right view frame in the left view frame,
