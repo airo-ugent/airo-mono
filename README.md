@@ -36,6 +36,7 @@ and then install all relevant packages in [editable](https://pip.pypa.io/en/stab
 ## Developer guide
 To set up your development environment, run:
 ```
+conda env create -f environment.yaml
 conda activate airo-mono
 pip install -r dev-requirements.txt
 pre-commit install
