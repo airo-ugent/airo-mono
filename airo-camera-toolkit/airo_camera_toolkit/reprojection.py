@@ -142,9 +142,6 @@ def project_frame_to_image_plane(
     """
     # TODO: should we add assert statements to validate the input?
 
-    # TODO: should we allow for 1D array-like objects as input for a single position?
-    #  cf HomogeneousPoints class in airo-spatial-algebra package.
-
     if frame_to_camera_transform is None:
         # if no transform is given, the positions are assumed to be in the camera frame
         # in this case, the transform is the identity matrix
