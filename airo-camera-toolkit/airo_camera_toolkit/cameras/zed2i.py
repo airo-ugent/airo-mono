@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from typing import Optional
 
+try:
+    import pyzed.sl as sl
+except ImportError:
+    raise ImportError(
+        "You should install the ZED SDK and pip install the python bindings in your environment first, see the class docstring"
+    )
+
 import numpy as np
-import pyzed.sl as sl
-from airo_camera_toolkit.interfaces import DepthCamera, StereoRGBDCamera
+from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
@@ -27,6 +33,8 @@ class Zed2i(StereoRGBDCamera):
     using (linux) `python -m /usr/local/zed/get_python_api.sh`
     see https://www.stereolabs.com/docs/app-development/python/install/
 
+    It is important to note that the ZED cameras are factory calibrated and hence provide undistorted images
+    and corresponding intrinsics matrices.
     """
 
     NEURAL_DEPTH_MODE = sl.DEPTH_MODE.NEURAL
@@ -48,6 +56,10 @@ class Zed2i(StereoRGBDCamera):
         depth_mode: str = NEURAL_DEPTH_MODE,
         serial_number: Optional[int] = None,
     ) -> None:
+        self.resolution = resolution
+        self.fps = fps
+        self.depth_mode = depth_mode
+        self.serial_number = serial_number
 
         self.camera = sl.Camera()
         self.camera_params = sl.InitParameters()
@@ -130,7 +142,7 @@ class Zed2i(StereoRGBDCamera):
         self._grab_latest_image()
         self.camera.retrieve_image(self.image_matrix, sl.VIEW.DEPTH)
         image = self.image_matrix.get_data()
-        image = image[:3]  # drop alpha channel
+        image = image[..., :3]  # drop alpha channel
         image = image[..., ::-1]  # BGR to RGB
         return image
 
@@ -157,38 +169,19 @@ class Zed2i(StereoRGBDCamera):
         can be used to select a device ID or to check if cameras are connected.
         """
         device_list = sl.Camera.get_device_list()
-        print(device_list)
         return device_list
 
 
 if __name__ == "__main__":
     """this script serves as a 'test' for the zed implementation."""
-    # SERIAL NUMBER LISTING
-    cameras = Zed2i.list_camera_serial_numbers()
-    assert len(cameras) == 1
+    from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
 
-    # TEST ZED2i
-    zed = Zed2i(fps=15)
-    assert isinstance(zed, StereoRGBDCamera)
-    assert isinstance(zed, DepthCamera)
+    # zed specific tests:
+    # - list all serial numbers of the cameras
+    serial_numbers = Zed2i.list_camera_serial_numbers()
+    print(serial_numbers)
+    input("each camera connected to the pc should be listed, press enter to continue")
 
-    # should be reasonably close to the values
-    # listed here https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
-
-    print(f"{zed.intrinsics_matrix=}")
-    # should be approx a translation of 12cm along the x-axis
-    print(f"{zed.pose_of_right_view_in_left_view=}")
-    image = zed.get_rgb_image()
-    import matplotlib.pyplot as plt
-
-    plt.imshow(image)
-    # should be required resolution
-    # and rgb channel order should be okay (check with red/green object)
-    plt.show()
-    dept_image = zed.get_depth_image()
-    plt.imshow(dept_image)
-    print(dept_image.shape)
-    # should seem reasonable
-    plt.show()
-    # measuring a specific value is prefered for checking the depth map output
-    print(zed.get_depth_map())
+    # test rgbd stereo camera:
+    zed = Zed2i(Zed2i.RESOLUTION_1080, fps=60)
+    manual_test_stereo_rgbd_camera(zed)
