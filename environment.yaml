@@ -8,3 +8,4 @@ dependencies:
     - -e airo-typing/
     - -e airo-spatial-algebra/
     - -e airo-camera-toolkit/
+    - -e airo-robots/
