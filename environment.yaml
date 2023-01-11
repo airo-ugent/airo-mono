@@ -7,3 +7,4 @@ dependencies:
   - pip:
     - -e airo-typing/
     - -e airo-spatial-algebra/
+    - -e airo-camera-toolkit/
