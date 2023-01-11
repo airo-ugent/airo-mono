@@ -8,9 +8,12 @@ This tutorial series will teach you the main principles of synthetic data genera
 ## Tutorials
 
 After you've completed the [installation](..), you can start these tutorials:
+### 01 - [Introduction to the Python API](01_the_python_api)  :snake:
+![Tutorial 1 banner](https://i.imgur.com/LWY8bXS.jpg)
+In this tutorial you will learn how to build a simple scene with the Blender Python API and render your first image.
 
-* [01](01_the_python_api): Introduction to the Python API
-* [02](02_getting_assets): Getting assets
-* [03](03_randomization): Randomization
-* [04](04_keypoints): Saving keypoints in COCO format
+### 02 - [Getting assets](02_getting_assets) :gift:
+### 03 - [Randomization](03_randomization) :game_die:
+### 04 - [Saving keypoints in COCO format](04_keypoints) :pushpin:
+
 
