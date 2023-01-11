@@ -23,6 +23,7 @@ below is a short overview of the packages in this repo. Each package has a dedic
 ```
 airo-typing             # common typedefs and conventions
 airo-spatial-algebra    # code for working with SE3 poses
+airo-camera-toolkit     # code for working with RGB(D) cameras
 ```
 ## Installation
 There are a number ways to install (a number of) packages from this repo, based on whether you want to use them or you also want to make changes to them:
