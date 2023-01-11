@@ -13,7 +13,7 @@ We will cover:
 > The full Blender Python API docs can be [here](https://docs.blender.org/api/current/index.html).
 
 ## 1.1 Opening Blender :art:
-Lets start by opening up Blender. You can do this by running the `blender` executable from your terminal, e.g:
+Let's start by opening up Blender. You can do this by running the `blender` executable from your terminal, e.g:
 ```
 ./airo-blender/blender/blender-3.4.1-linux-x64/blender
 ```
@@ -158,19 +158,164 @@ bpy.data.worlds["World"].node_tree.nodes["Background"].inputs["Color"].default_v
 bpy.ops.render.render()
 ```
 
-## 1.5 Enabling Blender's phyiscally-based path tracer: Cycles :high_brightness:
+## 1.5 Enabling Blender's physically-based path tracer: Cycles :high_brightness:
 The rendered image should already look ok, but you might notice that some lighting effects are missing.
 This is because by default Blender uses its real-time renderer EEVEE.
 To tell Blender to use Cycles takes only one line of code:
 ```python
 bpy.context.scene.render.engine = 'CYCLES'
 ```
-Additionally, we want to tell Blender how much noise we can tolerate in the rendered output:
+Additionally, we want to tell Blender how many rays we want to cast per pixel.
+(If we don't, Cycles will render a very high-quality image by default.)
+More rays will result in a less noisy image, but takes longer to render:
 ```python
-bpy.context.scene.cycles.adaptive_threshold = 0.1
+bpy.context.scene.cycles.samples = 64
+```
+> It's still an open question how much sample count influences sim2real transfer of models trained on synthetic images.
+
+To set the image resolution, you can simply:
+```python
+bpy.context.scene.render.resolution_x = 1024
+bpy.context.scene.render.resolution_y = 512
 ```
 
-## 1.6 Saving additional annotations :floppy_disk:
+
+Finally, if we set the following path:
+```python
+bpy.context.scene.render.filepath = "red_cylinder.jpg"
+```
+
+And turn on the `write_still` option in the render command:
+```python
+bpy.ops.render.render(write_still=True)
+```
+
+Blender will save our render to disk (relative to where you started the blender executable).
+
+Your script should look something like this by now:
+```python
+import bpy
+import airo_blender as ab
+
+# Create the cylinder
+bpy.ops.mesh.primitive_cylinder_add()
+
+# We can assign the blender Objects to variables for easy access
+cube = bpy.data.objects["Cube"]
+cylinder = bpy.data.objects["Cylinder"]
+
+# Playing the objects' properties
+cube.scale = (2.0, 2.0, 0.1)
+cube.location.z -= 0.1
+cylinder.scale = (0.5, 0.5, 1.0)
+cylinder.location.z = 0.5
+cylinder.rotation_euler.x = 3.14 / 2.0
+
+# Adding a nice material
+red = (1.0, 0.0, 0.0, 1.0)
+ab.add_material(cylinder, red)
+
+# Making the background brighter
+bpy.data.worlds["World"].node_tree.nodes["Background"].inputs["Color"].default_value = (1.0, 0.9, 0.7, 1.0)
+
+# Telling Blender to render with Cycles, and how many rays we want to cast per pixel
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 64
+
+bpy.context.scene.render.resolution_x = 1024
+bpy.context.scene.render.resolution_y = 512
+
+bpy.context.scene.render.filepath = "red_cylinder.jpg"
+
+# Rendering the scene into an image
+bpy.ops.render.render(write_still=True)
+```
+
+And this is what the rendered image should look like:
+![Red cylinder rendered with Cycles](https://i.imgur.com/G5QuqgC.png)
+
+## 1.6 Saving an object's pose :floppy_disk:
+In this final section of the tutorial, we'll save the cylinder's pose to disk.
+We can access a Blender object's transform via its `.matrix_world` attribute.
+However, for the cylinder this will currently give us the wrong matrix.
+The reason is that we've scaled the cylinder, and this scale is also included in this matrix.
+
+To get an object's pose (i.e. rotation and translation, but not scale), the simplest way is to "apply" its scale.
+Applying a transform in Blender means "moving" the transform from the object-level, down into the vertex coordinates.
+
+To apply the scale for all objects, we can run:
+```python
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+```
+
+Afterwards, the cylinder's `.matrix_world` contains the pose we expect:
+```python
+pose = cylinder.matrix_world
+print(pose)
+```
+The output in the terminal where you started Blender:
+```python
+<Matrix 4x4 (1.0000, 0.0000,  0.0000, 0.0000)
+            (0.0000, 0.0008, -1.0000, 0.0000)
+            (0.0000, 1.0000,  0.0008, 0.5000)
+            (0.0000, 0.0000,  0.0000, 1.0000)>
+```
+As an example, we'll save this pose similarly to the [BOP format](https://github.com/thodan/bop_toolkit/blob/master/docs/bop_datasets_format.md), where they save:
+* `cam_R_m2c` - 3x3 rotation matrix R_m2c (saved row-wise).
+* `cam_t_m2c` - 3x1 translation vector t_m2c.
+* lengths are in millimeters
+* `m2c` is short for "model to camera"
+
+This can be achieve with the following code:
+```python
+camera = bpy.context.scene.camera
+
+# Find the model to camera transform
+# Use use the Drake notation here, X_ab means the transform from frame b to frame a
+X_wm = cylinder.matrix_world   # world to model
+X_wc = camera.matrix_world     # world to camera
+X_mc = X_wm.inverted() @ X_wc  # model to camera
+
+translation, rotation, scale = X_mc.decompose()
+
+import numpy as np
+cam_t_m2c = list(1000.0 * translation)
+cam_R_m2c = list(1000.0 * np.array(rotation.to_matrix()).flatten())
+
+import json
+data = {
+    "cam_R_m2c": cam_R_m2c,
+    "cam_t_m2c": cam_t_m2c,
+}
+
+with open('cylinder_pose.json', 'w') as fp:
+    json.dump(data, fp)
+```
+
+When running the script now, you should get a `cylinder_pose.json` file with following contents:
+```json
+{
+    "cam_R_m2c": [
+        685.9207153320312,
+        -324.0134119987488,
+        651.5581607818604,
+        0.579443818423897,
+        895.6385850906372,
+        444.78219747543335,
+        -727.6760339736938,
+        -304.707795381546,
+        614.5248413085938
+    ],
+    "cam_t_m2c": [
+        7358.8916015625,
+        4452.79296875,
+        6929.3388671875
+    ]
+}
+```
+The full script that implements this tutorial can be found [here](tutorial_1.py).
+
 
 ## The End :tada:
 Congratulations, you've reached the end of the first tutorial and hopefully generated your first piece of synthetic data!
@@ -179,4 +324,3 @@ As you've seen, Blender's Python API is pretty explicit and straightforward.
 
 In the following tutorials, we will teach you how to add assets to your scene, add randomization and work with keypoint
 annotations!
-
