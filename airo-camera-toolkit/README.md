@@ -6,7 +6,8 @@ overview of the functionality and the structure:
 ```
 airo_camera_toolkit/
     interfaces.py               # defines common interfaces for all cameras
-    reprojection.py             # code for projecting points to the image plane a                           # and reprojecting points from image plane to world
+    reprojection.py             # code for projecting points to the image plane
+                                # and reprojecting points from image plane to world
     utils.py                    # a.o. code for converting images between
                                 # differen formats, such as BGR - RGB or channel-first vs channel-last.
 
