@@ -13,7 +13,7 @@ You only need to complete the first part `Download and Install the ZED SDK`.
  > If you did not install the Python API during the SDK setup, you can install it now:
 > ```
 > conda activate airo-mono
-> python -m /usr/local/zed/get_python_api.py
+> python /usr/local/zed/get_python_api.py
 >```
 >If this fails, install the dependencies from the [ZED Python API Installation](https://www.stereolabs.com/docs/app-development/python/install/).
 
