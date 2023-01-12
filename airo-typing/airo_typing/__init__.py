@@ -72,3 +72,8 @@ see e.g. https://ksimek.github.io/2013/08/13/intrinsic/ for more details """
 CameraExtrinsicMatrixType = HomogeneousMatrixType
 """4x4 camera extrinsic matrix,
 this is the homogeneous matrix that describes the camera pose in the world frame"""
+
+# manipulator types
+
+JointConfigurationType = np.ndarray
+"""an (N,) numpy array that represents the joint angles for a robot"""
