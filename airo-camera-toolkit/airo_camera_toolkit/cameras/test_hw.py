@@ -36,7 +36,7 @@ def manual_test_depth_camera(camera: DepthCamera):
     print(
         """
     The image resolution should match the expected camera resolution.
-    Furthermore the depth image should look reasonable (further away objects should be lighter).
+    Furthermore the depth image should look reasonable (further away objects should be darker).
     close the window if all seems fine.
     """
     )

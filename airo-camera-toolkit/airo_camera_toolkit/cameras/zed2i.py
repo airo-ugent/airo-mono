@@ -6,7 +6,7 @@ try:
     import pyzed.sl as sl
 except ImportError:
     raise ImportError(
-        "You should install the ZED SDK and pip install the python bindings in your environment first, see the class docstring"
+        "You should install the ZED SDK and pip install the python bindings in your environment first, see the installation README."
     )
 
 import numpy as np
@@ -25,13 +25,6 @@ class Zed2i(StereoRGBDCamera):
     """
     Wrapper around the ZED2i SDK
     https://www.stereolabs.com/zed-2i/
-
-    requires installing the SDK upfront
-    see https://www.stereolabs.com/docs/installation/linux/ (requires CUDA 11.X)
-
-    and then installing the python api using the install script in your python environment
-    using (linux) `python -m /usr/local/zed/get_python_api.sh`
-    see https://www.stereolabs.com/docs/app-development/python/install/
 
     It is important to note that the ZED cameras are factory calibrated and hence provide undistorted images
     and corresponding intrinsics matrices.
