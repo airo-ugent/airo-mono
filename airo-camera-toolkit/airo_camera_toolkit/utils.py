@@ -22,8 +22,10 @@ class ImageConverter:
             return False
         valid = True
         valid = valid and image.ndim == 3
-        valid = valid and np.max(image) <= 1.0
-        valid = valid and np.min(image) >= 0.0
+        # check first pixel instead of global max to reduce computational burden
+        # doing this for a 6M float image (1000x 2000 x3) takes a few ms
+        valid = valid and image[0, 0, 0] <= 1.0
+        valid = valid and image[0, 0, 0] >= 0.0
         valid = valid and image.dtype in (np.float32, np.float64, np.float16)
         return valid
 

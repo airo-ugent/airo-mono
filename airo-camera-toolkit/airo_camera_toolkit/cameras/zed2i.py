@@ -37,8 +37,15 @@ class Zed2i(StereoRGBDCamera):
     and corresponding intrinsics matrices.
     """
 
+    # for more info on the different depth modes, see:
+    # https://www.stereolabs.com/docs/api/group__Depth__group.html#ga391147e2eab8e101a7ff3a06cbed22da
     NEURAL_DEPTH_MODE = sl.DEPTH_MODE.NEURAL
-    DEPTH_MODES = NEURAL_DEPTH_MODE
+    NONE_DEPTH_MODE = (
+        sl.DEPTH_MODE.NONE
+    )  # no depth mode, higher troughput of the RGB images as the GPU has to do less work
+    PERFORMANCE_DEPTH_MODE = sl.DEPTH_MODE.QUALITY
+    QUALITY_DEPTH_MODE = sl.DEPTH_MODE.QUALITY
+    DEPTH_MODES = (NEURAL_DEPTH_MODE, NONE_DEPTH_MODE, PERFORMANCE_DEPTH_MODE, QUALITY_DEPTH_MODE)
 
     # for info on image resolution, pixel sizes, fov..., see:
     # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
@@ -53,7 +60,7 @@ class Zed2i(StereoRGBDCamera):
         self,
         resolution: sl.RESOLUTION = RESOLUTION_2K,
         fps: int = 15,
-        depth_mode: str = NEURAL_DEPTH_MODE,
+        depth_mode: str = NONE_DEPTH_MODE,
         serial_number: Optional[int] = None,
     ) -> None:
         self.resolution = resolution
@@ -133,12 +140,14 @@ class Zed2i(StereoRGBDCamera):
             raise IndexError("Could not grab new camera frame")
 
     def get_depth_map(self) -> NumpyDepthMapType:
+        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
         self._grab_latest_image()
         self.camera.retrieve_measure(self.depth_matrix, sl.MEASURE.DEPTH)
         depth_map = self.depth_matrix.get_data()
         return depth_map
 
     def get_depth_image(self) -> NumpyIntImageType:
+        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
         self._grab_latest_image()
         self.camera.retrieve_image(self.image_matrix, sl.VIEW.DEPTH)
         image = self.image_matrix.get_data()
@@ -156,9 +165,8 @@ class Zed2i(StereoRGBDCamera):
             view = sl.VIEW.LEFT
         self.camera.retrieve_image(self.image_matrix, view)
         image = self.image_matrix.get_data()
-
         image = image[..., :3]  # remove alpha channel
-        image = image / 255  # convert from int to float image
+        image = image / 255.0  # convert from int to float image
         # returns BGR image, so convert to RGB channel order
         return ImageConverter.from_opencv_format(image).image_in_numpy_format
 
@@ -174,14 +182,20 @@ class Zed2i(StereoRGBDCamera):
 
 if __name__ == "__main__":
     """this script serves as a 'test' for the zed implementation."""
-    from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
 
     # zed specific tests:
     # - list all serial numbers of the cameras
-    serial_numbers = Zed2i.list_camera_serial_numbers()
-    print(serial_numbers)
-    input("each camera connected to the pc should be listed, press enter to continue")
+    # serial_numbers = Zed2i.list_camera_serial_numbers()
+    # print(serial_numbers)
+    # input("each camera connected to the pc should be listed, press enter to continue")
 
     # test rgbd stereo camera:
-    zed = Zed2i(Zed2i.RESOLUTION_1080, fps=60)
-    manual_test_stereo_rgbd_camera(zed)
+    zed = Zed2i(Zed2i.RESOLUTION_2K, fps=15)
+    # manual_test_stereo_rgbd_camera(zed)
+    import cProfile
+
+    def test():
+        for _ in range(100):
+            zed.get_rgb_image()
+
+    cProfile.run("test()")
