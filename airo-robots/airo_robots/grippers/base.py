@@ -22,7 +22,7 @@ class ParallelPositionGripperSpecs:
 
 class ParallelPositionGripper:
     """
-    Interface for a position-controlled, 2 finger parallel gripper.
+    Base class for a position-controlled, 2 finger parallel gripper.
 
     These grippers typically allow to set a speed and maximum applied force before moving,
     and attempt to move to specified positions under these constraints.

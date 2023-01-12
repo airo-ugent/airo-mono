@@ -4,7 +4,7 @@ import time
 from typing import Optional
 
 import numpy as np
-from airo_robots.grippers.interfaces import ParallelPositionGripper, ParallelPositionGripperSpecs
+from airo_robots.grippers.base import ParallelPositionGripper, ParallelPositionGripperSpecs
 from airo_robots.grippers.manual_gripper_test import manual_test_gripper
 
 

@@ -17,7 +17,7 @@ class ManipulatorSpecs:
 
 
 class PositionManipulator:
-    """(Synchronous) interface for position-controlled manipulators"""
+    """(Synchronous) base class for position-controlled manipulators"""
 
     def __init__(self, manipulator_specs: ManipulatorSpecs) -> None:
         self.manipulator_specs = manipulator_specs
