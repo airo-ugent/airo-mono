@@ -202,6 +202,6 @@ def get_empirical_data_on_opening_angles(robot_ip: str):
 
 
 if __name__ == "__main__":
-    robot_ip = "10.42.0.162"
+    robot_ip = "10.42.0.162"  # hardcoded IP of Victor UR3e
     gripper = Robotiq2F85(robot_ip)
     manual_test_gripper(gripper, gripper.gripper_specs)

@@ -46,6 +46,12 @@ HomogeneousMatrixType = np.ndarray
 <<R,T>|<0,0,0,1>>
 """
 
+WrenchType = np.ndarray
+""" a (6,) numpy array that represents a wrench applied on a frame as [Fx,Fy,Fz,Tx,Ty,Tz]"""
+
+SpatialVelocityType = np.ndarray
+""" a (6,) numpy array that represents a spatial velocity (Screw) [vx,vy,vz,omegax,omegay,omegaz]"""
+
 # camera related types
 
 OpenCVImageType = np.ndarray
