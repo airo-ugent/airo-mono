@@ -1,4 +1,4 @@
-"""Contains code for manual testing of implementations of the camera interfaces.
+"""Contains code for testing implementations of the camera interfaces.
 """
 
 import matplotlib.pyplot as plt
@@ -67,3 +67,32 @@ def manual_test_stereo_rgbd_camera(camera: StereoRGBDCamera):
     """
     )
     plt.show()
+
+
+def profile(func, *args, **kwargs):
+    """a wrapper around the python cProfiler
+
+    https://docs.python.org/3/library/profile.html
+
+    Args:
+        func (_type_): the function to profile
+    """
+    import cProfile
+    import pstats
+
+    profiler = cProfile.Profile()
+    profiler.enable()
+    print(func(*args, **kwargs))
+    profiler.disable()
+    stats = pstats.Stats(profiler).sort_stats("tottime")
+    stats.print_stats(50)
+
+
+def profile_rgb_throughput(camera: RGBCamera):
+    """profile the throughput of the get_rgb_image() function"""
+
+    def get_100_images():
+        for _ in range(100):
+            camera.get_rgb_image()
+
+    profile(get_100_images)
