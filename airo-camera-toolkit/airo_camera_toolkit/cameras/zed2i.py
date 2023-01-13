@@ -10,6 +10,7 @@ except ImportError:
     )
 
 import numpy as np
+from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera, profile_rgb_throughput
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import (
@@ -179,23 +180,30 @@ class Zed2i(StereoRGBDCamera):
         device_list = sl.Camera.get_device_list()
         return device_list
 
+    # manage resources
+    # this is important if you want to reuse the camera
+    # multiple times within a python script, in which case you should release the camera before creating a new object.
+    # cf. https://stackoverflow.com/questions/865115/how-do-i-correctly-clean-up-a-python-object
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.camera.close()
+
 
 if __name__ == "__main__":
     """this script serves as a 'test' for the zed implementation."""
 
     # zed specific tests:
     # - list all serial numbers of the cameras
-    # serial_numbers = Zed2i.list_camera_serial_numbers()
-    # print(serial_numbers)
-    # input("each camera connected to the pc should be listed, press enter to continue")
+    serial_numbers = Zed2i.list_camera_serial_numbers()
+    print(serial_numbers)
+    input("each camera connected to the pc should be listed, press enter to continue")
 
-    # test rgbd stereo camera:
-    zed = Zed2i(Zed2i.RESOLUTION_2K, fps=15)
-    # manual_test_stereo_rgbd_camera(zed)
-    import cProfile
+    # test rgbd stereo camera
+    with Zed2i(Zed2i.RESOLUTION_2K, fps=15, depth_mode=Zed2i.PERFORMANCE_DEPTH_MODE) as zed:
+        manual_test_stereo_rgbd_camera(zed)
 
-    def test():
-        for _ in range(100):
-            zed.get_rgb_image()
-
-    cProfile.run("test()")
+    # profile rgb throughput, should be at 60FPS, i.e. 0.017s
+    zed = Zed2i(Zed2i.RESOLUTION_720, fps=60)
+    profile_rgb_throughput(zed)
