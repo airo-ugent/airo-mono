@@ -45,28 +45,51 @@ class PositionManipulator:
 
     @abstractmethod
     def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None):
-        """move to desired pose (synchronous)"""
+        """move to a desired pose (synchronous). This function should be used for 'open-loop' movements as it will
+        enforce an open-loop trajectory with a speed profile on the trajectory.
+
+        E.g. you want to grasp an object:
+        >move_to_tcp_pose(<pregrasp_pose>)
+        >move_to_tcp_pose(<grasp_pose>,<low_speed>)
+        """
 
     @abstractmethod
     def move_linear_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None):
-        """move to desired pose in a straight line (synchronous)"""
+        """move to desired pose in a straight line (synchronous). This function should be used for 'open-loop' movements as it will
+        enforce an open-loop trajectory with a speed profile on the trajectory."""
 
     @abstractmethod
     def move_to_joint_configuration(
         self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
     ):
-        """move to a desired joint configuration (synchronous)"""
+        """move to a desired joint configuration (synchronous). This function should be used for 'open-loop' movements as it will
+        enforce an open-loop trajectory with a speed profile on the trajectory."""
 
     @abstractmethod
-    def servo_linear_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, time: float):
-        """servo to the desired tcp pose with a linear EEF motion for the specified time (the function blocks for this time)
-        The interface does not enforce an interpolation profile to interpolate between the current tcp pose and the target tcp pose.
+    def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, time: float):
+        """servo to the desired tcp pose for the specified time (the function blocks for this time). Servoing implies 'best-effort' movements towards the target pose instead of
+        open-loop trajectories, so this function can be used for 'closed-loop'/higher-frequency control.
+        Note that the motion is not guaranteed to be a straight line in EEF space.
+
+        E.g. for visual servoing or a learning-based policy you could send commands at a certain frequency f
+        > servo_to_joint_configuration(<tcp_pose>, 1/f)
+        and the robot would do its best to track the tcp pose within the kinematic and dynamical constraints of the
+        robot and low-level controllers that are used.
+
+        Be aware that providing 'unrealistic' target poses that the robot cannot track (too far away) could result in very jerky motions.
         """
 
     @abstractmethod
     def servo_to_joint_configuration(self, joint_configuration: JointConfigurationType, time: float):
-        """servo to the desired joint configuration for the specified time (the function blocks for this time)
-        The interface does not enforce an interpolation profile to interpolate between the current joint configuration and the target joint configuration
+        """servo to the desired joint  pose for the specified time (the function blocks for this time). Servoing implies 'best-effort' movements towards the target pose instead of
+        open-loop trajectories, so this function can be used for 'closed-loop'/higher-frequency control.
+
+        E.g. for visual servoing or a learning-based policy you could send commands at a certain frequency f
+        > servo_to_joint_configuration(<joint_config>, 1/f)
+        and the robot would do its best to track the joint configurations within the kinematic and dynamical constraints of the
+        robot and low-level controllers that are used.
+
+        Be aware that providing 'unrealistic' target poses that the robot cannot track (too far away) could result in very jerky motions.
         """
 
     @abstractmethod
@@ -83,7 +106,7 @@ class PositionManipulator:
         raise NotImplementedError
 
     def execute_joint_trajectory(self, joint_trajectory: JointTrajectory):
-        """executes a joint trajectory (synchronously)."""
+        """executes a joint trajectory (synchronously) by trying to reach the waypoints at their target times (without coming to a halt at each waypoint)"""
         raise NotImplementedError
 
 

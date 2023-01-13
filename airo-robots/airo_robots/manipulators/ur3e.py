@@ -1,3 +1,4 @@
+import time
 import warnings
 from typing import Optional
 
@@ -14,8 +15,24 @@ RotVecPoseType = np.ndarray
 
 UR3e_config = ManipulatorSpecs(6, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
 
+from airo_robots.manipulators.manual_manipulator_testing import manual_test_robot
+
 
 class UR_RTDE(PositionManipulator):
+    """Implementation of the Position-controlled manipulator class for UR robots.
+    This Implementation uses the ur-rtde library to address the robot's RTDE API.
+
+    Configuring the TCP should be done manually on the robot, so that IK can be done in the TCP frame instead of the flange frame.
+
+    No (self-) collision checking nor obstacle avoidance is performed.
+
+    As a quick reminder: the UR e-series can be controlled at up to 500hz, the non-e-series up to 125Hz.
+     This is mostly relevant for the servo methods.
+
+    Finally, the ur-rtde library has more functionality than is exposed in the interface, you can always address the
+    control/receive interface attributes directly if you need them.
+    """
+
     def __init__(
         self, ip_address: str, manipulator_specs: ManipulatorSpecs, gripper: Optional[ParallelPositionGripper] = None
     ) -> None:
@@ -35,7 +52,8 @@ class UR_RTDE(PositionManipulator):
         self.default_leading_axis_joint_speed = 1  # rad/s
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
 
-        self.servo_proportional_gain = 300
+        # sensible values but you might need to tweak them for your purposes.
+        self.servo_proportional_gain = 400
         self.servo_lookahead_time = 0.05
 
     def get_joint_configuration(self) -> JointConfigurationType:
@@ -63,6 +81,8 @@ class UR_RTDE(PositionManipulator):
         joint_speed = joint_speed or self.default_leading_axis_joint_speed
         # don't know what leading axis is atm, so take min of all max joint speeds
         joint_speed = np.clip(joint_speed, 0.0, min(self.manipulator_specs.max_joint_speeds))
+
+        # this is a convenience function of the ur-rtde library that combines IK with moveJ
         self.rtde_control.moveJ_IK(tcp_rotvec_pose, joint_speed, self.default_leading_axis_joint_acceleration)
 
     def move_to_joint_configuration(
@@ -75,27 +95,49 @@ class UR_RTDE(PositionManipulator):
         self.rtde_control.moveJ(joint_configuration, joint_speed, self.default_leading_axis_joint_acceleration)
         return
 
-    def servo_linear_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, time: float):
-        if not self.is_tcp_pose_kinematically_reachable(tcp_pose):
-            warnings.warn(f"Pose is not reachable :\n{tcp_pose}")
-            return
+    def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, duration: float):
+        # cannot check reachability here of the pose, since that takes ~ms, which is too expensive for high frequency.
 
         tcp_rotvec_pose = self._convert_homegeneous_pose_to_rotvec_pose(tcp_pose)
-
+        # note that servoL does not really exist in the UR API, it is a convenient combination IK + servoJ of the ur-rtde library
         self.rtde_control.servoL(
-            tcp_rotvec_pose, 0.0, 0.0, time, self.servo_lookahead_time, self.servo_proportional_gain
+            tcp_rotvec_pose, 0.0, 0.0, duration, self.servo_lookahead_time, self.servo_proportional_gain
         )
+        # servoL call will block the robot for `time` seconds, but the ur-rtde call is non-blocking
+        # so add explicit sleep here to make the call synchronous
+        time.sleep(duration)
 
-    def servo_to_joint_configuration(self, joint_configuration: JointConfigurationType, time: float):
-        pass
+    def servo_to_joint_configuration(self, joint_configuration: JointConfigurationType, duration: float):
+        # the UR robot uses a proportional gain (kp) and lookahead time (kd/proportional gain kp) to create a PID like tracking behaviour
+        # that somehow determines target joint positions for their low-level control.
+        # as stated here https://www.universal-robots.com/articles/ur/programming/servoj-command/#:~:text=Download%20section%20HERE-,Servoj%20can%20be%20used%20for%20online%20realtime%20control%20of%20joint,reaction%20the%20robot%20will%20have.
+
+        # however if you do a servoJ for a really long time, the motion seems to be at constant joint velocity
+        # so they seem to do a linear interpolation to determine servoJ setpoints
+        # and to only then use the gain and lookeahead time parameters to determine how the robot
+        # tries to track these setpoints.
+
+        self.rtde_control.servoJ(
+            joint_configuration, 0.0, 0.0, duration, self.servo_lookahead_time, self.servo_proportional_gain
+        )
+        # servoJ call will block the robot for `time` seconds, but the ur-rtde call is non-blocking
+        # so add explicit sleep here to make the call synchronous
+        # after completing the servoJ will look for a next command so say that you have sent 5 servoJ calls in the meantime
+        # only the last would be exectued, which can result in shaky behaviour
+        # this is why the explict sleep is added so that the function only returns once the function has completed.
+        # cf the example of the ur-rtde library where they use the 'wait' function for this
+        # but on non-realtime linux kernels it seems that the sleep accuracy is on the <ms order, so seems fine to do it like this
+        # https://stackoverflow.com/questions/1133857/how-accurate-is-pythons-time-sleep
+        # if it needs to be more accurate, we need to switch to a real-time kernel
+        time.sleep(duration)
 
     def inverse_kinematics(
         self, tcp_pose: HomogeneousMatrixType, joint_configuration_guess: JointConfigurationType
     ) -> JointConfigurationType:
-        return super().inverse_kinematics(tcp_pose, joint_configuration_guess)
+        raise NotImplementedError
 
     def forward_kinematics(self, joint_configuration: JointConfigurationType) -> HomogeneousMatrixType:
-        return super().forward_kinematics(joint_configuration)
+        raise NotImplementedError
 
     def is_tcp_pose_kinematically_reachable(self, tcp_pose: HomogeneousMatrixType) -> bool:
         tcp_rotvec_pose = self._convert_homegeneous_pose_to_rotvec_pose(tcp_pose)
@@ -114,15 +156,12 @@ class UR_RTDE(PositionManipulator):
 
 
 if __name__ == "__main__":
-    ip = "10.42.0.162"
-    ur3e = UR_RTDE(ip, UR3e_config)
-    print(ur3e.get_joint_configuration())
-    print(ur3e.get_tcp_pose())
-    pose = SE3Container.from_euler_angles_and_translation(
-        np.array([0, np.pi, 0.0001]), np.array([-0.2, -0.3, 0.1])
-    ).homogeneous_matrix
-    ur3e.move_linear_to_tcp_pose(pose)
-    pose = SE3Container.from_euler_angles_and_translation(
-        np.array([0, np.pi, 0.0001]), np.array([0.2, -0.3, 0.1])
-    ).homogeneous_matrix
-    ur3e.servo_linear_to_tcp_pose(pose, 1)
+    import click
+
+    @click.command()
+    @click.option("--ip_address", help="IP address of the UR robot")
+    def test_ur_rtde(ip_address: str):
+        ur3e = UR_RTDE(ip_address, UR3e_config)
+        manual_test_robot(ur3e)
+
+    test_ur_rtde()
