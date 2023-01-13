@@ -19,6 +19,7 @@ from airo_typing import (
     NumpyDepthMapType,
     NumpyFloatImageType,
     NumpyIntImageType,
+    OpenCVIntImageType,
 )
 
 
@@ -40,6 +41,9 @@ class Zed2i(StereoRGBDCamera):
 
     # for more info on the different depth modes, see:
     # https://www.stereolabs.com/docs/api/group__Depth__group.html#ga391147e2eab8e101a7ff3a06cbed22da
+    # keep in mind though that the depth map is calculated during the `grab`operation, so the depth mode also influences the
+    # fps of the rgb images, which is why the default depth mode is None
+
     NEURAL_DEPTH_MODE = sl.DEPTH_MODE.NEURAL
     NONE_DEPTH_MODE = (
         sl.DEPTH_MODE.NONE
@@ -77,7 +81,7 @@ class Zed2i(StereoRGBDCamera):
             self.camera_params.set_from_serial_number(serial_number)
 
         # https://www.stereolabs.com/docs/depth-sensing/depth-settings/
-        self.camera_params.depth_mode = depth_mode  # the Neural mode gives far better results usually
+        self.camera_params.depth_mode = depth_mode
         self.camera_params.coordinate_units = sl.UNIT.METER
         self.camera_params.depth_minimum_distance = (
             0.3  # objects closerby will have artifacts so they are filtered out (querying them will give a - Infinty)
@@ -133,6 +137,7 @@ class Zed2i(StereoRGBDCamera):
         return matrix
 
     def _grab_latest_image(self):
+        """grabs (and waits for) the latest image(s) from the camera, rectifies them and computes the depth information (based on the depth mode setting)"""
         # this is a blocking call
         # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1Camera.html#a2338c15f49b5f132df373a06bd281822
         # we might want to consider running this in a seperate thread and using a queue to store the images?
@@ -165,10 +170,10 @@ class Zed2i(StereoRGBDCamera):
         else:
             view = sl.VIEW.LEFT
         self.camera.retrieve_image(self.image_matrix, view)
-        image = self.image_matrix.get_data()
+        image: OpenCVIntImageType = self.image_matrix.get_data()
         image = image[..., :3]  # remove alpha channel
-        image = image / 255.0  # convert from int to float image
-        # returns BGR image, so convert to RGB channel order
+        # convert from int to float image
+        # this can take up ~ ms for larger images (can impact FPS)
         return ImageConverter.from_opencv_format(image).image_in_numpy_format
 
     @staticmethod

@@ -48,15 +48,14 @@ HomogeneousMatrixType = np.ndarray
 
 # camera related types
 
-OpenCVImageType = np.ndarray
+OpenCVIntImageType = np.ndarray
 """an image in the OpenCV format: BGR, uint8, (H,W,C)"""
 
 NumpyFloatImageType = np.ndarray
-""" an image in the numpy format: RGB, float (0-1), (H,W,C)"""
-
+""" a float image in the numpy format: RGB, float (0-1), (H,W,C)"""
 NumpyIntImageType = np.ndarray
-""" an image in the numpy format: RGB, uint8 (0-255), (H,W,C)"""
-TorchImageType = np.ndarray
+""" an int image in the numpy format: RGB, uint8 (0-255), (H,W,C)"""
+TorchFloatImageType = np.ndarray
 """ an image in the torch format: RGB, float(0-1), (C,H,W)"""
 
 NumpyDepthMapType = np.ndarray
