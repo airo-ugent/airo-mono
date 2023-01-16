@@ -221,6 +221,23 @@ def set_up_relovute_joint(joint: dict, child: bpy.types.Object, joints_by_name: 
         set_up_mimic_revolute_joint(joint, mimicked_joint, child, child_of_mimicked_joint, axis, axis_index)
 
 
+def set_up_prismatic_joint(joint: dict, child: bpy.types.Object):
+    # These 10 lines are currently duplicated from the revolute joint set up.
+    axis = [1.0, 0.0, 0.0]  # Default axis from spec
+    if "axis" in joint:
+        axis = parse_vector_string(joint["axis"]["@xyz"])
+
+    if np.count_nonzero(axis) > 1:
+        name = joint["@name"]
+        print(f"Ignoring joint {name}. Currently only joints with x,y or z aligned axes are supported.")
+        return
+
+    axis_index = np.where(np.array(axis) != 0)[0][0]  # Index of the non-zero axis
+
+    child.lock_location[axis_index] = False
+    child.empty_display_size = 0.1
+
+
 def import_urdf(urdf_path: str):
     urdf_dict = read_urdf_as_dictionary(urdf_path)
     urdf_dir = os.path.dirname(urdf_path)
@@ -251,22 +268,42 @@ def import_urdf(urdf_path: str):
         elif joint_type == "revolute":
             set_up_relovute_joint(joint, child, joints_by_name, empties)
         elif joint_type == "prismatic":
-            pass  # TODO
+            set_up_prismatic_joint(joint, child)
         else:
             print(f"Ignoring joint of type {joint_type}. Not implemented yet.")
+
+    # Unlock the root links so the model can be moved freely in the scene.
+    child_links = [joint["child"]["@link"] for joint in joints]
+    root_links = [link["@name"] for link in links if link["@name"] not in child_links]
+
+    blender_root_links = [empties[root_link] for root_link in root_links]
+
+    for root_link in blender_root_links:
+        root_link.lock_location = False, False, False
+        root_link.lock_rotation = False, False, False
+
+    print("root links are: ", root_links)
+    return blender_root_links
 
 
 if __name__ == "__main__":
     bpy.ops.object.delete()  # Delete the default cube
 
     # UR5 and Robotiq 2F-85 gripper
-    # urdf_path = "/home/idlab185/urdfpy/tests/data/ur5/ur5.urdf"
+    urdf_path = "/home/idlab185/urdfpy/tests/data/ur5/ur5.urdf"
     # urdf_path = "/home/idlab185/robotiq_arg85_description/robots/robotiq_arg85_description.URDF"
-    urdf_path = "/home/idlab185/robotiq_2finger_grippers/robotiq_2f_85_gripper_visualization/urdf/robotiq2f85.urdf"
+    # urdf_path = "/home/idlab185/robotiq_2finger_grippers/robotiq_2f_85_gripper_visualization/urdf/robotiq2f85.urdf"
+
+    base = import_urdf(urdf_path)[0]
+    base.location = (-2, 0, 0)
 
     # PartNet mobility samples
     # urdf_path = "/home/idlab185/partnet-mobility-sample/44853/mobility.urdf"  # cabinet
     # urdf_path = "/home/idlab185/partnet-mobility-sample/7128/mobility.urdf"
     # urdf_path = "/home/idlab185/partnet-mobility-sample/7130/mobility.urdf"
-    # urdf_path = "/home/idlab185/partnet-mobility-sample/103452/mobility.urdf" # washing machine
+    urdf_path = "/home/idlab185/partnet-mobility-sample/103452/mobility.urdf"  # washing machine
     import_urdf(urdf_path)
+
+    # Make the scene a bit prettier
+    bpy.data.worlds["World"].node_tree.nodes["Background"].inputs["Color"].default_value = (1.0, 0.9, 0.7, 1.0)
+    bpy.context.scene.render.engine = "CYCLES"
