@@ -1,5 +1,5 @@
 import numpy as np
-from airo_robots.manipulators.base import PositionManipulator
+from airo_robots.manipulators.position_manipulator import PositionManipulator
 from airo_spatial_algebra import SE3Container
 
 # make numpy prints more readable

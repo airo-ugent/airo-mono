@@ -1,6 +1,6 @@
 """code for manual testing of gripper base class implementations.
 """
-from airo_robots.grippers.base import ParallelPositionGripper, ParallelPositionGripperSpecs
+from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
 
 
 def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositionGripperSpecs):

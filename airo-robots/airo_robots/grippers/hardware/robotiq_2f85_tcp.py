@@ -4,8 +4,8 @@ import time
 from typing import Optional
 
 import numpy as np
-from airo_robots.grippers.base import ParallelPositionGripper, ParallelPositionGripperSpecs
-from airo_robots.grippers.manual_gripper_testing import manual_test_gripper
+from airo_robots.grippers.hardware.manual_gripper_testing import manual_test_gripper
+from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
 
 
 def rescale_range(x, from_min, from_max, to_min, to_max):

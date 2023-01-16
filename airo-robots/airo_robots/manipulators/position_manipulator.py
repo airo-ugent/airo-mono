@@ -2,8 +2,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional
 
-from airo_robots.grippers.base import ParallelPositionGripper
-from airo_typing import HomogeneousMatrixType, JointConfigurationType, WrenchType
+from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
+from airo_typing import HomogeneousMatrixType, JointConfigurationType
 
 
 class JointTrajectory:
@@ -111,27 +111,4 @@ class PositionManipulator:
 
     def execute_joint_trajectory(self, joint_trajectory: JointTrajectory):
         """executes a joint trajectory (synchronously) by trying to reach the waypoints at their target times (without coming to a halt at each waypoint)"""
-        raise NotImplementedError
-
-
-class BimanualPositionManipulator:
-    """
-    (synchronous) base class for bimanual position-controlled manipulators. This could be a bimanual robot or a combination of 2 unimanual arms
-    """
-
-
-class FTSensor:
-    """Interface for FT sensor, this can be an internal FT sensor (such as with the UR e-series) or an external sensor."""
-
-    @abstractmethod
-    def get_wrench(self) -> WrenchType:
-        """Returns the wrench on the TCP frame, so any frame conversions should be done internally."""
-
-    @property
-    def wrench_in_tcp_pose(self):
-        """Returns the (fixed) transform between the FT sensor frame and the TCP frame
-
-        Raises:
-            NotImplementedError: This function this not need to be implemented, as you sometimes don't know (nor need) this transform.
-        """
         raise NotImplementedError

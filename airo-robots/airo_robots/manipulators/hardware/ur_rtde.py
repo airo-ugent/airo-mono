@@ -3,8 +3,9 @@ import warnings
 from typing import Optional
 
 import numpy as np
-from airo_robots.grippers.base import ParallelPositionGripper
-from airo_robots.manipulators.base import ManipulatorSpecs, PositionManipulator
+from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
+from airo_robots.manipulators.hardware.manual_manipulator_testing import manual_test_robot
+from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType, JointConfigurationType
 from rtde_control import RTDEControlInterface
@@ -13,9 +14,12 @@ from rtde_receive import RTDEReceiveInterface
 RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
 
-UR3e_config = ManipulatorSpecs(6, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+# ROBOT SPEC CONFIGURATIONS
 
-from airo_robots.manipulators.manual_manipulator_testing import manual_test_robot
+# https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
+UR3E_CONFIG = ManipulatorSpecs(6, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+# https://www.universal-robots.com/media/240787/ur3_us.pdf
+UR3_CONFIG = ManipulatorSpecs(6, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
 
 
 class UR_RTDE(PositionManipulator):
@@ -178,7 +182,7 @@ if __name__ == "__main__":
     @click.option("--ip_address", help="IP address of the UR robot")
     def test_ur_rtde(ip_address: str):
         print(f"{ip_address=}")
-        ur3e = UR_RTDE(ip_address, UR3e_config)
+        ur3e = UR_RTDE(ip_address, UR3E_CONFIG)
         manual_test_robot(ur3e)
 
     test_ur_rtde()
