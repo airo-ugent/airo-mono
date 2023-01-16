@@ -46,6 +46,12 @@ HomogeneousMatrixType = np.ndarray
 <<R,T>|<0,0,0,1>>
 """
 
+WrenchType = np.ndarray
+""" a (6,) numpy array that represents a wrench applied on a frame as [Fx,Fy,Fz,Tx,Ty,Tz]"""
+
+SpatialVelocityType = np.ndarray
+""" a (6,) numpy array that represents a spatial velocity (Screw) [vx,vy,vz,omegax,omegay,omegaz]"""
+
 # camera related types
 
 OpenCVIntImageType = np.ndarray
@@ -71,3 +77,8 @@ see e.g. https://ksimek.github.io/2013/08/13/intrinsic/ for more details """
 CameraExtrinsicMatrixType = HomogeneousMatrixType
 """4x4 camera extrinsic matrix,
 this is the homogeneous matrix that describes the camera pose in the world frame"""
+
+# manipulator types
+
+JointConfigurationType = np.ndarray
+"""an (N,) numpy array that represents the joint angles for a robot"""
