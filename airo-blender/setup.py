@@ -9,6 +9,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "scipy",
+        "xmltodict",  # used to parse urdf files to python dictionaries
     ],
     packages=["airo_blender"],
 )
