@@ -22,7 +22,7 @@ def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositio
     input("reopen gripper fast")
     gripper.move(0.08, 0.15)
     input("close with low force, you can put an object between the fingers to test the force and the grasp detection")
-    gripper.force = 200
+    gripper.max_grasp_force = 200
     gripper.speed = 0.02
     gripper.move(0.02)
     print(f"{gripper.is_an_object_grasped()=}")
