@@ -51,13 +51,16 @@ def set_transform_from_origin(object: bpy.types.Object, origin: dict):
 def import_mesh_from_urdf(mesh_path: str) -> list[bpy.types.Object]:
     objects_before_import = set(bpy.context.scene.objects)
 
-    if mesh_path.endswith(".dae"):
+    mesh_file_extenstion = os.path.splitext(mesh_path)[1].lower()
+    if mesh_file_extenstion == ".dae":
         bpy.ops.wm.collada_import(filepath=mesh_path)
-    elif mesh_path.endswith(".stl"):
+    elif mesh_file_extenstion == ".stl":
         bpy.ops.import_mesh.stl(filepath=mesh_path)
-    elif mesh_path.endswith(".obj"):
+    elif mesh_file_extenstion == ".obj":
         # There axes where chosen for partnet mobility, I hope it works for all URDFs with objs
         bpy.ops.wm.obj_import(filepath=mesh_path, validate_meshes=True, forward_axis="Y", up_axis="Z")
+    else:
+        print(f"Ignoring mesh with extension {mesh_file_extenstion}. Not supported yet. Mesh path = {mesh_path}")
 
     objects_after_import = set(bpy.context.scene.objects)
     imported_objects = objects_after_import - objects_before_import
@@ -101,12 +104,11 @@ def import_visual(visual: dict, parent: bpy.types.Object, urdf_dir: str) -> None
                 {"selected_editable_objects": geometry_objects}, location=False, rotation=False, scale=True
             )
 
-    # TODO test
     if "box" in geometry:
         bpy.ops.mesh.primitive_cube_add()
         box = bpy.context.object
-        scales = parse_vector_string(geometry["box"]["@size"].split(" "))
-        box.scale = scales
+        scales = parse_vector_string(geometry["box"]["@size"])
+        box.scale = 0.5 * np.array(scales)  # Blender cube have size of 2 by default.
         bpy.ops.object.transform_apply(
             {"selected_editable_objects": [box]}, location=False, rotation=False, scale=True
         )
@@ -143,7 +145,61 @@ def import_link(link: dict, urdf_dir: str) -> bpy.types.Object:
     return empty
 
 
-def set_up_relovute_joint(joint: dict, child: bpy.types.Object):
+def set_up_mimic_revolute_joint(
+    joint: dict,
+    mimicked_joint: dict,
+    child: bpy.types.Object,
+    child_of_mimicked_joint: bpy.types.Object,
+    axis: list[float],
+    axis_index: int,
+):
+    """URDF mimic joints are represented in Blender as copy rotation constraints on the joint's child.
+
+    Args:
+        joint (_type_): _description_
+        child (_type_): _description_
+        child_of_mimicked_joint (_type_): _description_
+    """
+
+    # Undo the freeing of the revolute joint (this is another reason to move the mimic function call.)
+    child.lock_rotation[axis_index] = True
+    child.empty_display_size = 0.05
+
+    multiplier = float(joint["mimic"]["@multiplier"])
+
+    bpy.ops.object.select_all(action="DESELECT")
+    child.select_set(True)
+    bpy.context.view_layer.objects.active = child
+    bpy.ops.object.constraint_add(type="COPY_ROTATION")
+    constraint = child.constraints["Copy Rotation"]
+    constraint.target = child_of_mimicked_joint
+    constraint.mix_mode = "ADD"
+
+    # Disable the copy rotation for the non-joint axes.
+    non_joint_axes = {0, 1, 2} - {axis_index}
+    for i in non_joint_axes:
+        if i == 0:
+            constraint.use_x = False
+        elif i == 1:
+            constraint.use_y = False
+        elif i == 2:
+            constraint.use_z = False
+
+    mimicked_axis = [1.0, 0.0, 0.0]  # Default axis from spec
+    if "axis" in mimicked_joint:
+        mimicked_axis = parse_vector_string(mimicked_joint["axis"]["@xyz"])
+
+    invert_axis = np.isclose(-1, multiplier * np.dot(np.array(mimicked_axis), np.array(axis)))
+    if invert_axis:
+        if axis_index == 0:
+            constraint.invert_x = True
+        elif axis_index == 1:
+            constraint.invert_y = True
+        elif axis_index == 2:
+            constraint.invert_z = True
+
+
+def set_up_relovute_joint(joint: dict, child: bpy.types.Object, joints_by_name: dict, empties: dict):
     axis = [1.0, 0.0, 0.0]  # Default axis from spec
     if "axis" in joint:
         axis = parse_vector_string(joint["axis"]["@xyz"])
@@ -157,6 +213,12 @@ def set_up_relovute_joint(joint: dict, child: bpy.types.Object):
 
     child.lock_rotation[axis_index] = False
     child.empty_display_size = 0.1
+
+    # TODO consider handling this case different function, as it add two parameter to this one.
+    if "mimic" in joint:
+        mimicked_joint = joints_by_name[joint["mimic"]["@joint"]]
+        child_of_mimicked_joint = empties[mimicked_joint["child"]["@link"]]
+        set_up_mimic_revolute_joint(joint, mimicked_joint, child, child_of_mimicked_joint, axis, axis_index)
 
 
 def import_urdf(urdf_path: str):
@@ -174,7 +236,7 @@ def import_urdf(urdf_path: str):
         link_empty.lock_location = (True, True, True)
 
     joints = urdf_dict["robot"]["joint"]
-    # joints_by_name = {joint["@name"]: joint for joint in joints}
+    joints_by_name = {joint["@name"]: joint for joint in joints}
     for joint in joints:
         parent = empties[joint["parent"]["@link"]]
         child = empties[joint["child"]["@link"]]
@@ -187,7 +249,7 @@ def import_urdf(urdf_path: str):
         if joint_type == "fixed":
             pass  # Fixed joints are already set up correctly, because we lock all DoFs by default.
         elif joint_type == "revolute":
-            set_up_relovute_joint(joint, child)
+            set_up_relovute_joint(joint, child, joints_by_name, empties)
         elif joint_type == "prismatic":
             pass  # TODO
         else:
@@ -197,9 +259,12 @@ def import_urdf(urdf_path: str):
 if __name__ == "__main__":
     bpy.ops.object.delete()  # Delete the default cube
 
-    urdf_path = "/home/idlab185/urdfpy/tests/data/ur5/ur5.urdf"
+    # UR5 and Robotiq 2F-85 gripper
+    # urdf_path = "/home/idlab185/urdfpy/tests/data/ur5/ur5.urdf"
     # urdf_path = "/home/idlab185/robotiq_arg85_description/robots/robotiq_arg85_description.URDF"
-    # urdf_path = "/home/idlab185/robotiq_2finger_grippers/robotiq_2f_85_gripper_visualization/urdf/robotiq2f85.urdf"
+    urdf_path = "/home/idlab185/robotiq_2finger_grippers/robotiq_2f_85_gripper_visualization/urdf/robotiq2f85.urdf"
+
+    # PartNet mobility samples
     # urdf_path = "/home/idlab185/partnet-mobility-sample/44853/mobility.urdf"  # cabinet
     # urdf_path = "/home/idlab185/partnet-mobility-sample/7128/mobility.urdf"
     # urdf_path = "/home/idlab185/partnet-mobility-sample/7130/mobility.urdf"
