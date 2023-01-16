@@ -94,9 +94,13 @@ class PositionManipulator:
 
     @abstractmethod
     def inverse_kinematics(
-        self, tcp_pose: HomogeneousMatrixType, joint_configuration_guess: JointConfigurationType
+        self, tcp_pose: HomogeneousMatrixType, joint_configuration_near: Optional[JointConfigurationType] = None
     ) -> JointConfigurationType:
-        pass
+        """do inverse kinematics for the TCP pose.
+        As there are often multiple solutions to the IK problem, an optional joint configuration can be passed to filter to closest solution to the configuration.
+        If none is provided, the closest solution to the current joint configuration will be returned.
+
+        """
 
     @abstractmethod
     def forward_kinematics(self, joint_configuration: JointConfigurationType) -> HomogeneousMatrixType:

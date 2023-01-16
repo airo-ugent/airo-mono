@@ -57,7 +57,7 @@ class UR_RTDE(PositionManipulator):
         self.servo_lookahead_time = 0.05
 
     def get_joint_configuration(self) -> JointConfigurationType:
-        return self.rtde_receive.getActualQ()
+        return np.array(self.rtde_receive.getActualQ())
 
     def get_tcp_pose(self) -> HomogeneousMatrixType:
         tpc_rotvec_pose = self.rtde_receive.getActualTCPPose()
@@ -88,7 +88,11 @@ class UR_RTDE(PositionManipulator):
     def move_to_joint_configuration(
         self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
     ):
-        # TODO: check for joint limits.
+        # check joint limits
+        if not self.rtde_control.isJointsWithinSafetyLimits(joint_configuration):
+            warnings.warn(f"joint configuration {joint_configuration} is not reachable.")
+            return
+
         joint_speed = joint_speed or self.default_leading_axis_joint_speed
         # don't know what leading axis is atm, so take min of all max joint speeds
         joint_speed = np.clip(joint_speed, 0.0, min(self.manipulator_specs.max_joint_speeds))
@@ -132,11 +136,20 @@ class UR_RTDE(PositionManipulator):
         time.sleep(duration)
 
     def inverse_kinematics(
-        self, tcp_pose: HomogeneousMatrixType, joint_configuration_guess: JointConfigurationType
+        self, tcp_pose: HomogeneousMatrixType, joint_configuration_guess: Optional[JointConfigurationType] = None
     ) -> JointConfigurationType:
-        raise NotImplementedError
+        tcp_rotvec_pose = self._convert_homegeneous_pose_to_rotvec_pose(tcp_pose)
+
+        q_near = joint_configuration_guess or np.array([])
+        return self.rtde_control.getInverseKinematics(tcp_rotvec_pose, q_near)
 
     def forward_kinematics(self, joint_configuration: JointConfigurationType) -> HomogeneousMatrixType:
+        # tcp_rotvec_pose = self.rtde_control.getForwardKinematics(joint_configuration)
+        # print(f"{tcp_rotvec_pose=}")
+        # return self._convert_rotvec_pose_to_homogeneous_pose(tcp_rotvec_pose)
+
+        # this function seems to be broken in the ur-rtde library. It returns completely unrealistic rotvec poses.
+        # If you need forward kinematics, consider using IKFast.
         raise NotImplementedError
 
     def is_tcp_pose_kinematically_reachable(self, tcp_pose: HomogeneousMatrixType) -> bool:
@@ -156,11 +169,15 @@ class UR_RTDE(PositionManipulator):
 
 
 if __name__ == "__main__":
+    """test script for UR rtde.
+    ex. python airo-robots/airo_robots/manipulators/ur3e.py --ip_address 10.42.0.162 for Victor
+    """
     import click
 
     @click.command()
     @click.option("--ip_address", help="IP address of the UR robot")
     def test_ur_rtde(ip_address: str):
+        print(f"{ip_address=}")
         ur3e = UR_RTDE(ip_address, UR3e_config)
         manual_test_robot(ur3e)
 

@@ -2,6 +2,9 @@ import numpy as np
 from airo_robots.manipulators.base import PositionManipulator
 from airo_spatial_algebra import SE3Container
 
+# make numpy prints more readable
+np.set_printoptions(precision=3)
+
 
 def manual_test_servo(robot: PositionManipulator, control_freq: int = 500, linear_speed=0.2):
     """test servo functionality by having robot move to pose and then do zig-zag motion for periods of 1 sec with the specified linear speed
@@ -32,19 +35,30 @@ def manual_test_servo(robot: PositionManipulator, control_freq: int = 500, linea
 def manual_test_ik_fk(robot: PositionManipulator):
 
     pose = SE3Container.from_euler_angles_and_translation(
-        np.array([0, np.pi, 0.0001]), np.array([0, -0.3, 0.02])
+        np.array([0, np.pi, 0.0001]), np.array([0, -0.3, 0.2])
     ).homogeneous_matrix
     joint_config = robot.inverse_kinematics(pose)
-    fk_pose = robot.forward_kinematics(joint_config)
 
     print(f"original pose: \n {pose}")
-    print(f"FK(IK(pose)): \n {fk_pose}")
-    input("FK(IK(pose)) should match original pose, press key to continue.")
+    print(f"ik joint config = {joint_config}")
+    try:
+        fk_pose = robot.forward_kinematics(joint_config)
+        print(f"FK(IK(pose)): \n {fk_pose}")
+        input("FK(IK(pose)) should match original pose press key to continue.")
+
+    except NotImplementedError:
+        # catch for UR3e forward kinematics issue
+        print("FK not implemented")
+
+    input(
+        "when moving to the IK Joint config, the resulting pose should match the desired pose. Press key to start moving"
+    )
+    robot.move_to_joint_configuration(joint_config)
 
 
 def manual_test_move(robot: PositionManipulator):
     start_pose = SE3Container.from_euler_angles_and_translation(
-        np.array([0, np.pi, 0.0001]), np.array([0, -0.3, 0.2])
+        np.array([0, np.pi / 4 * 3, 0.0001]), np.array([0, -0.3, 0.2])
     ).homogeneous_matrix
     end_pose = SE3Container.from_euler_angles_and_translation(
         np.array([0, np.pi, 0.0001]), np.array([-0.15, -0.4, 0.1])
