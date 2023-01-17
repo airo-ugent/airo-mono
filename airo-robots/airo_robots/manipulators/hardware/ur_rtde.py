@@ -57,8 +57,8 @@ class UR_RTDE(PositionManipulator):
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
 
         # sensible values but you might need to tweak them for your purposes.
-        self.servo_proportional_gain = 400
-        self.servo_lookahead_time = 0.05
+        self.servo_proportional_gain = 200
+        self.servo_lookahead_time = 0.1
 
     def get_joint_configuration(self) -> JointConfigurationType:
         return np.array(self.rtde_receive.getActualQ())
