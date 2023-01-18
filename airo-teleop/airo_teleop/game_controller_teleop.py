@@ -23,9 +23,12 @@ class GameControllerTeleop:
     The linear and angular speed for the robot as well as the step size for the gripper can be configured with the attributes.
 
     A very basic calibration is done by subtracting the initial measurements from the subsequent measures, since most controllers do not
-    send exactly 0.0 if no forces are applied. An alternative option would be to add a deadzone, but this is not implemented atm.
+    send exactly 0.0 if no forces are applied. Then a deadzone is implemented. if abs(axis) < deadzone, the corresponding twist value is set to zero.
 
-    See the example script for how to use this class.
+    To avoid drift with biased low-level controllers, the class reads the TCP pose when teleop starts but keeps an internal target pose instead of applying the twists
+    to the actual robot pose. This target pose is then sent to the robot.
+
+
 
     The moveit Servo code served as guidance for some aspects of this class' functionality
     https://github.com/ros-planning/moveit/blob/master/moveit_ros/moveit_servo/src/servo_calcs.cpp
@@ -65,6 +68,8 @@ class GameControllerTeleop:
         # this is later used to avoid drift of the manipulator
         self.controller_twist_bias = self.get_twist()
 
+        self.current_tcp_target_pose = None
+
     def get_twist(self) -> TwistType:
         """Get a twist from the game controller inputs. The 'meaning' of the different axes is fixed.
         The controller inputs are interpreted as a linear velocity in the robot base frame and an angular velocity as this
@@ -86,6 +91,7 @@ class GameControllerTeleop:
         twist[4] = hat[self.controller_layout.horizontal_cross_index]
         twist[3] = hat[1 - self.controller_layout.horizontal_cross_index]
 
+        twist[np.abs(twist) < 0.05] = 0.0  # deadzone
         # get linear & angular velocity by scaling the respective part of the 'twist' vector
         linear_velocity_in_base_frame = twist[:3] * self.linear_speed_scaling
         angular_velocity_in_tcp_frame = twist[3:] * self.angular_speed_scaling
@@ -116,7 +122,7 @@ class GameControllerTeleop:
     def calculate_new_target_position(self, tcp_twist_in_base_frame: TwistType) -> HomogeneousMatrixType:
         """Takes the twist in the base  frame and uses that to compute the new target pose to servo to.
         This requires some Spatial (Lie) Algebra to convert a twist to a transform."""
-        tcp_pose_in_base_frame = self.robot.get_tcp_pose()
+        tcp_pose_in_base_frame = self.current_tcp_target_pose
         se3_tcp_pose_in_base_frame = SE3Container.from_homogeneous_matrix(tcp_pose_in_base_frame)
         # apply the delta translation
         target_translation = se3_tcp_pose_in_base_frame.translation + tcp_twist_in_base_frame[:3]
@@ -143,7 +149,7 @@ class GameControllerTeleop:
         relative_motion = twist / self.control_rate
         logger.debug(f"relative motion twist = {relative_motion}")
         tcp_target_pose = self.calculate_new_target_position(relative_motion)
-
+        self.current_tcp_target_pose = tcp_target_pose
         logger.debug(f"servoing to tcp pose:  \n {tcp_target_pose}")
         self.robot.servo_to_tcp_pose(tcp_target_pose, 1 / self.control_rate)
         return relative_motion
@@ -162,6 +168,7 @@ class GameControllerTeleop:
     def teleoperate(self):
         """Starts streaming servo commands based on the controller input, runs untill stopped with CTRL+C."""
         logger.info("starting teleoperation, press CTRL+C to stop")
+        self.current_tcp_target_pose = self.robot.get_tcp_pose()
         while True:
             self.read_twist_and_servo_to_target_position()
             # TODO: control rate will be slower than target control rate due to gripper control.
