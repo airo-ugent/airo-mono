@@ -123,6 +123,7 @@ class PositionManipulatorDecorator(PositionManipulator):
     """
 
     def __init__(self, manipulator: PositionManipulator) -> None:
+        super().__init__(manipulator_specs=manipulator.manipulator_specs, gripper=manipulator.gripper)
         self.wrapped_manipulator = manipulator
 
     def get_tcp_pose(self) -> HomogeneousMatrixType:
