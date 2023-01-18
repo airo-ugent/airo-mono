@@ -49,8 +49,8 @@ HomogeneousMatrixType = np.ndarray
 WrenchType = np.ndarray
 """ a (6,) numpy array that represents a wrench applied on a frame as [Fx,Fy,Fz,Tx,Ty,Tz]"""
 
-SpatialVelocityType = np.ndarray
-""" a (6,) numpy array that represents a spatial velocity (Screw) [vx,vy,vz,omegax,omegay,omegaz]"""
+TwistType = np.ndarray
+""" a (6,) numpy array [x,y,z,rx,ry,rz] that is a Twist (an infinitesimal SE3 displacement), which can represent a spatial velocity or incremental motion"""
 
 # camera related types
 

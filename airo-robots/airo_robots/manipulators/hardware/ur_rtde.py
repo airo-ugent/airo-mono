@@ -14,13 +14,6 @@ from rtde_receive import RTDEReceiveInterface
 RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
 
-# ROBOT SPEC CONFIGURATIONS
-
-# https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
-UR3E_CONFIG = ManipulatorSpecs(6, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
-# https://www.universal-robots.com/media/240787/ur3_us.pdf
-UR3_CONFIG = ManipulatorSpecs(6, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
-
 
 class UR_RTDE(PositionManipulator):
     """Implementation of the Position-controlled manipulator class for UR robots.
@@ -36,6 +29,13 @@ class UR_RTDE(PositionManipulator):
     Finally, the ur-rtde library has more functionality than is exposed in the interface, you can always address the
     control/receive interface attributes directly if you need them.
     """
+
+    # ROBOT SPEC CONFIGURATIONS
+
+    # https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
+    UR3E_CONFIG = ManipulatorSpecs(6, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+    # https://www.universal-robots.com/media/240787/ur3_us.pdf
+    UR3_CONFIG = ManipulatorSpecs(6, [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
 
     def __init__(
         self, ip_address: str, manipulator_specs: ManipulatorSpecs, gripper: Optional[ParallelPositionGripper] = None
@@ -57,8 +57,8 @@ class UR_RTDE(PositionManipulator):
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
 
         # sensible values but you might need to tweak them for your purposes.
-        self.servo_proportional_gain = 400
-        self.servo_lookahead_time = 0.05
+        self.servo_proportional_gain = 200
+        self.servo_lookahead_time = 0.1
 
     def get_joint_configuration(self) -> JointConfigurationType:
         return np.array(self.rtde_receive.getActualQ())
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     @click.option("--ip_address", help="IP address of the UR robot")
     def test_ur_rtde(ip_address: str):
         print(f"{ip_address=}")
-        ur3e = UR_RTDE(ip_address, UR3E_CONFIG)
+        ur3e = UR_RTDE(ip_address, UR_RTDE.UR3E_CONFIG)
         manual_test_robot(ur3e)
 
     test_ur_rtde()
