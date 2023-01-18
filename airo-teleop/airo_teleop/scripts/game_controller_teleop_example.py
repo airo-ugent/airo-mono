@@ -6,8 +6,8 @@
 import click
 from airo_robots.grippers.hardware.robotiq_2f85_tcp import Robotiq2F85
 from airo_robots.manipulators.hardware.ur_rtde import UR_RTDE
-from airo_teleop.controller_teleop import GameControllerTeleop
 from airo_teleop.game_controller_mapping import LogitechF310Layout, XBox360Layout  # noqa
+from airo_teleop.game_controller_teleop import GameControllerTeleop
 
 
 @click.command()

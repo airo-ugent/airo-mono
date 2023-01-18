@@ -11,6 +11,25 @@ from spatialmath import SO3
 
 
 class GameControllerTeleop:
+    """Class for teleoperating a robot and (optionally) a gripper with
+     a Game controller attached to the control pc using the Linux SDL library over pygame.
+
+    The mapping from the game controller input to the Twist for the robot TCP is fixed and to the relative step for the gripper
+    cannot be configured at the moment. cf. The image in the docs/ folder to or the have a look in the code to explore this mapping.
+
+    The axes in pygame for the different control elements are configurable and a profile for some controllers is availabe in the `game_controller_mapping.py` file.
+
+    The linear and angular speed for the robot as well as the step size for the gripper can be configured with the attributes.
+
+    A very basic calibration is done by subtracting the initial measurements from the subsequent measures, since most controllers do not
+    send exactly 0.0 if no forces are applied. An alternative option would be to add a deadzone, but this is not implemented atm.
+
+    See the example script for how to use this class.
+
+    The moveit Servo code served as guidance for some aspects of this class' functionality
+    https://github.com/ros-planning/moveit/blob/master/moveit_ros/moveit_servo/src/servo_calcs.cpp
+    """
+
     # TODO: (optional) add ability to 'lock' dimensions to avoid drift
 
     def __init__(
@@ -20,6 +39,13 @@ class GameControllerTeleop:
         controller_layout: GameControllerLayout,
         joystick_id: int = 0,
     ) -> None:
+        """
+        Args:
+            robot (PositionManipulator): the robot to control. If you also want to control the gripper, make sure to link it to this robot instance.
+            control_rate (int): The frequency for the controller to send servo commands.
+            controller_layout (GameControllerLayout): The layout of the controller, used to map the physical control elements to their pygame indices.
+            joystick_id (int, optional): pygame ID of the joystick, onlyl relevant if multiple joystick are connected. Defaults to 0.
+        """
         pygame.init()
         joystick.init()
         assert joystick_id < joystick.get_count()
@@ -28,7 +54,7 @@ class GameControllerTeleop:
         self.robot = robot
         self.control_rate = control_rate
 
-        # you can set these by addressing the attributes.
+        # you can set the speeds/step sizes by addressing the attributes.
         self.linear_speed_scaling = 0.2  # m/s
         self.angular_speed_scaling = 0.6  # rad/s
         self.gripper_delta_step_size = 0.01  # m/step
@@ -56,13 +82,13 @@ class GameControllerTeleop:
 
         # read out the 'cross', which is called hat in pygame
         hat = self.controller.get_hat(0)
-        twist[4] = hat[0]
-        twist[3] = hat[1]
+        twist[4] = hat[self.controller_layout.horizontal_cross_index]
+        twist[3] = hat[1 - self.controller_layout.horizontal_cross_index]
 
         # get linear & angular velocity by scaling the respective part of the 'twist' vector
         linear_velocity_in_base_frame = twist[:3] * self.linear_speed_scaling
         angular_velocity_in_tcp_frame = twist[3:] * self.angular_speed_scaling
-        print(f"controller twist = {twist}")
+        # print(f"controller twist = {twist}")
         # convert rotations from the tcp frame to the base frame..
         # which requires the robot's TCP pose to compute the adjoint matrix to convert the 'expressed-in' frame of the twist.
         # since we want to convert angular velocity with zero linear velocity, we can simply multiply the angular velocity
