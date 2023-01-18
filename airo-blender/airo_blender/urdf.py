@@ -43,9 +43,9 @@ def create_empty_for_link(link: dict):
 
 def set_transform_from_origin(object: bpy.types.Object, origin: dict):
     if "@xyz" in origin:
-        object.location = parse_vector_string(origin["@xyz"])
+        object.delta_location = parse_vector_string(origin["@xyz"])
     if "@rpy" in origin:
-        object.rotation_euler = parse_vector_string(origin["@rpy"])
+        object.delta_rotation_euler = parse_vector_string(origin["@rpy"])
 
 
 def import_mesh_from_urdf(mesh_path: str) -> list[bpy.types.Object]:
