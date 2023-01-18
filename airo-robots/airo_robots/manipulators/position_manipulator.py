@@ -112,3 +112,46 @@ class PositionManipulator(ABC):
     def execute_joint_trajectory(self, joint_trajectory: JointTrajectory):
         """executes a joint trajectory (synchronously) by trying to reach the waypoints at their target times (without coming to a halt at each waypoint)"""
         raise NotImplementedError
+
+
+class PositionManipulatorDecorator(PositionManipulator):
+    """A base class for decorator classes for the Position manipulator class.
+    Decorators should inherit from this class and alter the behaviour of the wrapped manipulator instance while adhering to the same interface.
+    cf. https://refactoring.guru/design-patterns/decorator for more info on the decorator design pattern.
+    Args:
+        PositionManipulator (_type_): _description_
+    """
+
+    def __init__(self, manipulator: PositionManipulator) -> None:
+        self.wrapped_manipulator = manipulator
+
+    def get_tcp_pose(self) -> HomogeneousMatrixType:
+        return self.wrapped_manipulator.get_tcp_pose()
+
+    def get_joint_configuration(self) -> JointConfigurationType:
+        return super().get_joint_configuration()
+
+    def move_linear_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None):
+        return self.wrapped_manipulator.move_linear_to_tcp_pose(tcp_pose, linear_speed)
+
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None):
+        return self.wrapped_manipulator.move_to_tcp_pose(tcp_pose, joint_speed)
+
+    def move_to_joint_configuration(
+        self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
+    ):
+        return self.wrapped_manipulator().move_to_joint_configuration(joint_configuration, joint_speed)
+
+    def servo_to_joint_configuration(self, joint_configuration: JointConfigurationType, time: float):
+        return self.wrapped_manipulator.servo_to_joint_configuration(joint_configuration, time)
+
+    def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, time: float):
+        return self.wrapped_manipulator.servo_to_tcp_pose(tcp_pose, time)
+
+    def forward_kinematics(self, joint_configuration: JointConfigurationType) -> HomogeneousMatrixType:
+        return self.wrapped_manipulator.forward_kinematics(joint_configuration)
+
+    def inverse_kinematics(
+        self, tcp_pose: HomogeneousMatrixType, joint_configuration_near: Optional[JointConfigurationType] = None
+    ) -> JointConfigurationType:
+        return self.wrapped_manipulator.inverse_kinematics(tcp_pose, joint_configuration_near)
