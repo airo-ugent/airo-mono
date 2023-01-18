@@ -6,6 +6,7 @@ from airo_robots.manipulators.position_manipulator import PositionManipulator
 from airo_spatial_algebra.se3 import SE3Container
 from airo_teleop.game_controller_mapping import GameControllerLayout
 from airo_typing import HomogeneousMatrixType, TwistType
+from loguru import logger
 from pygame import joystick
 from spatialmath import SO3
 
@@ -88,7 +89,7 @@ class GameControllerTeleop:
         # get linear & angular velocity by scaling the respective part of the 'twist' vector
         linear_velocity_in_base_frame = twist[:3] * self.linear_speed_scaling
         angular_velocity_in_tcp_frame = twist[3:] * self.angular_speed_scaling
-        # print(f"controller twist = {twist}")
+        logger.debug(f"controller scaled input twist (before changing frames) = {twist}")
         # convert rotations from the tcp frame to the base frame..
         # which requires the robot's TCP pose to compute the adjoint matrix to convert the 'expressed-in' frame of the twist.
         # since we want to convert angular velocity with zero linear velocity, we can simply multiply the angular velocity
@@ -116,7 +117,6 @@ class GameControllerTeleop:
         """Takes the twist in the base  frame and uses that to compute the new target pose to servo to.
         This requires some Spatial (Lie) Algebra to convert a twist to a transform."""
         tcp_pose_in_base_frame = self.robot.get_tcp_pose()
-        # print(f"tcp pose = \n {tcp_pose_in_base_frame}")
         se3_tcp_pose_in_base_frame = SE3Container.from_homogeneous_matrix(tcp_pose_in_base_frame)
         # apply the delta translation
         target_translation = se3_tcp_pose_in_base_frame.translation + tcp_twist_in_base_frame[:3]
@@ -141,9 +141,10 @@ class GameControllerTeleop:
         twist = self.get_twist()
         twist -= self.controller_twist_bias
         relative_motion = twist / self.control_rate
-        # print(f"relative motion twist = {relative_motion}")
+        logger.debug(f"relative motion twist = {relative_motion}")
         tcp_target_pose = self.calculate_new_target_position(relative_motion)
-        # print(f"tcp target pose = \n {tcp_target_pose}")
+
+        logger.debug(f"servoing to tcp pose:  \n {tcp_target_pose}")
         self.robot.servo_to_tcp_pose(tcp_target_pose, 1 / self.control_rate)
         return relative_motion
 
@@ -154,17 +155,20 @@ class GameControllerTeleop:
             return None
 
         delta = self.get_gripper_delta()
-        # print(f"gripper delta = {delta}")
+        logger.debug(f"gripper delta movement = {delta}")
         self.robot.gripper.move(self.robot.gripper.get_current_width() + delta)
         return delta
 
     def teleoperate(self):
         """Starts streaming servo commands based on the controller input, runs untill stopped with CTRL+C."""
-
+        logger.info("starting teleoperation, press CTRL+C to stop")
         while True:
             self.read_twist_and_servo_to_target_position()
             # TODO: control rate will be slower than target control rate due to gripper control.
             # TODO: this gripper movement takes variable amount of time so control rate is not constant
+            # solution would be to address the async gripper interface and send the gripper command before synchronously sending the
+            # servo command to the robot (with a join).
+            # bc of this, the 'speeds' are not exact.
             self.read_gripper_delta_and_move_gripper()
 
     def _get_pygame_events(self):

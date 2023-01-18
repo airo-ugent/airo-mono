@@ -29,9 +29,15 @@ def test_teleop(ip_address: str, no_gripper: bool, controller_layout: str):
     except Exception:
         raise ValueError("Could not find layout, make sure it exactly matches the variable name")
 
-    joystick_teleop = GameControllerTeleop(robot, 10, layout)
+    joystick_teleop = GameControllerTeleop(robot, 30, layout)
     joystick_teleop.teleoperate()
 
 
 if __name__ == "__main__":
+    """
+    example: python airo-teleop/airo_teleop/scripts/game_controller_teleop_example.py --ip_address 10.42.0.162
+    """
+    import loguru
+
+    logger = loguru.logger
     test_teleop()
