@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -24,7 +24,7 @@ class ManipulatorSpecs:
     max_linear_speed: float
 
 
-class PositionManipulator:
+class PositionManipulator(ABC):
     """(Synchronous) base class for position-controlled manipulators
 
     To use this asynchronous, the recommended way would be to start a thread and have a Future object to see when it is finished.
