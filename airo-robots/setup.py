@@ -9,10 +9,7 @@ setuptools.setup(
     description="Interfaces, hardware implementations of those interfaces and other functionalities to control robot manipulators and grippers at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
-    install_requires=[
-        "numpy",
-        "ur-rtde",
-    ],
+    install_requires=["numpy", "ur-rtde", "click"],
     extras_require={
         "external": [
             f"airo_typing @ file://localhost/{root_folder}/airo-typing",

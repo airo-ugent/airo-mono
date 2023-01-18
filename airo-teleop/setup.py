@@ -9,9 +9,7 @@ setuptools.setup(
     description="teleoperation functionality for manually controlling manipulators and grippers using gaming controllers etc. at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
-    install_requires=[
-        "pygame",
-    ],
+    install_requires=["pygame", "click", "loguru"],
     extras_require={
         "external": [
             f"airo_typing @ file://localhost/{root_folder}/airo-typing",

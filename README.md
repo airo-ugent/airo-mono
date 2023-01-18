@@ -85,3 +85,5 @@ However, for now we want to avoid to add this complexity for new contributors. T
 ### Design choices
 - attributes that require complex getter/setter behaviour should use python [properties](https://realpython.com/python-property/)
 - the easiest code to maintain is no code so thorougly consider if the functionality you want does not already have a good implementation and could be imported with a reasonable dependency cost.
+- it is strongly encouraged to create CLI interfaces using [click](https://click.palletsprojects.com/en/8.1.x/)
+- it is strongly advised to use logging with [loguru](https://loguru.readthedocs.io/en/stable/), it is prohibited on the other hand to use an overload of print statements.
