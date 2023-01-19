@@ -9,6 +9,7 @@ from airo_typing import HomogeneousMatrixType, TwistType
 from loguru import logger
 from pygame import joystick
 from spatialmath import SO3
+from spatialmath.base import trnorm
 
 
 class GameControllerTeleop:
@@ -133,7 +134,8 @@ class GameControllerTeleop:
         # and then left-multipy the pose's rotation matrix with this matrix.
         twist_rotation_matrix = SO3.Exp(tcp_twist_in_base_frame[3:]).R
         target_orientation_as_rotation_matrix = twist_rotation_matrix @ se3_tcp_pose_in_base_frame.rotation_matrix
-
+        # normalize SO3 matrix to be robust against numerical errors
+        target_orientation_as_rotation_matrix = trnorm(target_orientation_as_rotation_matrix)
         return SE3Container.from_rotation_matrix_and_translation(
             target_orientation_as_rotation_matrix, target_translation
         ).homogeneous_matrix

@@ -35,7 +35,8 @@ def test_teleop(ip_address: str, no_gripper: bool, controller_layout: str):
 
 if __name__ == "__main__":
     """
-    example: python airo-teleop/airo_teleop/scripts/game_controller_teleop_example.py --ip_address 10.42.0.162
+    example:
+    python airo-teleop/airo_teleop/scripts/game_controller_teleop_example.py --ip_address 10.42.0.162
     """
     import loguru
 
