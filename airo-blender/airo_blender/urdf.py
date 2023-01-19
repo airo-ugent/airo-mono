@@ -68,8 +68,12 @@ def import_mesh_from_urdf(mesh_path: str) -> list[bpy.types.Object]:
     geometry_objects = set([object for object in imported_objects if object.type == "MESH"])
     non_geometry_objects = list(imported_objects - geometry_objects)
 
-    with bpy.context.temp_override(selected_objects=list(non_geometry_objects)):
-        bpy.ops.object.delete()
+    print(f"Removing non-geometry objects from {mesh_path}.")
+    for object in non_geometry_objects:
+        bpy.data.objects.remove(object, do_unlink=True)
+
+    # with bpy.context.temp_override(selected_objects=list(non_geometry_objects)):
+    #     bpy.ops.object.delete()
 
     return list(geometry_objects)
 
@@ -174,6 +178,9 @@ def set_up_mimic_revolute_joint(
     constraint = child.constraints["Copy Rotation"]
     constraint.target = child_of_mimicked_joint
     constraint.mix_mode = "ADD"
+    # Set these spaces to local so that global rotations don't break the mimic.
+    constraint.target_space = "LOCAL"
+    constraint.owner_space = "LOCAL"
 
     # Disable the copy rotation for the non-joint axes.
     non_joint_axes = {0, 1, 2} - {axis_index}
