@@ -95,20 +95,23 @@ def import_visual(visual: dict, parent: bpy.types.Object, urdf_dir: str) -> None
         geometry_objects = import_mesh_from_urdf(mesh_path)
         if "@scale" in geometry["mesh"]:
             scales = parse_vector_string(geometry["mesh"]["@scale"])
+            bpy.ops.object.select_all(action="DESELECT")
             for object in geometry_objects:
                 object.scale = scales
-            bpy.ops.object.transform_apply(
-                {"selected_editable_objects": geometry_objects}, location=False, rotation=False, scale=True
-            )
+                object.location = (0, 0, 0)
+                object.rotation_euler = (0, 0, 0)
+                object.select_set(True)
+            bpy.ops.object.transform_apply()
 
     if "box" in geometry:
         bpy.ops.mesh.primitive_cube_add()
         box = bpy.context.object
         scales = parse_vector_string(geometry["box"]["@size"])
         box.scale = 0.5 * np.array(scales)  # Blender cube have size of 2 by default.
-        bpy.ops.object.transform_apply(
-            {"selected_editable_objects": [box]}, location=False, rotation=False, scale=True
-        )
+
+        bpy.ops.object.select_all(action="DESELECT")
+        box.select_set(True)
+        bpy.ops.object.transform_apply()
         geometry_objects.append(box)
 
     # Additional processing for all geometry objects in this visual
