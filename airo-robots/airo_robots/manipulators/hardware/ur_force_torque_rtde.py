@@ -19,7 +19,7 @@ class UReForceTorqueSensor(ForceTorqueSensor):
     def __init__(self, robot_ip_address: str) -> None:
         self.ip_address = robot_ip_address
         self.rtde_receive = RTDEReceiveInterface(self.ip_address)
-        self.wrench_lowpass_filter = ExponentialLowPassFilter(0.5)
+        self.wrench_lowpass_filter = ExponentialLowPassFilter(0.95)
 
     def get_wrench(self) -> WrenchType:
         gravity_compensated_tcp_wrench_in_base_frame = np.array(self.rtde_receive.getActualTCPForce())
@@ -50,12 +50,12 @@ if __name__ == "__main__":
     import time
 
     import click
-    from airo_robots.manipulators.hardware.ur_rtde import UR3E_CONFIG, UR_RTDE
+    from airo_robots.manipulators.hardware.ur_rtde import UR_RTDE
 
     @click.command()
     @click.option("--ip-address", type=str, help="ip address of the e-series robot to read the FT sensor from.")
     def test_ur3e_ft_sensor(ip_address):
-        robot = UR_RTDE(ip_address, UR3E_CONFIG)
+        robot = UR_RTDE(ip_address, UR_RTDE.UR3E_CONFIG)
         print(f"robot joint configuration = {robot.get_joint_configuration()}")
         ft_sensor = UReForceTorqueSensor(ip_address)
         while True:
