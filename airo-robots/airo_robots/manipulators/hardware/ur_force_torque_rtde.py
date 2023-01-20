@@ -16,10 +16,11 @@ class UReForceTorqueSensor(ForceTorqueSensor):
     for the CoG, M etc. of the Robotiq grippers.
     """
 
-    def __init__(self, robot_ip_address: str) -> None:
+    def __init__(self, robot_ip_address: str, low_pass_filter_coef: float = 0.9) -> None:
         self.ip_address = robot_ip_address
+        self.low_pass_filter_coef = low_pass_filter_coef
         self.rtde_receive = RTDEReceiveInterface(self.ip_address)
-        self.wrench_lowpass_filter = ExponentialLowPassFilter(0.95)
+        self.wrench_lowpass_filter = ExponentialLowPassFilter(self.low_pass_filter_coef)
 
     def get_wrench(self) -> WrenchType:
         gravity_compensated_tcp_wrench_in_base_frame = np.array(self.rtde_receive.getActualTCPForce())

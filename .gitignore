@@ -131,3 +131,7 @@ dmypy.json
 # IDE
 .vscode/
 .idea/
+
+## ignore logging files
+logs/
+**-log**

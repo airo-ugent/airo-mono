@@ -24,13 +24,13 @@ class AdmittanceController(PositionManipulatorDecorator):
         self.control_rate = control_rate
 
         # mass spring damper parameter
-        self.kp_position = 200
+        self.kp_position = 100
         self.mass_position = 2
         self.kd_position = 2 * np.sqrt(self.kp_position * self.mass_position)  # critical damping
-        self.kd_position *= 2
+        self.kd_position *= 4
 
         self.kp_orientation = 10
-        self.mass_orientation = 1.0
+        self.mass_orientation = 0.5
         self.kd_orientation = 2 * np.sqrt(self.kp_orientation * self.mass_orientation)  # critical damping
 
         self.tcp_target_pose = None
@@ -75,7 +75,9 @@ class AdmittanceController(PositionManipulatorDecorator):
             wrench[3:] - self.kp_orientation * orientation_error - self.kd_orientation * angular_velocity_error
         ) / self.mass_orientation
 
-        filter_coeff = 0.99
+        abs_acc_max = 1.0
+        linear_acc = np.clip(linear_acc, -abs_acc_max, abs_acc_max)
+        filter_coeff = 0.9
         self.control_linear_acc = filter_coeff * self.control_linear_acc + (1 - filter_coeff) * linear_acc
 
         self.control_linear_velocity += dt * linear_acc
@@ -140,6 +142,7 @@ class AdmittanceController(PositionManipulatorDecorator):
 
 
 if __name__ == "__main__":
+    from airo_robots.grippers.hardware.robotiq_2f85_tcp import Robotiq2F85
     from airo_robots.manipulators.hardware.ur_force_torque_rtde import UReForceTorqueSensor
     from airo_robots.manipulators.hardware.ur_rtde import UR_RTDE
     from airo_teleop.game_controller_mapping import LogitechF310Layout
@@ -149,13 +152,14 @@ if __name__ == "__main__":
     logger.add("admittance-log.txt")
     ip_address = "10.42.0.162"
     robot = UR_RTDE(ip_address, UR_RTDE.UR3E_CONFIG)
-    # robot.rtde_control.zeroFtSensor()
-    # gripper = Robotiq2F85(ip_address)
-    # robot.gripper = gripper
-    print(f"robot joint configuration = {robot.get_joint_configuration()}")
-    ft_sensor = UReForceTorqueSensor(ip_address)
+    robot.rtde_control.zeroFtSensor()
 
-    controller = AdmittanceController(robot, ft_sensor, 100)
+    gripper = Robotiq2F85(ip_address)
+    robot.gripper = gripper
+    print(f"robot joint configuration = {robot.get_joint_configuration()}")
+    ft_sensor = UReForceTorqueSensor(ip_address, 0.99)
+
+    controller = AdmittanceController(robot, ft_sensor, 400)
     # controller.tcp_target_pose = robot.get_tcp_pose()
     # controller._initialize_control_variables()
     # for _ in range(5000):
@@ -165,7 +169,7 @@ if __name__ == "__main__":
 
     # print("starting teleop")
 
-    game_controller = GameControllerTeleop(controller, 30, LogitechF310Layout)
-    game_controller.angular_speed_scaling = 0.05
-    game_controller.linear_speed_scaling = 0.005
+    game_controller = GameControllerTeleop(controller, 100, LogitechF310Layout)
+    game_controller.angular_speed_scaling = 0.1
+    game_controller.linear_speed_scaling = 0.05
     game_controller.teleoperate()
