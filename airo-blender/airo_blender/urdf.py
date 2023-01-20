@@ -27,14 +27,14 @@ def parse_vector_string(vector_string: str) -> list[float]:
     return [float(f) for f in vector_string.split(" ") if f]
 
 
-def read_urdf_as_dictionary(urdf_path: str):
+def read_urdf_as_dictionary(urdf_path: str) -> dict:
     file = open(urdf_path, "r")
     xml_content = file.read()
     urdf_dict = xmltodict.parse(xml_content)
     return urdf_dict
 
 
-def set_delta_transform_from_origin(object: bpy.types.Object, origin: dict):
+def set_delta_transform_from_origin(object: bpy.types.Object, origin: dict) -> None:
     if "@xyz" in origin:
         object.delta_location = parse_vector_string(origin["@xyz"])
     if "@rpy" in origin:
@@ -50,7 +50,7 @@ def import_mesh_from_urdf(mesh_path: str) -> list[bpy.types.Object]:
     elif mesh_file_extenstion == ".stl":
         bpy.ops.import_mesh.stl(filepath=mesh_path)
     elif mesh_file_extenstion == ".obj":
-        # There axes where chosen for partnet mobility, I hope it works for all URDFs with objs
+        # These axes where chosen for PartNet-Mobility, I hope it works for all URDFs with objs.
         bpy.ops.wm.obj_import(filepath=mesh_path, validate_meshes=True, forward_axis="Y", up_axis="Z")
     else:
         print(f"Ignoring mesh with extension {mesh_file_extenstion}. Not supported yet. Mesh path = {mesh_path}")
@@ -61,12 +61,8 @@ def import_mesh_from_urdf(mesh_path: str) -> list[bpy.types.Object]:
     geometry_objects = set([object for object in imported_objects if object.type == "MESH"])
     non_geometry_objects = list(imported_objects - geometry_objects)
 
-    print(f"Removing non-geometry objects from {mesh_path}.")
     for object in non_geometry_objects:
         bpy.data.objects.remove(object, do_unlink=True)
-
-    # with bpy.context.temp_override(selected_objects=list(non_geometry_objects)):
-    #     bpy.ops.object.delete()
 
     return list(geometry_objects)
 
@@ -141,7 +137,7 @@ def import_link(link: dict, urdf_dir: str) -> bpy.types.Object:
     return empty
 
 
-def create_locked_empty(name):
+def create_locked_empty(name: str) -> bpy.types.Object:
     bpy.ops.object.empty_add(type="ARROWS", radius=0.05)
     empty = bpy.context.object
     empty.name = name
@@ -161,19 +157,22 @@ def make_transform_with_z_aligned_to_axis(axis: list) -> np.ndarray:
         np.ndarray: a 4x4 homogeneous transform matrix.
     """
     Z = np.array(axis)
+
+    # Create abitrary X and Y axes that are orthogonal to Z.
     temp = np.array([1, 0, 0])
     if np.abs(np.dot(temp, Z)) > 0.999:
         temp = np.array([0, 1, 0])
     X = np.cross(Z, temp)
     X = X / np.linalg.norm(X)
     Y = np.cross(Z, X)
+
     orientation = np.column_stack([X, Y, Z])
     transform = np.identity(4)
     transform[:3, :3] = orientation
     return transform
 
 
-def insert_joint_axis_empty(joint: bpy.types.Object, child: bpy.types.Object, axis: list):
+def insert_joint_axis_empty(joint: bpy.types.Object, child: bpy.types.Object, axis: list) -> bpy.types.Object:
     joint_axis_empty = create_locked_empty(f"{joint.name}_axis")
     joint_axis_transform = make_transform_with_z_aligned_to_axis(axis)
 
@@ -189,7 +188,7 @@ def insert_joint_axis_empty(joint: bpy.types.Object, child: bpy.types.Object, ax
     return joint_axis_empty
 
 
-def insert_joint(joint: dict, link_empties_by_name: dict):
+def insert_joint(joint: dict, link_empties_by_name: dict) -> bpy.types.Object:
     joint_empty = create_locked_empty(joint["@name"])
     parent = link_empties_by_name[joint["parent"]["@link"]]
     child = link_empties_by_name[joint["child"]["@link"]]
@@ -203,24 +202,24 @@ def insert_joint(joint: dict, link_empties_by_name: dict):
 
 
 def add_mimic_driver(
-    driver_joint,
-    mimic_joint,
+    driver_joint_empty: bpy.types.Object,
+    mimic_joint_empty: bpy.types.Object,
     multiplier: float,
     offset: float,
     mimic_revolute: bool = True,
     driver_revolute: bool = True,
-):
+) -> None:
     mimic_property = "rotation_euler" if mimic_revolute else "location"
     driver_property = "rotation_euler" if driver_revolute else "location"
-    driver = mimic_joint.driver_add(mimic_property, 2).driver
+    driver = mimic_joint_empty.driver_add(mimic_property, 2).driver
     variable = driver.variables.new()
     variable.name = "var"
-    variable.targets[0].id = driver_joint
+    variable.targets[0].id = driver_joint_empty
     variable.targets[0].data_path = f"{driver_property}.z"
     driver.expression = f"{multiplier} * {variable.name} + {offset}"
 
 
-def configure_axis_joint(joint, joint_empty, child):
+def configure_axis_joint(joint: dict, joint_empty: bpy.types.Object, child: bpy.types.object) -> bpy.types.Object:
     axis = [1.0, 0.0, 0.0]  # Default axis from spec
     if "axis" in joint:
         axis = parse_vector_string(joint["axis"]["@xyz"])
@@ -240,7 +239,7 @@ def configure_axis_joint(joint, joint_empty, child):
     return joint_axis_empty
 
 
-def configure_mimic_joint(joint: dict, joint_empties_by_name: dict):
+def configure_mimic_joint(joint: dict, joint_empties_by_name: dict) -> None:
     joint_name = joint["@name"]
     mimic_joint_empty = joint_empties_by_name[joint_name]
     if joint_name + "_axis" in joint_empties_by_name:
@@ -259,7 +258,7 @@ def configure_mimic_joint(joint: dict, joint_empties_by_name: dict):
     add_mimic_driver(driver_joint_empty, mimic_joint_empty, multiplier, offset)
 
 
-def import_urdf(urdf_path: str):
+def import_urdf(urdf_path: str) -> list[bpy.types.Object]:
     urdf_dict = read_urdf_as_dictionary(urdf_path)
     urdf_dir = os.path.dirname(urdf_path)
 
@@ -308,11 +307,19 @@ def import_urdf(urdf_path: str):
 if __name__ == "__main__":
     bpy.ops.object.delete()  # Delete the default cube
 
-    # UR5 and Robotiq 2F-85 gripper
-    urdf_path = "/home/idlab185/urdfpy/tests/data/ur5/ur5.urdf"
-    urdf_path = "/home/idlab185/urdf-workshop/universal_robots/ros/ur10e/ur10e.urdf"
+    # Universal robots
+    # urdf_path = "/home/idlab185/urdfpy/tests/data/ur5/ur5.urdf"
+    # urdf_path = "/home/idlab185/urdf-workshop/universal_robots/ros/ur10e/ur10e.urdf"
+
+    # Robotiq 2F-85 gripper
     # urdf_path = "/home/idlab185/robotiq_arg85_description/robots/robotiq_arg85_description.URDF"
     # urdf_path = "/home/idlab185/robotiq_2finger_grippers/robotiq_2f_85_gripper_visualization/urdf/robotiq2f85.urdf"
+
+    # PartNet mobility samples
+    # urdf_path = "/home/idlab185/partnet-mobility-sample/44853/mobility.urdf"  # cabinet
+    # urdf_path = "/home/idlab185/partnet-mobility-sample/7128/mobility.urdf"
+    # urdf_path = "/home/idlab185/partnet-mobility-sample/7130/mobility.urdf"
+    urdf_path = "/home/idlab185/partnet-mobility-sample/103452/mobility.urdf"  # washing machine
 
     import_urdf(urdf_path)
 
