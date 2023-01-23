@@ -156,7 +156,8 @@ class GameControllerTeleop:
 
         delta = self.get_gripper_delta()
         logger.debug(f"gripper delta movement = {delta}")
-        self.robot.gripper.move(self.robot.gripper.get_current_width() + delta)
+        # self.robot.gripper.move(self.robot.gripper.get_current_width() + delta)
+        self.robot.gripper.set_target_width(self.robot.gripper.get_current_width() + delta)
         return delta
 
     def teleoperate(self):
