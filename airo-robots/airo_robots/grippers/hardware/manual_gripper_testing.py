@@ -1,6 +1,10 @@
 """code for manual testing of gripper base class implementations.
 """
-from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
+from airo_robots.grippers.parallel_position_gripper import (
+    AsyncParallelGripper,
+    ParallelPositionGripper,
+    ParallelPositionGripperSpecs,
+)
 
 
 def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositionGripperSpecs):
@@ -26,3 +30,14 @@ def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositio
     gripper.speed = 0.02
     gripper.move(0.02)
     print(f"{gripper.is_an_object_grasped()=}")
+
+    print("testing async wrapper:")
+    async_gripper = AsyncParallelGripper(gripper)
+    print("gripper will now open")
+    future = async_gripper.open()
+    print(future.done())
+    print("now a 'blocking' print of the move return value will happen, this is similar to calling thread.join()")
+    print(future.result(timeout=20))
+    print("gripper should have been opened before this line has been printed")
+    print(f"{future.done()=}")
+    print("done should now be true")
