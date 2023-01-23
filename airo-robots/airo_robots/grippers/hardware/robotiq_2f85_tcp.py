@@ -88,11 +88,18 @@ class Robotiq2F85(ParallelPositionGripper):
     @property
     def max_grasp_force(self) -> float:
         force_register_value = self._read_force_register()
-        return rescale_range(force_register_value, 0, 255, self.gripper_specs.min_force, self.gripper_specs.max_force)
+        # 0 force has a special meaning, cf manual.
+        return rescale_range(force_register_value, 1, 255, self.gripper_specs.min_force, self.gripper_specs.max_force)
 
     @max_grasp_force.setter
     def max_grasp_force(self, value: float):
-        pass
+        force = np.clip(value, self.gripper_specs.min_force, self.gripper_specs.max_force)
+        force_register_value = int(
+            rescale_range(force, self.gripper_specs.min_force, self.gripper_specs.max_force, 1, 255)
+        )
+        self._communicate(f"SET FOR {force_register_value}")
+        while not self._is_target_value_set(force_register_value, self._read_force_register()):
+            time.sleep(0.01)
 
     ## non interface classes
     async def ansyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None):
@@ -139,7 +146,7 @@ class Robotiq2F85(ParallelPositionGripper):
         return int(self._communicate("GET SPE").split(" ")[1])
 
     def _read_force_register(self):
-        return int()
+        return int(self._communicate("GET FOR").split(" ")[1])
 
     def is_gripper_moving(self) -> bool:
         # Moving == 0 => detected OR position reached

@@ -29,7 +29,7 @@ def test_teleop(ip_address: str, no_gripper: bool, controller_layout: str):
     except Exception:
         raise ValueError("Could not find layout, make sure it exactly matches the variable name")
 
-    joystick_teleop = GameControllerTeleop(robot, 30, layout)
+    joystick_teleop = GameControllerTeleop(robot, 20, layout)
     joystick_teleop.teleoperate()
 
 
