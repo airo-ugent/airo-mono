@@ -43,6 +43,7 @@ class AdmittanceController(PositionManipulatorDecorator):
         self.control_linear_velocity = np.zeros(3)
         self.control_angular_velocity = np.zeros(3)
         self.control_linear_acc = np.zeros(3)
+        self.control_angular_acc = np.zeros(3)
 
     def start(self):
         # start thread and servo at 500Hz
@@ -68,38 +69,43 @@ class AdmittanceController(PositionManipulatorDecorator):
         linear_velocity_error = self.control_linear_velocity
         angular_velocity_error = self.control_angular_velocity
 
+        wrench_error = wrench
+
         linear_acc = (
-            wrench[:3] - self.kp_position * position_error - self.kd_position * linear_velocity_error
+            wrench_error[:3] - self.kp_position * position_error - self.kd_position * linear_velocity_error
         ) / self.mass_position
         angular_acc = (
-            wrench[3:] - self.kp_orientation * orientation_error - self.kd_orientation * angular_velocity_error
+            wrench_error[3:] - self.kp_orientation * orientation_error - self.kd_orientation * angular_velocity_error
         ) / self.mass_orientation
 
-        abs_acc_max = 1.0
-        linear_acc = np.clip(linear_acc, -abs_acc_max, abs_acc_max)
-        filter_coeff = 0.9
-        self.control_linear_acc = filter_coeff * self.control_linear_acc + (1 - filter_coeff) * linear_acc
+        linear_velocity = dt / 2 * (self.control_linear_acc + linear_acc) + self.control_linear_velocity
+        angular_velocity = dt / 2 * (self.control_angular_acc + angular_acc) + self.control_angular_velocity
 
-        self.control_linear_velocity += dt * linear_acc
-        self.control_angular_velocity += dt * angular_acc
-
-        self.control_position += dt * self.control_linear_velocity
-        self.control_orientation = SO3.Exp(self.control_angular_velocity * dt).R @ self.control_orientation
+        self.control_position = self.control_position + dt / 2 * (self.control_linear_velocity + linear_velocity)
+        self.control_orientation = (
+            SO3.Exp((self.control_angular_velocity + angular_velocity) * dt / 2).R @ self.control_orientation
+        )
         self.control_orientation = trnorm(self.control_orientation)
+
+        self.control_linear_acc = linear_acc
+        self.control_angular_acc = angular_acc
+        self.control_linear_velocity = linear_velocity
+        self.control_angular_velocity = angular_velocity
+
         # logger.debug(f"control position = {self.control_position}")
         # logger.debug(f"control orientation =  \n {self.control_orientation}")
 
-        rerun.log_scalar("position_error/x", position_error[0])
-        rerun.log_scalar("position_error/y", position_error[1])
-        rerun.log_scalar("position_error/z", position_error[2])
+        rerun.log_scalar("admittance/position_error/x", position_error[0])
+        rerun.log_scalar("admittance/position_error/y", position_error[1])
+        rerun.log_scalar("admittance/position_error/z", position_error[2])
 
-        rerun.log_scalar("control_linear_acc/x", self.control_linear_acc[0])
-        rerun.log_scalar("control_linear_acc/y", self.control_linear_acc[1])
-        rerun.log_scalar("control_linear_acc/z", self.control_linear_acc[2])
+        rerun.log_scalar("admittance/control_linear_acc/x", self.control_linear_acc[0])
+        rerun.log_scalar("admittance/control_linear_acc/y", self.control_linear_acc[1])
+        rerun.log_scalar("admittance/control_linear_acc/z", self.control_linear_acc[2])
 
-        rerun.log_scalar("force/x", wrench[0])
-        rerun.log_scalar("force/y", wrench[1])
-        rerun.log_scalar("force/z", wrench[2])
+        rerun.log_scalar("admittance/force/x", wrench[0])
+        rerun.log_scalar("admittance/force/y", wrench[1])
+        rerun.log_scalar("admittance/force/z", wrench[2])
 
     def update_and_servo(self):
         wrench = self.ft_sensor.get_wrench()
@@ -116,9 +122,14 @@ class AdmittanceController(PositionManipulatorDecorator):
         # print(control_pose)
         self.robot.servo_to_tcp_pose(servo_pose, 1 / self.control_rate)
 
-        rerun.log_scalar("target_position/x", self.tcp_target_position[0])
-        rerun.log_scalar("target_position/y", self.tcp_target_position[1])
-        rerun.log_scalar("target_position/z", self.tcp_target_position[2])
+        rerun.log_scalar("admittance/target_position/x", self.tcp_target_position[0])
+        rerun.log_scalar("admittance/target_position/y", self.tcp_target_position[1])
+        rerun.log_scalar("admittance/target_position/z", self.tcp_target_position[2])
+
+        current_position = self.robot.get_tcp_pose()[:3, 3]
+        rerun.log_scalar("admittance/current_position/x", current_position[0])
+        rerun.log_scalar("admittance/current_position/y", current_position[1])
+        rerun.log_scalar("admittance/current_position/z", current_position[2])
 
     def run(self):
         self._initialize_control_variables()
@@ -157,7 +168,7 @@ if __name__ == "__main__":
     gripper = Robotiq2F85(ip_address)
     robot.gripper = gripper
     print(f"robot joint configuration = {robot.get_joint_configuration()}")
-    ft_sensor = UReForceTorqueSensor(ip_address, 0.99)
+    ft_sensor = UReForceTorqueSensor(ip_address, 0.5)
 
     controller = AdmittanceController(robot, ft_sensor, 400)
     # controller.tcp_target_pose = robot.get_tcp_pose()

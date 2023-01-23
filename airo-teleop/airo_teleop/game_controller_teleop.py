@@ -60,7 +60,7 @@ class GameControllerTeleop:
         self.control_rate = control_rate
 
         # you can set the speeds/step sizes by addressing the attributes.
-        self.linear_speed_scaling = 0.2  # m/s
+        self.linear_speed_scaling = 0.05  # m/s
         self.angular_speed_scaling = 0.6  # rad/s
         self.gripper_delta_step_size = 0.01  # m/step
 
