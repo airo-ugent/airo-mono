@@ -1,11 +1,13 @@
 """Contains code for testing implementations of the camera interfaces.
 """
 
+from typing import Any, Callable
+
 import matplotlib.pyplot as plt
 from airo_camera_toolkit.interfaces import Camera, DepthCamera, RGBCamera, StereoRGBDCamera
 
 
-def manual_test_camera(camera: Camera):
+def manual_test_camera(camera: Camera) -> None:
     intrinsics = camera.intrinsics_matrix
     print(f"the rectified intrinsics matrix = \n {intrinsics}")
     input(
@@ -17,7 +19,7 @@ def manual_test_camera(camera: Camera):
     )
 
 
-def manual_test_rgb_camera(camera: RGBCamera):
+def manual_test_rgb_camera(camera: RGBCamera) -> None:
     image = camera.get_rgb_image()
     plt.imshow(image)
     print(
@@ -30,7 +32,7 @@ def manual_test_rgb_camera(camera: RGBCamera):
     plt.show()
 
 
-def manual_test_depth_camera(camera: DepthCamera):
+def manual_test_depth_camera(camera: DepthCamera) -> None:
     dept_image = camera.get_depth_image()
     plt.imshow(dept_image)
     print(
@@ -50,7 +52,7 @@ def manual_test_depth_camera(camera: DepthCamera):
     )
 
 
-def manual_test_stereo_rgbd_camera(camera: StereoRGBDCamera):
+def manual_test_stereo_rgbd_camera(camera: StereoRGBDCamera) -> None:
     manual_test_camera(camera)
     manual_test_rgb_camera(camera)
     manual_test_depth_camera(camera)
@@ -69,7 +71,7 @@ def manual_test_stereo_rgbd_camera(camera: StereoRGBDCamera):
     plt.show()
 
 
-def profile(func, *args, **kwargs):
+def profile(func: Callable, *args: Any, **kwargs: Any) -> None:
     """a wrapper around the python cProfiler
 
     https://docs.python.org/3/library/profile.html
@@ -88,10 +90,10 @@ def profile(func, *args, **kwargs):
     stats.print_stats(50)
 
 
-def profile_rgb_throughput(camera: RGBCamera):
+def profile_rgb_throughput(camera: RGBCamera) -> None:
     """profile the throughput of the get_rgb_image() function"""
 
-    def get_100_images():
+    def get_100_images() -> None:
         for _ in range(100):
             camera.get_rgb_image()
 

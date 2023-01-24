@@ -12,31 +12,31 @@ pygame.init()
 
 
 class TextPrint:
-    def __init__(self):
+    def __init__(self) -> None:
         self.reset()
         self.font = pygame.font.Font(None, 25)
 
-    def tprint(self, screen, text):
+    def tprint(self, screen, text) -> None:  # type: ignore
         text_bitmap = self.font.render(text, True, (0, 0, 0))
         screen.blit(text_bitmap, (self.x, self.y))
         self.y += self.line_height
 
-    def reset(self):
+    def reset(self) -> None:
         self.x = 10
         self.y = 10
         self.line_height = 15
 
-    def indent(self):
+    def indent(self) -> None:
         self.x += 10
 
-    def unindent(self):
+    def unindent(self) -> None:
         self.x -= 10
 
 
 # added by @tlpss as the pygame example code does not pass flake
 # since the function flow is too complex
 # flake8: noqa: C901
-def main():
+def main() -> None:
     # Set the width and height of the screen (width, height), and name the window.
     screen = pygame.display.set_mode((500, 700))
     pygame.display.set_caption("Joystick example")
@@ -50,7 +50,7 @@ def main():
     # This dict can be left as-is, since pygame will generate a
     # pygame.JOYDEVICEADDED event for every joystick connected
     # at the start of the program.
-    joysticks = {}
+    joysticks = {}  # type: ignore
 
     done = False
     while not done:
