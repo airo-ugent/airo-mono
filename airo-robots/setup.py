@@ -17,5 +17,5 @@ setuptools.setup(
         ]
     },
     packages=setuptools.find_packages(),
-    package_data={"airo-robots": ["py.typed"]},
+    package_data={"airo_robots": ["py.typed"]},
 )
