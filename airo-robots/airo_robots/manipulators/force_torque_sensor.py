@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from airo_typing import WrenchType
+from airo_typing import HomogeneousMatrixType, WrenchType
 
 
 class ForceTorqueSensor(ABC):
@@ -16,7 +16,7 @@ class ForceTorqueSensor(ABC):
         """
 
     @property
-    def sensor_pose_in_tcp_frame(self):
+    def sensor_pose_in_tcp_frame(self) -> HomogeneousMatrixType:
         """Returns the (fixed) transform between the FT sensor frame and the TCP frame
         which can be used to express the wrench in other frames or to apply gravity compensation.
         Raises:
