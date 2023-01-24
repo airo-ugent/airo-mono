@@ -41,7 +41,7 @@ class _HomogeneousPoints:
         return len(points.shape) == 1
 
     @property
-    def homogeneous_points(self):
+    def homogeneous_points(self) -> np.ndarray:
         """Nx4 matrix representing the homogeneous points"""
         return self._homogeneous_points
 
@@ -61,7 +61,7 @@ class _HomogeneousPoints:
         else:
             return points
 
-    def apply_transform(self, homogeneous_transform_matrix: HomogeneousMatrixType):
+    def apply_transform(self, homogeneous_transform_matrix: HomogeneousMatrixType) -> None:
         self._homogeneous_points = (homogeneous_transform_matrix @ self.homogeneous_points.transpose()).transpose()
 
 

@@ -38,7 +38,7 @@ class SE3Container:
     You can decide this on the fly as you can always access the SE3 attribute of this class or instantiate this class from an SE3 object
     """
 
-    def __init__(self, se3: SE3) -> None:
+    def __init__(self, se3: SE3) -> None:  # type: ignore
         self.se3 = se3
 
     @classmethod
@@ -58,7 +58,7 @@ class SE3Container:
     @classmethod
     def from_rotation_matrix_and_translation(
         cls, rotation_matrix: RotationMatrixType, translation: Optional[Vector3DType] = None
-    ):
+    ) -> SE3Container:
         return cls(SE3.Rt(rotation_matrix, translation))
 
     @classmethod
@@ -85,7 +85,11 @@ class SE3Container:
 
     @classmethod
     def from_orthogonal_base_vectors_and_translation(
-        cls, x_axis, y_axis, z_axis, translation: Optional[Vector3DType] = None
+        cls,
+        x_axis: Vector3DType,
+        y_axis: Vector3DType,
+        z_axis: Vector3DType,
+        translation: Optional[Vector3DType] = None,
     ) -> SE3Container:
         # create orientation matrix with base vectors as columns
         orientation_matrix = np.zeros((3, 3))

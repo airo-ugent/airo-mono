@@ -8,7 +8,7 @@ from airo_robots.grippers.hardware.manual_gripper_testing import manual_test_gri
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
 
 
-def rescale_range(x, from_min, from_max, to_min, to_max):
+def rescale_range(x: float, from_min: float, from_max: float, to_min: float, to_max: float) -> float:
     return to_min + (x - from_min) / (from_max - from_min) * (to_max - to_min)
 
 
@@ -33,7 +33,7 @@ class Robotiq2F85(ParallelPositionGripper):
     # see https://assets.robotiq.com/website-assets/support_documents/document/2F-85_2F-140_Instruction_Manual_e-Series_PDF_20190206.pdf
     ROBOTIQ_2F85_DEFAULT_SPECS = ParallelPositionGripperSpecs(0.085, 0.0, 220, 25, 0.15, 0.02)
 
-    def __init__(self, host_ip: str, port: int = 63352, fingers_max_stroke: Optional[float] = None):
+    def __init__(self, host_ip: str, port: int = 63352, fingers_max_stroke: Optional[float] = None) -> None:
         """
         host_ip: the IP adress of the robot to which the gripper is connected.
 
@@ -57,7 +57,7 @@ class Robotiq2F85(ParallelPositionGripper):
         width = rescale_range(register_value, 0, 230, self.gripper_specs.max_width, self.gripper_specs.min_width)
         return width
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None):
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
         if speed:
             self.speed = speed
         if force:
@@ -76,7 +76,7 @@ class Robotiq2F85(ParallelPositionGripper):
         return rescale_range(speed_register_value, 0, 255, self.gripper_specs.min_speed, self.gripper_specs.max_speed)
 
     @speed.setter
-    def speed(self, value: float):
+    def speed(self, value: float) -> None:
         speed = np.clip(value, self.gripper_specs.min_speed, self.gripper_specs.max_speed)
         speed_register_value = int(
             rescale_range(speed, self.gripper_specs.min_speed, self.gripper_specs.max_speed, 0, 255)
@@ -92,7 +92,7 @@ class Robotiq2F85(ParallelPositionGripper):
         return rescale_range(force_register_value, 1, 255, self.gripper_specs.min_force, self.gripper_specs.max_force)
 
     @max_grasp_force.setter
-    def max_grasp_force(self, value: float):
+    def max_grasp_force(self, value: float) -> None:
         force = np.clip(value, self.gripper_specs.min_force, self.gripper_specs.max_force)
         force_register_value = int(
             rescale_range(force, self.gripper_specs.min_force, self.gripper_specs.max_force, 1, 255)
@@ -102,7 +102,7 @@ class Robotiq2F85(ParallelPositionGripper):
             time.sleep(0.01)
 
     ## non interface classes
-    async def ansyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None):
+    async def ansyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
         """moves the gripper asynchronously."""
         if speed:
             self.speed = speed
@@ -113,7 +113,7 @@ class Robotiq2F85(ParallelPositionGripper):
         while self.is_gripper_moving():
             await asyncio.sleep(0.05)
 
-    def set_target_width(self, target_width_in_meters: float):
+    def set_target_width(self, target_width_in_meters: float) -> None:
         """sets a target width asynchronously"""
         target_width_in_meters = np.clip(
             target_width_in_meters, self.gripper_specs.min_width, self.gripper_specs.max_width
@@ -124,7 +124,7 @@ class Robotiq2F85(ParallelPositionGripper):
         )
         self._write_target_width_to_register(target_width_register_value)
 
-    def _write_target_width_to_register(self, target_width_register_value: int):
+    def _write_target_width_to_register(self, target_width_register_value: int) -> None:
         """
         Takes values in range 0 -255
         3 is actually fully open, 230 is fully closed in operating mode (straight fingers) and 255 is fully closed in encompassed mode.
@@ -139,20 +139,20 @@ class Robotiq2F85(ParallelPositionGripper):
         while not self._is_target_value_set(target_width_register_value, self._read_target_width_register()):
             time.sleep(0.01)
 
-    def _read_target_width_register(self):
+    def _read_target_width_register(self) -> int:
         return int(self._communicate("GET PRE").split(" ")[1])
 
-    def _read_speed_register(self):
+    def _read_speed_register(self) -> int:
         return int(self._communicate("GET SPE").split(" ")[1])
 
-    def _read_force_register(self):
+    def _read_force_register(self) -> int:
         return int(self._communicate("GET FOR").split(" ")[1])
 
     def is_gripper_moving(self) -> bool:
         # Moving == 0 => detected OR position reached
         return int(self._communicate("GET OBJ").split(" ")[1]) == 0
 
-    def _check_connection(self):
+    def _check_connection(self) -> None:
         """validate communication with gripper is possible.
         Raises:
             ConnectionError
@@ -176,7 +176,7 @@ class Robotiq2F85(ParallelPositionGripper):
             except Exception as e:
                 raise (e)
 
-    def activate_gripper(self):
+    def activate_gripper(self) -> None:
         """Activates the gripper, sets target position to "Open" and sets GTO flag."""
         self._communicate("SET ACT 1")
         while not self._communicate("GET STA") == "STA 3":
@@ -187,7 +187,7 @@ class Robotiq2F85(ParallelPositionGripper):
         self.speed = self.gripper_specs.max_speed
         self.force = self.gripper_specs.min_force
 
-    def deactivate_gripper(self):
+    def deactivate_gripper(self) -> None:
         self._communicate("SET ACT 0")
         while not self._communicate("GET STA") == "STA 0":
             time.sleep(0.01)
@@ -198,7 +198,7 @@ class Robotiq2F85(ParallelPositionGripper):
         return abs(target - value) < 5
 
 
-def get_empirical_data_on_opening_angles(robot_ip: str):
+def get_empirical_data_on_opening_angles(robot_ip: str) -> None:
     """used to verify the relation between finger width and register values."""
     gripper = Robotiq2F85(robot_ip)
     gripper._write_target_width_to_register(230)
