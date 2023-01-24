@@ -9,11 +9,13 @@ i.e. the user can  call <transform>(points) where points is just a numpy array,
 """
 
 import numpy as np
-from airo_typing import HomogeneousMatrixType, PointsType
+from airo_typing import HomogeneousMatrixType, Vectors3DType
 
 
 class _HomogeneousPoints:
-    def __init__(self, points: PointsType):
+    # TODO: extend to generic dimensions (1D,2D,3D).
+    # TODO: more apropaite name? this class mainly serves as 'input validation' and conversion to homogeneous coordinates
+    def __init__(self, points: Vectors3DType):
         if not self.is_valid_points_type(points):
             raise ValueError(f"Invalid argument for {_HomogeneousPoints.__name__}.__init__ ")
         if self.is_single_point(points):
@@ -25,7 +27,7 @@ class _HomogeneousPoints:
             )
 
     @staticmethod
-    def is_valid_points_type(points: PointsType) -> bool:
+    def is_valid_points_type(points: Vectors3DType) -> bool:
         if len(points.shape) == 1:
             if len(points) == 3:
                 return True
@@ -35,16 +37,16 @@ class _HomogeneousPoints:
         return False
 
     @staticmethod
-    def is_single_point(points: PointsType) -> bool:
+    def is_single_point(points: Vectors3DType) -> bool:
         return len(points.shape) == 1
 
     @property
-    def homogeneous_points(self):
+    def homogeneous_points(self) -> np.ndarray:
         """Nx4 matrix representing the homogeneous points"""
         return self._homogeneous_points
 
     @property
-    def points(self) -> PointsType:
+    def points(self) -> Vectors3DType:
         """Nx3 matrix representing the points"""
         # normalize points (for safety, should never be necessary with affine transforms)
         # but we've had bugs of this type with projection operations, so better safe than sorry?
@@ -59,11 +61,11 @@ class _HomogeneousPoints:
         else:
             return points
 
-    def apply_transform(self, homogeneous_transform_matrix: HomogeneousMatrixType):
+    def apply_transform(self, homogeneous_transform_matrix: HomogeneousMatrixType) -> None:
         self._homogeneous_points = (homogeneous_transform_matrix @ self.homogeneous_points.transpose()).transpose()
 
 
-def transform_points(homogeneous_transform_matrix: HomogeneousMatrixType, points: PointsType) -> PointsType:
+def transform_points(homogeneous_transform_matrix: HomogeneousMatrixType, points: Vectors3DType) -> Vectors3DType:
     """Applies a transform to a (set of) point(s).
 
     Args:

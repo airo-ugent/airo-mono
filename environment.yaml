@@ -1,4 +1,4 @@
-name: airo-core
+name: airo-mono
 channels:
   - conda-forge
 dependencies:
@@ -6,4 +6,6 @@ dependencies:
   - pip
   - pip:
     - -e airo-typing/
-    - -e spatial-algebra/
+    - -e airo-spatial-algebra/
+    - -e airo-camera-toolkit/
+    - -e airo-robots/

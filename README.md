@@ -1,4 +1,4 @@
-# airo_core
+# airo-mono
 ## rationale
 - create base classes / interfaces for abstracting (simulated) hardware to allow for interchanging different simulators/ hardware on the one hand and different 'decision making frameworks' on the other hand.
 - provide functionality that is required to quickly create robot behavior à la Folding competition @ IROS22
@@ -23,6 +23,9 @@ below is a short overview of the packages in this repo. Each package has a dedic
 ```
 airo-typing             # common typedefs and conventions
 airo-spatial-algebra    # code for working with SE3 poses
+airo-camera-toolkit     # code for working with RGB(D) cameras
+airo-robots             # code for working with robot arms and grippers
+airo-teleop             # code for teleoperating robot arms and grippers
 ```
 ## Installation
 There are a number ways to install (a number of) packages from this repo, based on whether you want to use them or you also want to make changes to them:
@@ -34,12 +37,20 @@ If you want to make changes, you should probably clone this repo first
 and then install all relevant packages in [editable](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs) mode, so that any change you make is immediately 'visible' to your python interpreter. You can simply run `conda env create -f environment.yaml`, which does this for you (and also installs some binaries for convenience).
 
 ## Developer guide
+To set up your development environment, run:
+```
+conda env create -f environment.yaml
+conda activate airo-mono
+pip install -r dev-requirements.txt
+pre-commit install
+```
+
 ### Coding style and testing
 Formatting happens with black (code style), isort (sort imports and autoflake (remove unused imports and variables). Flake8 is used as linter. These are bundled with [pre-commit](https://pre-commit.com/) as configured in the `.pre-commit-config.yaml` file.
 
 Packages can be typed (optional, but strongly recommended). For this, mypy is used.
 
-Docstrings should be formatted in reST (Sphinx) format ([most used](https://stackoverflow.com/questions/3898572/what-are-the-most-common-python-docstring-formats))
+Docstrings should be formatted in the [google docstring format](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
 
 Testing with pytest. Unittests should be grouped per package, as the CI pipeline will run them for each package in isolation. Also note that there should always be at least one test, since pytest will otherwise [throw an error](https://github.com/pytest-dev/pytest/issues/2393).
 
@@ -74,3 +85,5 @@ However, for now we want to avoid to add this complexity for new contributors. T
 ### Design choices
 - attributes that require complex getter/setter behaviour should use python [properties](https://realpython.com/python-property/)
 - the easiest code to maintain is no code so thorougly consider if the functionality you want does not already have a good implementation and could be imported with a reasonable dependency cost.
+- it is strongly encouraged to create CLI interfaces using [click](https://click.palletsprojects.com/en/8.1.x/)
+- it is strongly advised to use logging with [loguru](https://loguru.readthedocs.io/en/stable/), it is prohibited on the other hand to use an overload of print statements.

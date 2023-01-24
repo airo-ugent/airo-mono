@@ -10,7 +10,7 @@ from airo_typing import (
     QuaternionType,
     RotationMatrixType,
     RotationVectorType,
-    VectorType,
+    Vector3DType,
 )
 from scipy.spatial.transform import Rotation
 from spatialmath import SE3, UnitQuaternion
@@ -38,7 +38,7 @@ class SE3Container:
     You can decide this on the fly as you can always access the SE3 attribute of this class or instantiate this class from an SE3 object
     """
 
-    def __init__(self, se3: SE3) -> None:
+    def __init__(self, se3: SE3) -> None:  # type: ignore
         self.se3 = se3
 
     @classmethod
@@ -47,7 +47,7 @@ class SE3Container:
         return cls(SE3.Rand())
 
     @classmethod
-    def from_translation(cls, translation: VectorType) -> SE3Container:
+    def from_translation(cls, translation: Vector3DType) -> SE3Container:
         """creates a translation-only SE3 element"""
         return cls(SE3.Trans(translation.tolist()))
 
@@ -57,26 +57,26 @@ class SE3Container:
 
     @classmethod
     def from_rotation_matrix_and_translation(
-        cls, rotation_matrix: RotationMatrixType, translation: Optional[VectorType] = None
-    ):
+        cls, rotation_matrix: RotationMatrixType, translation: Optional[Vector3DType] = None
+    ) -> SE3Container:
         return cls(SE3.Rt(rotation_matrix, translation))
 
     @classmethod
     def from_rotation_vector_and_translation(
-        cls, rotation_vector: RotationVectorType, translation: Optional[VectorType] = None
+        cls, rotation_vector: RotationVectorType, translation: Optional[Vector3DType] = None
     ) -> SE3Container:
         return cls(SE3.Rt(Rotation.from_rotvec(rotation_vector).as_matrix(), translation))
 
     @classmethod
     def from_quaternion_and_translation(
-        cls, quaternion: QuaternionType, translation: Optional[VectorType] = None
+        cls, quaternion: QuaternionType, translation: Optional[Vector3DType] = None
     ) -> SE3Container:
         q = UnitQuaternion(quaternion[3], quaternion[:3])  # scalar-first in math lib
         return cls(SE3.Rt(q.R, translation))
 
     @classmethod
     def from_euler_angles_and_translation(
-        cls, euler_angels: EulerAnglesType, translation: Optional[VectorType] = None
+        cls, euler_angels: EulerAnglesType, translation: Optional[Vector3DType] = None
     ) -> SE3Container:
         # convert from extrinsic XYZ to rotmatrix
         # bc SE3.Eul does not accept translation
@@ -85,7 +85,11 @@ class SE3Container:
 
     @classmethod
     def from_orthogonal_base_vectors_and_translation(
-        cls, x_axis, y_axis, z_axis, translation: Optional[VectorType] = None
+        cls,
+        x_axis: Vector3DType,
+        y_axis: Vector3DType,
+        z_axis: Vector3DType,
+        translation: Optional[Vector3DType] = None,
     ) -> SE3Container:
         # create orientation matrix with base vectors as columns
         orientation_matrix = np.zeros((3, 3))
@@ -112,7 +116,7 @@ class SE3Container:
         return axis, angle
 
     @property
-    def orientation_as_rotation_vector(self) -> VectorType:
+    def orientation_as_rotation_vector(self) -> Vector3DType:
         axis, angle = self.orientation_as_axis_angle
         if axis is None:
             return np.zeros(3)
@@ -127,22 +131,22 @@ class SE3Container:
         return self.se3.A
 
     @property
-    def translation(self) -> VectorType:
+    def translation(self) -> Vector3DType:
         # TODO: should this be named position or translation?
         return self.se3.t
 
     @property
-    def x_axis(self) -> VectorType:
+    def x_axis(self) -> Vector3DType:
         """also called normal vector. This is the first column of the rotation matrix"""
         return self.se3.n
 
     @property
-    def y_axis(self) -> VectorType:
+    def y_axis(self) -> Vector3DType:
         """also colled orientation vector. This is the second column of the rotation matrix"""
         return self.se3.o
 
     @property
-    def z_axis(self) -> VectorType:
+    def z_axis(self) -> Vector3DType:
         """also called approach vector. This is the third column of the rotation matrix"""
         return self.se3.a
 
