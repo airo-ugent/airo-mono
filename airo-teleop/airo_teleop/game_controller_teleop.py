@@ -157,10 +157,10 @@ class GameControllerTeleop:
         delta = self.get_gripper_delta()
         logger.debug(f"gripper delta movement = {delta}")
         # self.robot.gripper.move(self.robot.gripper.get_current_width() + delta)
-        self.robot.gripper.set_target_width(self.robot.gripper.get_current_width() + delta)
+        self.robot.gripper.move(self.robot.gripper.get_current_width() + delta)
         return delta
 
-    def teleoperate(self):
+    def teleoperate(self) -> None:
         """Starts streaming servo commands based on the controller input, runs untill stopped with CTRL+C."""
         logger.info("starting teleoperation, press CTRL+C to stop")
         while True:
@@ -172,7 +172,7 @@ class GameControllerTeleop:
             # bc of this, the 'speeds' are not exact.
             self.read_gripper_delta_and_move_gripper()
 
-    def _get_pygame_events(self):
+    def _get_pygame_events(self) -> None:
         """update the pygame events, used to read out the current axis/button/hat values"""
         for _ in pygame.event.get():
             pass

@@ -7,7 +7,7 @@ from airo_robots.grippers.parallel_position_gripper import (
 )
 
 
-def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositionGripperSpecs):
+def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositionGripperSpecs) -> None:
     input("gripper will now open")
     gripper.move(specs.max_width)
     assert abs(gripper.get_current_width() - specs.max_width) < 0.003

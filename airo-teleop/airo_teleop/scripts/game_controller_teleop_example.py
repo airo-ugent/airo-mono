@@ -18,7 +18,7 @@ from airo_teleop.game_controller_teleop import GameControllerTeleop
     default="LogitechF310Layout",
     help="Layout to use, must exactly match the variable name name",
 )
-def test_teleop(ip_address: str, no_gripper: bool, controller_layout: str):
+def test_teleop(ip_address: str, no_gripper: bool, controller_layout: str) -> None:
     robot = UR_RTDE(ip_address, UR_RTDE.UR3E_CONFIG)
     if not no_gripper:
         gripper = Robotiq2F85(ip_address)

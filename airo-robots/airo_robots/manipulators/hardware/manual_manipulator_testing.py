@@ -6,7 +6,7 @@ from airo_spatial_algebra import SE3Container
 np.set_printoptions(precision=3)
 
 
-def manual_test_servo(robot: PositionManipulator, control_freq: int = 500, linear_speed=0.2):
+def manual_test_servo(robot: PositionManipulator, control_freq: int = 500, linear_speed: float = 0.2) -> None:
     """test servo functionality by having robot move to pose and then do zig-zag motion for periods of 1 sec with the specified linear speed
     while sending servo commands at the specified control freq.
 
@@ -32,7 +32,7 @@ def manual_test_servo(robot: PositionManipulator, control_freq: int = 500, linea
         robot.servo_to_tcp_pose(pose, 1 / control_freq)
 
 
-def manual_test_ik_fk(robot: PositionManipulator):
+def manual_test_ik_fk(robot: PositionManipulator) -> None:
 
     pose = SE3Container.from_euler_angles_and_translation(
         np.array([0, np.pi, 0.0001]), np.array([0, -0.3, 0.2])
@@ -56,7 +56,7 @@ def manual_test_ik_fk(robot: PositionManipulator):
     robot.move_to_joint_configuration(joint_config)
 
 
-def manual_test_move(robot: PositionManipulator):
+def manual_test_move(robot: PositionManipulator) -> None:
     start_pose = SE3Container.from_euler_angles_and_translation(
         np.array([0, np.pi / 4 * 3, 0.0001]), np.array([0, -0.3, 0.2])
     ).homogeneous_matrix
@@ -70,7 +70,7 @@ def manual_test_move(robot: PositionManipulator):
     robot.move_to_tcp_pose(end_pose)
 
 
-def manual_test_robot(robot: PositionManipulator):
+def manual_test_robot(robot: PositionManipulator) -> None:
     print(robot.get_joint_configuration())
     print(robot.get_tcp_pose())
     input(

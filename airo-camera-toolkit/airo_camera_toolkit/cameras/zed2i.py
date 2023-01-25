@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, List, Optional
 
 try:
     import pyzed.sl as sl
@@ -54,7 +54,7 @@ class Zed2i(StereoRGBDCamera):
     RESOLUTION_VGA = sl.RESOLUTION.VGA  # (672x376)
     RESOLUTIONS = (RESOLUTION_720, RESOLUTION_1080, RESOLUTION_2K, RESOLUTION_VGA)
 
-    def __init__(
+    def __init__(  # type: ignore[no-any-unimported]
         self,
         resolution: sl.RESOLUTION = RESOLUTION_2K,
         fps: int = 15,
@@ -129,7 +129,7 @@ class Zed2i(StereoRGBDCamera):
         matrix[:3, 3] = self.camera.get_camera_information().camera_configuration.calibration_parameters.T
         return matrix
 
-    def _grab_latest_image(self):
+    def _grab_latest_image(self) -> None:
         """grabs (and waits for) the latest image(s) from the camera, rectifies them and computes the depth information (based on the depth mode setting)"""
         # this is a blocking call
         # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1Camera.html#a2338c15f49b5f132df373a06bd281822
@@ -170,7 +170,7 @@ class Zed2i(StereoRGBDCamera):
         return ImageConverter.from_opencv_format(image).image_in_numpy_format
 
     @staticmethod
-    def list_camera_serial_numbers():
+    def list_camera_serial_numbers() -> List[str]:
         """
         List all connected ZED cameras
         can be used to select a device ID or to check if cameras are connected.
@@ -182,10 +182,10 @@ class Zed2i(StereoRGBDCamera):
     # this is important if you want to reuse the camera
     # multiple times within a python script, in which case you should release the camera before creating a new object.
     # cf. https://stackoverflow.com/questions/865115/how-do-i-correctly-clean-up-a-python-object
-    def __enter__(self):
+    def __enter__(self) -> StereoRGBDCamera:
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         self.camera.close()
 
 

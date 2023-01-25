@@ -44,7 +44,7 @@ class PositionManipulator:
         pass
 
     @abstractmethod
-    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None):
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None) -> None:
         """move to a desired pose (synchronous). This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory.
 
@@ -54,19 +54,19 @@ class PositionManipulator:
         """
 
     @abstractmethod
-    def move_linear_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None):
+    def move_linear_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None) -> None:
         """move to desired pose in a straight line (synchronous). This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory."""
 
     @abstractmethod
     def move_to_joint_configuration(
         self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
-    ):
+    ) -> None:
         """move to a desired joint configuration (synchronous). This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory."""
 
     @abstractmethod
-    def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, time: float):
+    def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, time: float) -> None:
         """servo to the desired tcp pose for the specified time (the function blocks for this time). Servoing implies 'best-effort' movements towards the target pose instead of
         open-loop trajectories, so this function can be used for 'closed-loop'/higher-frequency control.
         Note that the motion is not guaranteed to be a straight line in EEF space.
@@ -80,7 +80,7 @@ class PositionManipulator:
         """
 
     @abstractmethod
-    def servo_to_joint_configuration(self, joint_configuration: JointConfigurationType, time: float):
+    def servo_to_joint_configuration(self, joint_configuration: JointConfigurationType, time: float) -> None:
         """servo to the desired joint  pose for the specified time (the function blocks for this time). Servoing implies 'best-effort' movements towards the target pose instead of
         open-loop trajectories, so this function can be used for 'closed-loop'/higher-frequency control.
 
@@ -109,6 +109,6 @@ class PositionManipulator:
     def is_tcp_pose_kinematically_reachable(self, tcp_pose: HomogeneousMatrixType) -> bool:
         raise NotImplementedError
 
-    def execute_joint_trajectory(self, joint_trajectory: JointTrajectory):
+    def execute_joint_trajectory(self, joint_trajectory: JointTrajectory) -> None:
         """executes a joint trajectory (synchronously) by trying to reach the waypoints at their target times (without coming to a halt at each waypoint)"""
         raise NotImplementedError

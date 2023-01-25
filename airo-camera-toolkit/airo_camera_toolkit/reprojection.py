@@ -50,8 +50,8 @@ def reproject_to_frame(
     camera_intrinsics: CameraIntrinsicsMatrixType,
     camera_in_frame_pose: HomogeneousMatrixType,
     depth_map: NumpyDepthMapType,
-    mask_size=11,
-    depth_percentile=0.05,
+    mask_size: int = 11,
+    depth_percentile: float = 0.05,
 ) -> np.ndarray:
     """
     Reprojects coordinates on the image plane to a base frame, as defined by the camera in frame pose.
