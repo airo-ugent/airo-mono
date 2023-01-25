@@ -41,3 +41,11 @@ def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositio
     print("gripper should have been opened before this line has been printed")
     print(f"{future.done()=}")
     print("done should now be true")
+
+    input(
+        "we will now show a race condition if you use the async and sync interfaces interleaved: \n  press any key to start"
+    )
+    future = async_gripper.close()
+    # before this has finished, call open on the sync interface
+    gripper.open()
+    print(future.result(timeout=10))

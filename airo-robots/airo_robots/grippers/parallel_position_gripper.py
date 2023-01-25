@@ -1,7 +1,9 @@
 from abc import abstractmethod
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future
 from dataclasses import dataclass
 from typing import Optional
+
+from airo_robots.async_executor_mixin import AsyncExecutorMixin
 
 
 @dataclass
@@ -89,8 +91,8 @@ class ParallelPositionGripper:
         raise NotImplementedError
 
 
-class ParallelGripperDecorator(ParallelPositionGripper):
-    """Decorator base class for the Parallel Gripper class"""
+class ParallelGripperWrapper(ParallelPositionGripper):
+    """Wrapper base class for the Parallel Gripper class, can be used to create decorators, adapters,..."""
 
     def __init__(self, gripper: ParallelPositionGripper) -> None:
         self.wrapped_gripper = gripper
@@ -125,24 +127,31 @@ class ParallelGripperDecorator(ParallelPositionGripper):
         return self.wrapped_gripper.is_an_object_grasped()
 
 
-class AsyncParallelGripper(ParallelGripperDecorator):
-    # TODO: refactor this async out as a base class that can be used across all HW in airo-robots.
+class AsyncParallelGripper(ParallelGripperWrapper, AsyncExecutorMixin):
+    """
+    Wrapper class for ParallelGrippers that makes the 'moving' methods asynchronous, which allows to do other computations in the meantime.
+
+    This class is not guaranteed to be thread-safe. If you call 'move' twice in a row, they will be executed sequentially because there is only one thread
+    in the async threadpool. However, if you were to call 'open' on the async and 'close' on the synchronous gripper underneath, all kinds of bad behavior can occur.
+
+    It is up to the user to use it as intented: to send one command at a time but to do other things while waiting for the command to finish."""
+
     def __init__(self, gripper: ParallelPositionGripper) -> None:
-        super().__init__(gripper)
-        self._thread_pool = ThreadPoolExecutor(max_workers=1)
-
-    def _threadpool_execution(self, func, *args, **kwargs) -> Future:
-        """helper function to execute a function call asynchronously in the threadpool.
-
-        returns a future which can be waited for (cf. join on a thread) or can be polled to see if the function has finished
-        see https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Future
-        """
-        future = self._thread_pool.submit(func, *args, **kwargs)
-        return future
+        ParallelGripperWrapper.__init__(self, gripper=gripper)
+        AsyncExecutorMixin.__init__(self)
 
     def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> Future:
-        """synchronously move the fingers to the desired width between the fingers[m].
+        """Asynchronously move the fingers to the desired width between the fingers[m].
         Optionally provide a speed and/or force, that will be used from then on for all move commands.
+
         Returns a Future object"""
 
         return self._threadpool_execution(self.wrapped_gripper.move, width, speed, force)
+
+    def open(self) -> Future:
+        """Asynchronously open the gripper."""
+        return self._threadpool_execution(self.wrapped_gripper.open)
+
+    def close(self) -> Future:
+        """Asynchronously closes the gripper"""
+        return self._threadpool_execution(self.wrapped_gripper.close)
