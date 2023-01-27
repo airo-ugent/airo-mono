@@ -263,7 +263,7 @@ for _ in range(12):
 ```
 Every time your run your script now, you should see a random scene like this one:
 
- TODO image of croissants on a table
+![Croissants on table](https://i.imgur.com/A0z9skU.jpg)
 
 The full code for this tutorial can be found in two scripts in this directory:
 * [polyhaven_snapshot.py](polyhaven_snapshot.py): Creates the `asset_snapshot.json`.
