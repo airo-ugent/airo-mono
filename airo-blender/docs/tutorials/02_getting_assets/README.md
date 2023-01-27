@@ -1,6 +1,5 @@
 # Tutorial 2 - Getting assets :gift:
 
-
 ## 2.1 Introduction :books:
 Assets can be many things, models, materials, environment textures, lights etc.
 They are a powerful way to improve the fidelity of your synthetic data.
@@ -181,10 +180,11 @@ We can create a croissant instance like so:
 bpy.ops.object.collection_instance_add(collection=croissant_collection.name)
 croissant = bpy.context.object
 ```
+Now the croissant should be visible in your scene:
 
-TODO render of croissant here
+![Croissant](https://i.imgur.com/NOKcrvX.jpg)
 
-### 2.4.3 Adding randomization :game_die:
+### 2.4.3 Adding coherent randomization :game_die:
 A single croissant is a bit sad, so lets add a whole bunch of them:
 ```python
 for _ in range(20):
@@ -226,35 +226,56 @@ table = bpy.context.object
 ```
 Now you should see a table in your scene, however your croissants are still scattered on the floor.
 Let's change that by using the [bounding box](https://blender.stackexchange.com/a/8470/161432) of the table.
-It's a bit tricky because Blender doesn't supply us with the bounding boxes of collections of collections instances.
-So to find the bounding box of our instance, we have to iterate over mesh objects in collection it references, and calculate the bounding box of those bounding boxes.
+This a bit tricky because when you ask Blender the bounding box of a collection instance, it just gives you all zeroes (the bounding box of the empty).
+So for convenience, we have function in `airo_blender` that takes that into account:
+
 ```python
-# Bounding box of the table
-min_negative_corner = np.array([np.inf, np.inf, np.inf])
-max_positive_corner = np.array([-np.inf, -np.inf, -np.inf])
-
-for object in table_collection.objects:
-    print(object.name)
-    bounding_box = np.array(object.bound_box)
-    negative_corner = bounding_box.min(axis=0)
-    positive_corner = bounding_box.max(axis=0)
-
-    min_negative_corner = np.minimum(min_negative_corner, negative_corner)
-    max_positive_corner = np.maximum(max_positive_corner, positive_corner)
-
-x_min, y_min, z_min = min_negative_corner
-x_max, y_max, z_max = max_positive_corner
+min_corner, max_corner = ab.axis_aligned_bounding_box(table_collection.objects)
 ```
-However, we also provide a convenience function in `airo_blender` that handles (globally) axis-aligned bounding boxes for objects, collection instances and collections.
+Now you can rewrite the croissant loop to create them on top of the table:
 ```python
-# TODO implement
+x_min, y_min, _ = min_corner
+x_max, y_max, z_max = max_corner
+
+# Load the croissant collection
+croissant_info = [asset for asset in assets if asset["name"] == "croissant"][0]
+croissant_collection = ab.load_asset(**croissant_info)
+
+# Create 12 croissant instances
+for _ in range(12):
+    bpy.ops.object.collection_instance_add(collection=croissant_collection.name)
+    croissant = bpy.context.object
+
+    # Place the croissant randomly on the table
+    margin = 0.05
+    x = np.random.uniform(x_min + margin, x_max - margin)
+    y = np.random.uniform(y_min + margin, y_max - margin)
+    z = z_max
+    croissant.location = x, y, z
+
+    # Randomize rotation around the z-axis
+    rz = np.random.uniform(0, 2 * np.pi)
+    croissant.rotation_euler = 0, 0, rz
+
+    # Randomize the 3 scale components
+    scale = np.random.uniform(0.6, 1.4, size=3)
+    croissant.scale = scale
 ```
+Every time your run your script now, you should see a random scene like this one:
+
+ TODO image of croissants on a table
+
+The full code for this tutorial can be found in two scripts in this directory:
+* [polyhaven_snapshot.py](polyhaven_snapshot.py): Creates the `asset_snapshot.json`.
+* [tutorial_2.py](tutorial_2.py): Creates a random scene with croissants on a table.
 
 # 2.5 Conclusion
 Now you know how to load Blender assets from your Asset Libraries into your scenes from Python.
-You also know how to filter these assets, to bring structure and coherence to your scenes.
+You also know how to filter these assets and how to add coherent randomizations to your scenes.
 
 However it's up to you how far you want to take this.
 It's still an open question how much coherence and context matter for synthetic data generation.
 For example, you might be able to train a pretty good croissant detector by cutting and pasting croissants on random images from the internet.
 I guess it all depends on which task you are trying to learn.
+
+In the following tutorial, we will teach you how you can use what you've learned to created a COCO keypoint dataset.
