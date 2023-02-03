@@ -1,4 +1,5 @@
 from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Any, Callable
 
 
 class AsyncExecutorMixin:
@@ -13,7 +14,7 @@ class AsyncExecutorMixin:
     def __init__(self) -> None:
         self._thread_pool = ThreadPoolExecutor(max_workers=1)
 
-    def _threadpool_execution(self, func, *args, **kwargs) -> Future:
+    def _threadpool_execution(self, func: Callable, *args: Any, **kwargs: Any) -> Future:
         """helper function to execute a function call asynchronously in the threadpool.
 
         returns a future which can be waited for (cf. join on a thread) or can be polled to see if the function has finished
