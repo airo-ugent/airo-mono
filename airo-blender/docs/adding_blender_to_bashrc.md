@@ -1,6 +1,6 @@
 ### Adding Blender to `.bashrc`
 
-I recommend to add the path to the system PATH.
+I recommend adding the path to the blender directory to the system PATH.
 
 You can do this by adding this line anywhere in your `.bashrc` file in your home directory:
 ```bash

@@ -1,4 +1,4 @@
-# Tutorial 1 - Getting to know the Python API :notebook_with_decorative_cover:
+# Tutorial 1 - Getting to know the Python API :snake:
 Welcome to the first tutorial of this series.
 In this tutorial we will get to know the Blender Python API and render your first ray-traced synthetic image!
 
@@ -8,7 +8,7 @@ We will cover:
 * Running Python scripts and some basic command
 * Rendering an image
 * Enabling Blender's ray tracer: Cycles
-* Saving additional annotations, e.g. the center of an object
+* Saving additional annotations, e.g. the pose of an object
 
 > The full Blender Python API docs can be [here](https://docs.blender.org/api/current/index.html).
 
@@ -17,11 +17,11 @@ Let's start by opening up Blender. You can do this by running the `blender` exec
 ```
 ./airo-blender/blender/blender-3.4.1-linux-x64/blender
 ```
-Because we will be running the `blender` executable often, so I recommend adding its directory to your system `PATH`.
+Because we will be running the `blender` executable often, I recommend adding its directory to your system `PATH`.
 Please see [here](../../adding_blender_to_bashrc.md) for an explanation.
 Then you will be able to open Blender by simply running `blender`.
 
-## 1.2 The Python Console :snake:
+## 1.2 The Python Console :pager:
 Now Blender is opened, look for and click on the `Scripting` tab in the top bar.
 This simply changes Blender's UI layout to be more convenient for scripting.
 
@@ -51,7 +51,7 @@ blender -P tutorial_1.py
 ```
 This should launch Blender again and show the default scene with the cube moved up by 5 meters.
 
-> The `-P` option in the command above tells Blender to execute the python script. Without it, blender will try, unsuccessfully, to open it as a `.blend` file.
+> :pencil: The `-P` option in the command above tells Blender to execute the python script. Without it, blender will try, unsuccessfully, to open it as a `.blend` file.
 
 
 Now we can start editing this file and build a more complex scene.
@@ -84,13 +84,20 @@ cylinder.location.z = 1.0
 cylinder.rotation_euler.x = 3.14 / 2.0
 ```
 
+> :gem: `bpy.ops.mesh.primitive_cylinder_add()` is one of Blender's many operators.
+> Blender's UI is actually defined in Python, which means that you can do almost everything in your scripts that you can do in the UI!
+> To figure you which operators Blender is running, you can change on of the open *Editors* to an [*Info Editor*](https://docs.blender.org/manual/en/latest/editors/info_editor.html).
+>
+> Additionally, in `Edit > Preferences > Interface`, check the two boxes `Developer Extras` and `Python Tooltips`.
+> If you then hover over a property in the UI, e.g. the Location X of the default cube, Blender will show `bpy.data.objects["Cube"].location[0]` in the tooltip.
+
 ### 1.3.2 Adding a material
-We have a simple scene now, unfortunately, it's pretty gray and boring right now.
+We have a simple scene, unfortunately it's pretty gray and boring right now.
 To make it more interesting we need to add materials to our objects.
 
 Adding a red material to the cylinder can be done using these commands:
 ```python
-red = (1.0, 0.0, 0.0, 1.0)
+red = (1.0, 0.0, 0.0, 1.0) # Blender requires a tuple with 4 values
 material = bpy.data.materials.new(name="Cylinder Material")
 material.use_nodes = True
 bdsf = material.node_tree.nodes["Principled BSDF"]
@@ -105,12 +112,12 @@ In this case, we can replace the snippet above with the code below:
 ```python
 import airo_blender as ab
 
-red = (1.0, 0.0, 0.0, 1.0)
+red = (1.0, 0.0, 0.0) # We assume alpha=1 when the tuple has 3 values
 ab.add_material(cyclinder, red)
 ```
-> Note: by default Blender shows your scene in a fast to render "Solid" shading mode.
+> :pencil: Blender by default shows your scene in a fast-to-render "Solid" shading mode.
 > To see what your material will look like in the final render, change it to "Rendered" mode.
-> (Click the right-most little sphere in the top-right corner of the viewport.)
+> (Click the [right-most little sphere in the top-right corner of the viewport](https://docs.blender.org/manual/en/latest/editors/3dview/introduction.html#header-region).)
 
 ### 1.3.3 A nicer background
 By default, the Blender "world" has a pretty dark gray background.
@@ -119,6 +126,8 @@ Let's set that to a brighter color.
 ```python
 bpy.data.worlds["World"].node_tree.nodes["Background"].inputs["Color"].default_value = (0.02, 0.0, 1.0, 1.0)
 ```
+>If you've enable tooltips as described in a previous note, you can find this path in the UI by going to the *Properties Editor*.
+> Then click the World icon and then hover over the *Color*.
 
 ## 1.4 Rendering an image :camera:
 Rendering an image can be done simply by adding this line at the end of your scripts:
@@ -148,7 +157,7 @@ cylinder.location.z = 0.5
 cylinder.rotation_euler.x = 3.14 / 2.0
 
 # Adding a nice material
-red = (1.0, 0.0, 0.0, 1.0)
+red = (1.0, 0.0, 0.0)
 ab.add_material(cylinder, red)
 
 # Making the background brighter
@@ -171,7 +180,9 @@ More rays will result in a less noisy image, but takes longer to render:
 ```python
 bpy.context.scene.cycles.samples = 64
 ```
-> It's still an open question how much sample count influences sim2real transfer of models trained on synthetic images.
+> :information_source: It's still an open question how much sample count influences sim2real transfer of models trained on synthetic images.
+> Using less samples is computationally attractive, but does it degrade model performance?
+> Or can we consider render noise a from of harmless (of even helpfull) data augmentation?
 
 To set the image resolution, you can simply:
 ```python
@@ -180,13 +191,10 @@ bpy.context.scene.render.resolution_y = 512
 ```
 
 
-Finally, if we set the following path:
+Finally, if we set the `render.filepath` and turn on the `write_still` option in the render command:
+
 ```python
 bpy.context.scene.render.filepath = "red_cylinder.jpg"
-```
-
-And turn on the `write_still` option in the render command:
-```python
 bpy.ops.render.render(write_still=True)
 ```
 
@@ -261,7 +269,7 @@ The output in the terminal where you started Blender:
             (0.0000, 1.0000,  0.0008, 0.5000)
             (0.0000, 0.0000,  0.0000, 1.0000)>
 ```
-As an example, we'll save this pose similarly to the [BOP format](https://github.com/thodan/bop_toolkit/blob/master/docs/bop_datasets_format.md), where they save:
+As an example, we'll save this pose similar to how the [BOP format](https://github.com/thodan/bop_toolkit/blob/master/docs/bop_datasets_format.md) does it, where they save:
 * `cam_R_m2c` - 3x3 rotation matrix R_m2c (saved row-wise).
 * `cam_t_m2c` - 3x1 translation vector t_m2c.
 * lengths are in millimeters
