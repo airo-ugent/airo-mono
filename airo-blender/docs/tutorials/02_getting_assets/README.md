@@ -12,9 +12,9 @@ The idea is that you download a "raw" 3D asset from the internet, e.g. a mesh as
 Then you manual import this asset into Blender.
 When you're lucky, this is painless, e.g. you import an `.obj` and it results in a correctly oriented and scaled Blender object.
 Often however you will have to do some tweaking to get the asset looking right.
-For PBR materials, you often get a zip of texture maps, and you need to build a simple shader graph combine into a Blender material.
+For PBR materials, you often get a zip of texture maps, and you need to build a simple shader graph that combines the maps into a Blender material.
 
-Finally when you're satisfied with how the asset looks, you can right-click it in the Outliner to `Mark as Asset`.
+Finally when you're satisfied with how the asset looks, you can right-click it in the [Outliner](https://docs.blender.org/manual/en/3.4/editors/outliner/introduction.html) to `Mark as Asset`.
 From that point on, the "raw" asset has become a **Blender asset**.
 
 If you then save your `.blend` file into an **Asset Library**, which is a specific directory, by default `~/Documents/Blender/Assets/`, Blender will automatically discover it.
@@ -22,7 +22,7 @@ Then you can simply drag-and-drop any Blender asset from the Asset Browser into 
 
 ## 2.2 Poly Haven :sunrise_over_mountains:
 [Poly Haven](https://polyhaven.com/) is one of the best providers of high-quality free 3D assets.
-It also has great integration with Blender through it's addon, which downloads all Poly Haven assets directly as Blender assets.
+It also has great integration with Blender through its addon, which downloads all Poly Haven assets directly as Blender assets.
 They encourage you to purchase it, but they also made it publically available on [github](https://github.com/Poly-Haven/polyhavenassets).
 
 In this rest of this tutorial will show how to load the the Poly Haven assets from Python.
@@ -170,7 +170,7 @@ The difference between these 3 is the following:
 > This object data can be completely or partially shared by [linking](https://docs.blender.org/manual/en/latest/scene_layout/object/editing/duplicate_linked.html).
 
 > In the Blender you can [instance a collection](https://docs.blender.org/manual/en/latest/scene_layout/object/properties/instancing/collection.html) with `Add > Collection Instance`.
-> You then get an Empty object that reference the collection you chose.
+> You then get an Empty object that references the collection you chose.
 > If you want more freedom to edit the created instance, you can click `Object > Apply > Make Instances Real`. The Empty object now gets remove and the objects of collection get [duplicated](https://docs.blender.org/manual/en/latest/scene_layout/object/editing/duplicate.html).
 > Note that duplicated objects are not completely separate by default, some data-blocks like materials remain shared.
 
@@ -278,4 +278,4 @@ It's still an open question how much coherence and context matter for synthetic 
 For example, you might be able to train a pretty good croissant detector by cutting and pasting croissants on random images from the internet.
 I guess it all depends on which task you are trying to learn.
 
-In the following tutorial, we will teach you how you can use what you've learned to created a COCO keypoint dataset.
+In the following tutorial, we will teach you how you can use what you've learned to create a COCO keypoint dataset.
