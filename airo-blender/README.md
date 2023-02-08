@@ -5,7 +5,7 @@
 A Python package on top of the [Blender Python API](https://docs.blender.org/api/current/index.html) to
 generate synthetic data for robotic manipulation.
 
-To get started, please see the [tutorials](docs/tutorials) directory after completing the installation.
+To get started, please see the [tutorials](docs/tutorials) directory after completing the installation. :notebook_with_decorative_cover:
 
 
 ## Installation

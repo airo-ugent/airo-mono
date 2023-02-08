@@ -19,7 +19,7 @@ cylinder.location.z = 0.5
 cylinder.rotation_euler.x = 3.14 / 2.0
 
 # Adding a nice material
-red = (1.0, 0.0, 0.0, 1.0)
+red = (1.0, 0.0, 0.0)
 ab.add_material(cylinder, red)
 
 # Making the background brighter
