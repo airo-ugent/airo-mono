@@ -3,6 +3,8 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar
 
+from airo_robots.async_executor_mixin import AsyncExecutorMixin
+
 
 @dataclass
 class ParallelPositionGripperSpecs:
@@ -123,17 +125,9 @@ class AsyncParallelPositionGripper(ParallelPositionGripperTemplate[Future]):
     """
 
 
-class SyncWrapper(ParallelPositionGripper):
-    """
-    This is a default wrapper to turn an asynchronous gripper implementation into a synchronous one.
-    It waits for the future object if required before returning the return value of the wrapped gripper's call.
-    """
-
+class ParallelPositionGripperWrapper(ParallelPositionGripperTemplate):
     def __init__(self, gripper: AsyncParallelPositionGripper) -> None:
         self._gripper = gripper
-
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
-        return self._gripper.move(width, speed, force).result(timeout=10)
 
     @property
     def speed(self) -> float:
@@ -153,3 +147,26 @@ class SyncWrapper(ParallelPositionGripper):
 
     def get_current_width(self) -> float:
         return self._gripper.get_current_width()
+
+
+class SynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[None]):
+    """
+    This is a default wrapper to turn an asynchronous gripper implementation into a synchronous one.
+    It waits for the future object if required before returning the return value of the wrapped gripper's call.
+    """
+
+    def __init__(self, gripper: AsyncParallelPositionGripper) -> None:
+        super().__init__(gripper)
+
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
+        return self._gripper.move(width, speed, force).result(timeout=10)
+
+
+class AsynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[Future], AsyncExecutorMixin):
+    """
+    This is a default wrapper to turn a synchronous gripper implementation into an asynchronous one.
+    It executes the functions in a separate thread and returns a future object to query.
+    """
+
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> Future:
+        return self._threadpool_execution(self._gripper.move, width, speed, force)
