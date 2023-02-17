@@ -1,9 +1,12 @@
+""" asynchronous and synchronous base classes and wrappers for parallel-jax position-controlled grippers"""
+
+
 from abc import ABC, abstractmethod
 from concurrent.futures import Future
 from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar
 
-from airo_robots.async_executor_mixin import AsyncExecutorMixin
+from airo_robots.async_executor import AsyncExecutor
 
 
 @dataclass
@@ -125,7 +128,7 @@ class AsyncParallelPositionGripper(ParallelPositionGripperTemplate[Future]):
     """
 
 
-class ParallelPositionGripperWrapper(ParallelPositionGripperTemplate):
+class ParallelPositionGripperWrapper(ParallelPositionGripperTemplate[T]):
     def __init__(self, gripper: AsyncParallelPositionGripper) -> None:
         self._gripper = gripper
 
@@ -162,11 +165,15 @@ class SynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[N
         return self._gripper.move(width, speed, force).result(timeout=10)
 
 
-class AsynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[Future], AsyncExecutorMixin):
+class AsynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[Future]):
     """
     This is a default wrapper to turn a synchronous gripper implementation into an asynchronous one.
     It executes the functions in a separate thread and returns a future object to query.
     """
 
+    def __init__(self, gripper: ParallelPositionGripper) -> None:
+        super().__init__(gripper)
+        self.async_executor = AsyncExecutor()
+
     def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> Future:
-        return self._threadpool_execution(self._gripper.move, width, speed, force)
+        return self.async_executor(self._gripper.move, width, speed, force)

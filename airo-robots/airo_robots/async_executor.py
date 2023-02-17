@@ -2,7 +2,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Callable
 
 
-class AsyncExecutorMixin:
+class AsyncExecutor:
     """Helper class to create asynchronous hardware interfaces.
 
     Note that using this class, even though it has only one worker in the executor pool, is not necessarily thread safe if you do not
@@ -22,3 +22,11 @@ class AsyncExecutorMixin:
         """
         future = self._thread_pool.submit(func, *args, **kwargs)
         return future
+
+    def __call__(self, func: Callable, *args: Any, **kwargs: Any) -> Future:
+        """execute the function call asynchronously in the threadpool.
+
+        returns a future which can be waited for (cf. join on a thread) or can be polled to see if the function has finished
+        see https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Future
+        """
+        return self._threadpool_execution(func, *args, **kwargs)
