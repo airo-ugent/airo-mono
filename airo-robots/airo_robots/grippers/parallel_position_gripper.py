@@ -128,8 +128,15 @@ class AsyncParallelPositionGripper(ParallelPositionGripperTemplate[Future]):
     """
 
 
-class ParallelPositionGripperWrapper(ParallelPositionGripperTemplate[T]):
-    def __init__(self, gripper: AsyncParallelPositionGripper) -> None:
+U = TypeVar("U")
+
+
+class ParallelPositionGripperWrapper(ParallelPositionGripperTemplate[T], Generic[T, U]):
+    """abstract base class for all wrappers of the interfaces.
+    These can wrap return types of one interface to that of the other, hence there are two Type variables.
+    T is that of the actual interface, U that of the wrapped instance."""
+
+    def __init__(self, gripper: ParallelPositionGripperTemplate[U]) -> None:
         self._gripper = gripper
 
     @property
@@ -151,8 +158,12 @@ class ParallelPositionGripperWrapper(ParallelPositionGripperTemplate[T]):
     def get_current_width(self) -> float:
         return self._gripper.get_current_width()
 
+    @abstractmethod
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> T:
+        pass
 
-class SynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[None]):
+
+class SynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[None, Future]):
     """
     This is a default wrapper to turn an asynchronous gripper implementation into a synchronous one.
     It waits for the future object if required before returning the return value of the wrapped gripper's call.
@@ -165,7 +176,7 @@ class SynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[N
         return self._gripper.move(width, speed, force).result(timeout=10)
 
 
-class AsynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[Future]):
+class AsynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[Future, None]):
     """
     This is a default wrapper to turn a synchronous gripper implementation into an asynchronous one.
     It executes the functions in a separate thread and returns a future object to query.
