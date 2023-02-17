@@ -1,11 +1,14 @@
 # airo-mono
 The goals of this repo are
-- to provide wrappers to existing libraries or implementions of common operations in our work on Robotic Perception/control. These should
-    - facilitate research and development
+- first and foremost to
+    - facilitate our research and development in robotic perception and control
     - facilitate the creation of demos/applications à la Folding competition @ IROS22
-- to do this in an opt-in fashion, such that users can choose which components to use and which not. This is a.o. achieved by creating base classes / interfaces for abstracting (simulated) hardware to allow for interchanging different simulators/ hardware on the one hand and different 'decision making frameworks' on the other hand.
-- to make it very easy to use this repo. We want to avoid a steep learning curve as this repo is also meant te be used by people without too much experience in robotic manipulation.
-- to avoid reinventing the wheel while doing the above, by levering existing libraries if possible, possible meaning that they have the desired features (obviously) and have an acceptable ease-of-use, level of documentation, robustness and code quality.
+by  provide either wrappers to existing libraries or implementions for common functionalities and operations.
+- to do this in an opt-in fashion. Users should be able to choose which components to use and which not on the one hand and which frameworks/tools/... to use this repo with, e.g. to allow for interchanging different simulators/ hardware on the one hand and different 'decision making frameworks' on the other hand. This is a.o. achieved by creating base classes / interfaces for abstracting (simulated) hardware.
+- to make it easy to use this repo. We want to avoid a steep learning curve as this repo is also meant te be used by people without too much experience in robotic manipulation.
+- to avoid reinventing the wheel while doing the above by levering existing libraries if possible. Possible means that existing alternatives have the desired features (obviously) and have an acceptable ease-of-use, level of documentation, robustness and code quality.
+
+Particularly important to note is that , in the spirit of this last item, this repo does not offer advanced robotics features such as optimization-based motion planning, collision checking... If you need such things, you have to use an existing framework such as Moveit, OMPL, Drake,... However these frameworks often come with a steeper learning curve due to their genericity, which is why we offer some basic functionalities in 'barebone python'. Simple things should be simple. You could however still use certain functionalities (such as converting pixels to SE3 poses), then use a framework like Drake to generate a collision-free trajectory to the robot and then interface the robot to drake using our drivers.
 
 ## Functionality
 below is a short overview of the packages in this repo. Each package has a dedicated readme file with more information.
@@ -16,13 +19,14 @@ airo-camera-toolkit     # code for working with RGB(D) Images and cameras
 airo-robots             # code for working with robot arms and grippers
 airo-teleop             # code for teleoperating robot arms
 ```
-For realtime visualisation of robotics data  we prefer [rerun.io](https://www.rerun.io/) over the manually hacking something together with opencv/pyqt/...
+For realtime visualisation of robotics data  we prefer [rerun.io](https://www.rerun.io/) over the manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK.
 
 ## Installation
-There are a number ways to install (a number of) packages from this repo, based on whether you want to use them or you also want to make changes to them:
+There are a number of ways to install packages from this repo, based on whether you want to use them or you also want to make changes to them:
 
-if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install -e 'git+https://github.com/airo-ugent/airo-core@<branch>#egg=<package-dir>&subdirectory=<package-dir>'[external]`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/).
+if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install ' <pkg-name>[external] @ git+https://github.com/airo-ugent/airo-core@<branch/tag>#subdirectory=<package-dir>'`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/). There will now be a `src/` folder in your project where pip has downloaded the repo and from where the package is installed, but you can ignore this as it will be automatically excluded from source control.
 
+Alternatively you can add this repo as a submodule and install the relevant packages afterwards with regular pip commands. This might be useful for as long as this repo is making fast/breaking changes without good version management.
 
 If you want to make changes, you should probably clone this repo first
 and then install all relevant packages in [editable](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs) mode, so that any change you make is immediately 'visible' to your python interpreter. You can simply run `conda env create -f environment.yaml`, which does this for you (and also installs some binaries for convenience).
@@ -87,7 +91,7 @@ The camera class for example, could easily be wrapped in a ROS node later after 
 
 If we ever were to use Moveit, the IK of the real robot could for example send a request to moveit using the ros_bridge. Or you could directly interact with Moveit w/o using the AIRO core interface, so you are also not limited by it?
 
-In short, it should provide a clear interface that can be implement in any HW/simulation and used to execute plans devised in any motion planning framework. If desired, you could bypass the Interface.
+In short, it should provide a clear interface that can be implement in any HW/simulation and used to execute plans devised in any motion planning framework. If desired, you could bypass the interface.
 
 
 inspiration sources:
@@ -96,4 +100,4 @@ inspiration sources:
 
 
 Why not use ROS for everyting?
-- great tool, but hard to create clean code and so generic that it makes easy things hard... But this is not a provably right choice.
+ROS is a great tool, but hard to create clean code and so generic that it makes easy things hard... Furthermore ROS2 still But this is not a provably right choice, it is driven by (limited) personal experience, the desire for a flat learning curve to serve short-lived projects such as master thesis etc.
