@@ -1,32 +1,23 @@
 # airo-mono
-## rationale
-- create base classes / interfaces for abstracting (simulated) hardware to allow for interchanging different simulators/ hardware on the one hand and different 'decision making frameworks' on the other hand.
-- provide functionality that is required to quickly create robot behavior à la Folding competition @ IROS22
-- facilitate research by providing, wrapping or linking to common operations for Robotic Perception/control
+The goals of this repo are
+- to provide wrappers to existing libraries or implementions of common operations in our work on Robotic Perception/control. These should
+    - facilitate research and development
+    - facilitate the creation of demos/applications à la Folding competition @ IROS22
+- to do this in an opt-in fashion, such that users can choose which components to use and which not. This is a.o. achieved by creating base classes / interfaces for abstracting (simulated) hardware to allow for interchanging different simulators/ hardware on the one hand and different 'decision making frameworks' on the other hand.
+- to make it very easy to use this repo. We want to avoid a steep learning curve as this repo is also meant te be used by people without too much experience in robotic manipulation.
+- to avoid reinventing the wheel while doing the above, by levering existing libraries if possible, possible meaning that they have the desired features (obviously) and have an acceptable ease-of-use, level of documentation, robustness and code quality.
 
-
-The idea is that by having the hardware interface, that we do not have to choose permanently between Moveit or Drake as planning framework and ROS vs. ur_rtde for communication with the robot, or whether to communicate sensor data over ROS or not.
-
-The camera class for example, could easily be wrapped in a ROS node later after all functional code has already been written in a class that inherits from the base RGBD base class. In a simulator you can also easily use the same base class (with partial implementation of the interface), which allows for using the same API and possible for easily swapping out real and simulated hardware.
-
-If we ever were to use Moveit, the IK of the real robot could for example send a request to moveit using the ros_bridge. Or you could directly interact with Moveit w/o using the AIRO core interface, so you are also not limited by it?
-
-In short, it should provide a clear interface that can be implement in any HW/simulation and used to execute plans devised in any motion planning framework. If desired, you could bypass the Interface.
-
-
-inspiration sources:
-- Berkeley Autolab: [core](https://github.com/BerkeleyAutomation/autolab_core) [ur python](https://github.com/BerkeleyAutomation/ur5py)
-- CMU [frankapy](https://github.com/iamlab-cmu/frankapy) [paper](https://arxiv.org/abs/2011.02398?s=09)
-
-## Packages
-below is a short overview of the packages in this repo. Each package has a dedicted readme file with more information.
+## Functionality
+below is a short overview of the packages in this repo. Each package has a dedicated readme file with more information.
 ```
-airo-typing             # common typedefs and conventions
+airo-typing             # common typedefs and conventions (e.g. extrinsics matrix = camera IN world)
 airo-spatial-algebra    # code for working with SE3 poses
-airo-camera-toolkit     # code for working with RGB(D) cameras
+airo-camera-toolkit     # code for working with RGB(D) Images and cameras
 airo-robots             # code for working with robot arms and grippers
-airo-teleop             # code for teleoperating robot arms and grippers
+airo-teleop             # code for teleoperating robot arms
 ```
+For realtime visualisation of robotics data  we prefer [rerun.io](https://www.rerun.io/) over the manually hacking something together with opencv/pyqt/...
+
 ## Installation
 There are a number ways to install (a number of) packages from this repo, based on whether you want to use them or you also want to make changes to them:
 
@@ -87,3 +78,22 @@ However, for now we want to avoid to add this complexity for new contributors. T
 - the easiest code to maintain is no code so thorougly consider if the functionality you want does not already have a good implementation and could be imported with a reasonable dependency cost.
 - it is strongly encouraged to create CLI interfaces using [click](https://click.palletsprojects.com/en/8.1.x/)
 - it is strongly advised to use logging with [loguru](https://loguru.readthedocs.io/en/stable/), it is prohibited on the other hand to use an overload of print statements.
+
+## summary of 'why make this repo?'
+
+The idea is that by having the hardware interface, that we do not have to choose permanently between Moveit or Drake as planning framework and ROS vs. ur_rtde for communication with the robot, or whether to communicate sensor data over ROS or not.
+
+The camera class for example, could easily be wrapped in a ROS node later after all functional code has already been written in a class that inherits from the base RGBD base class. In a simulator you can also easily use the same base class (with partial implementation of the interface), which allows for using the same API and possible for easily swapping out real and simulated hardware.
+
+If we ever were to use Moveit, the IK of the real robot could for example send a request to moveit using the ros_bridge. Or you could directly interact with Moveit w/o using the AIRO core interface, so you are also not limited by it?
+
+In short, it should provide a clear interface that can be implement in any HW/simulation and used to execute plans devised in any motion planning framework. If desired, you could bypass the Interface.
+
+
+inspiration sources:
+- Berkeley Autolab: [core](https://github.com/BerkeleyAutomation/autolab_core) [ur python](https://github.com/BerkeleyAutomation/ur5py)
+- CMU [frankapy](https://github.com/iamlab-cmu/frankapy) [paper](https://arxiv.org/abs/2011.02398?s=09)
+
+
+Why not use ROS for everyting?
+- great tool, but hard to create clean code and so generic that it makes easy things hard... But this is not a provably right choice.
