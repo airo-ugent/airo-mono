@@ -1,7 +1,7 @@
 import asyncio
 import socket
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 from airo_robots.grippers.hardware.manual_gripper_testing import manual_test_gripper
@@ -10,6 +10,19 @@ from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripp
 
 def rescale_range(x: float, from_min: float, from_max: float, to_min: float, to_max: float) -> float:
     return to_min + (x - from_min) / (from_max - from_min) * (to_max - to_min)
+
+
+def wait_for_condition_with_timeout(check_condition: Callable[..., bool], timeout: float = 10):
+    """helper function to wait on completion of hardware interaction  that is secured with a timeout to avoid infinite loops"""
+
+    total_time_waited = 0.0
+    sleep_time_per_iteration = 0.1
+
+    while not check_condition():
+        total_time_waited += sleep_time_per_iteration
+        time.sleep(sleep_time_per_iteration)
+        if total_time_waited > timeout:
+            raise TimeoutError()
 
 
 class Robotiq2F85(ParallelPositionGripper):
@@ -49,7 +62,7 @@ class Robotiq2F85(ParallelPositionGripper):
         self.port = port
 
         self._check_connection()
-        self.activate_gripper()
+        self._activate_gripper()
         super().__init__(self._gripper_specs)
 
     def get_current_width(self) -> float:
@@ -62,10 +75,12 @@ class Robotiq2F85(ParallelPositionGripper):
             self.speed = speed
         if force:
             self.max_grasp_force = force
-        self.set_target_width(width)
+        self._set_target_width(width)
 
-        while self.is_gripper_moving():
-            time.sleep(0.01)
+        # this sleep is required to make sure that the OBJ STATUS
+        # of the gripper is already in 'moving' before entering the wait loop.
+        time.sleep(0.1)
+        wait_for_condition_with_timeout(lambda: not self.is_gripper_moving())
 
     def is_an_object_grasped(self) -> bool:
         return int(self._communicate("GET OBJ").split(" ")[1]) == 2
@@ -84,8 +99,11 @@ class Robotiq2F85(ParallelPositionGripper):
             rescale_range(speed, self._gripper_specs.min_speed, self._gripper_specs.max_speed, 0, 255)
         )
         self._communicate(f"SET SPE {speed_register_value}")
-        while not self._is_target_value_set(speed_register_value, self._read_speed_register()):
-            time.sleep(0.01)
+
+        def is_value_set():
+            return self._is_target_value_set(self._read_speed_register(), speed_register_value)
+
+        wait_for_condition_with_timeout(is_value_set)
 
     @property
     def max_grasp_force(self) -> float:
@@ -102,27 +120,36 @@ class Robotiq2F85(ParallelPositionGripper):
             rescale_range(force, self._gripper_specs.min_force, self._gripper_specs.max_force, 1, 255)
         )
         self._communicate(f"SET FOR {force_register_value}")
-        while not self._is_target_value_set(force_register_value, self._read_force_register()):
-            time.sleep(0.01)
 
-    ## non interface classes
+        def is_value_set():
+            return self._is_target_value_set(force_register_value, self._read_force_register())
+
+        wait_for_condition_with_timeout(is_value_set)
+
+    ###########################
+    ## non-interface classes ##
+    ###########################
     async def ansyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
-        """moves the gripper asynchronously."""
+        """Asyncio (async) move"""
         if speed:
             self.speed = speed
         if force:
             self.max_grasp_force = force
-        self.set_target_width(width)
+        self._set_target_width(width)
 
         while self.is_gripper_moving():
             await asyncio.sleep(0.05)
 
-    def set_target_width(self, target_width_in_meters: float) -> None:
-        """sets a target width asynchronously"""
+    ####################
+    # Private methods #
+    ####################
+
+    def _set_target_width(self, target_width_in_meters: float) -> None:
+        """Sends target width to gripper"""
         target_width_in_meters = np.clip(
             target_width_in_meters, self._gripper_specs.min_width, self._gripper_specs.max_width
         )
-        # 230 is 'force closed', cf function below.
+        # 230 is 'force closed', cf _write_target_width_to_register.
         target_width_register_value = int(
             rescale_range(target_width_in_meters, self._gripper_specs.min_width, self._gripper_specs.max_width, 230, 0)
         )
@@ -140,8 +167,11 @@ class Robotiq2F85(ParallelPositionGripper):
 
         """
         self._communicate(f"SET  POS {target_width_register_value}")
-        while not self._is_target_value_set(target_width_register_value, self._read_target_width_register()):
-            time.sleep(0.01)
+
+        def is_value_set():
+            return self._is_target_value_set(target_width_register_value, self._read_target_width_register())
+
+        wait_for_condition_with_timeout(is_value_set)
 
     def _read_target_width_register(self) -> int:
         return int(self._communicate("GET PRE").split(" ")[1])
@@ -161,7 +191,6 @@ class Robotiq2F85(ParallelPositionGripper):
         Raises:
             ConnectionError
         """
-
         if not self._communicate("GET STA").startswith("STA"):
             raise ConnectionError("Could not connect to gripper")
 
@@ -180,21 +209,20 @@ class Robotiq2F85(ParallelPositionGripper):
             except Exception as e:
                 raise (e)
 
-    def activate_gripper(self) -> None:
+    def _activate_gripper(self) -> None:
         """Activates the gripper, sets target position to "Open" and sets GTO flag."""
         self._communicate("SET ACT 1")
-        while not self._communicate("GET STA") == "STA 3":
-            time.sleep(0.01)
+
+        wait_for_condition_with_timeout(lambda: self._communicate("GET STA") == "STA 3")
 
         # initialize gripper
         self._communicate("SET GTO 1")  # enable Gripper
         self.speed = self._gripper_specs.max_speed
         self.force = self._gripper_specs.min_force
 
-    def deactivate_gripper(self) -> None:
+    def _deactivate_gripper(self) -> None:
         self._communicate("SET ACT 0")
-        while not self._communicate("GET STA") == "STA 0":
-            time.sleep(0.01)
+        wait_for_condition_with_timeout(lambda: self._communicate("GET STA") == "STA 0")
 
     @staticmethod
     def _is_target_value_set(target: int, value: int) -> bool:
