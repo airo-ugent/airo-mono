@@ -12,7 +12,7 @@ def rescale_range(x: float, from_min: float, from_max: float, to_min: float, to_
     return to_min + (x - from_min) / (from_max - from_min) * (to_max - to_min)
 
 
-def wait_for_condition_with_timeout(check_condition: Callable[..., bool], timeout: float = 10):
+def wait_for_condition_with_timeout(check_condition: Callable[..., bool], timeout: float = 10) -> None:
     """helper function to wait on completion of hardware interaction  that is secured with a timeout to avoid infinite loops"""
 
     total_time_waited = 0.0
@@ -100,7 +100,7 @@ class Robotiq2F85(ParallelPositionGripper):
         )
         self._communicate(f"SET SPE {speed_register_value}")
 
-        def is_value_set():
+        def is_value_set() -> bool:
             return self._is_target_value_set(self._read_speed_register(), speed_register_value)
 
         wait_for_condition_with_timeout(is_value_set)
@@ -121,7 +121,7 @@ class Robotiq2F85(ParallelPositionGripper):
         )
         self._communicate(f"SET FOR {force_register_value}")
 
-        def is_value_set():
+        def is_value_set() -> bool:
             return self._is_target_value_set(force_register_value, self._read_force_register())
 
         wait_for_condition_with_timeout(is_value_set)
@@ -168,7 +168,7 @@ class Robotiq2F85(ParallelPositionGripper):
         """
         self._communicate(f"SET  POS {target_width_register_value}")
 
-        def is_value_set():
+        def is_value_set() -> bool:
             return self._is_target_value_set(target_width_register_value, self._read_target_width_register())
 
         wait_for_condition_with_timeout(is_value_set)
