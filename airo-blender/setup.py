@@ -12,6 +12,8 @@ setuptools.setup(
         "xmltodict",  # used to parse urdf files to python dictionaries
         "blender-asset-tracer",  # used to find the tags of assets
         "tqdm",  # used to display progress bars
+        "pydantic",  # for building dataset formats
+        "opencv-python",
     ],
     packages=["airo_blender"],
 )
