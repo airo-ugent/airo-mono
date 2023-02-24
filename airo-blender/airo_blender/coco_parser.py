@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel
 
@@ -13,7 +13,9 @@ FileName = str
 Relativepath = str
 Url = str
 IsCrowd = int
-Segmentation = List[Tuple[int, int]]  # not sure about this
+RLE = str  # run length encoding
+# Polygon = List[Tuple[int, int]]
+# Segmentation = Union[RLE, Polygon]  # not sure about this
 Area = float
 BoundingBox = Tuple[int, int, int, int]
 
@@ -53,7 +55,7 @@ class CocoKeypointAnnotation(BaseModel):
     id: AnnotationID
     image_id: ImageID
     category_id: CategoryID
-    segmentation: Segmentation
+    segmentation: Dict
     area: Area
     bbox: BoundingBox
     iscrowd: IsCrowd
@@ -78,6 +80,6 @@ class CocoKeypoints(BaseModel):
 
     info: Optional[CocoInfo]
     licenses: Optional[List[CocoLicenses]]
-    images: List[CocoImage]
     categories: List[CocoKeypointCategory]
+    images: List[CocoImage]
     annotations: List[CocoKeypointAnnotation]
