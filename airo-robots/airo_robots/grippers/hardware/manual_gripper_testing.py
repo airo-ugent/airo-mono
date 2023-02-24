@@ -3,7 +3,7 @@
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
 
 
-def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositionGripperSpecs):
+def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositionGripperSpecs) -> None:
     input("gripper will now open")
     gripper.move(specs.max_width)
     assert abs(gripper.get_current_width() - specs.max_width) < 0.003
@@ -21,7 +21,7 @@ def manual_test_gripper(gripper: ParallelPositionGripper, specs: ParallelPositio
 
     input("reopen gripper fast")
     gripper.move(0.08, 0.15)
-    input("close with low force, you can put an object between the fingers to test the force and the grasp detection")
+    input("close with high force, you can put an object between the fingers to test the force and the grasp detection")
     gripper.max_grasp_force = 200
     gripper.speed = 0.02
     gripper.move(0.02)

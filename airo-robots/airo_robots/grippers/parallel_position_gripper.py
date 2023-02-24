@@ -43,7 +43,7 @@ class ParallelPositionGripper:
 
     @speed.setter
     @abstractmethod
-    def speed(self, new_speed: float):
+    def speed(self, new_speed: float) -> None:
         """sets the moving speed [m/s] synchronously."""
 
     @property
@@ -61,15 +61,15 @@ class ParallelPositionGripper:
         """the current opening of the fingers in meters"""
 
     @abstractmethod
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None):
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
         """
         synchronously move the fingers to the desired width between the fingers[m].
         Optionally provide a speed and/or force, that will be used from then on for all move commands."""
 
-    def open(self):
+    def open(self) -> None:
         self.move(self.gripper_specs.max_width)
 
-    def close(self):
+    def close(self) -> None:
         self.move(0.0)
 
     def is_an_object_grasped(self) -> bool:
