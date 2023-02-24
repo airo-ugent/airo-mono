@@ -5,6 +5,7 @@ import sys
 
 import airo_blender as ab
 import bpy
+import cv2
 import numpy as np
 from airo_blender.coco_parser import CocoImage, CocoKeypointAnnotation
 from bpy_extras.object_utils import world_to_camera_view
@@ -34,7 +35,8 @@ bpy.ops.object.delete()
 scene = bpy.context.scene
 
 # Part 1: Create the towel geometry and material
-width, length = 0.2, 0.3
+width = np.random.uniform(0.2, 0.6)
+length = np.random.uniform(width, 2 * width)
 
 vertices = [
     np.array([-width / 2, -length / 2, 0.0]),
@@ -56,15 +58,19 @@ bpy.context.collection.objects.link(towel)
 random_rgb_color = np.random.uniform(0.0, 1.0, size=3)
 ab.add_material(towel, random_rgb_color)
 
+
 # Part 2: Load a background and a table
-with open("asset_snapshot.json", "r") as file:
+file_directory = os.path.dirname(os.path.realpath(__file__))
+asset_snapshot_path = os.path.join(file_directory, "asset_snapshot.json")
+
+with open(asset_snapshot_path, "r") as file:
     assets = json.load(file)["assets"]
 
 # Set an HDRI world background
 worlds = [asset for asset in assets if asset["type"] == "worlds"]
-woods_info = [asset for asset in worlds if asset["name"] == "woods"][0]
-woods = ab.load_asset(**woods_info)
-scene.world = woods
+random_world_info = np.random.choice(worlds)
+world = ab.load_asset(**random_world_info)
+scene.world = world
 
 
 # Load a random table
@@ -129,10 +135,12 @@ camera.data.lens = 32
 scene.render.engine = "CYCLES"
 scene.cycles.samples = 64
 
-image_width, image_height = 512, 512
+image_width, image_height = 256, 256
 scene.render.resolution_x = image_width
 scene.render.resolution_y = image_height
 
+scene.view_settings.exposure = np.random.uniform(-2, 2)
+scene.view_settings.gamma = np.random.uniform(0.9, 1.1)
 
 # Make a directory to organize all the outputs
 random_seed_padded = f"{random_seed:08d}"
@@ -174,14 +182,6 @@ slot_segmentation.save_as_render = False
 render_layers_node = nodes["Render Layers"]
 links.new(render_layers_node.outputs["Image"], node.inputs[0])
 
-# Divide the IndexOB by 255 to get a 0-1 range
-# math_node = nodes.new("CompositorNodeMath")
-# math_node.operation = "DIVIDE"
-# math_node.inputs[1].default_value = 255
-# math_node.location = (300, 200)
-# links.new(render_layers_node.outputs["IndexOB"], math_node.inputs[0])
-# links.new(math_node.outputs[0], node.inputs[slot_segmentation.path])
-
 # Other method, use the mask ID node
 mask_id_node = nodes.new("CompositorNodeIDMask")
 mask_id_node.index = 1
@@ -204,7 +204,6 @@ os.rename(segmentation_path, segmentation_path_new)
 # TODO get bounding box of the segmentation mask
 # TODO load segmentation mask
 # np.where(segmentation_mask == True) # get the coordinates
-import cv2
 
 segmentation_mask = cv2.imread(segmentation_path_new, cv2.IMREAD_GRAYSCALE)
 mask_coords = np.where(segmentation_mask == 255)
@@ -229,23 +228,7 @@ cv2.circle(image_bgr, (x_min, y_min), 5, (0, 0, 255), -1)
 cv2.imwrite(image_annotated_path, image_bgr)
 
 
-towel_keypoints = [
-    "corner1",
-    "corner2",
-    "corner3",
-    "corner4",
-]
-
-# towel_category = CocoKeypointCategory(
-#     supercategory="clothes",
-#     id=14,
-#     name="towel",
-#     keypoints=towel_keypoints,
-#     skeleton=[],
-# )
-
 coco_image = CocoImage(file_name=image_path_new, height=image_height, width=image_width, id=random_seed)
-
 print(coco_image)
 
 
@@ -284,9 +267,6 @@ annotation = CocoKeypointAnnotation(
     bbox=coco_bbox,
     iscrowd=0,
 )
-
-print(annotation)
-
 
 # Save CocoImage to disk as json
 coco_image_json = f"{image_name}_coco_image.json"

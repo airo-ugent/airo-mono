@@ -74,3 +74,21 @@ class CocoKeypointAnnotation(BaseModel):
     num_keypoints: Optional[int]
     keypoints: List[float]
 ```
+
+## 3.3 Usage
+In the `03_keypoints_dataset` directory:
+```
+blender -P tutorial_3.py -- --seed 42
+```
+This will generate a folder `00000042` which contains all the output for a single sample, e.g. the render, segmentation mask, coco annotations etc.
+
+To generate a dataset of 50 images:
+```
+mkdir dataset0
+cd dataset0
+blender -b -P ../dataset.py -- --dataset_size 50
+```
+You can then visualize this dataset using FiftyOne:
+```
+python fiftyone_coco.py dataset0/annotations.json
+```
