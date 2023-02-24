@@ -1,13 +1,31 @@
+import argparse
 import json
 import os
+import sys
 
 import airo_blender as ab
 import bpy
 import numpy as np
-from airo_blender.coco_parser import CocoImage
+from airo_blender.coco_parser import CocoImage, CocoKeypointAnnotation
+from bpy_extras.object_utils import world_to_camera_view
+from pycocotools import mask
+
+random_seed = 0
+
+if "--" in sys.argv:
+    argv = sys.argv[sys.argv.index("--") + 1 :]  # get all args after "--"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("seed", type=int)
+    args = parser.parse_known_args(argv)[0]
+    random_seed = args.seed
+
+
+# TODO document pycocotools installation
+# requires adding Python.h etc to blender Python installation
+# https://blender.stackexchange.com/questions/81740/python-h-missing-in-blender-python
+# basically: download zip and copy contents of Include to include/python3.10
 
 # Set numpy random seed for reproducibility
-random_seed = 0
 np.random.seed(random_seed)
 
 # Delete the default cube
@@ -117,11 +135,12 @@ scene.render.resolution_y = image_height
 
 
 # Make a directory to organize all the outputs
-output_dir = f"{random_seed:08d}"
+random_seed_padded = f"{random_seed:08d}"
+output_dir = random_seed_padded
 os.makedirs(output_dir, exist_ok=True)
 
 # Set image format to PNG
-image_name = f"{random_seed:08d}"
+image_name = random_seed_padded
 
 # Semantic segmentation of the towel
 towel.pass_index = 1
@@ -189,11 +208,17 @@ import cv2
 
 segmentation_mask = cv2.imread(segmentation_path_new, cv2.IMREAD_GRAYSCALE)
 mask_coords = np.where(segmentation_mask == 255)
+area = mask_coords[0].shape[0]  # number of pixels
 x_min = np.min(mask_coords[1])
-x_max = np.max(mask_coords[1])
 y_min = np.min(mask_coords[0])
+x_max = np.max(mask_coords[1])
 y_max = np.max(mask_coords[0])
-print(x_min, x_max, y_min, y_max)
+bbox_width = x_max - x_min
+bbox_height = y_max - y_min
+coco_bbox = (x_min, y_min, bbox_width, bbox_height)
+
+rle = mask.encode(np.asfortranarray(segmentation_mask))
+coco_segmentation = {"counts": rle["counts"].decode("utf-8"), "size": rle["size"]}
 
 # drawing the rectangle
 image_bgr = cv2.imread(image_path_new)
@@ -203,5 +228,75 @@ image_annotated_path = os.path.join(output_dir, f"{image_name}_annotated.png")
 cv2.circle(image_bgr, (x_min, y_min), 5, (0, 0, 255), -1)
 cv2.imwrite(image_annotated_path, image_bgr)
 
+
+towel_keypoints = [
+    "corner1",
+    "corner2",
+    "corner3",
+    "corner4",
+]
+
+# towel_category = CocoKeypointCategory(
+#     supercategory="clothes",
+#     id=14,
+#     name="towel",
+#     keypoints=towel_keypoints,
+#     skeleton=[],
+# )
+
 coco_image = CocoImage(file_name=image_path_new, height=image_height, width=image_width, id=random_seed)
+
 print(coco_image)
+
+
+keypoints_3D = [towel.matrix_world @ v.co for v in towel.data.vertices]
+keypoints_2D = [world_to_camera_view(scene, camera, corner) for corner in keypoints_3D]
+
+coco_keypoints = []
+num_labeled_keypoints = 0
+for keypoint_2D in keypoints_2D:
+    u, v, _ = keypoint_2D
+    px = image_width * u
+    py = image_height * (1.0 - v)
+    visible_flag = 2
+
+    # Currently we set keypoints outside the image to be "not labeled"
+    if px < 0 or py < 0 or px > image_width or py > image_height:
+        visible_flag = 0
+        px = 0.0
+        py = 0.0
+
+    if v > 0:
+        num_labeled_keypoints += 1
+
+    coco_keypoints += (px, py, visible_flag)
+
+towel_category_id = 0  # TODO import this once airo-datasets exists
+
+annotation = CocoKeypointAnnotation(
+    category_id=towel_category_id,
+    id=np.random.randint(np.iinfo(np.int32).max),
+    image_id=random_seed,
+    keypoints=coco_keypoints,
+    num_keypoints=num_labeled_keypoints,
+    segmentation=coco_segmentation,
+    area=area,
+    bbox=coco_bbox,
+    iscrowd=0,
+)
+
+print(annotation)
+
+
+# Save CocoImage to disk as json
+coco_image_json = f"{image_name}_coco_image.json"
+coco_image_json_path = os.path.join(output_dir, coco_image_json)
+with open(coco_image_json_path, "w") as file:
+    json.dump(coco_image.dict(exclude_none=True), file, indent=4)
+
+
+# Save CocoKeypointAnnotation to disk as json
+coco_annotation_json = f"{image_name}_coco_annotation_{annotation.id}.json"
+coco_annotation_json_path = os.path.join(output_dir, coco_annotation_json)
+with open(coco_annotation_json_path, "w") as file:
+    json.dump(annotation.dict(exclude_none=True), file, indent=4)
