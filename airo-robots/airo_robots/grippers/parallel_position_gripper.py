@@ -128,16 +128,15 @@ class AsyncParallelPositionGripper(ParallelPositionGripperTemplate[Future]):
     """
 
 
-U = TypeVar("U")
+class SynchronousParallelPositionGripperAdapter(ParallelPositionGripper):
+    """
+    This is a default adapter to turn an asynchronous gripper implementation into a synchronous one.
+    It waits for the future object of the async methods before returning the return value of the wrapped gripper's call.
+    """
 
-
-class ParallelPositionGripperWrapper(ParallelPositionGripperTemplate[T], Generic[T, U]):
-    """abstract base class for all wrappers of the interfaces.
-    These can wrap return types of one interface to that of the other, hence there are two Type variables.
-    T is that of the actual interface, U that of the wrapped instance."""
-
-    def __init__(self, gripper: ParallelPositionGripperTemplate[U]) -> None:
+    def __init__(self, gripper: AsyncParallelPositionGripper) -> None:
         self._gripper = gripper
+        self.timeout = 10
 
     @property
     def speed(self) -> float:
@@ -158,33 +157,38 @@ class ParallelPositionGripperWrapper(ParallelPositionGripperTemplate[T], Generic
     def get_current_width(self) -> float:
         return self._gripper.get_current_width()
 
-    @abstractmethod
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> T:
-        pass
-
-
-class SynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[None, Future]):
-    """
-    This is a default wrapper to turn an asynchronous gripper implementation into a synchronous one.
-    It waits for the future object if required before returning the return value of the wrapped gripper's call.
-    """
-
-    def __init__(self, gripper: AsyncParallelPositionGripper) -> None:
-        super().__init__(gripper)
-
     def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
-        return self._gripper.move(width, speed, force).result(timeout=10)
+        return self._gripper.move(width, speed, force).result(self.timeout)
 
 
-class AsynchronousParallelPositionGripperWrapper(ParallelPositionGripperWrapper[Future, None]):
+class AsynchronousParallelPositionGripperAdapter(AsyncParallelPositionGripper):
     """
-    This is a default wrapper to turn a synchronous gripper implementation into an asynchronous one.
-    It executes the functions in a separate thread and returns a future object to query.
+    This is a default adapter to turn a synchronous gripper implementation into an asynchronous one.
+    It executes the async methods in a separate thread and returns a future object to query.
     """
 
     def __init__(self, gripper: ParallelPositionGripper) -> None:
-        super().__init__(gripper)
+        self._gripper = gripper
         self.async_executor = AsyncExecutor()
+
+    @property
+    def speed(self) -> float:
+        return self._gripper.speed
+
+    @speed.setter
+    def speed(self, new_speed: float) -> None:
+        self._gripper.speed = new_speed
+
+    @property
+    def max_grasp_force(self) -> float:
+        return self._gripper.max_grasp_force
+
+    @max_grasp_force.setter
+    def max_grasp_force(self, new_force: float) -> None:
+        self._gripper.max_grasp_force = new_force
+
+    def get_current_width(self) -> float:
+        return self._gripper.get_current_width()
 
     def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> Future:
         return self.async_executor(self._gripper.move, width, speed, force)

@@ -3,10 +3,11 @@ from concurrent.futures import Future
 from typing import Optional
 
 from airo_robots.grippers.parallel_position_gripper import (
-    AsynchronousParallelPositionGripperWrapper,
+    AsynchronousParallelPositionGripperAdapter,
+    AsyncParallelPositionGripper,
     ParallelPositionGripper,
     ParallelPositionGripperSpecs,
-    SynchronousParallelPositionGripperWrapper,
+    SynchronousParallelPositionGripperAdapter,
 )
 
 
@@ -49,7 +50,7 @@ class DummySyncParallelPositionGripper(ParallelPositionGripper):
         return self.gripper_pos
 
 
-def test_sync_async_wrappper_implementations():
+def test_sync_async_adapter_implementations():
     gripper = DummySyncParallelPositionGripper(None)
     target_pos = 0.01
     res = gripper.move(target_pos)
@@ -57,14 +58,23 @@ def test_sync_async_wrappper_implementations():
     assert gripper.get_current_width() == target_pos
 
     target_pos = 0.02
-    async_gripper = AsynchronousParallelPositionGripperWrapper(gripper)
+    async_gripper = AsynchronousParallelPositionGripperAdapter(gripper)
     res = async_gripper.move(target_pos)
     assert isinstance(res, Future)
     res.result(10)
     assert async_gripper.get_current_width() == target_pos
 
     target_pos = 0.03
-    sync_wrapped_gripper = SynchronousParallelPositionGripperWrapper(async_gripper)
+    sync_wrapped_gripper = SynchronousParallelPositionGripperAdapter(async_gripper)
     res = sync_wrapped_gripper.move(target_pos)
     assert res is None
     assert sync_wrapped_gripper.get_current_width() == target_pos
+
+
+def test_adapter_types():
+    gripper = DummySyncParallelPositionGripper(None)
+    async_gripper = AsynchronousParallelPositionGripperAdapter(gripper)
+    sync_gripper = SynchronousParallelPositionGripperAdapter(async_gripper)
+
+    assert isinstance(async_gripper, AsyncParallelPositionGripper)
+    assert isinstance(sync_gripper, ParallelPositionGripper)
