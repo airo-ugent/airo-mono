@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional
 
-from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
+from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripperTemplate
 from airo_typing import HomogeneousMatrixType, JointConfigurationType
 
 
@@ -31,7 +31,9 @@ class PositionManipulator:
     More support (i.e. creating this thread and simply returning the future object) for async control could (should?) be added later
     """
 
-    def __init__(self, manipulator_specs: ManipulatorSpecs, gripper: Optional[ParallelPositionGripper] = None) -> None:
+    def __init__(
+        self, manipulator_specs: ManipulatorSpecs, gripper: Optional[ParallelPositionGripperTemplate] = None
+    ) -> None:
         self.manipulator_specs = manipulator_specs
         self.gripper = gripper
 
