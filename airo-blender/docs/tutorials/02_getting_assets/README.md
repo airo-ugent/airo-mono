@@ -9,7 +9,7 @@ There are many different tools for developing 3D assets, and as such also many d
 Since version 3.0, Blender improved the workflow for storing and using assets significantly by introducing the [Asset Browser](https://docs.blender.org/manual/en/latest/editors/asset_browser.html).
 The idea is that you download a "raw" 3D asset from the internet, e.g. a mesh as an `.obj` file, or a [PBR material](https://marmoset.co/posts/physically-based-rendering-and-you-can-too/) as a set of `.png` or `.jpg` texture maps.
 
-Then you manual import this asset into Blender.
+Then you manually import this asset into Blender.
 When you're lucky, this is painless, e.g. you import an `.obj` and it results in a correctly oriented and scaled Blender object.
 Often however you will have to do some tweaking to get the asset looking right.
 For PBR materials, you often get a zip of texture maps, and you need to build a simple shader graph that combines the maps into a Blender material.
@@ -25,7 +25,7 @@ Then you can simply drag-and-drop any Blender asset from the Asset Browser into 
 It also has great integration with Blender through its addon, which downloads all Poly Haven assets directly as Blender assets.
 They encourage you to purchase it, but they also made it publically available on [github](https://github.com/Poly-Haven/polyhavenassets).
 
-In this rest of this tutorial will show how to load the the Poly Haven assets from Python.
+In the rest of this tutorial, we will show how to load the the Poly Haven assets from Python.
 So before continuing, please install the addon and download the Poly Haven assets.
 
 After finishing the installation and downloads, you should be able to throw together a scene like the one below by dragging and dropping a few assets.
@@ -133,7 +133,7 @@ print(woods_info)
 woods = ab.load_asset(**woods_info)
 bpy.context.scene.world = woods
 ```
-> Note that use we can use Python dictionary unpacking to call our `ab.load_asset(**asset_info)`.
+> Note that we can use Python dictionary unpacking to call our `ab.load_asset(**asset_info)`.
 > This is because we chose the same name for keys of dictionary and the arguments of the function.
 > Additionally we allowed that additional `kwargs` are passed to the function, like the `tags`, which the function does not use.
 
@@ -174,7 +174,7 @@ The difference between these 3 is the following:
 > If you want more freedom to edit the created instance, you can click `Object > Apply > Make Instances Real`. The Empty object now gets remove and the objects of collection get [duplicated](https://docs.blender.org/manual/en/latest/scene_layout/object/editing/duplicate.html).
 > Note that duplicated objects are not completely separate by default, some data-blocks like materials remain shared.
 
-For the croissant, simply transforming it sufficient, so we'll want to create a collection instance.
+For the croissant, simply transforming it is sufficient, so we'll want to create a collection instance.
 We can create a croissant instance like so:
 ```python
 bpy.ops.object.collection_instance_add(collection=croissant_collection.name)

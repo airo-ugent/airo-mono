@@ -13,7 +13,7 @@ To get started, please see the [tutorials](docs/tutorials) directory after compl
 
 ### Downloading Blender
 Download the latest version of [Blender](https://www.blender.org/download/), currently `3.4.1`.
-We provide the subdirectory [blender](blender) as a convenient but optional place to save and extract Blender. See the directory's [README.md](blender/README.md) for the expected directory structure after download.
+We provide the subdirectory `blender/` as a convenient but optional place to save and extract Blender. See the directory's [README.md](blender/README.md) for the expected directory structure after download.
 
 ### Installing the `airo_blender` Python package
 Then, run the following commands from the `airo-blender` directory:

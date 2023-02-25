@@ -182,7 +182,7 @@ bpy.context.scene.cycles.samples = 64
 ```
 > :information_source: It's still an open question how much sample count influences sim2real transfer of models trained on synthetic images.
 > Using less samples is computationally attractive, but does it degrade model performance?
-> Or can we consider render noise a from of harmless (of even helpfull) data augmentation?
+> Or can we consider render noise a form of harmless (of even helpfull) data augmentation?
 
 To set the image resolution, you can simply:
 ```python

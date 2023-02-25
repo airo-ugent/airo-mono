@@ -34,7 +34,7 @@ There's no real standard format for exchange of keypoints yet.
 The most popular format I'm aware of is [COCO](https://cocodataset.org/#format-data), so that's what we will be implementing here.
 <!-- COCO keypoints are mostly used for human pose estimation. -->
 
-Comply to a dataset format can be buggy and tedious work.
+Complying to a dataset format can be buggy and tedious work.
 For that reason, we implemented a [pydantic](https://docs.pydantic.dev/) parser for COCO.
 You can find it in `airo_blender/coco_parser.py`.
 An example is the class defined for images:
