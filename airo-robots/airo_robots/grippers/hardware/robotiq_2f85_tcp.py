@@ -129,7 +129,7 @@ class Robotiq2F85(ParallelPositionGripper):
     ###########################
     ## non-interface classes ##
     ###########################
-    async def ansyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
+    async def asyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
         """Asyncio (async) move"""
         if speed:
             self.speed = speed
