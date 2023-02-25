@@ -1,7 +1,12 @@
+from typing import Union
+
 import bpy
 
+RGBType = tuple[float, float, float]
+RGBAType = tuple[float, float, float, float]
 
-def add_material(blender_object: bpy.types.Object, color: tuple[float, float, float], roughness: float = 0.5):
+
+def add_material(blender_object: bpy.types.Object, color: Union[RGBType, RGBAType], roughness: float = 0.5):
     """Adds a new material to a blender object.
 
     Args:
