@@ -33,3 +33,34 @@ This means that we for example don't wrap the Blender datatypes with custom Pyth
 Alternatives to this library are:
 * [BlenderProc](https://github.com/DLR-RM/BlenderProc)
 * [kubric](https://github.com/google-research/kubric)
+
+### Why don't we use the alternatives?
+Both libraries provide a lot of great functionality.
+However, we choose not to use them because they introduce **too many new concepts** on top of Blender.
+
+For example, to make a light in Kubric (from [helloworld.py](https://github.com/google-research/kubric/blob/main/examples/helloworld.py)), you do:
+```python
+scene += kb.DirectionalLight(name="sun", position=(-1, -0.5, 3), look_at=(0, 0, 0), intensity=1.5)
+```
+In blenderproc (from [basic/main.py](https://github.com/DLR-RM/BlenderProc/blob/main/examples/basics/basic/main.py)) you would do:
+```python
+light = bproc.types.Light()
+light.set_type("POINT")
+light.set_location([5, -5, 5])
+light.set_energy(1000)
+```
+However, this use case can be handled perfectly fine by the Blender Python API itself e.g:
+```python
+bpy.ops.object.light_add(type='POINT', radius=1, location=(0, 0, 0))
+```
+Introducing these additional abstractions on top of Blender creates uncertainty.
+Where does the light data live and how does it sync with the Blender scene? Am I still allowed to edit the Blender scene directly, or do I have to do it the "Kubric/Blenderproc way"?
+Kubric and Blenderproc both push a very specific workflow.
+They try hard to hide/replace Blender, instead of extending it.
+As a consequence, these libraries feel very much **"all or nothing"**.
+By hiding what is going on, these libraries make it harder to experiment and add new features.
+
+In airo-blender, we prefer explaining the Blender Python API over hiding it.
+In the tutorials we show our workflow and the functions we use.
+We try to operate on the Blender data as statelessly as possible, with simple functions.
+As a result you can easily adopt only the parts you like.
