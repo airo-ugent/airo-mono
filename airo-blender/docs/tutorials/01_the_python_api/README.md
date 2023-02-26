@@ -20,6 +20,7 @@ Let's start by opening up Blender. You can do this by running the `blender` exec
 Because we will be running the `blender` executable often, I recommend adding its directory to your system `PATH`.
 Please see [here](../../adding_blender_to_bashrc.md) for an explanation.
 Then you will be able to open Blender by simply running `blender`.
+In the pop-up, choose `New File` of type `General` (or equivalently dismiss the pop-up).
 
 ## 1.2 The Python Console :pager:
 Now Blender is opened, look for and click on the `Scripting` tab in the top bar.
@@ -243,6 +244,9 @@ And this is what the rendered image should look like:
 ![Red cylinder rendered with Cycles](https://i.imgur.com/G5QuqgC.png)
 
 ## 1.6 Saving an object's pose :floppy_disk:
+> :information_source: To see an object's local coordinate frame, select the object, click on the **Move** tool in the Toolbar (left) and set the Transformation orientation to **Local** (in the [Header Region](https://docs.blender.org/manual/en/latest/editors/3dview/introduction.html#header-region) of the 3D Viewport).
+> ![blender camera axes convention](https://i.imgur.com/FougSv6.png)
+
 In this final section of the tutorial, we'll save the cylinder's pose to disk.
 We can access a Blender object's transform via its `.matrix_world` attribute.
 However, for the cylinder this will currently give us the wrong matrix.
@@ -275,12 +279,12 @@ As an example, we'll save this pose similar to how the [BOP format](https://gith
 * lengths are in millimeters
 * `m2c` is short for "model to camera"
 
-This can be achieve with the following code:
+This can be achieved with the following code:
 ```python
 camera = bpy.context.scene.camera
 
 # Find the model to camera transform
-# Use use the Drake notation here, X_ab means the transform from frame b to frame a
+# We use the Drake notation here, X_ab means the transform from frame b to frame a
 X_wm = cylinder.matrix_world   # world to model
 X_wc = camera.matrix_world     # world to camera
 X_mc = X_wm.inverted() @ X_wc  # model to camera
@@ -322,8 +326,8 @@ When running the script now, you should get a `cylinder_pose.json` file with fol
     ]
 }
 ```
-The full script that implements this tutorial can be found [here](tutorial_1.py).
 
+The full script that implements this tutorial can be found [here](tutorial_1.py).
 
 ## The End :tada:
 Congratulations, you've reached the end of the first tutorial and hopefully generated your first piece of synthetic data!
