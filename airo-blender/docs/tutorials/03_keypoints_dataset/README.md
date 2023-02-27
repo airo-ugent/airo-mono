@@ -103,7 +103,9 @@ mkdir dataset0
 cd dataset0
 blender -b -P ../dataset.py -- --dataset_size 50
 ```
-You can then visualize this dataset using FiftyOne:
+If you have FiftyOne installed, you can then visualize this dataset like so:
 ```
 python fiftyone_coco.py dataset0/annotations.json
 ```
+
+![fiftyone](https://i.imgur.com/RMnBHiw.png)
