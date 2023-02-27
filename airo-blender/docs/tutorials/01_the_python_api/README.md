@@ -87,7 +87,7 @@ cylinder.rotation_euler.x = 3.14 / 2.0
 
 > :gem: `bpy.ops.mesh.primitive_cylinder_add()` is one of Blender's many operators.
 > Blender's UI is actually defined in Python, which means that you can do almost everything in your scripts that you can do in the UI!
-> To figure you which operators Blender is running, you can change on of the open *Editors* to an [*Info Editor*](https://docs.blender.org/manual/en/latest/editors/info_editor.html).
+> To figure you which operators Blender is running, you can change one of the open *Editors* to an [*Info Editor*](https://docs.blender.org/manual/en/latest/editors/info_editor.html).
 >
 > Additionally, in `Edit > Preferences > Interface`, check the two boxes `Developer Extras` and `Python Tooltips`.
 > If you then hover over a property in the UI, e.g. the Location X of the default cube, Blender will show `bpy.data.objects["Cube"].location[0]` in the tooltip.

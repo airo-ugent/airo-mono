@@ -171,7 +171,7 @@ The difference between these 3 is the following:
 
 > In the Blender you can [instance a collection](https://docs.blender.org/manual/en/latest/scene_layout/object/properties/instancing/collection.html) with `Add > Collection Instance`.
 > You then get an Empty object that references the collection you chose.
-> If you want more freedom to edit the created instance, you can click `Object > Apply > Make Instances Real`. The Empty object now gets remove and the objects of collection get [duplicated](https://docs.blender.org/manual/en/latest/scene_layout/object/editing/duplicate.html).
+> If you want more freedom to edit the created instance, you can click `Object > Apply > Make Instances Real`. The Empty object now gets removed and the objects of collection get [duplicated](https://docs.blender.org/manual/en/latest/scene_layout/object/editing/duplicate.html).
 > Note that duplicated objects are not completely separate by default, some data-blocks like materials remain shared.
 
 For the croissant, simply transforming it is sufficient, so we'll want to create a collection instance.

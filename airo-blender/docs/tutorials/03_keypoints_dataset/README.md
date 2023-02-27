@@ -1,7 +1,8 @@
 Tutorial 3 - Creating a COCO Towel keypoints datasets :dvd:
 ===========================================================
 In the last tutorial we saw how to build up a Blender in scene.
-In this tutorial we build on that knowledge to build a more complex scene, but we won't elaborate too much.
+In this tutorial we build on that knowledge to build a more complex scene.
+The scene building is pretty straightforward, so we won't elaborate too much.
 The focus here is on explaining how we can use these scenes to generate entire datasets.
 
 In our cloth folding research, we rely on the detection of keypoints on the border of the cloth.
@@ -14,7 +15,7 @@ In this tutorial we're generating data for a household robot that has to fold to
 
 The rules we will be encoding in the generation of our scene are:
 * Towel are perfectly flat and rectangular
-* Towel dimensions are between 30 cm and 1 m.
+* Towel dimensions are between 20 cm and 1.2 m.
 * Towel lie on tables.
 * Towel have a uniform, random, (RGB) color.
 * The robot will look down at the towel from a small height.
@@ -76,11 +77,25 @@ class CocoKeypointAnnotation(BaseModel):
 ```
 
 ## 3.3 Usage
-In the `03_keypoints_dataset` directory:
+We like to split the generation of synthetic dataset in two phase:
+* Sample generation
+* Dataset assembly
+
+[`tutorial_3.py`](./tutorial_3.py) is a script that take a **random seed** and generates **a single sample directory**.
+This directory contains all the data related to this sample, e.g. the render, segmentation mask, coco annotations etc:
+
+![sample directory](https://i.imgur.com/5uU7vCq.png)
+
+In the `03_keypoints_dataset` directory, you can run the script like so:
 ```
 blender -P tutorial_3.py -- --seed 42
 ```
-This will generate a folder `00000042` which contains all the output for a single sample, e.g. the render, segmentation mask, coco annotations etc.
+This will generate a folder `00000042` which contains all the output for the sample with seed 42.
+The directory is created where the script is called.
+
+To generate an entire dataset, we create another Python script that calls the sample generation script with different seeds.
+At the end of the sample generation, all the sample have to be combined into an assembled dataset.
+This process is shown in the [`dataset.py`](./dataset.py) script.
 
 To generate a dataset of 50 images:
 ```
