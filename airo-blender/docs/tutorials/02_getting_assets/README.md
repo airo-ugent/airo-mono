@@ -84,7 +84,7 @@ with open("asset_snapshot.json", "w") as file:
 ```
 You can also find it in this directory in `create_asset_snapshot.py` and run it like so:
 ```
-blender -P create_asset_snapshot.py
+blender -P polyhaven_snapshot.py
 ```
 This should result in a json file that looks like this:
 ```json
