@@ -78,6 +78,12 @@ CameraExtrinsicMatrixType = HomogeneousMatrixType
 """4x4 camera extrinsic matrix,
 this is the homogeneous matrix that describes the camera pose in the world frame"""
 
+
+PointCloudType = Vector3DArrayType
+""" a (N,3) numpy array that represents a point cloud"""
+
+ColoredPointCloudType = np.ndarray
+" an (N,6) numpy array that represents a point cloud with color information. Color is in RGB, float (0-1) format."
 # manipulator types
 
 JointConfigurationType = np.ndarray

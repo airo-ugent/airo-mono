@@ -10,7 +10,6 @@ except ImportError:
     )
 
 import numpy as np
-from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera, profile_rgb_throughput
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import (
@@ -30,6 +29,8 @@ class Zed2i(StereoRGBDCamera):
 
     It is important to note that the ZED cameras are factory calibrated and hence provide undistorted images
     and corresponding intrinsics matrices.
+
+    Also note that all depth values are relative to the left camera.
     """
 
     # for more info on the different depth modes, see:
@@ -94,6 +95,7 @@ class Zed2i(StereoRGBDCamera):
 
         self.image_matrix = sl.Mat()  # allocate memory for RGB view
         self.depth_matrix = sl.Mat()  # allocate memory for the depth map
+        self.pointcloud_matrix = sl.Mat()  # allocate memory for the point cloud
 
     @property
     def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> CameraIntrinsicsMatrixType:
@@ -169,6 +171,21 @@ class Zed2i(StereoRGBDCamera):
         # this can take up ~ ms for larger images (can impact FPS)
         return ImageConverter.from_opencv_format(image).image_in_numpy_format
 
+    def get_colored_point_cloud(self):
+        self._grab_latest_image()
+        self.camera.retrieve_measure(self.pointcloud_matrix, sl.MEASURE.XYZRGBA)
+        # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
+        # can be nan,nan,nan, nan (no point in the pointcloud on this pixel)
+        # or x,y,z, nan (no color information on this pixel)?
+        # or x,y,z, value (color information on this pixel)
+        # filter out all that have nan in any of the positions of the 3th dim
+        # and reshape to (width*height, 4)
+        point_cloud = self.pointcloud_matrix.get_data()
+        point_cloud = point_cloud[~np.isnan(point_cloud).any(axis=2), :]
+        # TODO: unpack color information (if required: flag or separate method?)
+        # TODO: time this operation.
+        return point_cloud
+
     @staticmethod
     def list_camera_serial_numbers() -> List[str]:
         """
@@ -200,8 +217,10 @@ if __name__ == "__main__":
 
     # test rgbd stereo camera
     with Zed2i(Zed2i.RESOLUTION_2K, fps=15, depth_mode=Zed2i.PERFORMANCE_DEPTH_MODE) as zed:
-        manual_test_stereo_rgbd_camera(zed)
+        print(zed.get_colored_point_cloud()[0])
 
-    # profile rgb throughput, should be at 60FPS, i.e. 0.017s
-    zed = Zed2i(Zed2i.RESOLUTION_720, fps=60)
-    profile_rgb_throughput(zed)
+    #     manual_test_stereo_rgbd_camera(zed)
+
+    # # profile rgb throughput, should be at 60FPS, i.e. 0.017s
+    # zed = Zed2i(Zed2i.RESOLUTION_720, fps=60)
+    # profile_rgb_throughput(zed)

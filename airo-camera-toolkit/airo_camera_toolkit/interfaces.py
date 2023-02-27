@@ -2,6 +2,7 @@ import abc
 
 from airo_typing import (
     CameraIntrinsicsMatrixType,
+    ColoredPointCloudType,
     HomogeneousMatrixType,
     NumpyDepthMapType,
     NumpyFloatImageType,
@@ -68,6 +69,17 @@ class DepthCamera(Camera, abc.ABC):
     @abc.abstractmethod
     def get_depth_image(self) -> NumpyIntImageType:
         """an 8-bit (int) quantization of the latest depth map, which can be used for visualization"""
+        raise NotImplementedError
+
+    def get_colored_point_cloud(self) -> ColoredPointCloudType:
+        """Get the latest point cloud of the camera.
+        The point cloud contains 6D arrays of floats, that provide the estimated x, y, z-coordinates in the camera frame
+        of that point on the image plane (pixel) and the corresponding RGB color.
+
+        Returns:
+            np.ndarray: PointCloud with color information
+        """
+        # TODO: offer a base implementation that uses the depth map and the rgb image to construct this pointcloud?
         raise NotImplementedError
 
 
