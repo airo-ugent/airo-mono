@@ -10,11 +10,12 @@ except ImportError:
     )
 
 import numpy as np
-from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera, profile_rgb_throughput
+from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
+    ColoredPointCloudType,
     HomogeneousMatrixType,
     NumpyDepthMapType,
     NumpyFloatImageType,
@@ -30,6 +31,8 @@ class Zed2i(StereoRGBDCamera):
 
     It is important to note that the ZED cameras are factory calibrated and hence provide undistorted images
     and corresponding intrinsics matrices.
+
+    Also note that all depth values are relative to the left camera.
     """
 
     # for more info on the different depth modes, see:
@@ -67,6 +70,8 @@ class Zed2i(StereoRGBDCamera):
         self.serial_number = serial_number
 
         self.camera = sl.Camera()
+
+        # TODO: create a configuration class for the camera parameters
         self.camera_params = sl.InitParameters()
         self.camera_params.camera_resolution = resolution
         self.camera_params.camera_fps = fps
@@ -79,7 +84,7 @@ class Zed2i(StereoRGBDCamera):
         self.camera_params.depth_minimum_distance = (
             0.3  # objects closerby will have artifacts so they are filtered out (querying them will give a - Infinty)
         )
-        self.camera_params.depth_maximum_distance = 2.0  # filter out far away objects
+        self.camera_params.depth_maximum_distance = 3.0  # filter out far away objects
 
         if self.camera.is_opened():
             # close to open with correct params
@@ -89,11 +94,28 @@ class Zed2i(StereoRGBDCamera):
         if status != sl.ERROR_CODE.SUCCESS:
             raise IndexError(f"could not open camera, error = {status}")
 
+        # TODO: create a configuration class for the runtime parameters
         self.runtime_params = sl.RuntimeParameters()
         self.runtime_params.sensing_mode = sl.SENSING_MODE.STANDARD  # standard > fill for accuracy. See docs.
+        self.runtime_params.texture_confidence_threshold = 98
+        self.runtime_params.confidence_threshold = 100
+        self.runtime_params.enable_depth = True
+
+        # TODO: have a look at the runtime penalty of enabling positional tracking and the benefits for depth/pointcloud
+
+        # Enable Positional tracking (mandatory for object detection)
+        # positional_tracking_parameters = sl.PositionalTrackingParameters()
+        # If the camera is static, uncomment the following line to have better performances and boxes sticked to the ground.
+        # positional_tracking_parameters.set_as_static = True
+        # self.camera.enable_positional_tracking(positional_tracking_parameters)
+
+        # TODO: consider exposing the enable/disable depth function
+        # so that the same camera instance can be used for getting rgb images fast
+        # and later on for getting depth maps?
 
         self.image_matrix = sl.Mat()  # allocate memory for RGB view
         self.depth_matrix = sl.Mat()  # allocate memory for the depth map
+        self.pointcloud_matrix = sl.Mat()  # allocate memory for the point cloud
 
     @property
     def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> CameraIntrinsicsMatrixType:
@@ -169,6 +191,29 @@ class Zed2i(StereoRGBDCamera):
         # this can take up ~ ms for larger images (can impact FPS)
         return ImageConverter.from_opencv_format(image).image_in_numpy_format
 
+    def get_colored_point_cloud(self) -> ColoredPointCloudType:
+        self._grab_latest_image()
+        self.camera.retrieve_measure(self.pointcloud_matrix, sl.MEASURE.XYZRGBA)
+        # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
+        # can be nan,nan,nan, nan (no point in the pointcloud on this pixel)
+        # or x,y,z, nan (no color information on this pixel??)
+        # or x,y,z, value (color information on this pixel)
+
+        # filter out all that have nan in any of the positions of the 3th dim
+        # and reshape to (width*height, 4)
+        point_cloud = self.pointcloud_matrix.get_data()
+        point_cloud = point_cloud[~np.isnan(point_cloud).any(axis=2), :]
+
+        # unpack the colors, drop alpha channel and convert to 0-1 range
+        points = point_cloud[:, :3]
+        colors = point_cloud[:, 3]
+        rgba = np.ravel(colors).view(np.uint8).reshape(-1, 4)
+        rgb = rgba[:, :3]
+        rgb_float = rgb.astype(np.float32) / 255.0  # convert to 0-1 range
+
+        colored_pointcloud = np.concatenate((points, rgb_float), axis=1)
+        return colored_pointcloud
+
     @staticmethod
     def list_camera_serial_numbers() -> List[str]:
         """
@@ -200,8 +245,10 @@ if __name__ == "__main__":
 
     # test rgbd stereo camera
     with Zed2i(Zed2i.RESOLUTION_2K, fps=15, depth_mode=Zed2i.PERFORMANCE_DEPTH_MODE) as zed:
+        print(zed.get_colored_point_cloud()[0])  # TODO: test the pointcloud more explicity?
         manual_test_stereo_rgbd_camera(zed)
 
-    # profile rgb throughput, should be at 60FPS, i.e. 0.017s
-    zed = Zed2i(Zed2i.RESOLUTION_720, fps=60)
-    profile_rgb_throughput(zed)
+#      # profile rgb throughput, should be at 60FPS, i.e. 0.017s
+#      from airo_camera_toolkit.cameras.test_hw import profile, profile_rgb_throughput
+#      zed = Zed2i(Zed2i.RESOLUTION_720, fps=60)
+#      profile_rgb_throughput(zed)

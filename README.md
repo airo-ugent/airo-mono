@@ -19,7 +19,7 @@ airo-camera-toolkit     # code for working with RGB(D) Images and cameras
 airo-robots             # code for working with robot arms and grippers
 airo-teleop             # code for teleoperating robot arms
 ```
-For realtime visualisation of robotics data  we prefer [rerun.io](https://www.rerun.io/) over the manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK.
+For realtime visualisation of robotics data we prefer [rerun.io](https://www.rerun.io/) over  manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](airo-camera-toolkit/airo_camera_toolkit/docs/rerun-zed-example.ipynb).
 
 ## Installation
 There are a number of ways to install packages from this repo, based on whether you want to use them or you also want to make changes to them:
