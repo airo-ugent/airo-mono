@@ -13,7 +13,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "matplotlib",
-        "pip install https://github.com/rerun-io/rerun/releases/download/latest/rerun_sdk-0.2.0+df920dc.1-cp38-abi3-manylinux_2_31_x86_64.whl",
+        "https://github.com/rerun-io/rerun/releases/download/latest/rerun_sdk-0.2.0+df920dc.1-cp38-abi3-manylinux_2_31_x86_64.whl",
     ],
     extras_require={
         "external": [
