@@ -91,7 +91,7 @@ class Zed2i(StereoRGBDCamera):
         self.camera_params.coordinate_units = sl.UNIT.METER
         # objects closerby will have artifacts so they are filtered out (querying them will give a - Infinty)
         self.camera_params.depth_minimum_distance = 0.3
-        self.camera_params.depth_maximum_distance = 5.0  # filter out far away objects
+        self.camera_params.depth_maximum_distance = 10.0  # filter out far away objects
 
         if self.camera.is_opened():
             # close to open with correct params
@@ -120,7 +120,6 @@ class Zed2i(StereoRGBDCamera):
         self.depth_matrix = sl.Mat()
         self.pointcloud_matrix = sl.Mat()
 
-    @property
     def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> CameraIntrinsicsMatrixType:
 
         # get the 'rectified' intrinsics matrices.

@@ -30,7 +30,6 @@ class Camera(abc.ABC):
     cf https://scikit-image.org/docs/stable/user_guide/numpy_images.html#numpy-indexing
     """
 
-    @property
     @abc.abstractmethod
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         """returns the intrinsics matrix of the camera:
@@ -99,7 +98,6 @@ class StereoRGBDCamera(RGBDCamera):
         raise NotImplementedError
 
     # TODO: check view argument value?
-    @property
     @abc.abstractmethod
     def intrinsics_matrix(self, view: str = LEFT_RGB) -> CameraIntrinsicsMatrixType:
         raise NotImplementedError
