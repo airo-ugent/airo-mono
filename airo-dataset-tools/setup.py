@@ -9,6 +9,8 @@ setuptools.setup(
     description="TODO",
     install_requires=[
         "numpy",
+        "pydantic",
+        "pycocotools",
     ],
     packages=find_packages(),
 )
