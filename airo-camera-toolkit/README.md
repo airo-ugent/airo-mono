@@ -2,7 +2,7 @@
 This package contains code for working with RGB(D) cameras and implementations of our interface for the cameras we use at the lab.
 
 ## 1. Installation
-The general `airo_camera_toolkit` package can be installed with pip by running (from this directory):
+The `airo_camera_toolkit` package can be installed with pip by running (from this directory):
 ```
 pip install .
 ```
