@@ -1,14 +1,8 @@
 # airo-dataset-tools
 
+Package for creation and loading of datasets.
+This functionality is mainly provided in the form of [Pydantic](https://docs.pydantic.dev/) parsers.
 
-## Local Development
+This package is mainly used for the COCO dataset format, other formats will be added as needed.
 
-### Local installation
-
-- clone this repo
-- create the conda environment `conda env create -f environment.yaml`
-- initialize the pre-commit hooks `pre-commit install`
-
-
-### Running formatting, linting and testing
-The makefile contains commands to make this convenient. Run using `make <command>`.
+Besides datasets, we also plan to provide parsers for other persistent data such as camera intrinsics and extrinsics.
