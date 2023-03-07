@@ -48,10 +48,10 @@ CategoryID = int
 ImageID = int
 
 # Used by CocoInstanceAnnotation
-# RLE = str  # run length encoding
-RLE = dict  # run length encoding, with keys "counts" and "size"
-Polygon = list[float]
-Segmentation = Union[RLE, list[Polygon]]
+RLEDict = dict[str, list]  # Dict[int,int]  # run length encoding (of a pixel-mask), with keys "counts" and "size"
+# where count contains the actual run length encoding (of a pixel-mask) [x1,l1,x2,l2,...]
+Polygon = list[float]  # list of vertices [x1, y1, x2, y2, ...]
+Segmentation = Union[RLEDict, list[Polygon]]
 
 
 class CocoInfo(BaseModel):

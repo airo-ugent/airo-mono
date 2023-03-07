@@ -24,7 +24,7 @@ def test_coco_load_instances():
     with open(annotations, "r") as file:
         data = json.load(file)
         coco_instances = CocoInstances(**data)
-        # Check a few know lengths to see that all elements were loaded
+        # Check a few known lengths to ensure that all elements were loaded
         assert len(coco_instances.images) == 3
         assert len(coco_instances.categories) == 80
         assert len(coco_instances.annotations) == 34
