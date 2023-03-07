@@ -135,6 +135,7 @@ class SynchronousParallelPositionGripperAdapter(ParallelPositionGripper):
     """
 
     def __init__(self, gripper: AsyncParallelPositionGripper) -> None:
+        super().__init__(gripper.gripper_specs)
         self._gripper = gripper
         self.timeout = 10
 
@@ -160,6 +161,9 @@ class SynchronousParallelPositionGripperAdapter(ParallelPositionGripper):
     def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
         return self._gripper.move(width, speed, force).result(self.timeout)
 
+    def is_an_object_grasped(self) -> bool:
+        return self._gripper.is_an_object_grasped()
+
 
 class AsynchronousParallelPositionGripperAdapter(AsyncParallelPositionGripper):
     """
@@ -168,6 +172,7 @@ class AsynchronousParallelPositionGripperAdapter(AsyncParallelPositionGripper):
     """
 
     def __init__(self, gripper: ParallelPositionGripper) -> None:
+        super().__init__(gripper.gripper_specs)
         self._gripper = gripper
         self.async_executor = AsyncExecutor()
 
@@ -192,3 +197,6 @@ class AsynchronousParallelPositionGripperAdapter(AsyncParallelPositionGripper):
 
     def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> Future:
         return self.async_executor(self._gripper.move, width, speed, force)
+
+    def is_an_object_grasped(self) -> bool:
+        return self._gripper.is_an_object_grasped()
