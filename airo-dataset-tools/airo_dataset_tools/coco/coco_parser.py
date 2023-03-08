@@ -30,7 +30,7 @@ with open("annotations.json", "w") as file:
 
 """
 
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, Optional, Sequence, Union
 
 from pydantic import BaseModel, root_validator, validator
 
@@ -121,12 +121,12 @@ class CocoLicense(BaseModel):
     url: Url
 
 
-class CocoInstances(BaseModel):
+class CocoInstancesDataset(BaseModel):
     info: Optional[CocoInfo]
     licenses: Optional[list[CocoLicense]]
     categories: list[CocoCategory]
     images: list[CocoImage]
-    annotations: List[CocoInstanceAnnotation]
+    annotations: list[CocoInstanceAnnotation]
 
     @root_validator
     def annotations_catergory_id_exist_in_categories(cls, values: dict) -> dict:
@@ -136,7 +136,7 @@ class CocoInstances(BaseModel):
         return values
 
 
-class CocoKeypoints(CocoInstances):
+class CocoKeypointsDataset(CocoInstancesDataset):
     # Override the type of annotations.
     # annotations must be Sequence vs. list to allow this, see:
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variance
