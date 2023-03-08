@@ -110,9 +110,31 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
 
     @validator("keypoints")
     def keypoints_must_be_multiple_of_three(cls, v: Keypoints) -> Keypoints:
-        if len(v) % 3 != 0:
-            raise ValueError("keypoints list length must be a multiple of 3")
+        assert len(v) % 3 == 0, "keypoints list must be a multiple of 3"
         return v
+
+    @validator("keypoints")
+    def keypoints_coordinates_must_be_in_pixel_space(cls, v: Keypoints, values: dict) -> Keypoints:
+        max_coordinate_value = 0
+        for i in range(0, len(v), 3):
+            max_coordinate_value = max(v[i], max_coordinate_value)
+            max_coordinate_value = max(v[i + 2], max_coordinate_value)
+        assert (
+            max_coordinate_value > 1
+        ), f"keypoints coordinates must be in pixel space, but max_coordinate is {max_coordinate_value}"
+        return v
+
+    @root_validator
+    def num_keypoints_matches_amount_of_labeled_keypoints(cls, values: dict) -> dict:
+
+        labeled_keypoints = 0
+        for v in values["keypoints"][2::3]:
+            if v > 0:
+                labeled_keypoints += 1
+        assert (
+            labeled_keypoints == values["num_keypoints"]
+        ), f"num_keypoints {values['num_keypoints']} does not match number of labeled of keypoints {labeled_keypoints} for annotation {values['id']}"
+        return values
 
 
 class CocoLicense(BaseModel):
@@ -128,7 +150,13 @@ class CocoInstancesDataset(BaseModel):
     images: List[CocoImage]
     annotations: Sequence[CocoInstanceAnnotation]
 
-    @root_validator
+    @validator("annotations")
+    def annotations_list_cannot_be_empty(cls, v: List[CocoInstanceAnnotation]) -> List[CocoInstanceAnnotation]:
+        assert len(v) > 0, "annotations list cannot be empty"
+        return v
+
+    # skip on failure becasue this validator requires the annotations list to be non-empty
+    @root_validator(skip_on_failure=True)
     def annotations_catergory_id_exist_in_categories(cls, values: dict) -> dict:
         category_ids = set([category.id for category in values["categories"]])
         for annotation in values["annotations"]:
@@ -144,3 +172,13 @@ class CocoKeypointsDataset(CocoInstancesDataset):
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variance
     categories: Sequence[CocoKeypointCategory]
     annotations: Sequence[CocoKeypointAnnotation]
+
+    # skip on failure becasue this validator requires the annotations list to be non-empty
+    @root_validator(skip_on_failure=True)
+    def num_keypoints_matches_annotations(cls, values: dict) -> dict:
+        category_dict = {category.id: category for category in values["categories"]}
+        for annotation in values["annotations"]:
+            assert len(annotation.keypoints) // 3 == len(
+                category_dict[annotation.category_id].keypoints
+            ), f"Number of keypoints for annotation {annotation.id} does not match number of keypoints in category."
+        return values

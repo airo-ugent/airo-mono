@@ -59,7 +59,7 @@ def coco_keypoint_category_example() -> CocoKeypointCategory:
         supercategory="cloth",
         id=99,
         name="towel",
-        keypoints=["corner"],
+        keypoints=["corner_1", "corner_2", "corner_3"],
     )
 
 
