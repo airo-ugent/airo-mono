@@ -13,7 +13,12 @@ import json
 import os
 
 import pytest
-from airo_dataset_tools.coco.coco_parser import CocoInstancesDataset, CocoKeypointsDataset
+from airo_dataset_tools.coco.coco_parser import (
+    CocoCategory,
+    CocoInstancesDataset,
+    CocoKeypointCategory,
+    CocoKeypointsDataset,
+)
 
 
 def test_coco_load_instances():
@@ -29,6 +34,8 @@ def test_coco_load_instances():
         assert len(coco_instances.categories) == 80
         assert len(coco_instances.annotations) == 34
 
+        assert isinstance(coco_instances.categories[0], CocoCategory)
+
 
 def test_coco_load_keypoints():
     """Test whether we can correctly load the partial person_keypoints_val2017 dataset."""
@@ -41,6 +48,8 @@ def test_coco_load_keypoints():
         assert len(coco_keypoints.images) == 2
         assert len(coco_keypoints.categories) == 1
         assert len(coco_keypoints.annotations) == 2
+
+        assert isinstance(coco_keypoints.categories[0], CocoKeypointCategory)
 
 
 def test_coco_load_instances_incorrectly():

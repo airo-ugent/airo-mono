@@ -124,7 +124,7 @@ class CocoLicense(BaseModel):
 class CocoInstancesDataset(BaseModel):
     info: Optional[CocoInfo]
     licenses: Optional[List[CocoLicense]]
-    categories: List[CocoCategory]
+    categories: Sequence[CocoCategory]
     images: List[CocoImage]
     annotations: Sequence[CocoInstanceAnnotation]
 
@@ -132,7 +132,9 @@ class CocoInstancesDataset(BaseModel):
     def annotations_catergory_id_exist_in_categories(cls, values: dict) -> dict:
         category_ids = set([category.id for category in values["categories"]])
         for annotation in values["annotations"]:
-            assert annotation.category_id in category_ids
+            assert (
+                annotation.category_id in category_ids
+            ), f"Annotation {annotation.id} has category_id {annotation.category_id} which does not exist in categories."
         return values
 
 
@@ -140,4 +142,5 @@ class CocoKeypointsDataset(CocoInstancesDataset):
     # Override the type of annotations.
     # annotations must be Sequence vs. list to allow this, see:
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+    categories: Sequence[CocoKeypointCategory]
     annotations: Sequence[CocoKeypointAnnotation]
