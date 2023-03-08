@@ -126,7 +126,7 @@ class CocoInstancesDataset(BaseModel):
     licenses: Optional[list[CocoLicense]]
     categories: list[CocoCategory]
     images: list[CocoImage]
-    annotations: list[CocoInstanceAnnotation]
+    annotations: Sequence[CocoInstanceAnnotation]
 
     @root_validator
     def annotations_catergory_id_exist_in_categories(cls, values: dict) -> dict:

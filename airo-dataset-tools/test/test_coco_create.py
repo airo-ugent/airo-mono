@@ -5,10 +5,10 @@ from airo_dataset_tools.coco.coco_parser import (
     CocoImage,
     CocoInfo,
     CocoInstanceAnnotation,
-    CocoInstances,
+    CocoInstancesDataset,
     CocoKeypointAnnotation,
     CocoKeypointCategory,
-    CocoKeypoints,
+    CocoKeypointsDataset,
     CocoLicense,
 )
 
@@ -154,7 +154,7 @@ def test_coco_instances():
     coco_instance_annotation = coco_instance_annotation_example()
     coco_instance_annotation_with_rle = coco_instance_annotation_with_rle_example()
 
-    coco_instances = CocoInstances(
+    coco_instances = CocoInstancesDataset(
         info=coco_info,
         licenses=[coco_license],
         images=[coco_image],
@@ -171,7 +171,7 @@ def test_coco_keypoints():
     coco_keypoint_category = coco_keypoint_category_example()
     coco_keypoint_annotation = coco_keypoint_annotation_example()
 
-    coco_keypoints = CocoKeypoints(
+    coco_keypoints = CocoKeypointsDataset(
         info=coco_info,
         licenses=[coco_license],
         images=[coco_image],

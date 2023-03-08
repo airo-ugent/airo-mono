@@ -13,7 +13,7 @@ import json
 import os
 
 import pytest
-from airo_dataset_tools.coco.coco_parser import CocoInstances, CocoKeypoints
+from airo_dataset_tools.coco.coco_parser import CocoInstancesDataset, CocoKeypointsDataset
 
 
 def test_coco_load_instances():
@@ -23,7 +23,7 @@ def test_coco_load_instances():
 
     with open(annotations, "r") as file:
         data = json.load(file)
-        coco_instances = CocoInstances(**data)
+        coco_instances = CocoInstancesDataset(**data)
         # Check a few known lengths to ensure that all elements were loaded
         assert len(coco_instances.images) == 3
         assert len(coco_instances.categories) == 80
@@ -37,7 +37,7 @@ def test_coco_load_keypoints():
 
     with open(annotations, "r") as file:
         data = json.load(file)
-        coco_keypoints = CocoKeypoints(**data)
+        coco_keypoints = CocoKeypointsDataset(**data)
         assert len(coco_keypoints.images) == 2
         assert len(coco_keypoints.categories) == 1
         assert len(coco_keypoints.annotations) == 2
@@ -51,4 +51,4 @@ def test_coco_load_instances_incorrectly():
     with open(annotations, "r") as file:
         data = json.load(file)
         with pytest.raises(Exception):
-            CocoKeypoints(**data)
+            CocoKeypointsDataset(**data)
