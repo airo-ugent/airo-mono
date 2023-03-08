@@ -30,7 +30,7 @@ with open("annotations.json", "w") as file:
 
 """
 
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from pydantic import BaseModel, root_validator, validator
 
@@ -95,7 +95,7 @@ class CocoInstanceAnnotation(BaseModel):
     category_id: CategoryID
     segmentation: Segmentation
     area: float
-    bbox: tuple[int, int, int, int]
+    bbox: Tuple[int, int, int, int]
     iscrowd: IsCrowd
 
     @validator("iscrowd")
