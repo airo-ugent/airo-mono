@@ -30,7 +30,7 @@ with open("annotations.json", "w") as file:
 
 """
 
-from typing import Dict, Optional, Sequence, Union
+from typing import Dict, List, Optional, Sequence, Union
 
 from pydantic import BaseModel, root_validator, validator
 
@@ -48,13 +48,13 @@ CategoryID = int
 ImageID = int
 
 # Used by CocoInstanceAnnotation
-RLEDict = Dict[str, list]  # Dict[int,int]  # run length encoding (of a pixel-mask), with keys "counts" and "size"
+RLEDict = Dict[str, List]  # Dict[int,int]  # run length encoding (of a pixel-mask), with keys "counts" and "size"
 # where count contains the actual run length encoding (of a pixel-mask) [x1,l1,x2,l2,...]
-Polygon = list[float]  # list of vertices [x1, y1, x2, y2, ...]
-Segmentation = Union[RLEDict, list[Polygon]]
+Polygon = List[float]  # list of vertices [x1, y1, x2, y2, ...]
+Segmentation = Union[RLEDict, List[Polygon]]
 
 # Used by the Annotations
-Keypoints = list[float]  # list of keypoints [x1, y1, v1, x2, y2, v2, ...]
+Keypoints = List[float]  # list of keypoints [x1, y1, v1, x2, y2, v2, ...]
 IsCrowd = int  # 0 or 1
 
 
@@ -85,8 +85,8 @@ class CocoCategory(BaseModel):
 
 
 class CocoKeypointCategory(CocoCategory):
-    keypoints: list[str]
-    skeleton: Optional[list[list[int]]]
+    keypoints: List[str]
+    skeleton: Optional[List[List[int]]]
 
 
 class CocoInstanceAnnotation(BaseModel):
@@ -123,9 +123,9 @@ class CocoLicense(BaseModel):
 
 class CocoInstancesDataset(BaseModel):
     info: Optional[CocoInfo]
-    licenses: Optional[list[CocoLicense]]
-    categories: list[CocoCategory]
-    images: list[CocoImage]
+    licenses: Optional[List[CocoLicense]]
+    categories: List[CocoCategory]
+    images: List[CocoImage]
     annotations: Sequence[CocoInstanceAnnotation]
 
     @root_validator
