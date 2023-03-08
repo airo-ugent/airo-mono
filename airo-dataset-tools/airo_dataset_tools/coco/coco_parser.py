@@ -115,7 +115,7 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
 
     @validator("keypoints")
     def keypoints_coordinates_must_be_in_pixel_space(cls, v: Keypoints, values: dict) -> Keypoints:
-        max_coordinate_value = 0
+        max_coordinate_value = 0.0
         for i in range(0, len(v), 3):
             max_coordinate_value = max(v[i], max_coordinate_value)
             max_coordinate_value = max(v[i + 2], max_coordinate_value)
