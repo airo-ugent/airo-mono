@@ -30,7 +30,7 @@ with open("annotations.json", "w") as file:
 
 """
 
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
 from pydantic import BaseModel, root_validator, validator
 
@@ -48,7 +48,7 @@ CategoryID = int
 ImageID = int
 
 # Used by CocoInstanceAnnotation
-RLEDict = dict[str, list]  # Dict[int,int]  # run length encoding (of a pixel-mask), with keys "counts" and "size"
+RLEDict = Dict[str, list]  # Dict[int,int]  # run length encoding (of a pixel-mask), with keys "counts" and "size"
 # where count contains the actual run length encoding (of a pixel-mask) [x1,l1,x2,l2,...]
 Polygon = list[float]  # list of vertices [x1, y1, x2, y2, ...]
 Segmentation = Union[RLEDict, list[Polygon]]
