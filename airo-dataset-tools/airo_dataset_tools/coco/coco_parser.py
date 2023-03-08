@@ -30,7 +30,7 @@ with open("annotations.json", "w") as file:
 
 """
 
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Sequence, Union
 
 from pydantic import BaseModel, root_validator, validator
 
@@ -52,6 +52,10 @@ RLEDict = Dict[str, list]  # Dict[int,int]  # run length encoding (of a pixel-ma
 # where count contains the actual run length encoding (of a pixel-mask) [x1,l1,x2,l2,...]
 Polygon = list[float]  # list of vertices [x1, y1, x2, y2, ...]
 Segmentation = Union[RLEDict, list[Polygon]]
+
+# Used by the Annotations
+Keypoints = list[float]  # list of keypoints [x1, y1, v1, x2, y2, v2, ...]
+IsCrowd = int  # 0 or 1
 
 
 class CocoInfo(BaseModel):
@@ -92,20 +96,20 @@ class CocoInstanceAnnotation(BaseModel):
     segmentation: Segmentation
     area: float
     bbox: tuple[int, int, int, int]
-    iscrowd: int
+    iscrowd: IsCrowd
 
     @validator("iscrowd")
-    def iscrowd_must_be_binary(cls, v):
+    def iscrowd_must_be_binary(cls, v: IsCrowd) -> IsCrowd:
         assert v in [0, 1]
         return v
 
 
 class CocoKeypointAnnotation(CocoInstanceAnnotation):
-    keypoints: list[float]
+    keypoints: Keypoints
     num_keypoints: Optional[int]
 
     @validator("keypoints")
-    def keypoints_must_be_multiple_of_three(cls, v):
+    def keypoints_must_be_multiple_of_three(cls, v: Keypoints) -> Keypoints:
         if len(v) % 3 != 0:
             raise ValueError("keypoints list length must be a multiple of 3")
         return v
@@ -122,15 +126,18 @@ class CocoInstances(BaseModel):
     licenses: Optional[list[CocoLicense]]
     categories: list[CocoCategory]
     images: list[CocoImage]
-    annotations: list[CocoInstanceAnnotation]
-
-
-class CocoKeypoints(CocoInstances):
-    annotations: list[CocoKeypointAnnotation]
+    annotations: List[CocoInstanceAnnotation]
 
     @root_validator
-    def annotations_catergory_id_exist_in_categories(cls, values):
+    def annotations_catergory_id_exist_in_categories(cls, values: dict) -> dict:
         category_ids = set([category.id for category in values["categories"]])
         for annotation in values["annotations"]:
             assert annotation.category_id in category_ids
         return values
+
+
+class CocoKeypoints(CocoInstances):
+    # Override the type of annotations.
+    # annotations must be Sequence vs. list to allow this, see:
+    # https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+    annotations: Sequence[CocoKeypointAnnotation]

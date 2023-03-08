@@ -49,7 +49,7 @@ def coco_image_without_optional_fields_example() -> CocoImage:
 def coco_category_example() -> CocoCategory:
     return CocoCategory(
         supercategory="cloth",
-        id=1,
+        id=99,
         name="towel",
     )
 
