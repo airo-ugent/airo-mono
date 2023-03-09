@@ -2,30 +2,23 @@
 This repository contains code to facilitate our research in robotic perception and control and vevelopment of robotic manipulation systems.
 
 ## Overview
-below is a short overview of the packages in this repo. Each package has a dedicated readme file with more information.
-```
-airo-blender            # code for (procedural) synthetic data generation with Blender
-airo-camera-toolkit     # code for working with RGB(D) cameras, images and pointclouds
-airo-dataset-tools      # code for creating, loading and working with datasets
-airo-robots             # minimal interfaces for interacting with the controllers of robot arms and grippers
-airo-spatial-algebra    # code for working with SE3 poses
-airo-teleop             # code for teleoperating robot arms
-airo-typing             # common typedefs and conventions (e.g. extrinsics matrix = camera IN world)
-```
+below is a short overview of the packages in this repo.
 
-each package has a 'code owner'. This is the go-to person if you:
+| Package | Description| owner |
+|-------|-------|--------|
+|`airo-blender` |code for (procedural) synthetic data generation | @Victorlouisdg |
+| `airo-camera-toolkit`|code for working with RGB(D) cameras, images and pointclouds |@tlpss|
+|`airo-dataset-tools`| code for creating, loading and working with datasets| @Victorlouisdg|
+| `airo-robots`| minimal interfaces for interacting with the controllers of robot arms and grippers| @tlpss|
+| `airo-spatial-math`|code for working with SE3 poses |@tlpss|
+|`airo-teleop`| code for teleoperating robot arms |@tlpss|
+| `airo-typing`  |common type definitions and conventions (e.g. extrinsics matrix = camera IN world) | @tlpss       |
+
+Each package has a dedicated readme file that contains more information.
+Furthermore, each package has a 'code owner'. This is the go-to person if you:
 - have questions about what is supported or about the code in general
 - want to know more about why something is implemented in a particular way
 - want to add new functionality to the package
-
-#TODO: add table with owner for each package? or put that in separate file?
-| Package | owner |
-|-------|---------------|
-| `airo-typing`   | @tlpss       |
-| `airo-spatial-math` |@tlpss|
-| `airo-camera-toolkit` |@tlpss|
-| `airo-robots` | @tlpss|
-|`airo-blender` | @Victorlouisdg |
 
 
 #TODO: move to camera-toolkit package
