@@ -1,5 +1,5 @@
 # airo-mono
-This repository contains code to facilitate our research in robotic perception and control and vevelopment of robotic manipulation systems.
+This repository contains code to facilitate our research in and development of robotic manipulation systems.
 
 ## Overview
 below is a short overview of the packages in this repo.
