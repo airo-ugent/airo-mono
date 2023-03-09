@@ -49,7 +49,9 @@ class Robotiq2F85(ParallelPositionGripper):
         self.port = port
 
         self._check_connection()
-        self.activate_gripper()
+        if not self.gripper_is_active():
+
+            self.activate_gripper()
         super().__init__(self.gripper_specs)
 
     def get_current_width(self) -> float:
@@ -179,7 +181,7 @@ class Robotiq2F85(ParallelPositionGripper):
     def activate_gripper(self) -> None:
         """Activates the gripper, sets target position to "Open" and sets GTO flag."""
         self._communicate("SET ACT 1")
-        while not self._communicate("GET STA") == "STA 3":
+        while not self.gripper_is_active():
             time.sleep(0.01)
 
         # initialize gripper
@@ -191,6 +193,9 @@ class Robotiq2F85(ParallelPositionGripper):
         self._communicate("SET ACT 0")
         while not self._communicate("GET STA") == "STA 0":
             time.sleep(0.01)
+
+    def gripper_is_active(self) -> bool:
+        return self._communicate("GET STA") == "STA 3"
 
     @staticmethod
     def _is_target_value_set(target: int, value: int) -> bool:
