@@ -8,7 +8,7 @@ from airo_camera_toolkit.interfaces import Camera, DepthCamera, RGBCamera, Stere
 
 
 def manual_test_camera(camera: Camera) -> None:
-    intrinsics = camera.intrinsics_matrix
+    intrinsics = camera.intrinsics_matrix()
     print(f"the rectified intrinsics matrix = \n {intrinsics}")
     input(
         """Camera matrix should be as expected:
