@@ -10,7 +10,7 @@ below is a short overview of the packages in this repo.
 | `airo-camera-toolkit`|code for working with RGB(D) cameras, images and pointclouds |@tlpss|
 |`airo-dataset-tools`| code for creating, loading and working with datasets| @Victorlouisdg|
 | `airo-robots`| minimal interfaces for interacting with the controllers of robot arms and grippers| @tlpss|
-| `airo-spatial-math`|code for working with SE3 poses |@tlpss|
+| `airo-spatial-algebra`|code for working with SE3 poses |@tlpss|
 |`airo-teleop`| code for teleoperating robot arms |@tlpss|
 | `airo-typing`  |common type definitions and conventions (e.g. extrinsics matrix = camera IN world) | @tlpss       |
 
