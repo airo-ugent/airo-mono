@@ -45,10 +45,6 @@ class ParallelPositionGripper(ABC):
     def gripper_specs(self) -> ParallelPositionGripperSpecs:
         return self._gripper_specs
 
-    @gripper_specs.setter
-    def gripper_specs(self, spec: ParallelPositionGripperSpecs) -> None:
-        self._gripper_specs = spec
-
     @property
     @abstractmethod
     def speed(self) -> float:
