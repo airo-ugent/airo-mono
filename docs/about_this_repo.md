@@ -25,7 +25,7 @@ Furthermore, we also want to be able to use our code in static/dynamic simulatio
 
 Therefore we opted to provide 'framework-agnostic code' in the form of python packages. This is not a provably right choice, it is driven by (limited) personal experience.
 
-It is important to keep an eye on the scope of this repo, to avoid reinventing the weel too much. Once you have complex use cases, you should definitely consider using ROS 2 and the frameworks built on top of it, or similar frameworks such as Drake. As we provide our code in barebone python, you can easily wrap our code in a ROS node and be on your way.
+It is important to keep an eye on the scope of this repo, to avoid reinventing the wheel too much. Once you have complex use cases, you should definitely consider using ROS 2 and the frameworks built on top of it, or similar frameworks such as Drake. As we provide our code in barebone python, you can easily wrap our code in a ROS node and be on your way.
 
 
 
