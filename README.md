@@ -2,6 +2,7 @@
 This repository contains python packages for common operations to facilitate our research on and development of robotic manipulation systems.
 Instead of reimplementing the same functionalities over and over, this repo provides ready-to-use implementations and aims to leverage experience by updating the implementations with best practices along the way.
 
+You can read more about  the scope and motivation of this repo [here](docs/about_this_repo.md).
 ## Overview
 The repository is structured as a monorepo (hence the name) with multiple python packages.
 Below is a short overview of the packages:
@@ -16,7 +17,11 @@ Below is a short overview of the packages:
 |`airo-teleop`| code for teleoperating robot arms |@tlpss|
 | `airo-typing`  |common type definitions and conventions (e.g. extrinsics matrix = camera IN world) | @tlpss       |
 
-Each package has a dedicated readme file that contains more information.
+Each package has a dedicated readme file that contains
+- a more detailed overview of the functionality provided by the package
+- additional installation instructions (if required)
+- additional information on design decisision etc (if applicable).
+
 Furthermore, each package has a 'code owner'. This is the go-to person if you:
 - have questions about what is supported or about the code in general
 - want to know more about why something is implemented in a particular way
@@ -26,9 +31,11 @@ Furthermore, each package has a 'code owner'. This is the go-to person if you:
 There are a number of ways to install packages from this repo.
 
 **directly from github**
+
 if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install ' <pkg-name>[external] @ git+https://github.com/airo-ugent/airo-core@<branch/tag>#subdirectory=<package-dir>'`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/). There will now be a `src/` folder in your project where pip has downloaded the repo and from where the package is installed, but you can ignore this as it will be automatically excluded from source control. You can (and should?) lock the pip install to a specific commit in your dependency manager (pip/conda/...)
 
 **git submodule**
+
 Alternatively you can add this repo as a submodule and install the relevant packages afterwards with regular pip commands. This might be useful for as long as this repo is making fast/breaking changes without good version management, as you can lock the submodule on a specific commit.
 
 **editable install**
