@@ -29,12 +29,16 @@ class AwaitableAction:
         self.status = ACTION_STATUS_ENUM.EXECUTING
         self.done_callback = done_callback
 
-    def wait(self, timeout: float = 10.0) -> ACTION_STATUS_ENUM:
+    def wait(self, timeout: float = 10.0, sleep_resolution: float = 0.1) -> ACTION_STATUS_ENUM:
+        # larger sleep resolution means less CPU usage, but also larger interval between checks
+        assert (
+            sleep_resolution > 0.0002
+        ), "sleep resolution must be at least 0.2ms, otherwise the relative error of a sleep becomes too large to be meaningful"
         if not self.status == ACTION_STATUS_ENUM.EXECUTING:
             return self.status
         while True:
-            time.sleep(0.1)
-            timeout -= 0.1
+            time.sleep(sleep_resolution)
+            timeout -= sleep_resolution
             if self.done_callback():
                 self.status = ACTION_STATUS_ENUM.SUCCEEDED
                 return self.status
