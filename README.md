@@ -1,5 +1,5 @@
 # airo-mono
-This repository contains python packages for common operations to facilitate our research on and development of robotic manipulation systems.
+This repository contains ready-to-use python packages to accelerate the development of robotic manipulation systems.
 Instead of reimplementing the same functionalities over and over, this repo provides ready-to-use implementations and aims to leverage experience by updating the implementations with best practices along the way.
 
 You can read more about  the scope and motivation of this repo [here](docs/about_this_repo.md).

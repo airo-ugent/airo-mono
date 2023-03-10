@@ -1,3 +1,4 @@
+# About this repository
 The goals of this repo are to
     - facilitate our research and development in robotic perception and control
     - facilitate the creation of demos/applications à la Folding competition @ IROS22
