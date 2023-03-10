@@ -1,12 +1,24 @@
 # Airo-robots
+This package contains code for controlling robot manipulators and grippers, specifically:
+- base classes (interfaces) for the different hardware types (grippers, manipulators, F/T sensors), i.e. defines the 'driver' interfaces.
+- implementations of those interfaces for some of the hardware used at AIRO.
+- code to manually test these implementations, when the hardware is attached to the computer.
 
-This package contains code for controlling robot manipulators and grippers:
-- it contains base classes (interfaces) for the different hardware types (grippers, manipulators, F/T sensors), i.e. defines the 'driver' interfaces.
-- it contains implementations of those interfaces for some of the hardware used at AIRO.
-- it contains code to manually test these implementations, when the hardware is attached to the computer. Each hw implementation module while have a `__main__` codeblock that runs the tests for that hardware implementation.
+The following combinations of hardware and communication options are currently implemented:
+| Hardware | Communication | Implementation |
+|----------|:----------|----------------|
+| UR robots | RTDE | [ur_rtde.py](airo_robots/manipulators/hardware/ur_rtde.py) |
+| Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
 
+Each hw implementation module will have a `__main__` codeblock that runs the tests for that hardware implementation. This is useful to check if the hardware is connected correctly and the implementation is working as expected. But it is also the place to be to get an idea of how to use the implementation.
 
+## Async interactions
+
+## Installation
+You can simply pip install this package. Note that some hardware implementations have additional dependencies, which are for now included in the setup.py but might be separated later on.
+## Structure
 a more detailled overview of the structure and content of this package:
+
 ```
 airo_robots/
     manipulators/
@@ -19,46 +31,44 @@ airo_robots/
 
     grippers/
         parallel_position_gripper.py        # base classes for parallel-finger, position-controlled grippers
-        manual_gripper_testing.py           # code for manually testing hw implementations
-        robotiq_2f85_tcp.py                 # implementations for robotiq_2F85 gripper over the URscript TCP API
+        hardware/
+            manual_gripper_testing.py           # code for manually testing hw implementations
+            robotiq_2f85_urcap.py                 # implementations for robotiq_2F85 gripper over the URscript TCP API
 ```
 
-## Some notes on the different types of interfaces for Hardware interaction
+## Adding new hardware
 
-For Hardware there are usually three ways to interact:
+### Adding new hardware implementations
+If an interface already exists for the hardware you want to use, you can simply use that interface and implement the hardware-specific code in a new module under the appriate `hardware/` folder. For the async methods, use an appropriate condition in the Awaitable Action object to signal when the command has finished.
+
+Don't forget to add a `__main__` codeblock to the new module that runs the tests for that hardware implementation.
+Also don't forget to add the implementation in the table above and import it in the `__init__.py` of the appropriate submodule.
+
+
+### Adding new interfaces
+Best to look at the existing interfaces for inspiration. The main thing to keep in mind is that the interface should be as general as possible, while still being useful. So don't add too many methods that are specific to a single hardware implementation. Methods for which it makes sense should return an Awaitable Action object.
+
+Dont forget to add the interface in the `__init__.py` of the appropriate submodule.
+## Notes on the different types of interfaces for Hardware interaction
+
+There are basically three ways to send commands to hardware:
 - send a command and never look back (asynchronous)
 - send a command, continue and later on check if it was succesful (asynchronous + awaitable)
 - send a command and wait for it to finish (synchronous)
 
 In ROS these are respectively sending to a topic, sending to an action server and sending + waiting on the action server.
 
-Also important to note that some commands don't have clear 'termination conditions'. E.g. if you send a new waypoint to an admittance controller, when has has the controller succesfully handled your request? There is no clear 'end' as with a MoveL signal that has a target pose and really has to get there.
+However, not all commands have a clear 'termination condition'. E.g. if you send a new waypoint to an admittance controller, when has has the controller succesfully handled your request? There is no clear 'end' as with a MoveL signal that has a target pose and really has to get there.
+So for these commands only the first option is available.
+
+Another thing to think of with async commands, is what happens when you send multiple commands in a row. Should the robot execute them in that order, or should the robot simply take the most recent command and ignore the previous ones? This is a design choice that should be made by the user of the interface. ROS (and most hardware controllers) take the last option, i.e. the robot will execute the most recent command and ignore the previous ones. These would be marked as *preempted* in ROS.
 
 
-In python I see two options:
-- using asyncio and it's awaitables.
-- using the concurrent.futures module
 
-Asyncio forces downstream code to use the 'async' definition everywhere but comes with useful functionality so there is a trade-off between 'opt-in'-ness (don't force downstream users to use asyncio if they don't need it) and having to reinvent the wheel partially. Atm I perceived the formers as a bigger downside than the latter so chose to work with futures and not with asyncio.
+To implement the awaitable behavior in python, we see a number of options:
 
-There is an additional consideration, where you could argue that you want to hide the async details for a synchronous user. I.e. the user does not have to 'wait' manually, the function call does this behind the scenes. To accomodate this, there are multiple interfaces:
+1) use AsyncIO. This might actually be the most pythonic way, but it requires all downstream code to also be async. This is not always possible, e.g. when using this code in ROS. Even when it is possible, it is not desirable imo.
 
-A synchronous interface for which functions simply return when their command is executed.
-An async, awaitable interface for which functions return a Future object when the command is queued (guaranteed to execute). You can explicitly wait for completion with the Future.
-An async, non-awaitable interface that simply registers the command (guaranteed to execute) but provides no feedback whatsoever.
+2) Have a custom return object on which you can wait actively when desired.
 
-Ofc. you don't want to defined these manually for each hardware piece so there are
-wrappers that take a sync or async interface and convert it into the other interfaces.
-An async, non-awaitable interface can ofc not be converted to an other interface.
-
-
-This is very much a WIP, so changes will most likely be made in the future.
-
-
-## Usage
-
-To use the hardware implementations:
-- go check out the interface to see what methods etc. are available.
-- (optional) run the implementation module for the desired hardware to get a feeling with the interface implementation and check if everything works as expected.
-
-- import the implementation in your script and start controlling the hardware.
+To signal preemption of commands to the user, you have to manually queue all commands and mark all other commands as preempted when popping the most recent command from the queue. This in turn requires a separate controll process (otherwise your single thread (mind the GIL), would spend lots of times checking if the current command is finished, even if you don't care about that at all). We
