@@ -72,7 +72,7 @@ class Robotiq2F85(ParallelPositionGripper):
 
         # this sleep is required to make sure that the OBJ STATUS
         # of the gripper is already in 'moving' before entering the wait loop.
-        time.sleep(0.1)
+        time.sleep(0.01)
 
         def move_done_condition() -> bool:
             done = abs(self.get_current_width() - width) < 0.002

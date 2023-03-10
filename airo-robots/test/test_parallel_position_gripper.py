@@ -6,7 +6,7 @@ from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripp
 from airo_robots.hardware_interaction_utils import AsyncExecutor
 
 
-class DummySyncParallelPositionGripper(ParallelPositionGripper):
+class DummyParallelPositionGripper(ParallelPositionGripper):
     """'Idealised' implementation of a parallel position gripper for testing purposes."""
 
     def __init__(self, gripper_specs: ParallelPositionGripperSpecs) -> None:
@@ -53,7 +53,7 @@ class DummySyncParallelPositionGripper(ParallelPositionGripper):
 
 
 def test_move_awaitable():
-    gripper = DummySyncParallelPositionGripper(None)
+    gripper = DummyParallelPositionGripper(None)
     target_pos = 0.01
     res = gripper.move(target_pos)
     assert isinstance(res, AwaitableAction)
@@ -64,11 +64,11 @@ def test_move_awaitable():
 
 def test_instantiation():
     # This tests that the class can be instantiated and hence that the abstract base class can be inherited from as expected.
-    DummySyncParallelPositionGripper(None)
+    DummyParallelPositionGripper(None)
 
 
 def test_properties():
-    gripper = DummySyncParallelPositionGripper(None)
+    gripper = DummyParallelPositionGripper(None)
     gripper.speed = 0.1
     assert gripper.speed == 0.1
     gripper.max_grasp_force = 0.2
