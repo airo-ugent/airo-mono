@@ -38,6 +38,9 @@ If the `ZED_Explorer` works as expected, you can try the `ZED_Depth_Viewer`:
 This should like this:
 ![ZED_Depth_Viewer](https://i.imgur.com/SzamB6J.png)
 
+If you get a segmentation fault and your CPU has a built-in GPU, have a look [here](https://community.stereolabs.com/t/zed-depth-viewer-segmentation-fault-address-not-mapped-to-objec/994/25) for a possible fix. Basically you have to make sure that your external GPU is used when opening the ZED Depth Viewer.
+
+
 ### 3.3 airo_camera_toolkit
 Now We will test whether our `airo_camera_toolkit can access the ZED cameras.
 In this directory run:
@@ -46,3 +49,7 @@ conda activate airo-mono
 python zed2i.py
 ```
 Complete the prompts. If everything looks normal, congrats, you successfully completed the installation! :tada:
+
+### ZED Diagnostics tool.
+
+There is a ZED diagnostics tool that you can use if things are not working. run `ZED_Diagnostic`. However, don't expect too much from it..

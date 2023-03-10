@@ -66,8 +66,11 @@ class Robotiq2F85(AsyncParallelPositionGripper):
         self.async_executor = AsyncExecutor()
 
         self._check_connection()
-        self._activate_gripper()
-        super().__init__(self._gripper_specs)
+
+        if not self.gripper_is_active():
+            self.activate_gripper()
+
+        super().__init__(self.gripper_specs)
 
     def get_current_width(self) -> float:
         register_value = int(self._communicate("GET POS").split(" ")[1])
@@ -216,9 +219,7 @@ class Robotiq2F85(AsyncParallelPositionGripper):
     def _activate_gripper(self) -> None:
         """Activates the gripper, sets target position to "Open" and sets GTO flag."""
         self._communicate("SET ACT 1")
-
-        wait_for_condition_with_timeout(lambda: self._communicate("GET STA") == "STA 3")
-
+        wait_for_condition_with_timeout(self.gripper_is_active)
         # initialize gripper
         self._communicate("SET GTO 1")  # enable Gripper
         self.speed = self._gripper_specs.max_speed
@@ -227,6 +228,9 @@ class Robotiq2F85(AsyncParallelPositionGripper):
     def _deactivate_gripper(self) -> None:
         self._communicate("SET ACT 0")
         wait_for_condition_with_timeout(lambda: self._communicate("GET STA") == "STA 0")
+
+    def gripper_is_active(self) -> bool:
+        return self._communicate("GET STA") == "STA 3"
 
     @staticmethod
     def _is_target_value_set(target: int, value: int) -> bool:

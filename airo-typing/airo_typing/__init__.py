@@ -25,8 +25,8 @@ Vectors3DType = Union[Vector3DType, Vector3DArrayType]
 """ a convenience type that represents a (3,) 3D vector or (N,3) array of 3D vectors.
 """
 QuaternionType = np.ndarray
-"""scalar-last quaternion that represents a rotation around the <x,y,z> axis with angle <theta>
-as <x cos(theta), y cos(theta), z cos(theta), sin(theta)>
+"""scalar-last quaternion <x,y,z,w> that represents a rotation around the <x,y,z> axis with angle <theta>
+as <x sin(theta), y sin(theta), z sin(theta), cos(theta)>
 """
 RotationMatrixType = np.ndarray
 """3x3 rotation matrix
@@ -78,6 +78,12 @@ CameraExtrinsicMatrixType = HomogeneousMatrixType
 """4x4 camera extrinsic matrix,
 this is the homogeneous matrix that describes the camera pose in the world frame"""
 
+
+PointCloudType = Vector3DArrayType
+""" a (N,3) numpy array that represents a point cloud"""
+
+ColoredPointCloudType = np.ndarray
+" an (N,6) numpy array that represents a point cloud with color information. Color is in RGB, float (0-1) format."
 # manipulator types
 
 JointConfigurationType = np.ndarray
