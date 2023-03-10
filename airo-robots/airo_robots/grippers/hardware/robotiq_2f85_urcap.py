@@ -1,35 +1,23 @@
 import asyncio
 import socket
 import time
-from concurrent.futures import Future
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
-from airo_robots.async_executor import AsyncExecutor
-from airo_robots.grippers.hardware.manual_gripper_testing import manual_test_gripper
-from airo_robots.grippers.parallel_position_gripper import AsyncParallelPositionGripper, ParallelPositionGripperSpecs
+from airo_robots.awaitable_action import AwaitableAction
+from airo_robots.grippers.hardware.manual_gripper_testing import manually_test_gripper_implementation
+from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
+from airo_robots.hardware_interaction_utils import wait_for_condition_with_timeout
 
 
 def rescale_range(x: float, from_min: float, from_max: float, to_min: float, to_max: float) -> float:
     return to_min + (x - from_min) / (from_max - from_min) * (to_max - to_min)
 
 
-def wait_for_condition_with_timeout(check_condition: Callable[..., bool], timeout: float = 10) -> None:
-    """helper function to wait on completion of hardware interaction  that is secured with a timeout to avoid infinite loops"""
-
-    total_time_waited = 0.0
-    sleep_time_per_iteration = 0.1
-
-    while not check_condition():
-        total_time_waited += sleep_time_per_iteration
-        time.sleep(sleep_time_per_iteration)
-        if total_time_waited > timeout:
-            raise TimeoutError()
-
-
-class Robotiq2F85(AsyncParallelPositionGripper):
+class Robotiq2F85(ParallelPositionGripper):
     """
-    This class implements the ayync Gripper interface for a Robotiq 2F-85 gripper that is connected to a UR robot and is controlled with the Robotiq URCap.
+    Implementation of the gripper interface for a Robotiq 2F-85 gripper that is connected to a UR robot and is controlled with the Robotiq URCap.
+
     The API is available at TCP port 63352 of the UR controller and wraps the Modbus registers of the gripper, as described in
     https://dof.robotiq.com/discussion/2420/control-robotiq-gripper-mounted-on-ur-robot-via-socket-communication-python.
     The control sequence is gripper motor <---- gripper registers<--ModbusSerial(rs485)-- UR controller <--TCP-- remote control
@@ -63,12 +51,10 @@ class Robotiq2F85(AsyncParallelPositionGripper):
         self.host_ip = host_ip
         self.port = port
 
-        self.async_executor = AsyncExecutor()
-
         self._check_connection()
 
         if not self.gripper_is_active():
-            self.activate_gripper()
+            self._activate_gripper()
 
         super().__init__(self.gripper_specs)
 
@@ -77,7 +63,7 @@ class Robotiq2F85(AsyncParallelPositionGripper):
         width = rescale_range(register_value, 0, 230, self._gripper_specs.max_width, self._gripper_specs.min_width)
         return width
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> Future:
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
         if speed:
             self.speed = speed
         if force:
@@ -87,7 +73,13 @@ class Robotiq2F85(AsyncParallelPositionGripper):
         # this sleep is required to make sure that the OBJ STATUS
         # of the gripper is already in 'moving' before entering the wait loop.
         time.sleep(0.1)
-        return self.async_executor(wait_for_condition_with_timeout, lambda: not self.is_gripper_moving())
+
+        def move_done_condition() -> bool:
+            done = abs(self.get_current_width() - width) < 0.002
+            done = done or self.is_an_object_grasped()
+            return done
+
+        return AwaitableAction(move_done_condition)
 
     def is_an_object_grasped(self) -> bool:
         return int(self._communicate("GET OBJ").split(" ")[1]) == 2
@@ -249,9 +241,13 @@ def get_empirical_data_on_opening_angles(robot_ip: str) -> None:
 
 
 if __name__ == "__main__":
-    from airo_robots.grippers.parallel_position_gripper import SynchronousParallelPositionGripperAdapter
-
     robot_ip = "10.42.0.162"  # hardcoded IP of Victor UR3e
-    gripper = Robotiq2F85(robot_ip)
-    sync_gripper = SynchronousParallelPositionGripperAdapter(gripper)
-    manual_test_gripper(sync_gripper, sync_gripper._gripper_specs)
+    import click
+
+    @click.command()
+    @click.option("--robot_ip", default=robot_ip, help="IP of UR to which the gripper is connected.")
+    def test_robotiq(robot_ip: str) -> None:
+        gripper = Robotiq2F85(robot_ip)
+        manually_test_gripper_implementation(gripper, gripper._gripper_specs)
+
+    test_robotiq()

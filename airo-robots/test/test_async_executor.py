@@ -1,7 +1,7 @@
 import time
 from concurrent.futures import Future
 
-from airo_robots.async_executor import AsyncExecutor
+from airo_robots.hardware_interaction_utils import AsyncExecutor
 
 
 def dummy_function(arg1: int, arg2: float, arg3: int = 4):

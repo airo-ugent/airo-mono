@@ -1,18 +1,13 @@
 import time
-from concurrent.futures import Future
 from typing import Optional
 
-from airo_robots.grippers.parallel_position_gripper import (
-    AsynchronousParallelPositionGripperAdapter,
-    AsyncParallelPositionGripper,
-    ParallelPositionGripper,
-    ParallelPositionGripperSpecs,
-    SynchronousParallelPositionGripperAdapter,
-)
+from airo_robots.awaitable_action import AwaitableAction
+from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
+from airo_robots.hardware_interaction_utils import AsyncExecutor
 
 
 class DummySyncParallelPositionGripper(ParallelPositionGripper):
-    """'Straight-through' implementation of a parallel position gripper for testing purposes."""
+    """'Idealised' implementation of a parallel position gripper for testing purposes."""
 
     def __init__(self, gripper_specs: ParallelPositionGripperSpecs) -> None:
         super().__init__(gripper_specs)
@@ -20,15 +15,22 @@ class DummySyncParallelPositionGripper(ParallelPositionGripper):
         self.gripper_speed = 0
         self.gripper_force = 0
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
+        self.async_executor = AsyncExecutor()
+
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
         if speed:
             self.gripper_speed = speed
         if force:
             self.gripper_force = force
         # simulate time to reach HW
         # will make test slower though..
-        time.sleep(1)
-        self.gripper_pos = width
+
+        def simulate_gripper_move():
+            time.sleep(1)
+            self.gripper_pos = width
+
+        self.async_executor(simulate_gripper_move)
+        return AwaitableAction(lambda: self.gripper_pos == width)
 
     @property
     def speed(self) -> float:
@@ -44,37 +46,30 @@ class DummySyncParallelPositionGripper(ParallelPositionGripper):
 
     @max_grasp_force.setter
     def max_grasp_force(self, value: float) -> float:
-        self.max_grasp_force = value
+        self.gripper_force = value
 
     def get_current_width(self) -> float:
         return self.gripper_pos
 
 
-def test_sync_async_adapter_implementations():
+def test_move_awaitable():
     gripper = DummySyncParallelPositionGripper(None)
     target_pos = 0.01
     res = gripper.move(target_pos)
-    assert res is None
+    assert isinstance(res, AwaitableAction)
+    assert res.is_done() is False
+    res.wait()
     assert gripper.get_current_width() == target_pos
 
-    target_pos = 0.02
-    async_gripper = AsynchronousParallelPositionGripperAdapter(gripper)
-    res = async_gripper.move(target_pos)
-    assert isinstance(res, Future)
-    res.result(10)
-    assert async_gripper.get_current_width() == target_pos
 
-    target_pos = 0.03
-    sync_wrapped_gripper = SynchronousParallelPositionGripperAdapter(async_gripper)
-    res = sync_wrapped_gripper.move(target_pos)
-    assert res is None
-    assert sync_wrapped_gripper.get_current_width() == target_pos
+def test_instantiation():
+    # This tests that the class can be instantiated and hence that the abstract base class can be inherited from as expected.
+    DummySyncParallelPositionGripper(None)
 
 
-def test_adapter_types():
+def test_properties():
     gripper = DummySyncParallelPositionGripper(None)
-    async_gripper = AsynchronousParallelPositionGripperAdapter(gripper)
-    sync_gripper = SynchronousParallelPositionGripperAdapter(async_gripper)
-
-    assert isinstance(async_gripper, AsyncParallelPositionGripper)
-    assert isinstance(sync_gripper, ParallelPositionGripper)
+    gripper.speed = 0.1
+    assert gripper.speed == 0.1
+    gripper.max_grasp_force = 0.2
+    assert gripper.max_grasp_force == 0.2

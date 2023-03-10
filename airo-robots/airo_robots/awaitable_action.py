@@ -29,7 +29,7 @@ class AwaitableAction:
         self.status = ACTION_STATUS_ENUM.EXECUTING
         self.done_callback = done_callback
 
-    def wait(self, timeout) -> ACTION_STATUS_ENUM:
+    def wait(self, timeout: float = 10.0) -> ACTION_STATUS_ENUM:
         if not self.status == ACTION_STATUS_ENUM.EXECUTING:
             return self.status
         while True:
@@ -41,3 +41,6 @@ class AwaitableAction:
             if timeout < 0:
                 warnings.warn("Action timed out. Make sure this was expected.")
                 return ACTION_STATUS_ENUM.TIMEOUT
+
+    def is_done(self) -> bool:
+        return self.status == ACTION_STATUS_ENUM.SUCCEEDED

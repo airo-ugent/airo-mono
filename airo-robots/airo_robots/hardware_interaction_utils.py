@@ -1,3 +1,4 @@
+import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Callable
 
@@ -30,3 +31,15 @@ class AsyncExecutor:
         see https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Future
         """
         return self._threadpool_execution(func, *args, **kwargs)
+
+
+def wait_for_condition_with_timeout(
+    check_condition: Callable[..., bool], timeout: float = 10, sleep_resolution: float = 0.1
+) -> None:
+    """helper function to wait on completion of hardware interaction with a timeout to avoid blocking forever."""
+
+    while not check_condition():
+        time.sleep(sleep_resolution)
+        timeout -= sleep_resolution
+        if timeout < 0:
+            raise TimeoutError()

@@ -3,7 +3,7 @@ import warnings
 from typing import Optional
 
 import numpy as np
-from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripperTemplate
+from airo_robots.grippers import ParallelPositionGripper
 from airo_robots.manipulators.hardware.manual_manipulator_testing import manual_test_robot
 from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
@@ -41,7 +41,7 @@ class UR_RTDE(PositionManipulator):
         self,
         ip_address: str,
         manipulator_specs: ManipulatorSpecs,
-        gripper: Optional[ParallelPositionGripperTemplate] = None,
+        gripper: Optional[ParallelPositionGripper] = None,
     ) -> None:
         super().__init__(manipulator_specs, gripper)
         self.ip_address = ip_address

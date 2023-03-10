@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
 
-from airo_robots.action import AwaitableAction
+from airo_robots.awaitable_action import AwaitableAction
 
 
 @dataclass
@@ -89,7 +89,6 @@ class ParallelPositionGripper(ABC):
 
     def is_an_object_grasped(self) -> bool:
         """
-        Some grippers have heuristics to check if an object is grasped, usually by looking at motor currents.
-        This function returns this heuristic, if it exists.
+        Heuristics to check if an object is grasped, usually by looking at motor currents.
         """
         raise NotImplementedError
