@@ -28,21 +28,34 @@ Furthermore, each package has a 'code owner'. This is the go-to person if you:
 - want to add new functionality to the package
 
 # Installation
-There are a number of ways to install packages from this repo.
+There are a number of ways to install packages from this repo. As this repo is still in development and has breaking changes every now and then, we recommend locking on specific commits.
 
 **directly from github**
 
-if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install ' <pkg-name>[external] @ git+https://github.com/airo-ugent/airo-core@<branch/tag>#subdirectory=<package-dir>'`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/). There will now be a `src/` folder in your project where pip has downloaded the repo and from where the package is installed, but you can ignore this as it will be automatically excluded from source control. You can (and should?) lock the pip install to a specific commit in your dependency manager (pip/conda/...)
+if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install ' <pkg-name>[external] @ git+https://github.com/airo-ugent/airo-mono@<branch/tag>#subdirectory=<package-dir>'`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/). There will now be a `src/` folder in your project where pip has downloaded the repo and from where the package is installed, but you can ignore this as it will be automatically excluded from source control. You can (and should?) lock the pip install to a specific commit in your dependency manager (pip/conda/...)
 
 **git submodule**
 
 Alternatively you can add this repo as a submodule and install the relevant packages afterwards with regular pip commands. This might be useful for as long as this repo is making fast/breaking changes without good version management, as you can lock the submodule on a specific commit.
+
+In your repo, run:
+```
+git submodule init
+git submodule add https://github.com/airo-ugent/airo-mono@<commit>
+cd airo-mono
+```
+You can now add the packages you need to your requirements or environment file. More about submodules can be found [here](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
 
 **editable install**
 
 If you want to make changes, you should probably clone this repo first (optionally using git submodules)
 and then install all relevant packages in [editable](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs) mode, so that any change you make is immediately 'visible' to your python interpreter. If you make make a standalone clone of this repo, you can simply run `conda env create -f environment.yaml`, which does this for you (and also installs some binaries for convenience).
 
+```
+git clone https://github.com/airo-ugent/airo-mono@<commit>
+cd airo-mono
+conda env create -f environment.yaml
+```
 # Developer guide
 ### setting up local environment
 To set up your development environment after cloning this repo, run:
