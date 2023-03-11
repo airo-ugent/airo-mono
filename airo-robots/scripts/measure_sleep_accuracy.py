@@ -7,11 +7,12 @@ inspired by https://stackoverflow.com/questions/1133857/how-accurate-is-pythons-
 """
 
 import time
+from typing import List
 
 import matplotlib.pyplot as plt
 
 
-def measure_sleep_time(amount_in_s):
+def measure_sleep_time(amount_in_s: float) -> float:
     start = time.time_ns()
     time.sleep(amount_in_s)
     end = time.time_ns()
@@ -20,12 +21,12 @@ def measure_sleep_time(amount_in_s):
     return difference_in_ms
 
 
-def measure_sleeping_performance(sleep_times_in_ms):
+def measure_sleeping_performance(sleep_times_in_ms: List[float]) -> dict[float, list[float]]:
     sleep_time_measurements = {}
     for sleep_time in sleep_times_in_ms:
         # do 100 measurements
         measurements = []
-        for i in range(100):
+        for _ in range(100):
             measurements.append(measure_sleep_time(sleep_time / 1000))
 
         sleep_time_measurements[sleep_time] = measurements
