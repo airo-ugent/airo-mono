@@ -43,6 +43,14 @@ if __name__ == "__main__":
     # test a few discrete sleep times, to also get an estimation of the variance
     sleep_times_in_ms = [0.1, 0.2, 0.5, 1, 2, 5, 10]
     sleep_time_measurements = measure_sleeping_performance(sleep_times_in_ms)
+
+    import platform
+
+    current_os = platform.platform()
+    datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    python_version = platform.python_version()
+
+    title = f"Accuracy of time.sleep() in pyhthon {python_version} \n with OS {current_os} \n at {datetime}"
     for sleep_time in sleep_time_measurements.keys():
         measurements = sleep_time_measurements[sleep_time]
         plt.scatter([sleep_time] * len(measurements), measurements, marker="x", color="red")
@@ -51,8 +59,8 @@ if __name__ == "__main__":
     plt.ylabel("actual sleep in ms")
     plt.xscale("log")
     plt.yscale("log")
-    plt.title("accuracy of time.sleep() on Ubuntu 20.04 regular kernel")
-    plt.savefig(path / "sleep_actual_vs_desired.png")
+    plt.title(title)
+    plt.savefig(path / "sleep_actual_vs_desired.png", bbox_inches="tight")
 
     plt.clf()
     for sleep_time in sleep_time_measurements.keys():
@@ -61,5 +69,5 @@ if __name__ == "__main__":
     plt.xlabel("desired sleep time in ms")
     plt.ylabel("errorin ms")
     plt.xscale("log")
-    plt.title("accuracy of time.sleep() on Ubuntu 20.04 regular kernel")
-    plt.savefig(path / "sleep_error.png")
+    plt.title(title)
+    plt.savefig(path / "sleep_error.png", bbox_inches="tight")
