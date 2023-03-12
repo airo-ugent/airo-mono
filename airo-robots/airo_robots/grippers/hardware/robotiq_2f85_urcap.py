@@ -4,8 +4,10 @@ import time
 from typing import Optional
 
 import numpy as np
-from airo_robots.grippers.hardware.manual_gripper_testing import manual_test_gripper
+from airo_robots.awaitable_action import AwaitableAction
+from airo_robots.grippers.hardware.manual_gripper_testing import manually_test_gripper_implementation
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
+from airo_robots.hardware_interaction_utils import wait_for_condition_with_timeout
 
 
 def rescale_range(x: float, from_min: float, from_max: float, to_min: float, to_max: float) -> float:
@@ -14,8 +16,9 @@ def rescale_range(x: float, from_min: float, from_max: float, to_min: float, to_
 
 class Robotiq2F85(ParallelPositionGripper):
     """
-    This class implements the appropriate Gripper interface for a Robotiq 2F-85 gripper that is connected to a UR robot with the Robotiq URscript, so that it exposes the TCP API.
-    This API is available at TCP port 63352 of the UR controller and wraps the Modbus registers of the gripper, as described in
+    Implementation of the gripper interface for a Robotiq 2F-85 gripper that is connected to a UR robot and is controlled with the Robotiq URCap.
+
+    The API is available at TCP port 63352 of the UR controller and wraps the Modbus registers of the gripper, as described in
     https://dof.robotiq.com/discussion/2420/control-robotiq-gripper-mounted-on-ur-robot-via-socket-communication-python.
     The control sequence is gripper motor <---- gripper registers<--ModbusSerial(rs485)-- UR controller <--TCP-- remote control
 
@@ -42,32 +45,41 @@ class Robotiq2F85(ParallelPositionGripper):
         the robotiq will always calibrate such that max opening = 0 and min opening = 255 for its register.
         see manual p42
         """
-        self.gripper_specs = self.ROBOTIQ_2F85_DEFAULT_SPECS
+        self._gripper_specs = self.ROBOTIQ_2F85_DEFAULT_SPECS
         if fingers_max_stroke:
-            self.gripper_specs.max_width = fingers_max_stroke
+            self._gripper_specs.max_width = fingers_max_stroke
         self.host_ip = host_ip
         self.port = port
 
         self._check_connection()
-        if not self.gripper_is_active():
 
-            self.activate_gripper()
+        if not self.gripper_is_active():
+            self._activate_gripper()
+
         super().__init__(self.gripper_specs)
 
     def get_current_width(self) -> float:
         register_value = int(self._communicate("GET POS").split(" ")[1])
-        width = rescale_range(register_value, 0, 230, self.gripper_specs.max_width, self.gripper_specs.min_width)
+        width = rescale_range(register_value, 0, 230, self._gripper_specs.max_width, self._gripper_specs.min_width)
         return width
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
         if speed:
             self.speed = speed
         if force:
             self.max_grasp_force = force
-        self.set_target_width(width)
+        self._set_target_width(width)
 
-        while self.is_gripper_moving():
-            time.sleep(0.01)
+        # this sleep is required to make sure that the OBJ STATUS
+        # of the gripper is already in 'moving' before entering the wait loop.
+        time.sleep(0.01)
+
+        def move_done_condition() -> bool:
+            done = abs(self.get_current_width() - width) < 0.002
+            done = done or self.is_an_object_grasped()
+            return done
+
+        return AwaitableAction(move_done_condition)
 
     def is_an_object_grasped(self) -> bool:
         return int(self._communicate("GET OBJ").split(" ")[1]) == 2
@@ -75,54 +87,70 @@ class Robotiq2F85(ParallelPositionGripper):
     @property
     def speed(self) -> float:
         speed_register_value = self._read_speed_register()
-        return rescale_range(speed_register_value, 0, 255, self.gripper_specs.min_speed, self.gripper_specs.max_speed)
+        return rescale_range(
+            speed_register_value, 0, 255, self._gripper_specs.min_speed, self._gripper_specs.max_speed
+        )
 
     @speed.setter
     def speed(self, value: float) -> None:
         speed = np.clip(value, self.gripper_specs.min_speed, self.gripper_specs.max_speed)
         speed_register_value = int(
-            rescale_range(speed, self.gripper_specs.min_speed, self.gripper_specs.max_speed, 0, 255)
+            rescale_range(speed, self._gripper_specs.min_speed, self._gripper_specs.max_speed, 0, 255)
         )
         self._communicate(f"SET SPE {speed_register_value}")
-        while not self._is_target_value_set(speed_register_value, self._read_speed_register()):
-            time.sleep(0.01)
+
+        def is_value_set() -> bool:
+            return self._is_target_value_set(self._read_speed_register(), speed_register_value)
+
+        wait_for_condition_with_timeout(is_value_set)
 
     @property
     def max_grasp_force(self) -> float:
         force_register_value = self._read_force_register()
         # 0 force has a special meaning, cf manual.
-        return rescale_range(force_register_value, 1, 255, self.gripper_specs.min_force, self.gripper_specs.max_force)
+        return rescale_range(
+            force_register_value, 1, 255, self._gripper_specs.min_force, self._gripper_specs.max_force
+        )
 
     @max_grasp_force.setter
     def max_grasp_force(self, value: float) -> None:
         force = np.clip(value, self.gripper_specs.min_force, self.gripper_specs.max_force)
         force_register_value = int(
-            rescale_range(force, self.gripper_specs.min_force, self.gripper_specs.max_force, 1, 255)
+            rescale_range(force, self._gripper_specs.min_force, self._gripper_specs.max_force, 1, 255)
         )
         self._communicate(f"SET FOR {force_register_value}")
-        while not self._is_target_value_set(force_register_value, self._read_force_register()):
-            time.sleep(0.01)
 
-    ## non interface classes
-    async def ansyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
-        """moves the gripper asynchronously."""
+        def is_value_set() -> bool:
+            return self._is_target_value_set(force_register_value, self._read_force_register())
+
+        wait_for_condition_with_timeout(is_value_set)
+
+    ###########################
+    ## non-interface classes ##
+    ###########################
+    async def asyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
+        """Asyncio (async) move"""
         if speed:
             self.speed = speed
         if force:
             self.max_grasp_force = force
-        self.set_target_width(width)
+        self._set_target_width(width)
 
         while self.is_gripper_moving():
             await asyncio.sleep(0.05)
 
-    def set_target_width(self, target_width_in_meters: float) -> None:
-        """sets a target width asynchronously"""
+    ####################
+    # Private methods #
+    ####################
+
+    def _set_target_width(self, target_width_in_meters: float) -> None:
+        """Sends target width to gripper"""
         target_width_in_meters = np.clip(
-            target_width_in_meters, self.gripper_specs.min_width, self.gripper_specs.max_width
+            target_width_in_meters, self._gripper_specs.min_width, self._gripper_specs.max_width
         )
-        # 230 is 'force closed', cf function below.
+        # 230 is 'force closed', cf _write_target_width_to_register.
         target_width_register_value = int(
-            rescale_range(target_width_in_meters, self.gripper_specs.min_width, self.gripper_specs.max_width, 230, 0)
+            rescale_range(target_width_in_meters, self._gripper_specs.min_width, self._gripper_specs.max_width, 230, 0)
         )
         self._write_target_width_to_register(target_width_register_value)
 
@@ -138,8 +166,11 @@ class Robotiq2F85(ParallelPositionGripper):
 
         """
         self._communicate(f"SET  POS {target_width_register_value}")
-        while not self._is_target_value_set(target_width_register_value, self._read_target_width_register()):
-            time.sleep(0.01)
+
+        def is_value_set() -> bool:
+            return self._is_target_value_set(target_width_register_value, self._read_target_width_register())
+
+        wait_for_condition_with_timeout(is_value_set)
 
     def _read_target_width_register(self) -> int:
         return int(self._communicate("GET PRE").split(" ")[1])
@@ -159,7 +190,6 @@ class Robotiq2F85(ParallelPositionGripper):
         Raises:
             ConnectionError
         """
-
         if not self._communicate("GET STA").startswith("STA"):
             raise ConnectionError("Could not connect to gripper")
 
@@ -178,21 +208,18 @@ class Robotiq2F85(ParallelPositionGripper):
             except Exception as e:
                 raise (e)
 
-    def activate_gripper(self) -> None:
+    def _activate_gripper(self) -> None:
         """Activates the gripper, sets target position to "Open" and sets GTO flag."""
         self._communicate("SET ACT 1")
-        while not self.gripper_is_active():
-            time.sleep(0.01)
-
+        wait_for_condition_with_timeout(self.gripper_is_active)
         # initialize gripper
         self._communicate("SET GTO 1")  # enable Gripper
-        self.speed = self.gripper_specs.max_speed
-        self.force = self.gripper_specs.min_force
+        self.speed = self._gripper_specs.max_speed
+        self.force = self._gripper_specs.min_force
 
-    def deactivate_gripper(self) -> None:
+    def _deactivate_gripper(self) -> None:
         self._communicate("SET ACT 0")
-        while not self._communicate("GET STA") == "STA 0":
-            time.sleep(0.01)
+        wait_for_condition_with_timeout(lambda: self._communicate("GET STA") == "STA 0")
 
     def gripper_is_active(self) -> bool:
         return self._communicate("GET STA") == "STA 3"
@@ -215,5 +242,12 @@ def get_empirical_data_on_opening_angles(robot_ip: str) -> None:
 
 if __name__ == "__main__":
     robot_ip = "10.42.0.162"  # hardcoded IP of Victor UR3e
-    gripper = Robotiq2F85(robot_ip)
-    manual_test_gripper(gripper, gripper.gripper_specs)
+    import click
+
+    @click.command()
+    @click.option("--robot_ip", default=robot_ip, help="IP of UR to which the gripper is connected.")
+    def test_robotiq(robot_ip: str) -> None:
+        gripper = Robotiq2F85(robot_ip)
+        manually_test_gripper_implementation(gripper, gripper._gripper_specs)
+
+    test_robotiq()

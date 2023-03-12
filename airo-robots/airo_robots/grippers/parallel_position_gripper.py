@@ -1,6 +1,11 @@
-from abc import abstractmethod
+"""base classes for parallel-finger position-controlled grippers"""
+
+
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
+
+from airo_robots.awaitable_action import AwaitableAction
 
 
 @dataclass
@@ -20,7 +25,7 @@ class ParallelPositionGripperSpecs:
     min_speed: float
 
 
-class ParallelPositionGripper:
+class ParallelPositionGripper(ABC):
     """
     Base class for a position-controlled, 2 finger parallel gripper.
 
@@ -34,17 +39,24 @@ class ParallelPositionGripper:
     """
 
     def __init__(self, gripper_specs: ParallelPositionGripperSpecs) -> None:
-        self.gripper_specs = gripper_specs
+        self._gripper_specs = gripper_specs
+
+    @property
+    def gripper_specs(self) -> ParallelPositionGripperSpecs:
+        return self._gripper_specs
 
     @property
     @abstractmethod
     def speed(self) -> float:
         """speed with which the fingers will move in m/s"""
+        # no need to raise NotImplementedError thanks to ABC
 
     @speed.setter
     @abstractmethod
     def speed(self, new_speed: float) -> None:
-        """sets the moving speed [m/s] synchronously."""
+        """sets the moving speed [m/s]."""
+        # this function is delibarately not templated
+        # as one always requires this to happen synchronously.
 
     @property
     @abstractmethod
@@ -53,28 +65,30 @@ class ParallelPositionGripper:
 
     @max_grasp_force.setter
     @abstractmethod
-    def max_grasp_force(self) -> float:
-        """sets the max grasping force [N] synchronously."""
+    def max_grasp_force(self, new_force: float) -> None:
+        """sets the max grasping force [N]."""
+        # this function is delibarately not templated
+        # as one always requires this to happen synchronously.
 
     @abstractmethod
     def get_current_width(self) -> float:
         """the current opening of the fingers in meters"""
 
     @abstractmethod
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
+    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
         """
-        synchronously move the fingers to the desired width between the fingers[m].
-        Optionally provide a speed and/or force, that will be used from then on for all move commands."""
+        move the fingers to the desired width between the fingers[m].
+        Optionally provide a speed and/or force, that will be used from then on for all move commands.
+        """
 
-    def open(self) -> None:
-        self.move(self.gripper_specs.max_width)
+    def open(self) -> AwaitableAction:
+        return self.move(self.gripper_specs.max_width)
 
-    def close(self) -> None:
-        self.move(0.0)
+    def close(self) -> AwaitableAction:
+        return self.move(0.0)
 
     def is_an_object_grasped(self) -> bool:
         """
-        Some grippers have heuristics to check if an object is grasped, usually by looking at motor currents.
-        This function returns this heuristic, if it exists.
+        Heuristics to check if an object is grasped, usually by looking at motor currents.
         """
         raise NotImplementedError
