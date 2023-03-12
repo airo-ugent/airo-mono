@@ -4,7 +4,9 @@ import numpy as np
 
 # TODO: see if we can specify the shape of these types for mypy
 
+#######################
 # spatial algebra types
+#######################
 Vector2DType = np.ndarray
 """a (2,) np array that represents a 2D position/translation/direction"""
 
@@ -43,16 +45,32 @@ RotationVectorType = np.ndarray
 
 HomogeneousMatrixType = np.ndarray
 """4x4 homogeneous transform matrix
-<<R,T>|<0,0,0,1>>
+<<R,T>|<0,0,0,1>> that represents the pose of a frame A in another frame B
+
+Shorthand notation is T^A_B.
 """
 
+# Changing the applied-on frame requires the Adjoint of the transform between the two frames.
+# Changing the expressed-in frame requires multiplication by the rotation matrix of the transform between the two frames.
+# notation is taken from https://manipulation.csail.mit.edu/clutter.html#section3
 WrenchType = np.ndarray
-""" a (6,) numpy array that represents a wrench applied on a frame as [Fx,Fy,Fz,Tx,Ty,Tz]"""
+""" a (6,) numpy array that represents a wrench applied on a frame and expressed in a (possibly different) frame as [Fx,Fy,Fz,Tx,Ty,Tz]
 
+shorthand notation is W^F_E, where F is the frame the wrench is applied on, and E is the frame the wrench is expressed in.
+"""
+
+# Changing the measured-in frame requires the Adjoint of the transform between the two frames.
+# Changing the expressed-in frame requires multiplication by the rotation matrix of the transform between the two frames.
+# Notation is taken from https://manipulation.csail.mit.edu/pick.html#jacobian
 TwistType = np.ndarray
-""" a (6,) numpy array [x,y,z,rx,ry,rz] that is a Twist (an infinitesimal SE3 displacement), which can represent a spatial velocity or incremental motion"""
+""" a (6,) numpy array that represents the spatial velocity or an incremental motion of one frame as measured in another frame (and possibly expressed in a third frame)
 
+shorthand notation is ^C T^B_A, where C is the frame the velocity is measured in, B is the frame the velocity is expressed in.
+"""
+
+######################
 # camera related types
+######################
 
 OpenCVIntImageType = np.ndarray
 """an image in the OpenCV format: BGR, uint8, (H,W,C)"""
