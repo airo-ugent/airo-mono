@@ -33,8 +33,38 @@ class PositionManipulator(ABC):
     """
 
     def __init__(self, manipulator_specs: ManipulatorSpecs, gripper: Optional[ParallelPositionGripper] = None) -> None:
-        self.manipulator_specs = manipulator_specs
-        self.gripper = gripper
+        self._manipulator_specs = manipulator_specs
+        self._gripper = gripper
+        self._default_linear_speed = 0.2  # m/s often a good default value
+        self._default_joint_speed = min(manipulator_specs.max_joint_speeds) / 4
+
+    @property
+    def manipulator_specs(self) -> ManipulatorSpecs:
+        return self._manipulator_specs
+
+    @property
+    def gripper(self) -> Optional[ParallelPositionGripper]:
+        return self._gripper
+
+    @property
+    def default_linear_speed(self) -> float:
+        """the linear speed to use in move_linear_to_tcp_pose if no speed is specified."""
+        return self._default_linear_speed
+
+    @default_linear_speed.setter
+    def default_linear_speed(self, speed: float) -> None:
+        assert speed <= self._manipulator_specs.max_linear_speed
+        self._default_linear_speed = speed
+
+    @property
+    def default_joint_speed(self) -> float:
+        """the leading-axis joint speed to use in move_to_joint_configuration or move_to_tcp_pose if no speed is specified."""
+        return self._default_joint_speed
+
+    @default_joint_speed.setter
+    def default_joint_speed(self, speed: float) -> None:
+        assert speed <= min(self._manipulator_specs.max_joint_speeds)
+        self._default_joint_speed = speed
 
     @abstractmethod
     def get_tcp_pose(self) -> HomogeneousMatrixType:
@@ -57,7 +87,7 @@ class PositionManipulator(ABC):
 
         Args:
             tcp_pose (HomogeneousMatrixType): desired tcp pose
-            joint_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the maximum speed is used.
+            joint_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default linear speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired pose.
@@ -72,7 +102,7 @@ class PositionManipulator(ABC):
 
         Args:
             tcp_pose (HomogeneousMatrixType): desired tcp pose
-            linear_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the maximum speed is used.
+            linear_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired pose.
@@ -87,7 +117,7 @@ class PositionManipulator(ABC):
 
         Args:
             joint_configuration (JointConfigurationType): desired joint configuration
-            joint_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the maximum speed is used.
+            joint_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired joint configuration.
@@ -116,7 +146,9 @@ class PositionManipulator(ABC):
         """
 
     @abstractmethod
-    def servo_to_joint_configuration(self, joint_configuration: JointConfigurationType, time: float) -> None:
+    def servo_to_joint_configuration(
+        self, joint_configuration: JointConfigurationType, time: float
+    ) -> AwaitableAction:
         """servo to the desired joint  pose for the specified time (the function blocks for this time). Servoing implies 'best-effort' movements towards the target pose instead of
         open-loop trajectories with a velocity profile that brings the robot to zero. So this function can be used for 'closed-loop'/higher-frequency control.
 
@@ -155,5 +187,41 @@ class PositionManipulator(ABC):
     def forward_kinematics(self, joint_configuration: JointConfigurationType) -> HomogeneousMatrixType:
         pass
 
-    def is_tcp_pose_kinematically_reachable(self, tcp_pose: HomogeneousMatrixType) -> bool:
-        raise NotImplementedError
+    @abstractmethod
+    def _is_joint_configuration_reachable(self, joint_configuration: JointConfigurationType) -> bool:
+        """Is the joint configuration reachable by the robot? Usually comes down to checking joint limits,
+        but additional constraints could be set in the controller (such as safety planes)"""
+
+    def is_tcp_pose_reachable(self, tcp_pose: HomogeneousMatrixType) -> bool:
+        """Is the TCP pose reachable by the robot?
+        Default implementation uses inverse kinematics to check if the joint configuration is reachable. But this could be overridden in hardware implementations
+        if a more suitable method is offered by the robot controller."""
+        joint_configuration = self.inverse_kinematics(tcp_pose)
+        return self._is_joint_configuration_reachable(joint_configuration)
+
+    ###################################
+    # util functions to validate inputs
+    ###################################
+    def _assert_linear_speed_is_valid(self, linear_speed: float) -> None:
+        if not linear_speed <= self.manipulator_specs.max_linear_speed:
+            raise ValueError(
+                f"linear speed {linear_speed} is too high. Max linear speed is {self.manipulator_specs.max_linear_speed}"
+            )
+
+    def _assert_joint_speed_is_valid(self, joint_speed: float) -> None:
+        if not joint_speed <= min(self.manipulator_specs.max_joint_speeds):
+            raise ValueError(
+                f"joint speed {joint_speed} is too high. Max joint speeds are {self.manipulator_specs.max_joint_speeds}"
+            )
+
+    def _assert_pose_is_valid(self, pose: HomogeneousMatrixType) -> None:
+        if not self.is_tcp_pose_reachable(pose):
+            raise ValueError(
+                f"pose {pose} is not reachable, could be because of kinematic constraints or safety constraints"
+            )
+
+    def _assert_joint_configuration_is_valid(self, joint_configuration: JointConfigurationType) -> None:
+        if not self._is_joint_configuration_reachable(joint_configuration):
+            raise ValueError(
+                f"joint configuration {joint_configuration} is not reachable, could be because of kinematic constraints or safety constraints"
+            )
