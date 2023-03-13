@@ -17,9 +17,10 @@ def manual_test_servo(robot: PositionManipulator, control_freq: int = 500, linea
         control_freq (int, optional): _description_. Defaults to 500.
     """
     start_pose = SE3Container.from_euler_angles_and_translation(
-        np.array([0, np.pi, 0.0001]), np.array([0, -0.3, 0.02])
+        np.array([0, np.pi, 0.0001]), np.array([0.2, -0.3, 0.02])
     ).homogeneous_matrix
-    robot.move_linear_to_tcp_pose(start_pose)
+    action = robot.move_linear_to_tcp_pose(start_pose)
+    action.wait()
     pose = np.copy(start_pose)
     for i in range(8 * control_freq):
         direction = np.array([1.0, 0.0, -1.0])
@@ -29,7 +30,7 @@ def manual_test_servo(robot: PositionManipulator, control_freq: int = 500, linea
         else:
             pose[:3, 3] -= direction * linear_speed / control_freq
 
-        robot.servo_to_tcp_pose(pose, 1 / control_freq)
+        robot.servo_to_tcp_pose(pose, 1 / control_freq).wait()
 
 
 def manual_test_ik_fk(robot: PositionManipulator) -> None:
@@ -53,24 +54,32 @@ def manual_test_ik_fk(robot: PositionManipulator) -> None:
     input(
         "when moving to the IK Joint config, the resulting pose should match the desired pose. Press key to start moving"
     )
-    robot.move_to_joint_configuration(joint_config)
+    robot.move_to_joint_configuration(joint_config).wait()
 
 
 def manual_test_move(robot: PositionManipulator) -> None:
     start_pose = SE3Container.from_euler_angles_and_translation(
-        np.array([0, np.pi / 4 * 3, 0.0001]), np.array([0, -0.3, 0.2])
+        np.array([0, np.pi / 4 * 3, 0.0001]), np.array([0.1, -0.2, 0.2])
     ).homogeneous_matrix
     end_pose = SE3Container.from_euler_angles_and_translation(
-        np.array([0, np.pi, 0.0001]), np.array([-0.15, -0.4, 0.1])
+        np.array([0, np.pi, 0.0001]), np.array([0.25, -0.3, 0.1])
     ).homogeneous_matrix
     input(
         "robot should move in a straight line to the start pose and then in joint space to the end pose, press key to start"
     )
-    robot.move_linear_to_tcp_pose(start_pose)
-    robot.move_to_tcp_pose(end_pose)
+    action = robot.move_linear_to_tcp_pose(start_pose)
+    print("method returned, will now wait for action to finish")
+    action.wait()
+    print("action finished, robot will now move back to start pose")
+    robot.move_to_tcp_pose(end_pose).wait()
+    print("robot movement finished")
 
 
 def manual_test_robot(robot: PositionManipulator) -> None:
+    input(
+        "these tests will make the robot move in the +X, -Y quadrant, make sure it is clear of any obstacles! Press key to start"
+    )
+
     print(robot.get_joint_configuration())
     print(robot.get_tcp_pose())
     input(
