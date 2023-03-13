@@ -1,7 +1,7 @@
 import enum
 import time
 import warnings
-from typing import Callable
+from typing import Callable, Optional
 
 
 class ACTION_STATUS_ENUM(enum.Enum):
@@ -11,7 +11,12 @@ class ACTION_STATUS_ENUM(enum.Enum):
 
 
 class AwaitableAction:
-    def __init__(self, termination_condition: Callable[..., bool]):
+    def __init__(
+        self,
+        termination_condition: Callable[..., bool],
+        default_timeout: float = 10.0,
+        default_sleep_resolution: float = 0.1,
+    ):
         """
 
         Args:
@@ -19,6 +24,12 @@ class AwaitableAction:
             In the simplest case, it can be a lambda that returns True.
             It can also be true when the gripper is in the desired position.
             Or it could be true after a certain amount of time has passed since the action was started.
+
+            default_timeout (float, optional): The max waiting time before the wait returns and raises a warning.
+            Select an appropriate default value for the command you are creating this AwaitableAction for.
+
+            default_sleep_resolution (float, optional): The length of the time.sleep() in each iteration.
+            Select an appropriate default value for the command you are creating this AwaitableAction for.
 
             Note that the scope of this action is to send 1 command, do some other things, then wait for the command to finish.
             If you send multiple commands to the gripper, there is no guarantee that the gripper will execute them in the order you send them,
@@ -28,16 +39,19 @@ class AwaitableAction:
         """
         self.status = ACTION_STATUS_ENUM.EXECUTING
         self.is_action_done = termination_condition
+        self._default_timeout = default_timeout
+        self._default_sleep_resolution = default_sleep_resolution
 
-    def wait(self, timeout: float = 10.0, sleep_resolution: float = 0.1) -> ACTION_STATUS_ENUM:
+    def wait(self, timeout: Optional[float] = None, sleep_resolution: Optional[float] = None) -> ACTION_STATUS_ENUM:
         """Busy waiting until the termination condition returns true, or until timeout.
 
         Args:
             timeout (float, optional): The max waiting time before the wait returns and raises a warning.
-            This prevents infinite loops. Defaults to 10.0 but you should choose an appropriate value for your action.
+            This prevents infinite loops. Defaults to the value set during creation of the awaitable, which is usually an appropriate value for the command.
+
             sleep_resolution (float, optional): The length of the time.sleep() in each iteration.
             higher values will take up less CPU resources but will also cause more latency between the action finishing and
-            this method to return. Defaults to 0.1.
+            this method to return. Defaults to the value set during creation of the awaitable, which is usually an appropriate value for the command.
 
             Keep in mind that the time.sleep() function has limited accuracy, so the actual sleeping time will be usually higher
             due to scheduling activities of the OS. Take a look [here](https://github.com/airo-ugent/airo-mono/pull/21#discussion_r1132520057)
@@ -50,6 +64,8 @@ class AwaitableAction:
         """
         # see #airo-robots/scripts/measure_sleep_accuracy.py for a script that measures the sleep accuracy and
         # the result of some measurements.
+        sleep_resolution = sleep_resolution or self._default_sleep_resolution
+        timeout = timeout or self._default_timeout
         assert (
             sleep_resolution > 0.001
         ), "sleep resolution must be at least 1 ms, otherwise the relative error of a sleep becomes too large to be meaningful"
