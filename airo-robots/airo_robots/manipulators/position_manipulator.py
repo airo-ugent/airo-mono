@@ -46,6 +46,10 @@ class PositionManipulator(ABC):
     def gripper(self) -> Optional[ParallelPositionGripper]:
         return self._gripper
 
+    @gripper.setter
+    def gripper(self, gripper: ParallelPositionGripper) -> None:
+        self._gripper = gripper
+
     @property
     def default_linear_speed(self) -> float:
         """the linear speed to use in move_linear_to_tcp_pose if no speed is specified."""
@@ -197,6 +201,8 @@ class PositionManipulator(ABC):
         Default implementation uses inverse kinematics to check if the joint configuration is reachable. But this could be overridden in hardware implementations
         if a more suitable method is offered by the robot controller."""
         joint_configuration = self.inverse_kinematics(tcp_pose)
+        if joint_configuration is None:
+            return False
         return self._is_joint_configuration_reachable(joint_configuration)
 
     ###################################
