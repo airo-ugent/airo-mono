@@ -39,6 +39,9 @@ def manual_test_ik_fk(robot: PositionManipulator) -> None:
         np.array([0, np.pi, 0.0001]), np.array([0, -0.3, 0.2])
     ).homogeneous_matrix
     joint_config = robot.inverse_kinematics(pose)
+    if not joint_config:
+        print("IK failed unexpectedly")
+        return
 
     print(f"original pose: \n {pose}")
     print(f"ik joint config = {joint_config}")

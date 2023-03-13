@@ -81,7 +81,7 @@ class URrtde(PositionManipulator):
         tcp_rotvec_pose = self._convert_homegeneous_pose_to_rotvec_pose(tcp_pose)
         self.rtde_control.moveL(tcp_rotvec_pose, linear_speed, self.default_linear_acceleration, asynchronous=True)
         return AwaitableAction(
-            lambda: np.linalg.norm(self.get_tcp_pose() - tcp_pose) < self._pose_reached_L2_threshold
+            lambda: bool(np.linalg.norm(self.get_tcp_pose() - tcp_pose) < self._pose_reached_L2_threshold)
             and self._is_move_command_finished()
         )
 
@@ -99,7 +99,7 @@ class URrtde(PositionManipulator):
             tcp_rotvec_pose, joint_speed, self.default_leading_axis_joint_acceleration, asynchronous=True
         )
         return AwaitableAction(
-            lambda: np.linalg.norm(self.get_tcp_pose() - tcp_pose) < self._pose_reached_L2_threshold
+            lambda: bool(np.linalg.norm(self.get_tcp_pose() - tcp_pose) < self._pose_reached_L2_threshold)
             and self._is_move_command_finished()
         )
 
@@ -114,8 +114,10 @@ class URrtde(PositionManipulator):
 
         self.rtde_control.moveJ(joint_configuration, joint_speed, self.default_leading_axis_joint_acceleration)
         return AwaitableAction(
-            lambda: np.linalg.norm(self.get_joint_configuration() - joint_configuration)
-            < self._joint_config_reached_L2_threshold
+            lambda: bool(
+                np.linalg.norm(self.get_joint_configuration() - joint_configuration)
+                < self._joint_config_reached_L2_threshold
+            )
             and self._is_move_command_finished()
         )
 
