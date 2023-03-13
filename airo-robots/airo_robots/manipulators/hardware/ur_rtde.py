@@ -14,7 +14,7 @@ RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
 
 
-class UR_RTDE(PositionManipulator):
+class URrtde(PositionManipulator):
     """Implementation of the Position-controlled manipulator class for UR robots.
     This Implementation uses the ur-rtde library to address the robot's RTDE API.
 
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     @click.option("--ip_address", help="IP address of the UR robot")
     def test_ur_rtde(ip_address: str) -> None:
         print(f"{ip_address=}")
-        ur3e = UR_RTDE(ip_address, UR_RTDE.UR3E_CONFIG)
+        ur3e = URrtde(ip_address, URrtde.UR3E_CONFIG)
         manual_test_robot(ur3e)
 
     test_ur_rtde()
