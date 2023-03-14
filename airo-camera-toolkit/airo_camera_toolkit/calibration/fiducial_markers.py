@@ -160,8 +160,8 @@ if __name__ == "__main__":  # noqa: C901 - ignore complexity
 
     @click.command()
     @click.option("--aruco_marker_size", default=0.031, help="Size of the aruco marker in meters")
-    @click.option("--charuco_x_count", default=6, help="Number of checkerboard tiles in the x direction")
-    @click.option("--charuco_y_count", default=4, help="Number of checkerboard tiles in the y direction")
+    @click.option("--charuco_x_count", default=7, help="Number of checkerboard tiles in the x direction")
+    @click.option("--charuco_y_count", default=5, help="Number of checkerboard tiles in the y direction")
     @click.option("--charuco_tile_size", default=0.04, help="Size of the charuco checkerboard tiles in meters")
     def visualize_marker_detections(
         aruco_marker_size: float,
