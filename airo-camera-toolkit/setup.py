@@ -14,6 +14,8 @@ setuptools.setup(
         "matplotlib",
         "opencv-contrib-python==4.7.0.72",  # opencv has a tendency to make breaking changes
         "rerun-sdk",
+        "click",
+        "loguru",
     ],
     extras_require={
         "external": [
