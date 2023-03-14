@@ -1,3 +1,4 @@
+"""functions and script (see __main__) for hand-eye calibration. Both eye-in-hand and eye-to-hand are supported."""
 import time
 from typing import List, Optional
 
@@ -15,12 +16,12 @@ from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType
-from cv2 import aruco
 
 
 def eye_in_hand_pose_estimation(
     tcp_poses_in_base: List[HomogeneousMatrixType], marker_poses_in_camera: List[HomogeneousMatrixType]
 ) -> Optional[HomogeneousMatrixType]:
+    """wrapper around the opencv eye-in-hand extrinsics calibration function."""
     tcp_orientations_as_rotvec_in_base = [
         SE3Container.from_homogeneous_matrix(tcp_pose).orientation_as_rotation_vector for tcp_pose in tcp_poses_in_base
     ]
@@ -43,7 +44,6 @@ def eye_in_hand_pose_estimation(
         marker_positions_in_camera,
         None,
         None,
-        # method=cv2.CALIB_HAND_EYE_HORAUD
     )
 
     if camera_rotation_matrix is None or camera_translation is None:
@@ -58,8 +58,9 @@ def eye_in_hand_pose_estimation(
 def eye_to_hand_pose_estimation(
     tcp_poses_in_base: List[HomogeneousMatrixType], marker_poses_in_camera: List[HomogeneousMatrixType]
 ) -> Optional[HomogeneousMatrixType]:
+    """wrapper around the opencv eye-to-hand extrinsics calibration function."""
 
-    # the AX=XB problem for the eye-to-hand is equivalent to the AX=XB problem for the eye-in-hand if you invert the poses
+    # the AX=XB problem for the eye-to-hand is equivalent to the AX=XB problem for the eye-in-hand if you invert the poses of the tcp
     # cf https://docs.opencv.org/4.5.4/d9/d0c/group__calib3d.html#gaebfc1c9f7434196a374c382abf43439b
     # cf https://forum.opencv.org/t/eye-to-hand-calibration/5690/2
 
@@ -72,13 +73,33 @@ def eye_to_hand_pose_estimation(
 
 
 if __name__ == "__main__":  # noqa C901 - ignore complexity warning
+    """script for hand-eye calibration. Both eye-in-hand and eye-to-hand are supported."""
+    import click
+    from airo_camera_toolkit.calibration.fiducial_markers import (
+        AIRO_DEFAULT_ARUCO_DICT,
+        AIRO_DEFAULT_CHARUCO_BOARD,
+        ArucoDictType,
+        CharucoDictType,
+    )
     from airo_camera_toolkit.cameras.zed2i import Zed2i
     from airo_robots.manipulators.hardware.ur_rtde import UR_RTDE
+    from loguru import logger
 
-    # TODO: do we want this package to depend on airo-robots?
+    def do_camera_robot_calibration(
+        mode: str, aruco_dict: ArucoDictType, charuco_board: CharucoDictType, camera: RGBCamera, robot: UR_RTDE
+    ) -> Optional[HomogeneousMatrixType]:
+        """script to do hand-eye calibration with an UR robot and a ZED2i camera.
+        Will open camera stream and visualize the detected markers.
+        Press S to capture pose, press F to finish. Make sure the detections look good (corners/contours are accurate) before capturing.
+        Once you have at least 5 markers, you can press F to finish and get the extrinsics pose.
+        But gathering more poses will improve the accuracy of the calibration.
 
-    def do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera: RGBCamera, robot: UR_RTDE):
-        # TODO: this function is not tested yet.
+        This function is added in the __main__ to avoid having a dependency on the airo-robots package in the module."""
+
+        # for now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
+        # TODO: make this more generic? either assume the teachmode is available for all robots, OR use teleop instead of teachmode.
+
+        min_poses = 5
         tcp_poses_in_base = []
         marker_poses_in_camera = []
         camera_pose = None
@@ -106,34 +127,49 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
             if charuco_pose is not None:
                 image = draw_frame_on_image(image, charuco_pose, camera.intrinsics_matrix())
 
-            image = cv2.resize(image, (1024, 768))
+            image = cv2.resize(image, (1920, 1080))
             cv2.imshow("image", image)
+
             key = cv2.waitKey(1)
             if key == ord("s"):
                 robot.rtde_control.endTeachMode()
                 time.sleep(0.5)
+                if charuco_pose is None:
+                    logger.warning("No charuco pose detected, please try again.")
+                    continue
                 marker_poses_in_camera.append(charuco_pose)
                 tcp_poses_in_base.append(robot.get_tcp_pose())
-                print(f"{len(tcp_poses_in_base)} poses captured")
+                logger.info(f"{len(tcp_poses_in_base)} poses captured")
                 time.sleep(0.5)
                 robot.rtde_control.teachMode()
 
             elif key == ord("f"):
+                if len(tcp_poses_in_base) < min_poses:
+                    logger.warning(f"Not enough poses captured, please capture at least {min_poses}poses.")
+                    continue
                 robot.rtde_control.endTeachMode()
                 break
 
-            if len(tcp_poses_in_base) >= 4:
+            if len(tcp_poses_in_base) >= min_poses and len(marker_poses_in_camera) >= min_poses:
                 if mode == "eye_in_hand":
+                    # pose of camera in tcp frame
                     camera_pose = eye_in_hand_pose_estimation(tcp_poses_in_base, marker_poses_in_camera)
                 elif mode == "eye_to_hand":
+                    # pose of camera in base frame
                     camera_pose = eye_to_hand_pose_estimation(tcp_poses_in_base, marker_poses_in_camera)
 
         return camera_pose
 
     robot = UR_RTDE("10.42.0.162", UR_RTDE.UR3_CONFIG)
     camera = Zed2i()
-    aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
-    charuco_board = aruco.CharucoBoard((6, 4), 0.04, 0.031, aruco_dict)
+    aruco_dict = AIRO_DEFAULT_ARUCO_DICT
+    charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
 
-    pose = do_camera_robot_calibration("eye_in_hand", aruco_dict, charuco_board, camera, robot)
-    print(pose)
+    @click.command()
+    @click.option("--mode", default="eye_in_hand", help="eye_in_hand or eye_to_hand")
+    def calibrate(mode: str) -> None:
+        pose = do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot)
+        print(pose)
+        # TODO: serialize and save the extrinsics to the to-be-determined airo-mono extrinsics format
+
+    calibrate()
