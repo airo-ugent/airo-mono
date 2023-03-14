@@ -5,7 +5,7 @@
 
 import click
 from airo_robots.grippers import Robotiq2F85
-from airo_robots.manipulators.hardware.ur_rtde import UR_RTDE
+from airo_robots.manipulators.hardware.ur_rtde import URrtde
 from airo_teleop.game_controller_mapping import LogitechF310Layout, XBox360Layout  # noqa
 from airo_teleop.game_controller_teleop import GameControllerTeleop
 
@@ -19,7 +19,7 @@ from airo_teleop.game_controller_teleop import GameControllerTeleop
     help="Layout to use, must exactly match the variable name name",
 )
 def test_teleop(ip_address: str, no_gripper: bool, controller_layout: str) -> None:
-    robot = UR_RTDE(ip_address, UR_RTDE.UR3E_CONFIG)
+    robot = URrtde(ip_address, URrtde.UR3E_CONFIG)
     if not no_gripper:
         gripper = Robotiq2F85(ip_address)
         robot.gripper = gripper
