@@ -26,7 +26,7 @@ AIRO_DEFAULT_CHARUCO_BOARD: CharucoDictType = aruco.CharucoBoard((7, 5), 0.04, 0
 
 @dataclass
 class ArucoMarkerDetectionResult:
-    corners: np.ndarray  # (N,4,2)
+    corners: np.ndarray  # (N,1,4,2)
     ids: np.ndarray  # (N,1)
     image: OpenCVIntImageType
 
