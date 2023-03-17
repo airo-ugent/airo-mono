@@ -12,8 +12,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "matplotlib",
-        # TODO: add the PyPI package for rerun as soon as the next patch is released: https://github.com/rerun-io/rerun/issues/1320
-        "rerun-sdk @ https://github.com/rerun-io/rerun/releases/download/v0.2.0/rerun_sdk-0.2.0-cp38-abi3-manylinux_2_35_x86_64.whl",
+        "rerun",
     ],
     extras_require={
         "external": [
