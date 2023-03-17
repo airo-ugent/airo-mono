@@ -9,7 +9,6 @@ Below is a short overview of the packages:
 
 | Package | Description| owner |
 |-------|-------|--------|
-|`airo-blender` |code for (procedural) synthetic data generation | @Victorlouisdg |
 | `airo-camera-toolkit`|code for working with RGB(D) cameras, images and pointclouds |@tlpss|
 |`airo-dataset-tools`| code for creating, loading and working with datasets| @Victorlouisdg|
 | `airo-robots`| minimal interfaces for interacting with the controllers of robot arms and grippers| @tlpss|
@@ -26,6 +25,9 @@ Furthermore, each package has a 'code owner'. This is the go-to person if you:
 - have questions about what is supported or about the code in general
 - want to know more about why something is implemented in a particular way
 - want to add new functionality to the package
+
+Some packages also have a command line interface. Simply run `$package-name --help` in your terminal to learn more. E.g.`$airo-dataset-tools --help`.
+
 
 # Installation
 There are a number of ways to install packages from this repo. As this repo is still in development and has breaking changes every now and then, we recommend locking on specific commits.
