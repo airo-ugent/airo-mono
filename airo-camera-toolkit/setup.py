@@ -22,6 +22,7 @@ setuptools.setup(
             f"airo_typing @ file://localhost/{root_folder}/airo-typing",
             f"airo_spatial_algebra @ file://localhost/{root_folder}/airo-spatial-algebra",
             f"airo_robots @ file://localhost/{root_folder}/airo-robots",
+            f"airo_dataset_tools @ file://localhost/{root_folder}/airo-dataset-tools",
         ]
     },
     packages=setuptools.find_packages(),
