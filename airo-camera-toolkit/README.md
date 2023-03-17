@@ -4,9 +4,11 @@ This package contains code for working with RGB(D) cameras, images and pointclou
 - interfacing with RGB(D) cameras
 - (re)projecting between 3D world and images
 - converting between different image formats
-- detecting (ch)aruco markers (TODO)
-- extrinsics calibration: static marker,eye-in-hand and eye-to-hand (TODO)
+- detecting (ch)aruco markers
+- extrinsics calibration: marker pose estimation,eye-in-hand and eye-to-hand
 - invertible' transforms for cropping/scaling images, and obtaining the pixel in the original image that corresponds to pixels on the modified image (TODO)
+
+#TODO: convert to a filetree.
 
 ## 1. Installation
 The `airo_camera_toolkit` package can be installed with pip by running (from this directory):

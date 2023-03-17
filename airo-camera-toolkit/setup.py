@@ -12,12 +12,16 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "matplotlib",
-        "rerun",
+        "opencv-contrib-python==4.7.0.72",  # opencv has a tendency to make breaking changes
+        "rerun-sdk",
+        "click",
+        "loguru",
     ],
     extras_require={
         "external": [
             f"airo_typing @ file://localhost/{root_folder}/airo-typing",
             f"airo_spatial_algebra @ file://localhost/{root_folder}/airo-spatial-algebra",
+            f"airo_robots @ file://localhost/{root_folder}/airo-robots",
         ]
     },
     packages=setuptools.find_packages(),
