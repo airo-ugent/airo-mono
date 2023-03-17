@@ -51,6 +51,7 @@ Other formats that were considered, but we did not adopt:
 The format above could be used with any coordinate system.
 At AIRO we use right-handed coordinate systems exclusively.
 The **Z-axis** generally means the **"up"** direction, _except for cameras._
+The X-axis convention is more object-specific, and will be explained below.
 The Y-axis should be used to complete the right-handed coordinate system (e.g. through `np.cross(Z, X)`).
 
 > :information_source: See the docstring of the `Camera` class in the `airo-camera-toolkit` package for the convention used for cameras.
@@ -75,7 +76,7 @@ For parallel grippers, the X-axis is defined as the direction along which the gr
 
 #### UR robot frames :robot:
 
-Frames:
+Frames as defined by de UR controller (these are not the same as [the conventions in ROS](https://gavanderhoorn.github.io/rep/rep-0199.html)):
 
 - **base**: Z up, Y is towards the cable connected to the base. Origin at the center of the base.
 - **TCP** set to `(0, 0, 0)`: Z forward and -Y points towards the connector on the flange. Origin at the center of the flange ring (TODO check: not in the indent).
