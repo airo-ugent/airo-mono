@@ -11,6 +11,12 @@ setuptools.setup(
         "numpy",
         "pydantic",
         "pycocotools",
+        "fiftyone",  # visualization
     ],
     packages=find_packages(),
+    entry_points={
+        "console_scripts": [
+            "airo-dataset-tools = airo_dataset_tools.cli:cli",
+        ],
+    },
 )
