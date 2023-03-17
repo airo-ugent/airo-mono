@@ -17,4 +17,4 @@ class EulerAngles(BaseModel):
 
 class Pose(BaseModel):
     position_in_meters: Position
-    rotation_euler_XYZ_in_radians: EulerAngles
+    rotation_euler_xyz_in_radians: EulerAngles

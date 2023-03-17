@@ -29,7 +29,7 @@ The json output of our Pydantic parser looks like this:
     "y": 0.0,
     "z": 0.15
   },
-  "rotation_euler_XYZ_in_radians": {
+  "rotation_euler_xyz_in_radians": {
     "roll": 0.7853981633974483,
     "pitch": -1.5707963267948966,
     "yaw": 3.141592653589793

@@ -145,6 +145,11 @@ def do_camera_robot_calibration(  # noqa: C901 - too complex
             robot.rtde_control.endTeachMode()
             break
 
+        elif key == ord("q"):
+            logger.info("Quitting. Calibration unfinished.")
+            robot.rtde_control.endTeachMode()
+            return None
+
         if len(tcp_poses_in_base) >= min_poses and len(marker_poses_in_camera) >= min_poses:
             if mode == "eye_in_hand":
                 # pose of camera in tcp frame
@@ -159,7 +164,10 @@ def do_camera_robot_calibration(  # noqa: C901 - too complex
 if __name__ == "__main__":
     """script that performs hand-eye calibration with a UR robot and a ZED2i camera."""
 
+    import json
+
     from airo_camera_toolkit.cameras.zed2i import Zed2i
+    from airo_dataset_tools.pose import EulerAngles, Pose, Position
     from airo_robots.manipulators import URrtde
 
     aruco_dict = AIRO_DEFAULT_ARUCO_DICT
@@ -172,7 +180,20 @@ if __name__ == "__main__":
         robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
         camera = Zed2i()
         pose = do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot)
-        print(pose)
-        # TODO: serialize and save the extrinsics to the to-be-determined airo-mono extrinsics format
+
+        if pose is None:
+            logger.warning("Calibration failed, exiting.")
+            return
+
+        pose_se3 = SE3Container.from_homogeneous_matrix(pose)
+        x, y, z = pose_se3.translation
+        roll, pitch, yaw = pose_se3.orientation_as_euler_angles
+
+        pose_saveable = Pose(
+            position_in_meters=Position(x=x, y=y, z=z),
+            rotation_euler_xyz_in_radians=EulerAngles(roll=roll, pitch=pitch, yaw=yaw),
+        )
+        with open("camera_pose.json", "w") as f:
+            json.dump(pose_saveable.dict(), f, indent=4)
 
     calibrate()
