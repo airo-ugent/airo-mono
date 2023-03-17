@@ -19,4 +19,5 @@ setuptools.setup(
             "airo-dataset-tools = airo_dataset_tools.cli:cli",
         ],
     },
+    package_data={"airo_dataset_tools": ["py.typed"]},
 )
