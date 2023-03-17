@@ -30,3 +30,8 @@ class _ImageTestValues:
     _depth_image_path = Path(__file__).parent / "data" / "test_depth_map.png"
     _depth_map_path = Path(__file__).parent / "data" / "test_depth_map.npy"
     _image_dims = (400, 300)
+
+
+class _CalibrationTest:
+    _empty_image_path = Path(__file__).parent / "data" / "empty_marker.png"
+    _default_charuco_board_path = Path(__file__).parent / "data" / "default_charuco_board.png"

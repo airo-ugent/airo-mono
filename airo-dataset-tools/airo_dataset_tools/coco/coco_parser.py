@@ -48,8 +48,14 @@ CategoryID = int
 ImageID = int
 
 # Used by CocoInstanceAnnotation
-RLEDict = Dict[str, List]  # Dict[int,int]  # run length encoding (of a pixel-mask), with keys "counts" and "size"
+# Dict[int,int]  run length encoding(RLE) (of a pixel-mask), with keys "counts" and "size"
 # where count contains the actual run length encoding (of a pixel-mask) [x1,l1,x2,l2,...]
+# or a coco-encoded string that represents this list.
+# see https://www.youtube.com/watch?v=h6s61a_pqfM for a video explanation of RLE
+# see https://github.com/cocodataset/cocoapi/issues/386 for a discussion of RLE string encoding
+# RLE is Usually only used for is_crowd segmentations.
+RLEDict = Dict[str, Union[str, List]]
+
 Polygon = List[float]  # list of vertices [x1, y1, x2, y2, ...]
 Segmentation = Union[RLEDict, List[Polygon]]
 

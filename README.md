@@ -121,10 +121,22 @@ Creating a new package is kind of a hassle atm, in the future we might add a coo
 - add package name to matrix of CI flows
 - add package to top-level readme [here](#overview)
 
+### Command Line Interfaces
+It can become convenient to expose certain functionality as a command line interface (CLI).
+E.g. if you have a fucntion that visualizes a coco dataset, you might want to make it easy for the user to use this function on an arbitrary dataset (path), without requiring the user to create a python script that calls that function with the desired arguments.
+
+We use [click](https://click.palletsprojects.com/en/8.1.x/) to create CLIs and make use of the setuptools `console_scripts` to conveniently expose them to the user, which allows to do `$ package-name command --options/arguments`  in your terminal instead of having to manually point to the location of the python file when invoking the command.
+
+All CLI commands of a package that are meant to be used by end-users should be grouped in a top-level `cli.py` file. It is preferred to separate the CLI command implmmentation from the actual implementation of the functionality, so that the funcionality can still be used by other python code.
+
+For an example, you should take a look at the `airo_dataset_tools/cli.py` file and the `airo-dataset-tools/setup.py`. Make sure to read through the docs of the click package to understand what is happening.
+
+Also note that you can still have a `__main__` block in a python module with a CLI command, but those should be more for developers than for end users. If you expect it to be useful for end-users, you might want to consider moving it to the package CLI.
+
 ### Design choices
 - class attributes that require getter/setter should use python [properties](https://realpython.com/python-property/). This is not only more pythonic (for end-user engagement with the attribute), but more importantly it enables a whole bunch of better code patterns as you can override a decorator, but not a plain attribute.
 - the easiest code to maintain is no code at all. So thorougly consider if the functionality you want does not already have a good implementation and could be imported with a reasonable dependency cost.
-- it is strongly encouraged to use [click](https://click.palletsprojects.com/en/8.1.x/) for command line interfaces.
+- it is strongly encouraged to use [click](https://click.palletsprojects.com/en/8.1.x/) for all command line interfaces.
 - it is strongly advised to use logging instead of print statements. [loguru](https://loguru.readthedocs.io/en/stable/) is the recommended logging tool.
 - Use python dataclasses for configuration, instead of having a ton of argument in the build/init functions of your classes.
 - The output of operations should preferably be in a `common` format. E.g. if you have a method that creates a pointcloud, we prefer that method to return a numpy array instead of your own pointcloud class, that internally contains such an array. You can of course use such classes internally, but we prefer that the end user gets 'common formats', because he/she is most likely to immediately extract the numpy arrar out of your custom data class anyways.

@@ -12,13 +12,16 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "matplotlib",
-        # TODO: add the PyPI package for rerun as soon as the next patch is released: https://github.com/rerun-io/rerun/issues/1320
-        "rerun-sdk @ https://github.com/rerun-io/rerun/releases/download/v0.2.0/rerun_sdk-0.2.0-cp38-abi3-manylinux_2_35_x86_64.whl",
+        "opencv-contrib-python==4.7.0.72",  # opencv has a tendency to make breaking changes
+        "rerun-sdk",
+        "click",
+        "loguru",
     ],
     extras_require={
         "external": [
             f"airo_typing @ file://localhost/{root_folder}/airo-typing",
             f"airo_spatial_algebra @ file://localhost/{root_folder}/airo-spatial-algebra",
+            f"airo_robots @ file://localhost/{root_folder}/airo-robots",
         ]
     },
     packages=setuptools.find_packages(),
