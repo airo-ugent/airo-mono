@@ -82,10 +82,12 @@ def do_camera_robot_calibration(  # noqa: C901 - too complex
     mode: str, aruco_dict: ArucoDictType, charuco_board: CharucoDictType, camera: RGBCamera, robot: Any
 ) -> Optional[HomogeneousMatrixType]:
     """function to do hand-eye calibration with an UR robot and a ZED2i camera.
-    Will open camera stream and visualize the detected markers.
+    Will open camera stream and visualize the detected markers. The script will set the robot in freedrive so that you can move the robot to the desired poses.
     Press S to capture pose, press F to finish. Make sure the detections look good (corners/contours are accurate) before capturing.
-    Once you have at least 5 markers, you can press F to finish and get the extrinsics pose.
-    But gathering more poses will improve the accuracy of the calibration.
+    Once you have at least 4 markers, you can press F to finish and get the extrinsics pose.
+    Gathering more poses will improve the accuracy of the calibration.
+
+    Tip: make sure the TCP weight is set to an appropriate value, otherwise you will have to 'fight' with the robot to keep it from falling down.
     """
 
     # for now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
@@ -160,14 +162,15 @@ if __name__ == "__main__":
     from airo_camera_toolkit.cameras.zed2i import Zed2i
     from airo_robots.manipulators import URrtde
 
-    robot = URrtde("10.42.0.162", URrtde.UR3_CONFIG)
-    camera = Zed2i()
     aruco_dict = AIRO_DEFAULT_ARUCO_DICT
     charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
 
     @click.command()
     @click.option("--mode", default="eye_in_hand", help="eye_in_hand or eye_to_hand")
-    def calibrate(mode: str) -> None:
+    @click.option("--robot_ip", default="10.42.0.162", help="robot ip address")
+    def calibrate(mode: str, robot_ip: str) -> None:
+        robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
+        camera = Zed2i()
         pose = do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot)
         print(pose)
         # TODO: serialize and save the extrinsics to the to-be-determined airo-mono extrinsics format
