@@ -1,0 +1,4 @@
+site_name: AIRO spatial algebra
+
+plugins:
+  - mkdocstrings

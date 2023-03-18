@@ -1,0 +1,14 @@
+site_name: Test
+site_url: https://example.com
+
+nav:
+  - Home: index.md
+  - airo-typing: '!include ./airo-typing/mkdocs.yaml'
+  - airo-spatial-algebra: '!include ./airo-spatial-algebra/mkdocs.yaml'
+
+plugins:
+  - monorepo
+  - mkdocstrings
+
+theme:
+  name: "material"
