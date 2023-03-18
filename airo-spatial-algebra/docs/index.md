@@ -1,5 +1,3 @@
-# SE3
-::: airo_spatial_algebra.se3
+# AIRO Spatial Algebra
 
-# Operations
-::: airo_spatial_algebra.operations
+## [code reference](reference.md)
