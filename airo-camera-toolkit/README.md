@@ -29,7 +29,7 @@ For realtime visualisation of robotics data we  strongly encourage using [rerun.
 
 ## Calibration
 ### hand-eye calibration
-We use by default a charuco board for hand-eye calibration. You can find the board in the `test/data` folder. To match the size of the markers to the desired size, the board should be printed on a 300mm x 220mm surface. Using Charuco boards is highly recommended as they are a lot more robust and precise than individual aruco markers, if you do use an aruco marker, make sure that the whitespace around the marker is at least 25% of the marker dimensions. 
+We use by default a charuco board for hand-eye calibration. You can find the board in the `test/data` folder. To match the size of the markers to the desired size, the board should be printed on a 300mm x 220mm surface. Using Charuco boards is highly recommended as they are a lot more robust and precise than individual aruco markers, if you do use an aruco marker, make sure that the whitespace around the marker is at least 25% of the marker dimensions.
 ## References
 For more background on cameras, in particular on the meaning of intrinsics, extrinics, distortion coefficients, pinhole (and other) camera models, see:
  - https://web.eecs.umich.edu/~justincj/teaching/eecs442/WI2021/schedule.html
