@@ -24,4 +24,4 @@ def test_pose_save_and_load(tmp_path: pathlib.Path):
 
 
 if __name__ == "__main__":
-    test_pose_save_and_load()
+    test_pose_save_and_load(pathlib.Path("."))
