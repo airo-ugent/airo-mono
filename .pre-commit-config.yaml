@@ -10,7 +10,7 @@ repos:
     -   id: mixed-line-ending
     -   id: check-added-large-files
 -   repo: https://github.com/myint/autoflake
-    rev: v1.4
+    rev: v2.0.2
     hooks:
     -   id: autoflake
         name: autoflake - remove unused imports and variables
