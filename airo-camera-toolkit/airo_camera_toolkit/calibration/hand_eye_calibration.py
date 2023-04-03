@@ -221,8 +221,6 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
 
         return camera_pose
 
-    robot = URrtde("10.42.0.162", URrtde.UR3_CONFIG)
-    camera = Zed2i()
     aruco_dict = AIRO_DEFAULT_ARUCO_DICT
     charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
 
@@ -230,6 +228,8 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
     @click.option("--mode", default="eye_in_hand", help="eye_in_hand or eye_to_hand")
     @click.option("--robot_ip", default="10.42.0.162", help="robot ip address")
     def calibrate(mode: str, robot_ip: str) -> None:
+        robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
+        camera = Zed2i()
         pose = do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot)
 
         if pose is None:
