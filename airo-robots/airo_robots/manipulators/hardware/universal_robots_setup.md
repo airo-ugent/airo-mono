@@ -31,7 +31,8 @@ If still not successful, try swapping ethernet cables, ports or computers.
 To be able to conmmand the robot from an external computer, the control box must be in Remote Control mode.
 To get access to it, set first the following passwords:
 
-1. In `Settings > Password` set the **Safety** and **Mode** passwords. The default password by UR is `easybot`.
+1. In `Settings > Password` set the **Safety** passwords. The default password by UR is `easybot`.
+(No need to set the Mode password, as this will add an Automatic mode which we don't need).
 2. In `Settings > Remote Control` enable remote control.
 
 Now you should see an new icon in the top right corner of the control box screen.
