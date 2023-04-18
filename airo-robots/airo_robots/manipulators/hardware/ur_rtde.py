@@ -74,6 +74,7 @@ class URrtde(PositionManipulator):
     def move_linear_to_tcp_pose(
         self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
     ) -> AwaitableAction:
+        self.rtde_control.servoStop()  # stop any ongoing servo commands to avoid "another thread is controlling the robot" errors
         self._assert_pose_is_valid(tcp_pose)
         linear_speed = linear_speed or self.default_linear_speed
         self._assert_linear_speed_is_valid(linear_speed)
@@ -88,6 +89,7 @@ class URrtde(PositionManipulator):
     def move_to_tcp_pose(
         self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None
     ) -> AwaitableAction:
+        self.rtde_control.servoStop()  # stop any ongoing servo commands to avoid "another thread is controlling the robot" errors
         self._assert_pose_is_valid(tcp_pose)
         joint_speed = joint_speed or self.default_joint_speed
         # don't know what the leading axis will be, so check that joint speed < min(max_joint_speeds)
@@ -106,6 +108,7 @@ class URrtde(PositionManipulator):
     def move_to_joint_configuration(
         self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
     ) -> AwaitableAction:
+        self.rtde_control.servoStop()  # stop any ongoing servo commands to avoid "another thread is controlling the robot" errors
         # check joint limits
         self._assert_joint_configuration_is_valid(joint_configuration)
 
