@@ -1,3 +1,4 @@
+import time
 from abc import ABC
 from typing import List, Optional, Union
 
@@ -169,3 +170,6 @@ if __name__ == "__main__":
         left_target_pose[0, 3] += 0.01
         right_target_pose[0, 3] += 0.01
         dual_arm.servo_to_tcp_pose(left_target_pose, right_target_pose, 0.2).wait(timeout=1)
+    left_target_pose[1, 3] -= 0.2
+    time.sleep(0.1)
+    dual_arm.move_linear_to_tcp_pose(left_target_pose, right_target_pose, 0.1).wait(timeout=100)
