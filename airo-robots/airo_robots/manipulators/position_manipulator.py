@@ -35,7 +35,7 @@ class PositionManipulator(ABC):
     def __init__(self, manipulator_specs: ManipulatorSpecs, gripper: Optional[ParallelPositionGripper] = None) -> None:
         self._manipulator_specs = manipulator_specs
         self._gripper = gripper
-        self._default_linear_speed = 0.2  # m/s often a good default value
+        self._default_linear_speed = 0.1  # m/s often a good default value
         self._default_joint_speed = min(manipulator_specs.max_joint_speeds) / 4
 
     @property
