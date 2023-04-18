@@ -14,7 +14,7 @@ class AwaitableAction:
     def __init__(
         self,
         termination_condition: Callable[..., bool],
-        default_timeout: float = 10.0,
+        default_timeout: float = 30.0,
         default_sleep_resolution: float = 0.1,
     ):
         """
