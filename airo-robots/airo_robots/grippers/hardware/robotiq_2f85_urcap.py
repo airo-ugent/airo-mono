@@ -149,7 +149,7 @@ class Robotiq2F85(ParallelPositionGripper):
             target_width_in_meters, self._gripper_specs.min_width, self._gripper_specs.max_width
         )
         # 230 is 'force closed', cf _write_target_width_to_register.
-        target_width_register_value = int(
+        target_width_register_value = round(
             rescale_range(target_width_in_meters, self._gripper_specs.min_width, self._gripper_specs.max_width, 230, 0)
         )
         self._write_target_width_to_register(target_width_register_value)
