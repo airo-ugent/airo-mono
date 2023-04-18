@@ -143,13 +143,23 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
         robot.rtde_control.teachMode()
         while True:
             image = camera.get_rgb_image()
+            print(image.shape)
+
             image = ImageConverter.from_numpy_format(image).image_in_opencv_format
 
             aruco_result = detect_aruco_markers(image, aruco_dict)
             if not aruco_result:
+                logger.warning("no aruco markers detected.")
+                image = cv2.resize(image, (1920, 1080))
+                cv2.imshow("image", image)
+                cv2.waitKey(1)
                 continue
             charuco_result = detect_charuco_corners(image, aruco_result, charuco_board)
             if not charuco_result:
+                logger.warning("no charuco corners detected.")
+                image = cv2.resize(image, (1920, 1080))
+                cv2.imshow("image", image)
+                cv2.waitKey(1)
                 continue
 
             charuco_pose = get_pose_of_charuco_board(charuco_result, charuco_board, camera.intrinsics_matrix(), None)
@@ -227,9 +237,16 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
     @click.command()
     @click.option("--mode", default="eye_in_hand", help="eye_in_hand or eye_to_hand")
     @click.option("--robot_ip", default="10.42.0.162", help="robot ip address")
-    def calibrate(mode: str, robot_ip: str) -> None:
+    @click.option(
+        "--camera_serial_number",
+        default=None,
+        type=int,
+        help="serial number of the camera to use if you have multiple cameras connected.",
+    )
+    def calibrate(mode: str, robot_ip: str, camera_serial_number: int) -> None:
         robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
-        camera = Zed2i()
+        print(f"zed serial numbers: {Zed2i.list_camera_serial_numbers()}")
+        camera = Zed2i(serial_number=camera_serial_number)
         pose = do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot)
 
         if pose is None:
