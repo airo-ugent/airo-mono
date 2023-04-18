@@ -112,7 +112,9 @@ class URrtde(PositionManipulator):
         joint_speed = joint_speed or self.default_joint_speed
         self._assert_joint_speed_is_valid(joint_speed)
 
-        self.rtde_control.moveJ(joint_configuration, joint_speed, self.default_leading_axis_joint_acceleration)
+        self.rtde_control.moveJ(
+            joint_configuration, joint_speed, self.default_leading_axis_joint_acceleration, asynchronous=True
+        )
         return AwaitableAction(
             lambda: bool(
                 np.linalg.norm(self.get_joint_configuration() - joint_configuration)

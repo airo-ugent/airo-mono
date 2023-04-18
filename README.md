@@ -122,6 +122,7 @@ Creating a new package is kind of a hassle atm, in the future we might add a coo
     - handle internal dependencies with extra_requires {'external'}
 - add package name to matrix of CI flows
 - add package to top-level readme [here](#overview)
+- add package to the `environment.yaml`
 
 ### Command Line Interfaces
 It can become convenient to expose certain functionality as a command line interface (CLI).
