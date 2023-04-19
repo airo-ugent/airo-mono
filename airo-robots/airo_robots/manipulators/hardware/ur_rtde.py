@@ -83,7 +83,7 @@ class URrtde(PositionManipulator):
         self.rtde_control.moveL(tcp_rotvec_pose, linear_speed, self.default_linear_acceleration, asynchronous=True)
         return AwaitableAction(
             lambda: bool(np.linalg.norm(self.get_tcp_pose() - tcp_pose) < self._pose_reached_L2_threshold)
-            and self._is_move_command_finished()
+            # and self._is_move_command_finished() # Disable until we find why this always stays False (progress stays at 0.0)
         )
 
     def move_to_tcp_pose(
