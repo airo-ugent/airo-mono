@@ -148,6 +148,8 @@ if __name__ == "__main__":
     from airo_robots.manipulators.hardware.ur_rtde import URrtde
     from airo_spatial_algebra import SE3Container
 
+    np.set_printoptions(precision=3, suppress=True)
+
     left = URrtde("10.42.0.162", URrtde.UR3E_CONFIG)
     right = URrtde("10.42.0.163", URrtde.UR3E_CONFIG)
     left_arm_pose_in_base = np.eye(4)
@@ -162,14 +164,23 @@ if __name__ == "__main__":
     right_target_pose = SE3Container.from_euler_angles_and_translation(
         np.array([np.pi, 0, 0]), np.array([-0.6, -0.3, 0.3])
     ).homogeneous_matrix
+
+    print("Moving to start poses")
     print(left_target_pose)
     print(dual_arm.left_manipulator.get_tcp_pose())
-    dual_arm.move_linear_to_tcp_pose(left_target_pose, right_target_pose, 0.1).wait(timeout=100)
+    dual_arm.move_linear_to_tcp_pose(left_target_pose, right_target_pose, 0.1).wait(timeout=10)
 
-    for _ in range(20):
-        left_target_pose[0, 3] += 0.01
-        right_target_pose[0, 3] += 0.01
-        dual_arm.servo_to_tcp_pose(left_target_pose, right_target_pose, 0.2).wait(timeout=1)
+    time.sleep(1.0)
+
+    print("Starting 20 servo movements of 1 cm.")
+    for _ in range(200):
+        left_target_pose[0, 3] += 0.001
+        right_target_pose[0, 3] += 0.001
+        dual_arm.servo_to_tcp_pose(left_target_pose, right_target_pose, 0.02).wait(timeout=1)
     left_target_pose[1, 3] -= 0.2
     time.sleep(0.1)
-    dual_arm.move_linear_to_tcp_pose(left_target_pose, right_target_pose, 0.1).wait(timeout=100)
+
+    print("Moving to the end poses.")
+    dual_arm.move_linear_to_tcp_pose(left_target_pose, right_target_pose, 0.1).wait(timeout=10)
+
+    print("Finished.")
