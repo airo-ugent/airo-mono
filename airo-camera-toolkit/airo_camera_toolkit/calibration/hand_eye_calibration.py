@@ -143,7 +143,6 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
         robot.rtde_control.teachMode()
         while True:
             image = camera.get_rgb_image()
-            print(image.shape)
 
             image = ImageConverter.from_numpy_format(image).image_in_opencv_format
 
