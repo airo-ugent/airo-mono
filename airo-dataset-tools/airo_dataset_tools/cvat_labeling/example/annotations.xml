@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<annotations>
+  <version>1.1</version>
+  <meta>
+    <job>
+      <id>6</id>
+      <size>4</size>
+      <mode>annotation</mode>
+      <overlap>0</overlap>
+      <bugtracker></bugtracker>
+      <created>2023-04-27 09:15:01.875517+00:00</created>
+      <updated>2023-04-27 09:28:52.738428+00:00</updated>
+      <subset>default</subset>
+      <start_frame>0</start_frame>
+      <stop_frame>3</stop_frame>
+      <frame_filter></frame_filter>
+      <segments>
+        <segment>
+          <id>6</id>
+          <start>0</start>
+          <stop>3</stop>
+          <url>http://localhost:8080/api/jobs/6</url>
+        </segment>
+      </segments>
+      <owner>
+        <username>tlips</username>
+        <email>thomas.lips@ugent.be</email>
+      </owner>
+      <assignee></assignee>
+      <labels>
+        <label>
+          <name>towel.corner1</name>
+          <color>#dc381e</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>towel.corner2</name>
+          <color>#f819b8</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>towel.corner3</name>
+          <color>#a97ba3</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>towel.corner4</name>
+          <color>#286150</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>towel.bbox</name>
+          <color>#00d1e6</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>towel.mask</name>
+          <color>#31688e</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>tshirt.bbox</name>
+          <color>#2282f5</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>tshirt.mask</name>
+          <color>#e152ef</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>tshirt.waist_left</name>
+          <color>#fc55d0</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>tshirt.waist_right</name>
+          <color>#41bf78</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>tshirt.shoulder_left</name>
+          <color>#41e723</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+        <label>
+          <name>tshirt.shoulder_right</name>
+          <color>#8b6c77</color>
+          <type>any</type>
+          <attributes>
+          </attributes>
+        </label>
+      </labels>
+    </job>
+    <dumped>2023-04-27 09:28:58.075021+00:00</dumped>
+  </meta>
+  <image id="0" name="1.png" width="600" height="338">
+    <box label="tshirt.bbox" source="manual" occluded="0" xtl="192.41" ytl="35.99" xbr="444.43" ybr="227.44" z_order="0">
+    </box>
+    <polygon label="tshirt.mask" source="manual" occluded="0" points="192.83,208.80;297.88,225.74;311.43,219.39;327.53,218.12;346.59,223.63;441.04,176.19;407.58,132.98;394.87,134.68;386.82,133.41;379.20,130.87;381.74,128.33;369.88,101.22;372.42,94.44;355.90,38.95;324.56,41.07;319.05,43.61;298.72,47.85;262.30,53.78;246.20,59.71;240.27,63.94;234.34,75.38;240.70,77.08;251.71,76.65;245.78,82.58;240.70,94.02;238.15,110.54;238.58,132.14;242.81,144.84;236.88,152.47;210.20,159.67" z_order="0">
+    </polygon>
+    <points label="tshirt.waist_left" source="manual" occluded="0" points="234.80,75.50" z_order="0">
+    </points>
+    <points label="tshirt.waist_right" source="manual" occluded="0" points="355.50,38.60" z_order="0">
+    </points>
+    <points label="tshirt.shoulder_left" source="manual" occluded="0" points="248.70,217.70" z_order="0">
+    </points>
+    <points label="tshirt.shoulder_right" source="manual" occluded="0" points="389.80,200.80" z_order="0">
+    </points>
+  </image>
+  <image id="1" name="2.png" width="500" height="281">
+    <points label="towel.corner4" source="manual" occluded="0" points="143.99,118.93" z_order="0">
+    </points>
+    <points label="towel.corner3" source="manual" occluded="0" points="224.42,80.57" z_order="0">
+    </points>
+    <points label="towel.corner2" source="manual" occluded="1" points="240.50,141.82" z_order="0">
+    </points>
+    <points label="towel.corner1" source="manual" occluded="1" points="192.24,171.52" z_order="0">
+    </points>
+    <box label="towel.bbox" source="manual" occluded="0" xtl="143.99" ytl="77.48" xbr="262.78" ybr="192.55" z_order="0">
+    </box>
+    <polygon label="towel.mask" source="manual" occluded="0" points="167.50,179.56;198.43,188.84;250.40,159.14;257.83,126.97;226.89,81.81;173.06,105.94;145.22,118.31" z_order="0">
+    </polygon>
+  </image>
+  <image id="2" name="3.jpeg" width="256" height="256">
+    <box label="tshirt.bbox" source="manual" occluded="0" xtl="137.31" ytl="24.64" xbr="238.54" ybr="233.03" z_order="0" group_id="2">
+    </box>
+    <polygon label="tshirt.mask" source="manual" occluded="0" points="178.39,28.45;196.60,28.45;224.98,50.90;236.84,101.30;221.59,112.74;218.63,100.88;214.82,117.82;214.82,161.45;217.36,216.09;207.19,224.13;172.46,224.56;157.64,217.78;158.48,177.97;160.18,135.19;158.91,97.49;155.09,111.04;138.58,103.42;142.81,86.05;150.44,46.24" z_order="0" group_id="2">
+    </polygon>
+    <points label="tshirt.shoulder_right" source="manual" occluded="0" points="153.90,49.50" z_order="0" group_id="2">
+    </points>
+    <points label="tshirt.shoulder_left" source="manual" occluded="0" points="223.80,48.20" z_order="0" group_id="2">
+    </points>
+    <points label="tshirt.shoulder_left" source="manual" occluded="0" points="34.60,48.00" z_order="0">
+    </points>
+    <points label="tshirt.shoulder_right" source="manual" occluded="0" points="108.80,46.40" z_order="0">
+    </points>
+    <points label="tshirt.waist_right" source="manual" occluded="0" points="99.61,219.05" z_order="0">
+    </points>
+    <points label="tshirt.waist_right" source="manual" occluded="0" points="158.48,217.78" z_order="0" group_id="2">
+    </points>
+    <points label="tshirt.waist_left" source="manual" occluded="0" points="40.73,217.36" z_order="0">
+    </points>
+    <points label="tshirt.waist_left" source="manual" occluded="0" points="216.09,219.05" z_order="0" group_id="2">
+    </points>
+    <box label="tshirt.bbox" source="manual" occluded="0" xtl="13.20" ytl="24.21" xbr="127.99" ybr="231.76" z_order="0">
+    </box>
+    <polygon label="tshirt.mask" source="manual" occluded="0" points="42.85,98.34;42.43,220.32;101.30,222.44;99.18,92.41;104.27,107.66;123.33,100.03;111.89,46.24;87.33,27.60;58.52,27.18;36.50,42.85;19.56,100.88;38.19,111.89" z_order="0">
+    </polygon>
+  </image>
+  <image id="3" name="4.png" width="600" height="338">
+    <box label="towel.bbox" source="manual" occluded="0" xtl="197.69" ytl="67.95" xbr="416.09" ybr="288.20" z_order="0">
+    </box>
+    <polygon label="towel.mask" source="manual" occluded="0" points="202.02,137.24;309.05,282.64;351.74,249.84;405.57,191.07;350.51,132.29;291.73,72.28;250.28,98.26" z_order="0">
+    </polygon>
+    <points label="towel.corner1" source="manual" occluded="0" points="203.30,137.20" z_order="0">
+    </points>
+    <points label="towel.corner2" source="manual" occluded="0" points="292.35,74.13" z_order="0">
+    </points>
+    <points label="towel.corner3" source="manual" occluded="0" points="408.04,186.74" z_order="0">
+    </points>
+    <points label="towel.corner4" source="manual" occluded="0" points="308.43,277.69" z_order="0">
+    </points>
+  </image>
+</annotations>
