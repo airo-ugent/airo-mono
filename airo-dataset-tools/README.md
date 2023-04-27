@@ -1,13 +1,29 @@
 # airo-dataset-tools
+Package for working with datasets.
 
-Package for creating, saving and loading datasets
+[COCO](https://cocodataset.org/#format-data) is the preferred format for computer vision datasets.
 
-This functionality is mainly provided in the form of [Pydantic](https://docs.pydantic.dev/) parsers.
+Other formats will are added if they are needed for dataset creation (think the format of a labeling tool) or for consumption of the dataset (think the YOLO format for training an object detector). Besides datasets, we also provide tools for other persistent data such as camera intrinsics and extrinsics.
 
-[COCO](https://cocodataset.org/#format-data) is the preferred format for computer vision datasets. Other formats will be added if they are needed for dataset creation (think the format of a labeling tool) or for consumption of the dataset (think the YOLO format for training an object detector).
+As always, we try to reuse existing tools/code as much as possible, but we have found that keypoints are by far not supported as well as segmentation or detection, so we had to write some custom tooling for working with keypoints.
 
-Besides datasets, we also plan to provide parsers for other persistent data such as camera intrinsics and extrinsics.
+## Data Parsers
+The functionality is mainly provided in the form of [Pydantic](https://docs.pydantic.dev/) parsers, that can be used to load or create data(sets). The parsers can be found in the `data_parsers` folder.
 
-Documentation:
+Avalaible Data Parsers:
+* [COCO Datasets](https://cocodataset.org/#format-data)
+* [CVAT 1.1 Images annotations](https://opencv.github.io/cvat/docs/manual/advanced/xml_format/)
 * [Pose format](docs/pose.md)
 * [Camera instrinsics format](docs/camera_intrinsics.md)
+
+## COCO dataset creation
+We provide a [documented](airo_dataset_tools/cvat_labeling/readme.md) worklow for labeling real-world data with [CVAT]() and to create [COCO]() Keypoints or Instance datasets based on these annotations.
+
+We also provide a number of tools for working with COCO datasets:
+- visualisation using [FiftyOne](https://voxel51.com/)
+- resizing dataset images (TODO)
+- combining COCO datasets (via datumaro)(TODO)
+
+These are all combined in the CLI, which you can access by running `airo-dataset-tools --help` from the command line.
+
+
