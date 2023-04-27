@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from typing import List
+from typing import List, Tuple
 
 import tqdm
 from airo_dataset_tools.cvat_labeling.load_xml_to_dict import get_dict_from_xml
@@ -48,10 +48,10 @@ def cvat_image_to_coco(  # noqa: C901, too complex
     # create the COCOKeypointCatgegories
     categories_dict = defaultdict(list)
     for annotation_category in cvat_parsed.annotations.meta.job.labels.label:
-        category, annotation_name = annotation_category.name.split(".")
-        categories_dict[category].append(annotation_name)
+        category_str, annotation_name = annotation_category.name.split(".")
+        categories_dict[category_str].append(annotation_name)
 
-    for category, semantic_types in categories_dict.items():
+    for category_str, semantic_types in categories_dict.items():
         if add_bbox:
             assert "bbox" in semantic_types, "bbox annotations are required"
         if add_segmentation:
@@ -61,7 +61,7 @@ def cvat_image_to_coco(  # noqa: C901, too complex
             semantic_type for semantic_type in semantic_types if semantic_type != "bbox" and semantic_type != "mask"
         ]
         coco_category = CocoKeypointCategory(
-            name=category, id=len(coco_categories) + 1, keypoints=semantic_types, supercategory=""
+            name=category_str, id=len(coco_categories) + 1, keypoints=semantic_types, supercategory=""
         )
         coco_categories.append(coco_category)
 
@@ -123,12 +123,14 @@ def _get_n_category_instances_in_image(cvat_image: ImageItem, category_name: str
         return 0
     if not isinstance(cvat_image.points, list):
         if _get_category_from_cvat_label(cvat_image.points.label) == category_name:
+            assert cvat_image.points.group_id is not None, "group_id was None"
             return int(cvat_image.points.group_id)
         else:
             return 0
     max_group_id = 0
     for cvat_point in cvat_image.points:
         if _get_category_from_cvat_label(cvat_point.label) == category_name:
+            assert cvat_point.group_id is not None, "group_id was None"
             max_group_id = max(max_group_id, int(cvat_point.group_id))
     return max_group_id
 
@@ -151,25 +153,27 @@ def _get_semantic_type_from_cvat_label(label: str) -> str:
     return label.split(".")[1]
 
 
-def _get_bbox_for_instance_from_cvat_image(cvat_image: ImageItem, instance_id: int):
+def _get_bbox_for_instance_from_cvat_image(
+    cvat_image: ImageItem, instance_id: int
+) -> Tuple[float, float, float, float]:
     """returns the bbox for the instance in the cvat image.
     returns [0,0,0,0] if the bbox is not annotated for this instance.
     """
-    instance_id = str(instance_id)
+    instance_id_str = str(instance_id)
     if cvat_image.box is None:
         raise ValueError("bbox annotations are required for image {cvat_image.name}")
     if not isinstance(cvat_image.box, list):
-        if instance_id == cvat_image.box.group_id:
-            return [
+        if instance_id_str == cvat_image.box.group_id:
+            return (
                 float(cvat_image.box.xtl),
                 float(cvat_image.box.ytl),
                 float(cvat_image.box.xbr) - float(cvat_image.box.xtl),
                 float(cvat_image.box.ybr) - float(cvat_image.box.ytl),
-            ]
+            )
         else:
             raise ValueError("bbox annotations are required for image {cvat_image.name}")
     for bbox in cvat_image.box:
-        if instance_id == bbox.group_id:
+        if instance_id_str == bbox.group_id:
             return (
                 float(bbox.xtl),
                 float(bbox.ytl),
@@ -179,22 +183,22 @@ def _get_bbox_for_instance_from_cvat_image(cvat_image: ImageItem, instance_id: i
     raise ValueError("bbox annotations are required for image {cvat_image.name}")
 
 
-def _get_segmentation_for_instance_from_cvat_image(cvat_image: ImageItem, instance_id: int):
+def _get_segmentation_for_instance_from_cvat_image(cvat_image: ImageItem, instance_id: int) -> List[List[float]]:
     """returns the segmentation polygon for the instance in the cvat image.
     returns [0,0,0,0] if the segmentation is not annotated for this instance.
     """
-    instance_id = str(instance_id)
+    instance_id_str = str(instance_id)
     if cvat_image.polygon is None:
         raise ValueError("segmentation annotations are required for image {cvat_image.name}")
     if not isinstance(cvat_image.polygon, list):
-        if instance_id == cvat_image.polygon.group_id:
+        if instance_id_str == cvat_image.polygon.group_id:
             polygon_str = cvat_image.polygon.points
             polygon_str = polygon_str.replace(";", ",")
             return [[float(x) for x in polygon_str.split(",")]]
         else:
             raise ValueError("segmentation annotations are required for image {cvat_image.name}")
     for polygon in cvat_image.polygon:
-        if instance_id == polygon.group_id:
+        if instance_id_str == polygon.group_id:
             polygon_str = polygon.points
             polygon_str = polygon_str.replace(";", ",")
             return [[float(x) for x in polygon_str.split(",")]]
@@ -215,13 +219,13 @@ def _get_semantic_type_keypoint_for_instance_from_cvat_image(
     Returns:
         List: [x,y,visibility]
     """
-    instance_id = str(instance_id)
+    instance_id_str = str(instance_id)
     if cvat_image.points is None:
         return [0.0, 0.0, 0]
     if not isinstance(cvat_image.points, list):
         if (
             semantic_type == _get_semantic_type_from_cvat_label(cvat_image.points.label)
-            and instance_id == cvat_image.points.group_id
+            and instance_id_str == cvat_image.points.group_id
         ):
             return _extract_coco_keypoint_from_cvat_point(cvat_image.points)
         else:
@@ -229,7 +233,7 @@ def _get_semantic_type_keypoint_for_instance_from_cvat_image(
     for cvat_point in cvat_image.points:
         if (
             semantic_type == _get_semantic_type_from_cvat_label(cvat_point.label)
-            and instance_id == cvat_point.group_id
+            and instance_id_str == cvat_point.group_id
         ):
             return _extract_coco_keypoint_from_cvat_point(cvat_point)
     return [0.0, 0.0, 0]
