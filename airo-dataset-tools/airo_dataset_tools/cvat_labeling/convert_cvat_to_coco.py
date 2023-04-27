@@ -14,7 +14,7 @@ from airo_dataset_tools.data_parsers.coco import (
     CocoKeypointCategory,
     CocoKeypointsDataset,
 )
-from airo_dataset_tools.data_parsers.cvat_images import CVATImagesParser, ImageItem, Point
+from airo_dataset_tools.data_parsers.cvat_images import CVATImagesParser, ImageItem, LabelItem, Point
 
 
 def cvat_image_to_coco(  # noqa: C901, too complex
@@ -48,6 +48,7 @@ def cvat_image_to_coco(  # noqa: C901, too complex
     # create the COCOKeypointCatgegories
     categories_dict = defaultdict(list)
     for annotation_category in cvat_parsed.annotations.meta.job.labels.label:
+        assert isinstance(annotation_category, LabelItem)
         category_str, annotation_name = annotation_category.name.split(".")
         categories_dict[category_str].append(annotation_name)
 
