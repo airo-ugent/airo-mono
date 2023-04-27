@@ -2,8 +2,8 @@ import json
 import os
 
 import numpy as np
-from airo_dataset_tools.coco.coco_parser import CocoInstancesDataset
-from airo_dataset_tools.coco.segmentation_masks import BinarySegmentationMask
+from airo_dataset_tools.data_parsers.coco import CocoInstancesDataset
+from airo_dataset_tools.segmentation_mask_converter import BinarySegmentationMask
 
 
 def test_encoded_rle_creation():

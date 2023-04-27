@@ -1,7 +1,12 @@
 import json
 import pathlib
 
-from airo_dataset_tools.camera_intrinsics import CameraIntrinsics, FocalLengths, PrincipalPoint, Resolution
+from airo_dataset_tools.data_parsers.camera_intrinsics import (
+    CameraIntrinsics,
+    FocalLengths,
+    PrincipalPoint,
+    Resolution,
+)
 
 
 def test_camera_intrinsics_save_and_load(tmp_path: pathlib.Path):

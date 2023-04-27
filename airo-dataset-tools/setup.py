@@ -11,6 +11,8 @@ setuptools.setup(
         "numpy",
         "pydantic",
         "pycocotools",
+        "xmltodict",
+        "tqdm",
         "fiftyone",  # visualization
     ],
     packages=find_packages(),

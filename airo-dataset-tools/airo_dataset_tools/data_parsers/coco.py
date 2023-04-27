@@ -1,4 +1,4 @@
-"""Custom parser for COCO dataset JSON files.
+"""parser for COCO dataset (both instance & keypoints) JSON files.
 
 The main reference for this parser can be found here:
 https://cocodataset.org/#format-data
@@ -78,10 +78,10 @@ class CocoImage(BaseModel):
     width: int
     height: int
     file_name: str  # relative path to image
-    license: Optional[LicenseID]
-    flicker_url: Optional[Url]
-    coco_url: Optional[Url]
-    date_captured: Optional[Datetime]
+    license: Optional[LicenseID] = None
+    flicker_url: Optional[Url] = None
+    coco_url: Optional[Url] = None
+    date_captured: Optional[Datetime] = None
 
 
 class CocoCategory(BaseModel):
@@ -92,16 +92,18 @@ class CocoCategory(BaseModel):
 
 class CocoKeypointCategory(CocoCategory):
     keypoints: List[str]
-    skeleton: Optional[List[List[int]]]
+    skeleton: Optional[List[List[int]]] = None
 
 
 class CocoInstanceAnnotation(BaseModel):
     id: int  # unique id for the annotation
     image_id: ImageID
     category_id: CategoryID
+
+    # make segmentation and bbox optional by having a non-sensible default
     segmentation: Segmentation
     area: float
-    bbox: Tuple[int, int, int, int]
+    bbox: Tuple[float, float, float, float]
     iscrowd: IsCrowd
 
     @validator("iscrowd")
@@ -113,6 +115,12 @@ class CocoInstanceAnnotation(BaseModel):
 class CocoKeypointAnnotation(CocoInstanceAnnotation):
     keypoints: Keypoints
     num_keypoints: Optional[int]
+
+    # make segmentation and bbox optional by having a non-sensible default
+    segmentation: Segmentation = [[0.0, 0.0, 0.0, 0.0]]
+    area: float = 0.0
+    bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    iscrowd: IsCrowd = 0
 
     @validator("keypoints")
     def keypoints_must_be_multiple_of_three(cls, v: Keypoints) -> Keypoints:
@@ -150,8 +158,8 @@ class CocoLicense(BaseModel):
 
 
 class CocoInstancesDataset(BaseModel):
-    info: Optional[CocoInfo]
-    licenses: Optional[List[CocoLicense]]
+    info: Optional[CocoInfo] = None
+    licenses: Optional[List[CocoLicense]] = None
     categories: Sequence[CocoCategory]
     images: List[CocoImage]
     annotations: Sequence[CocoInstanceAnnotation]

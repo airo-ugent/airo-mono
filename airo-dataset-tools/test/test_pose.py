@@ -2,7 +2,7 @@ import json
 import pathlib
 
 import numpy as np
-from airo_dataset_tools.pose import EulerAngles, Pose, Position
+from airo_dataset_tools.data_parsers.pose import EulerAngles, Pose, Position
 
 
 def test_pose_save_and_load(tmp_path: pathlib.Path):
