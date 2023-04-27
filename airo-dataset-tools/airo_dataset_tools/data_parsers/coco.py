@@ -99,9 +99,11 @@ class CocoInstanceAnnotation(BaseModel):
     id: int  # unique id for the annotation
     image_id: ImageID
     category_id: CategoryID
+
+    # make segmentation and bbox optional by having a non-sensible default
     segmentation: Segmentation
     area: float
-    bbox: Tuple[int, int, int, int]
+    bbox: Tuple[float, float, float, float]
     iscrowd: IsCrowd
 
     @validator("iscrowd")
@@ -113,6 +115,12 @@ class CocoInstanceAnnotation(BaseModel):
 class CocoKeypointAnnotation(CocoInstanceAnnotation):
     keypoints: Keypoints
     num_keypoints: Optional[int]
+
+    # make segmentation and bbox optional by having a non-sensible default
+    segmentation: Segmentation = [[0.0, 0.0, 0.0, 0.0]]
+    area: float = 0.0
+    bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    iscrowd: IsCrowd = 0
 
     @validator("keypoints")
     def keypoints_must_be_multiple_of_three(cls, v: Keypoints) -> Keypoints:
