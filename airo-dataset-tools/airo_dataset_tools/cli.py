@@ -3,7 +3,7 @@
 from typing import List, Optional
 
 import click
-from airo_dataset_tools.coco.coco_fiftyone_viewer import view_coco_dataset
+from airo_dataset_tools.fiftyone_viewer import view_coco_dataset
 
 
 @click.group()

@@ -1,6 +1,6 @@
 """Tests for creating datasets in COCO format."""
 
-from airo_dataset_tools.coco.coco_parser import (
+from airo_dataset_tools.data_parsers.coco import (
     CocoCategory,
     CocoImage,
     CocoInfo,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Tuple
 
 import numpy as np
-from airo_dataset_tools.coco.coco_parser import Polygon, RLEDict, Segmentation
+from airo_dataset_tools.data_parsers.coco import Polygon, RLEDict, Segmentation
 from pycocotools import mask
 
 

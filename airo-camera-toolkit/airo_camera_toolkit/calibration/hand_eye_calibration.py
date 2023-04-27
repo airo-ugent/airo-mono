@@ -15,7 +15,7 @@ from airo_camera_toolkit.calibration.fiducial_markers import (
 )
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils import ImageConverter
-from airo_dataset_tools.pose import EulerAngles, Pose, Position
+from airo_dataset_tools.data_parsers.pose import EulerAngles, Pose, Position
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType
 

@@ -1,4 +1,4 @@
-"""Custom parser for COCO dataset JSON files.
+"""parser for COCO dataset (both instance & keypoints) JSON files.
 
 The main reference for this parser can be found here:
 https://cocodataset.org/#format-data
