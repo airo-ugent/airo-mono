@@ -21,7 +21,6 @@ def view_coco_dataset(
         dataset_type=fo.types.COCODetectionDataset,
         label_types=label_types,
         data_path=dataset_dir,
-        dataset_dir=dataset_dir,
         labels_path=labels_json_path,
     )
 

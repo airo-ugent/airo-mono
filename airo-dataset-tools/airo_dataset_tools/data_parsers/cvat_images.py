@@ -118,7 +118,7 @@ class Annotations(BaseModel):
     image: List[ImageItem]
 
 
-class CVATImagessParser(BaseModel):
+class CVATImagesParser(BaseModel):
     annotations: Annotations
 
 
@@ -128,4 +128,4 @@ if __name__ == "__main__":
 
     path = pathlib.Path(__file__).parent.absolute()
     cvat_dict = json.load(open(str(path.parent / "cvat_labeling" / "example" / "annotations.json")))
-    cvat_keypoints_parser = CVATImagessParser(**cvat_dict)
+    cvat_keypoints_parser = CVATImagesParser(**cvat_dict)
