@@ -78,10 +78,10 @@ class CocoImage(BaseModel):
     width: int
     height: int
     file_name: str  # relative path to image
-    license: Optional[LicenseID]
-    flicker_url: Optional[Url]
-    coco_url: Optional[Url]
-    date_captured: Optional[Datetime]
+    license: Optional[LicenseID] = None
+    flicker_url: Optional[Url] = None
+    coco_url: Optional[Url] = None
+    date_captured: Optional[Datetime] = None
 
 
 class CocoCategory(BaseModel):
@@ -92,7 +92,7 @@ class CocoCategory(BaseModel):
 
 class CocoKeypointCategory(CocoCategory):
     keypoints: List[str]
-    skeleton: Optional[List[List[int]]]
+    skeleton: Optional[List[List[int]]] = None
 
 
 class CocoInstanceAnnotation(BaseModel):
@@ -158,8 +158,8 @@ class CocoLicense(BaseModel):
 
 
 class CocoInstancesDataset(BaseModel):
-    info: Optional[CocoInfo]
-    licenses: Optional[List[CocoLicense]]
+    info: Optional[CocoInfo] = None
+    licenses: Optional[List[CocoLicense]] = None
     categories: Sequence[CocoCategory]
     images: List[CocoImage]
     annotations: Sequence[CocoInstanceAnnotation]
