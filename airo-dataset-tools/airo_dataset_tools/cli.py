@@ -33,8 +33,8 @@ def view_coco_dataset_cli(
 
 @cli.command(name="convert-cvat-to-coco-keypoints")
 @click.argument("cvat_xml_file", type=str, required=True)
-@click.option("--add_bbox", type=bool, default=True, help="include bounding box in coco annotations")
-@click.option("--add_segmentation", type=bool, default=True, help="include segmentation in coco annotations")
+@click.option("--add_bbox", is_flag=True, default=False, help="include bounding box in coco annotations")
+@click.option("--add_segmentation", is_flag=True, default=False, help="include segmentation in coco annotations")
 def convert_cvat_to_coco_cli(cvat_xml_file: str, add_bbox: bool, add_segmentation: bool) -> None:
     """Convert CVAT XML to COCO keypoints json"""
     coco = cvat_image_to_coco(cvat_xml_file, add_bbox=add_bbox, add_segmentation=add_segmentation)
