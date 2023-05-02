@@ -39,6 +39,7 @@ def convert_cvat_to_coco_cli(cvat_xml_file: str, add_bbox: bool, add_segmentatio
     """Convert CVAT XML to COCO keypoints json"""
     coco = cvat_image_to_coco(cvat_xml_file, add_bbox=add_bbox, add_segmentation=add_segmentation)
     path = os.path.dirname(cvat_xml_file)
-    path = os.path.join(path, "coco.json")
+    filename = os.path.basename(cvat_xml_file)
+    path = os.path.join(path, filename.split(".")[0] + ".json")
     with open(path, "w") as file:
         json.dump(coco, file)
