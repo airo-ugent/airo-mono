@@ -47,7 +47,7 @@ class BinarySegmentationMask:
 
     @property
     def area(self) -> float:
-        return mask.area(self.as_compressed_rle)
+        return float(mask.area(self.as_compressed_rle))
 
     @property
     def bbox(self) -> Tuple[float, float, float, float]:
