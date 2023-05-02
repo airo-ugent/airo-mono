@@ -14,6 +14,8 @@ setuptools.setup(
         "xmltodict",
         "tqdm",
         "fiftyone",  # visualization
+        "albumentations",
+        "opencv-python",
     ],
     packages=find_packages(),
     entry_points={
