@@ -82,6 +82,7 @@ class CocoImage(BaseModel):
     flicker_url: Optional[Url] = None
     coco_url: Optional[Url] = None
     date_captured: Optional[Datetime] = None
+    __hash__ = object.__hash__  # make hashable for use in set
 
 
 class CocoCategory(BaseModel):
@@ -112,14 +113,18 @@ class CocoInstanceAnnotation(BaseModel):
         return v
 
 
+DEFAULT_COCO_SEGMENTATION = [[0.0, 0.0, 0.0, 0.0]]
+DEFAULT_COCO_BBOX = (0.0, 0.0, 0.0, 0.0)
+
+
 class CocoKeypointAnnotation(CocoInstanceAnnotation):
     keypoints: Keypoints
     num_keypoints: Optional[int]
 
     # make segmentation and bbox optional by having a non-sensible default
-    segmentation: Segmentation = [[0.0, 0.0, 0.0, 0.0]]
+    segmentation: Segmentation = DEFAULT_COCO_SEGMENTATION
     area: float = 0.0
-    bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    bbox: Tuple[float, float, float, float] = DEFAULT_COCO_BBOX
     iscrowd: IsCrowd = 0
 
     @validator("keypoints")
