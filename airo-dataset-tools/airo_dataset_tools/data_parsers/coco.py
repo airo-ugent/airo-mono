@@ -101,31 +101,26 @@ class CocoInstanceAnnotation(BaseModel):
     image_id: ImageID
     category_id: CategoryID
 
-    # make segmentation and bbox optional by having a non-sensible default
-    segmentation: Segmentation
-    area: float
     bbox: Tuple[float, float, float, float]
-    iscrowd: IsCrowd
+
+    segmentation: Optional[Segmentation] = None
+    area: Optional[float] = None
+    iscrowd: Optional[IsCrowd] = None
 
     @validator("iscrowd")
     def iscrowd_must_be_binary(cls, v: IsCrowd) -> IsCrowd:
+        if v is None:
+            return None
         assert v in [0, 1]
         return v
-
-
-DEFAULT_COCO_SEGMENTATION = [[0.0, 0.0, 0.0, 0.0]]
-DEFAULT_COCO_BBOX = (0.0, 0.0, 0.0, 0.0)
 
 
 class CocoKeypointAnnotation(CocoInstanceAnnotation):
     keypoints: Keypoints
     num_keypoints: Optional[int]
 
-    # make segmentation and bbox optional by having a non-sensible default
-    segmentation: Segmentation = DEFAULT_COCO_SEGMENTATION
-    area: float = 0.0
-    bbox: Tuple[float, float, float, float] = DEFAULT_COCO_BBOX
-    iscrowd: IsCrowd = 0
+    # make bbox optional
+    bbox: Optional[Tuple[float, float, float, float]] = None
 
     @validator("keypoints")
     def keypoints_must_be_multiple_of_three(cls, v: Keypoints) -> Keypoints:
