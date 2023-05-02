@@ -139,7 +139,7 @@ def apply_transform_to_coco_dataset(  # noqa: C901
 
             if transform_segmentation:
                 transformed_segmentations = all_transformed_masks.pop(0)  # exactly one segmentation per annotation
-            annotation.segmentation = BinarySegmentationMask(transformed_segmentations).as_polygon
+                annotation.segmentation = BinarySegmentationMask(transformed_segmentations).as_polygon
 
     return coco_dataset
 
