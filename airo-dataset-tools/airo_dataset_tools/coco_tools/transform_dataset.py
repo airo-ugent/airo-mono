@@ -4,19 +4,20 @@ from typing import Callable, List
 import albumentations as A
 import numpy as np
 import tqdm
-from airo_dataset_tools.data_parsers.coco import CocoKeypointAnnotation, CocoKeypointsDataset
+from airo_dataset_tools.data_parsers.coco import CocoInstancesDataset, CocoKeypointAnnotation, CocoKeypointsDataset
 from airo_dataset_tools.segmentation_mask_converter import BinarySegmentationMask
 from PIL import Image
 
 
-def apply_transform_to_coco_dataset(
+def apply_transform_to_coco_dataset(  # noqa: C901
     transforms: List[A.DualTransform],
-    coco_dataset: CocoKeypointsDataset,
+    coco_dataset: CocoInstancesDataset,
     image_path: str,
     target_image_path: str,
     image_name_filter: Callable[[str], bool] = None,
 ) -> CocoKeypointsDataset:
-    """Apply a sequence of albumentations transforms to a coco dataset, transforming images, keypoints, bounding boxes and segmentation masks.
+    """Apply a sequence of albumentations transforms to a coco dataset, transforming images and keypoints, bounding boxes and segmentation masks if they are present.
+    Present means that all annotations in the coco dataset have a bbox annotation.
 
     Args:
         transforms (List[A.DualTransform]): _description_
@@ -28,11 +29,20 @@ def apply_transform_to_coco_dataset(
     Returns:
         CocoKeypointsDataset: _description_
     """
+    transform_keypoints = isinstance(coco_dataset.annotations[0], CocoKeypointAnnotation)
+    transform_bbox = all(annotation.bbox is not None for annotation in coco_dataset.annotations)
+    transform_segmentation = all(annotation.segmentation is not None for annotation in coco_dataset.annotations)
+    print(f"Transforming keypoints = {transform_keypoints}")
+    print(f"Transforming bbox = {transform_bbox}")
+    print(f"Transforming segmentation = {transform_segmentation}")
+
+    keypoint_parameters = A.KeypointParams(format="xy", remove_invisible=False) if transform_keypoints else None
+    bbox_parameters = A.BboxParams(format="coco", label_fields=["bbox_dummy_labels"]) if transform_bbox else None
 
     transform = A.Compose(
         transforms,
-        keypoint_params=A.KeypointParams(format="xy", remove_invisible=False),
-        bbox_params=A.BboxParams(format="coco", label_fields=["bbox_dummy_labels"]),
+        keypoint_params=keypoint_parameters,
+        bbox_params=bbox_parameters,
     )
 
     # create mappings between images & all corresponding annotations
@@ -51,7 +61,6 @@ def apply_transform_to_coco_dataset(
             "RGB"
         )  # convert to RGB to avoid problems with PNG images
         image = np.array(image)
-        print(image.shape)
 
         # combine annotations for all Annotation Instances related to the image
         # to transform them together with the image
@@ -59,27 +68,35 @@ def apply_transform_to_coco_dataset(
         all_bboxes = []
         all_masks = []
         for annotation in annotations:
-            assert isinstance(annotation, CocoKeypointAnnotation)
-            all_keypoints_xy.extend(annotation.keypoints)
-            all_bboxes.append(annotation.bbox)
-            # convert segmentation to binary mask
-            mask = annotation.segmentation
-            bitmap = BinarySegmentationMask.from_coco_segmentation_mask(
-                mask, coco_image.width, coco_image.height
-            ).bitmap
-            print(bitmap.shape)
-            all_masks.append(bitmap)
+            if transform_keypoints:
+                all_keypoints_xy.extend(annotation.keypoints)
+                # convert coco keypoints to list of (x,y) keypoints
 
-        # convert coco keypoints to list of (x,y) keypoints
-        all_keypoints_xy = [all_keypoints_xy[i : i + 2] for i in range(0, len(all_keypoints_xy), 3)]
+            if transform_bbox:
+                all_bboxes.append(annotation.bbox)
 
-        transformed = transform(
-            image=image,
-            keypoints=all_keypoints_xy,
-            bboxes=all_bboxes,
-            masks=all_masks,
-            bbox_dummy_labels=[0 for _ in all_bboxes],
-        )
+            if transform_segmentation:
+                # convert segmentation to binary mask
+                mask = annotation.segmentation
+                bitmap = BinarySegmentationMask.from_coco_segmentation_mask(
+                    mask, coco_image.width, coco_image.height
+                ).bitmap
+                all_masks.append(bitmap)
+
+        if transform_keypoints:
+            all_keypoints_xy = [all_keypoints_xy[i : i + 2] for i in range(0, len(all_keypoints_xy), 3)]
+
+        arg_dict = {
+            "image": image,
+        }
+        if transform_keypoints:
+            arg_dict["keypoints"] = all_keypoints_xy
+        if transform_bbox:
+            arg_dict["bboxes"] = all_bboxes
+            arg_dict["bbox_dummy_labels"] = [0 for _ in all_bboxes]
+        if transform_segmentation:
+            arg_dict["masks"] = all_masks
+        transformed = transform(**arg_dict)
 
         # save transformed image
         transformed_image = transformed["image"]
@@ -94,27 +111,34 @@ def apply_transform_to_coco_dataset(
         coco_image.height = transformed_image.height
 
         # store all modified annotations back into the coco dataset
-        all_transformed_keypoints_xy = transformed["keypoints"]
-        all_transformed_bboxes = transformed["bboxes"]
-        all_transformed_masks = transformed["masks"]
+        if transform_keypoints:
+            all_transformed_keypoints_xy = transformed["keypoints"]
+        if transform_bbox:
+            all_transformed_bboxes = transformed["bboxes"]
+        if transform_segmentation:
+            all_transformed_masks = transformed["masks"]
         for annotation in annotations:
-            transformed_keypoints = all_transformed_keypoints_xy[: len(annotation.keypoints) // 3]
-            all_transformed_keypoints_xy = all_transformed_keypoints_xy[len(annotation.keypoints) // 3 :]
-            transformed_bbox = all_transformed_bboxes.pop(0)  # exactly one bbox per annotation
-            transformed_segmentations = all_transformed_masks.pop(0)  # exactly one segmentation per annotation
+            if transform_keypoints:
+                transformed_keypoints = all_transformed_keypoints_xy[: len(annotation.keypoints) // 3]
+                all_transformed_keypoints_xy = all_transformed_keypoints_xy[len(annotation.keypoints) // 3 :]
 
-            # set keypoints that are no longer in image to (0,0,0)
-            for i, kp in enumerate(transformed_keypoints):
-                if 0 <= kp[0] < coco_image.width and 0 <= kp[1] < coco_image.height:
-                    # add original visibility flag
-                    transformed_keypoints[i] = [kp[0], kp[1], annotation.keypoints[i * 3 + 2]]
-                else:
-                    transformed_keypoints[i] = [0.0, 0.0, 0]
+                # set keypoints that are no longer in image to (0,0,0)
+                for i, kp in enumerate(transformed_keypoints):
+                    if 0 <= kp[0] < coco_image.width and 0 <= kp[1] < coco_image.height:
+                        # add original visibility flag
+                        transformed_keypoints[i] = [kp[0], kp[1], annotation.keypoints[i * 3 + 2]]
+                    else:
+                        transformed_keypoints[i] = [0.0, 0.0, 0]
 
-            flattened_transformed_keypoints = [i for kp in transformed_keypoints for i in kp]
-            annotation.keypoints = flattened_transformed_keypoints
-            annotation.bbox = transformed_bbox
-            Image.fromarray(transformed_segmentations).save(f"test_{annotation.id}.png")
+                flattened_transformed_keypoints = [i for kp in transformed_keypoints for i in kp]
+                annotation.keypoints = flattened_transformed_keypoints
+
+            if transform_bbox:
+                transformed_bbox = all_transformed_bboxes.pop(0)  # exactly one bbox per annotation
+                annotation.bbox = transformed_bbox
+
+            if transform_segmentation:
+                transformed_segmentations = all_transformed_masks.pop(0)  # exactly one segmentation per annotation
             annotation.segmentation = BinarySegmentationMask(transformed_segmentations).as_polygon
 
     return coco_dataset
