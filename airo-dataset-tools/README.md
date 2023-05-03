@@ -1,7 +1,7 @@
 # airo-dataset-tools
 Package for working with datasets.
 
-[COCO](https://cocodataset.org/#format-data) is the preferred format for computer vision datasets.
+[COCO](https://cocodataset.org/#format-data) is the preferred format for computer vision datasets. We strictly follow their data format with 2 exceptions: segmentation masks are not required for Instance datasets, bounding boxes nor segmentation masks are required for keypoint datasets. This is to limit labeling effort for real-world datasets where you don't always need all annotation types.
 
 Other formats will are added if they are needed for dataset creation (think the format of a labeling tool) or for consumption of the dataset (think the YOLO format for training an object detector). Besides datasets, we also provide tools for other persistent data such as camera intrinsics and extrinsics.
 
