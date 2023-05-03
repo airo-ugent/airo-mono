@@ -20,6 +20,12 @@ class Chatter(IdlStruct, typename="Chatter"):
     message: sequence[float]
 
 
+class Writer:
+    def __init__(self) -> None:
+        self.dds_participant = DomainParticipant()
+        self.dds_topic = Topic(self.dds_participant, "Hello", Chatter, qos=Qos(Policy.Reliability.Reliable(0)))
+
+
 rng = np.random.default_rng()
 dp = DomainParticipant()
 tp = Topic(dp, "Hello", Chatter, qos=Qos(Policy.Reliability.Reliable(0)))
