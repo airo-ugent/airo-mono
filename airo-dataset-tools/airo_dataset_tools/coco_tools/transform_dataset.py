@@ -15,7 +15,7 @@ from airo_dataset_tools.segmentation_mask_converter import BinarySegmentationMas
 from PIL import Image
 
 
-def apply_transform_to_coco_dataset(  # noqa: C901
+def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
     transforms: List[A.DualTransform],
     coco_dataset: CocoInstancesDataset,
     image_path: str,
