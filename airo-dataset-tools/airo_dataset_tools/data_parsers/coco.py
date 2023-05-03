@@ -101,7 +101,7 @@ class CocoInstanceAnnotation(BaseModel):
     image_id: ImageID
     category_id: CategoryID
 
-    bbox: Tuple[float, float, float, float]
+    bbox: Optional[Tuple[float, float, float, float]]
 
     segmentation: Optional[Segmentation] = None
     area: Optional[float] = None
