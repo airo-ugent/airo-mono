@@ -24,6 +24,21 @@ def test_encoded_rle_creation():
     assert np.array_equal(loaded_segmentation_mask.bitmap, mask)
 
 
+def test_polygon_creation():
+    mask = np.zeros((10, 10))
+    mask[1, 1:3] = 1
+    mask[2, 1:3] = 1
+    segmentation_mask = BinarySegmentationMask(mask)
+
+    polygon = segmentation_mask.as_polygon
+    assert isinstance(polygon, list)
+    assert isinstance(polygon[0], list)
+    assert isinstance(polygon[0][0], float)
+    assert len(polygon) == 1
+    assert len(polygon[0]) == 8
+    assert polygon[0] == [1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 1.0]
+
+
 def test_coco_segmentation_loading():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/instances_val2017_small.json")

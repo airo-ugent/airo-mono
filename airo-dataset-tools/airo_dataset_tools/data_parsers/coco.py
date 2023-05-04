@@ -82,6 +82,7 @@ class CocoImage(BaseModel):
     flicker_url: Optional[Url] = None
     coco_url: Optional[Url] = None
     date_captured: Optional[Datetime] = None
+    __hash__ = object.__hash__  # make hashable for use in set
 
 
 class CocoCategory(BaseModel):
@@ -100,14 +101,16 @@ class CocoInstanceAnnotation(BaseModel):
     image_id: ImageID
     category_id: CategoryID
 
-    # make segmentation and bbox optional by having a non-sensible default
-    segmentation: Segmentation
-    area: float
-    bbox: Tuple[float, float, float, float]
-    iscrowd: IsCrowd
+    bbox: Optional[Tuple[float, float, float, float]]
+
+    segmentation: Optional[Segmentation] = None
+    area: Optional[float] = None
+    iscrowd: Optional[IsCrowd] = None
 
     @validator("iscrowd")
     def iscrowd_must_be_binary(cls, v: IsCrowd) -> IsCrowd:
+        if v is None:
+            return None
         assert v in [0, 1]
         return v
 
@@ -116,11 +119,8 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
     keypoints: Keypoints
     num_keypoints: Optional[int]
 
-    # make segmentation and bbox optional by having a non-sensible default
-    segmentation: Segmentation = [[0.0, 0.0, 0.0, 0.0]]
-    area: float = 0.0
-    bbox: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
-    iscrowd: IsCrowd = 0
+    # make bbox optional
+    bbox: Optional[Tuple[float, float, float, float]] = None
 
     @validator("keypoints")
     def keypoints_must_be_multiple_of_three(cls, v: Keypoints) -> Keypoints:

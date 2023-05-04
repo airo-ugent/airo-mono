@@ -15,6 +15,7 @@ from airo_dataset_tools.data_parsers.coco import (
     CocoKeypointsDataset,
 )
 from airo_dataset_tools.data_parsers.cvat_images import CVATImagesParser, ImageItem, LabelItem, Point
+from airo_dataset_tools.segmentation_mask_converter import BinarySegmentationMask
 
 
 def cvat_image_to_coco(  # noqa: C901, too complex
@@ -102,6 +103,10 @@ def cvat_image_to_coco(  # noqa: C901, too complex
                     coco_annotations[-1].segmentation = _get_segmentation_for_instance_from_cvat_image(
                         cvat_image, instance_id
                     )
+                    coco_annotations[-1].iscrowd = 0
+                    coco_annotations[-1].area = BinarySegmentationMask.from_coco_segmentation_mask(
+                        coco_annotations[-1].segmentation, coco_image.width, coco_image.height
+                    ).area
                 annotation_id_counter += 1
 
     coco_model = CocoKeypointsDataset(images=coco_images, annotations=coco_annotations, categories=coco_categories)
@@ -157,9 +162,7 @@ def _get_semantic_type_from_cvat_label(label: str) -> str:
 def _get_bbox_for_instance_from_cvat_image(
     cvat_image: ImageItem, instance_id: int
 ) -> Tuple[float, float, float, float]:
-    """returns the bbox for the instance in the cvat image.
-    returns [0,0,0,0] if the bbox is not annotated for this instance.
-    """
+    """returns the bbox for the instance in the cvat image."""
     instance_id_str = str(instance_id)
     if cvat_image.box is None:
         raise ValueError("bbox annotations are required for image {cvat_image.name}")
@@ -185,9 +188,7 @@ def _get_bbox_for_instance_from_cvat_image(
 
 
 def _get_segmentation_for_instance_from_cvat_image(cvat_image: ImageItem, instance_id: int) -> List[List[float]]:
-    """returns the segmentation polygon for the instance in the cvat image.
-    returns [0,0,0,0] if the segmentation is not annotated for this instance.
-    """
+    """returns the segmentation polygon for the instance in the cvat image."""
     instance_id_str = str(instance_id)
     if cvat_image.polygon is None:
         raise ValueError("segmentation annotations are required for image {cvat_image.name}")
@@ -267,6 +268,6 @@ if __name__ == "__main__":
     path = pathlib.Path(__file__).parent.absolute()
     cvat_xml_file = str(path / "example" / "annotations.xml")
 
-    coco = cvat_image_to_coco(cvat_xml_file, add_bbox=True, add_segmentation=True)
+    coco = cvat_image_to_coco(cvat_xml_file, add_bbox=True, add_segmentation=False)
     with open("coco.json", "w") as file:
         json.dump(coco, file)

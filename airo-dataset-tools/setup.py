@@ -14,6 +14,10 @@ setuptools.setup(
         "xmltodict",
         "tqdm",
         "fiftyone",  # visualization
+        "albumentations",
+        "opencv-python",
+        "Pillow",
+        "types-Pillow",
     ],
     packages=find_packages(),
     entry_points={
