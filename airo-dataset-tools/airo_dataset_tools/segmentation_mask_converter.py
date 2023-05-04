@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
+import cv2
 import numpy as np
 from airo_dataset_tools.data_parsers.coco import Polygon, RLEDict, Segmentation
 from pycocotools import mask
@@ -16,6 +17,7 @@ class BinarySegmentationMask:
 
     def __init__(self, bitmap: np.ndarray):
         assert np.array_equal((bitmap == 1.0) * 1.0, bitmap), "bitmap must be 1 or 0 numpy array"
+        bitmap = bitmap.astype(np.uint8)
         self.bitmap = bitmap
 
     @classmethod
@@ -45,7 +47,7 @@ class BinarySegmentationMask:
 
     @property
     def area(self) -> float:
-        return mask.area(self.as_compressed_rle)
+        return float(mask.area(self.as_compressed_rle))
 
     @property
     def bbox(self) -> Tuple[float, float, float, float]:
@@ -56,7 +58,18 @@ class BinarySegmentationMask:
 
     @property
     def as_polygon(self) -> List[Polygon]:
-        raise NotImplementedError
+        # from https://github.com/cocodataset/cocoapi/issues/476#issuecomment-871804850
+        contours, _ = cv2.findContours(self.bitmap, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        segmentation = []
+        valid_poly = 0
+        for contour in contours:
+            # Valid polygons have >= 6 coordinates (3 points)
+            if contour.size >= 6:
+                segmentation.append(contour.astype(float).flatten().tolist())
+                valid_poly += 1
+        if valid_poly == 0:
+            raise ValueError
+        return segmentation
 
     @property
     def as_uncompressed_rle(self) -> RLEDict:
@@ -70,3 +83,10 @@ class BinarySegmentationMask:
         assert isinstance(encoded_rle["counts"], bytes)
         encoded_rle["counts"] = encoded_rle["counts"].decode("utf-8")
         return encoded_rle
+
+
+# if __name__ == "__main__":
+#     mask = np.zeros((10, 10)).astype(np.uint8)
+#     mask[1:3] = 1
+#     print(mask)
+#     print(BinarySegmentationMask(mask).as_polygon)

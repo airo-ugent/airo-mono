@@ -61,3 +61,30 @@ def test_coco_load_instances_incorrectly():
         data = json.load(file)
         with pytest.raises(Exception):
             CocoKeypointsDataset(**data)
+
+
+def test_coco_load_instances_no_segmasks():
+    """Test whether we can correctly load the partial instances_val2017 dataset without segmentations."""
+    test_dir = os.path.dirname(os.path.realpath(__file__))
+    annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small_no_segmentations.json")
+
+    with open(annotations, "r") as file:
+        data = json.load(file)
+        coco_instances = CocoKeypointsDataset(**data)
+        # Check a few known lengths to ensure that all elements were loaded
+        assert len(coco_instances.images) == 2
+
+
+def test_coco_load_keypoints_no_bboxes():
+    """Test whether we can correctly load the partial person_keypoints_val2017 dataset without bounding boxes."""
+    test_dir = os.path.dirname(os.path.realpath(__file__))
+    annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small_no_bbox.json")
+
+    with open(annotations, "r") as file:
+        data = json.load(file)
+        coco_keypoints = CocoKeypointsDataset(**data)
+        assert len(coco_keypoints.images) == 2
+        assert len(coco_keypoints.categories) == 1
+        assert len(coco_keypoints.annotations) == 2
+
+        assert isinstance(coco_keypoints.categories[0], CocoKeypointCategory)

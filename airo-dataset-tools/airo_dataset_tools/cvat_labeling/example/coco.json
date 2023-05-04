@@ -28,25 +28,25 @@
             "id": 1,
             "width": 600,
             "height": 338,
-            "file_name": "1.png"
+            "file_name": "images/1.png"
         },
         {
             "id": 2,
             "width": 500,
             "height": 281,
-            "file_name": "2.png"
+            "file_name": "images/2.png"
         },
         {
             "id": 3,
             "width": 256,
             "height": 256,
-            "file_name": "3.jpeg"
+            "file_name": "images/3.jpeg"
         },
         {
             "id": 4,
             "width": 600,
             "height": 338,
-            "file_name": "4.png"
+            "file_name": "images/4.png"
         }
     ],
     "annotations": [

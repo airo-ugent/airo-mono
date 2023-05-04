@@ -34,6 +34,7 @@ some tips for labeling:
 - easier to label 1 label for the entire dataset and then do another label instead of switching between labels.
 - save every now and then
 - test the conversion script early enough to avoid wasting label effort.
+- enable autosave to avoid losing annotations when your ssh connection drops
 
 ### Converting cvat annotations to COCO annotations
 Once you have the cvat annotations you can export them under the `CVAT Images 1.1` format, which will generate an xml file. This xml file can then be converted to a COCO Keypoints dataset, using the CLI of this package: `airo-dataset-tools convert-cvat-to-coco-keypoints <xml-file-path>`.
@@ -47,6 +48,7 @@ For the example in this module, it would look like this:
 - follow the steps [here](https://opencv.github.io/cvat/docs/administration/basics/installation/) to clone the repo and install the dependencies.
 - add local share for your mount where you by creating an `docker-compose-override.yml` file, as described [here](https://opencv.github.io/cvat/v1.6.0/docs/administration/basics/installation/#share-path)
 - run `CVAT_VERSION=<your-version> docker-compose up -d` to start CVAT. It will restart if the containers have been shut down (e.g. when rebooting) so it should be always up and running.
+- If you need serverless support, for example to label with Segment Anything, take a look at the docs [here](TODO)
 - create a superuser as described [here](https://opencv.github.io/cvat/docs/administration/basics/admin-account/).
 - start using cvat by browsing to [localhost:8080](localhost:8080).
 
