@@ -265,7 +265,8 @@ if __name__ == "__main__":
         print(zed.get_colored_point_cloud()[0])  # TODO: test the pointcloud more explicity?
         manual_test_stereo_rgbd_camera(zed)
 
-#      # profile rgb throughput, should be at 60FPS, i.e. 0.017s
-#      from airo_camera_toolkit.cameras.test_hw import profile, profile_rgb_throughput
-#      zed = Zed2i(Zed2i.RESOLUTION_720, fps=60)
-#      profile_rgb_throughput(zed)
+    # profile rgb throughput, should be at 60FPS, i.e. 0.017s
+    from airo_camera_toolkit.cameras.test_hw import profile_rgb_throughput
+
+    zed = Zed2i(Zed2i.RESOLUTION_720, fps=60)
+    profile_rgb_throughput(zed)
