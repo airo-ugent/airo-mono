@@ -16,6 +16,7 @@ setuptools.setup(
         "rerun-sdk",
         "click",
         "loguru",
+        "pyrealsense2",
     ],
     extras_require={
         "external": [
