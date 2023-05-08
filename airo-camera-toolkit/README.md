@@ -23,6 +23,7 @@ This will already allow you to use the hardare-independent functionality of this
 Depending on the hardware you are using, you might need to complete additional installation.
 Instructions can be found in the following files:
 * [ZED Installation](airo_camera_toolkit/cameras/zed_installation.md)
+* [RealSense SDK Installation](https://github.com/IntelRealSense/librealsense)
 
 ## Real-time visualisation
 For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](docs/rerun-zed-example.ipynb).
