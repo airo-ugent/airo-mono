@@ -58,6 +58,13 @@ class Zed2i(StereoRGBDCamera):
     RESOLUTION_VGA = sl.RESOLUTION.VGA  # (672x376)
     RESOLUTIONS = (RESOLUTION_720, RESOLUTION_1080, RESOLUTION_2K, RESOLUTION_VGA)
 
+    resolution_sizes = {
+        RESOLUTION_720: (1280, 720),
+        RESOLUTION_1080: (1920, 1080),
+        RESOLUTION_2K: (2208, 1242),
+        RESOLUTION_VGA: (672, 376),
+    }
+
     def __init__(  # type: ignore[no-any-unimported]
         self,
         resolution: sl.RESOLUTION = RESOLUTION_2K,
