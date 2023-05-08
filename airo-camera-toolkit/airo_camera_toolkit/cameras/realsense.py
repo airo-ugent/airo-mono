@@ -60,7 +60,13 @@ class Realsense(RGBCamera):
             self._intrinsics_matrix[1, 2] = intrinsics.ppy
             self._intrinsics_matrix[2, 2] = 1
 
-            config.enable_stream(profile.stream_type(), profile.stream_index(), format=rs.format.bgr8)
+            config.enable_stream(
+                profile.stream_type(),
+                profile.width(),
+                profile.height(),
+                format=rs.format.bgr8,
+                framerate=profile.fps(),
+            )
             profile_found = True
 
         if not profile_found:
@@ -93,6 +99,7 @@ if __name__ == "__main__":
 
     while True:
         image = camera.get_rgb_image()
+        print(image.shape)
         image = ImageConverter.from_numpy_format(image).image_in_opencv_format
 
         cv2.imshow("RealSense", image)
