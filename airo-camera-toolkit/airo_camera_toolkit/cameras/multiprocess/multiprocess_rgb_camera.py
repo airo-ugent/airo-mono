@@ -7,7 +7,7 @@ import loguru
 import numpy as np
 
 logger = loguru.logger
-from airo_camera_toolkit.interfaces import RGBCamera, RGBDCamera
+from airo_camera_toolkit.interfaces import RGBCamera
 from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType
 
 _RGB_SHM_NAME = "rgb"
@@ -76,7 +76,7 @@ class MultiProcessRGBPublisher(Process):
     def run(self):
         """main loop of the process, runs until the process is terminated"""
         self._setup()
-        assert isinstance(self._camera, RGBDCamera)
+        assert isinstance(self._camera, RGBCamera)
 
         # only write intrinsics once, these do not change.
         self.intrinsics_shm_array[:] = self._camera.intrinsics_matrix()[:]
