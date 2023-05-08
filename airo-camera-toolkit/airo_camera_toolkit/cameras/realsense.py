@@ -16,9 +16,15 @@ class Realsense(RGBCamera):
     Depth images are not yet supported.
     """
 
+    # Resolutions and fps that are supported by the D415
+    RESOLUTION_1080 = (1920, 1080)  # fps: 8
+    RESOLUTION_720 = (1280, 720)  # fps: 15. 10, 6
+    RESOLUTION_480 = (640, 480)  # fps: 30, 15, 6
+    RESOLUTION_240 = (424, 240)  # fps: 60, 30, 15, 6
+
     def __init__(
         self,
-        resolution: Tuple[int, int] = (1280, 720),
+        resolution: Tuple[int, int] = RESOLUTION_720,
         fps: int = 15,
     ) -> None:
         self.width, self.height = resolution
