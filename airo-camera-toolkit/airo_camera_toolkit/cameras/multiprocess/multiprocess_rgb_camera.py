@@ -38,7 +38,6 @@ class MultiProcessRGBPublisher(Process):
 
     def _setup(self):
         """in-process creation of camera object and shared memory blocks"""
-
         # have to create camera here to make sure the shared memory blocks in the camera are created in the same process
         self._camera = self._camera_cls(**self._camera_kwargs)
 
@@ -81,27 +80,21 @@ class MultiProcessRGBPublisher(Process):
         # only write intrinsics once, these do not change.
         self.intrinsics_shm_array[:] = self._camera.intrinsics_matrix()[:]
 
-        time.time()
-
         while not self.shutdown_event.is_set():
             # TODO: use Lock to make sure that the data is not overwritten while it is being read and avoid tearing
             img = self._camera.get_rgb_image()
             self.rgb_shm_array[:] = img[:]
             self.rgb_timestamp_shm.buf[:] = np.array([time.time()]).tobytes()
 
-            # print(1.0 / (time.time() - prev_time))
-            time.time()
-
         self.unlink_shared_memory()
 
     def unlink_shared_memory(self):
         """unlink the shared memory blocks so that they are deleted when the process is terminated"""
-        print("Unlinking shared memory")
         self.rgb_shm.close()
         self.intrinsics_shm.close()
         self.rgb_shm.unlink()
         self.intrinsics_shm.unlink()
-        self.depth_image_shm.unlink()
+        # self.depth_image_shm.unlink()
 
 
 class MultiProcessRGBReceiver(RGBCamera):
@@ -219,19 +212,24 @@ if __name__ == "__main__":
     import cv2
     from airo_camera_toolkit.cameras.zed2i import Zed2i
 
+    resolution_identifier = Zed2i.RESOLUTION_1080
+    resolution = Zed2i.resolution_sizes[resolution_identifier]
+
     p = MultiProcessRGBPublisher(
         Zed2i,
         camera_kwargs={
-            "resolution": Zed2i.RESOLUTION_1080,
+            "resolution": resolution_identifier,
             "fps": 30,
             "depth_mode": Zed2i.NONE_DEPTH_MODE,
         },
     )
     p.start()
-    receiver = MultiProcessRGBReceiver("camera", 1920, 1080)
+    receiver = MultiProcessRGBReceiver("camera", *resolution)
 
     while True:
         logger.info("Getting image")
-        img = receiver.get_rgb_image()
-        cv2.imshow("test", img)
-        cv2.waitKey(10)
+        image = receiver.get_rgb_image()
+        cv2.imshow("RGB Image", image)
+        key = cv2.waitKey(10)
+        if key == ord("q"):
+            break
