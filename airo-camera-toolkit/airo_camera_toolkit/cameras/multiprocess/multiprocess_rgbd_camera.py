@@ -2,6 +2,7 @@
 import time
 from multiprocessing import shared_memory
 
+import cv2
 import loguru
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
@@ -163,8 +164,10 @@ class MultiProcessRGBDLogger(MultiProcessRGBLogger):
         shared_memory_namespace: str,
         camera_resolution_width: int,
         camera_resolution_height: int,
+        rotation: int = None,  # e.g. cv2.ROTATE_90_COUNTERCLOCKWISE
     ):
         super().__init__(shared_memory_namespace, camera_resolution_width, camera_resolution_height)
+        self._rotation = rotation
 
     def run(self):
         """main loop of the process, runs until the process is terminated"""
@@ -184,6 +187,11 @@ class MultiProcessRGBDLogger(MultiProcessRGBLogger):
             if timestamp > previous_timestamp:
                 image = self.multiProcessRGBDReceiver.get_rgb_image()
                 depth_image = self.multiProcessRGBDReceiver.get_depth_image()
+
+                if self._rotation is not None:
+                    image = cv2.rotate(image, self._rotation)
+                    depth_image = cv2.rotate(depth_image, self._rotation)
+
                 rerun.log_image(self._shared_memory_namespace, image)
                 rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image)
                 previous_timestamp = timestamp
@@ -199,7 +207,6 @@ if __name__ == "__main__":
     You can also use the MultiProcessRGBDReceiver in a different process (e.g. in a different python script)
     """
 
-    import cv2
     from airo_camera_toolkit.cameras.zed2i import Zed2i
 
     resolution_identifier = Zed2i.RESOLUTION_720
