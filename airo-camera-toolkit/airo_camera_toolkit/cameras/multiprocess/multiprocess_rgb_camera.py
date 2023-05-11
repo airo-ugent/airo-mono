@@ -63,6 +63,7 @@ class MultiProcessRGBPublisher(Process):
             size=dummy_intrinsics.nbytes,
             name=f"{self._shared_memory_namespace}_{_INTRINSICS_SHM_NAME}",
         )
+
         self.intrinsics_shm_array = np.ndarray(
             dummy_intrinsics.shape,
             dtype=dummy_intrinsics.dtype,
@@ -138,7 +139,7 @@ class MultiProcessRGBReceiver(RGBCamera):
             buffer=self.rgb_shm.buf,
         )
 
-        self.intrinsics_shm_array = np.ndarray((3, 3), dtype=np.float32, buffer=self.intrinsics_shm.buf)
+        self.intrinsics_shm_array = np.ndarray((3, 3), dtype=np.float64, buffer=self.intrinsics_shm.buf)
 
     def get_rgb_image_timestamp(self) -> float:
         return np.frombuffer(self.rgb_timestamp_shm.buf, dtype=np.float64)[0]

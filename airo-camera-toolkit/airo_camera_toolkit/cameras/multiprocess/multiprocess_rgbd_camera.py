@@ -75,7 +75,6 @@ class MultiProcessRGBDPublisher(MultiProcessRGBPublisher):
 
         # only write intrinsics once, these do not change.
         self.intrinsics_shm_array[:] = self._camera.intrinsics_matrix()[:]
-
         while not self.shutdown_event.is_set():
             # TODO: use Lock to make sure that the data is not overwritten while it is being read and avoid tearing
             img = self._camera.get_rgb_image()
