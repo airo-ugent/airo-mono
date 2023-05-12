@@ -213,8 +213,6 @@ class MultiProcessRGBDLogger(MultiProcessRGBLogger):
         self.multiProcessRGBDReceiver.stop_receiving()
 
 
-# TODO: want to get feedback on actual FPS and latency, so probably need a timestamp buffer.
-
 if __name__ == "__main__":
     """example of how to use the MultiProcessRGBDPublisher and MultiProcessRGBDReceiver.
     You can also use the MultiProcessRGBDReceiver in a different process (e.g. in a different python script)

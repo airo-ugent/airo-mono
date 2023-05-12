@@ -163,7 +163,7 @@ class MultiProcessRGBReceiver(RGBCamera):
         return self.intrinsics_shm_array
 
     def _close_shared_memory(self) -> None:
-        """Closing shared memory signal that"""
+        """Closing shared memory, to signal that they are no longer need by this object."""
         self.rgb_shm.close()
         self.rgb_timestamp_shm.close()
         self.intrinsics_shm.close()
