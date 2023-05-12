@@ -1,6 +1,7 @@
 """code for sharing the data of a camera that implements the RGBDCamera interface between processes using shared memory"""
 import time
 from multiprocessing import shared_memory
+from typing import Optional
 
 import cv2
 import loguru
@@ -30,15 +31,18 @@ class MultiProcessRGBDPublisher(MultiProcessRGBPublisher):
     def __init__(
         self,
         camera_cls: type,
-        camera_kwargs={},
+        camera_kwargs: dict = {},
         shared_memory_namespace: str = "camera",
     ):
         super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
 
-    def _setup(self):
+        self.depth_shm: Optional[shared_memory.SharedMemory] = None
+        self.depth_image_shm: Optional[shared_memory.SharedMemory] = None
+
+    def _setup(self) -> None:
         """in-process creation of camera object and shared memory blocks"""
         super()._setup()
-
+        assert isinstance(self._camera, RGBDCamera)
         # create shared memory blocks here so that we can use the actual image sizes and don't need to pass resolutions in the constructor
         dummy_depth_map = self._camera.get_depth_map()
         dummpy_depth_image = self._camera.get_depth_image()
@@ -48,7 +52,7 @@ class MultiProcessRGBDPublisher(MultiProcessRGBPublisher):
             size=dummy_depth_map.nbytes,
             name=f"{self._shared_memory_namespace}_{_DEPTH_SHM_NAME}",
         )
-        self.depth_shm_array = np.ndarray(
+        self.depth_shm_array: np.ndarray = np.ndarray(
             dummy_depth_map.shape,
             dtype=dummy_depth_map.dtype,
             buffer=self.depth_shm.buf,
@@ -60,16 +64,16 @@ class MultiProcessRGBDPublisher(MultiProcessRGBPublisher):
             name=f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}",
         )
 
-        self.depth_image_shm_array = np.ndarray(
+        self.depth_image_shm_array: np.ndarray = np.ndarray(
             dummpy_depth_image.shape,
             dtype=dummpy_depth_image.dtype,
             buffer=self.depth_image_shm.buf,
         )
 
-    def stop_publishing(self):
+    def stop_publishing(self) -> None:
         self.shutdown_event.set()
 
-    def run(self):
+    def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
         self._setup()
         assert isinstance(self._camera, RGBDCamera)
@@ -88,9 +92,11 @@ class MultiProcessRGBDPublisher(MultiProcessRGBPublisher):
 
         self.unlink_shared_memory()
 
-    def unlink_shared_memory(self):
+    def unlink_shared_memory(self) -> None:
         """unlink the shared memory blocks so that they are deleted when the process is terminated"""
         super().unlink_shared_memory()
+        assert self.depth_shm is not None
+        assert self.depth_image_shm is not None
         self.depth_shm.close()
         self.depth_image_shm.close()
         self.depth_shm.unlink()
@@ -130,13 +136,13 @@ class MultiProcessRGBDReceiver(MultiProcessRGBReceiver):
             raise FileNotFoundError("Shared memory not found")
 
         # create numpy arrays that are backed by the shared memory blocks
-        self.depth_shm_array = np.ndarray(
+        self.depth_shm_array: np.ndarray = np.ndarray(
             (camera_resolution_height, camera_resolution_width),
             dtype=np.float32,
             buffer=self.depth_shm.buf,
         )
 
-        self.depth_image_shm_array = np.ndarray(
+        self.depth_image_shm_array: np.ndarray = np.ndarray(
             (camera_resolution_height, camera_resolution_width, 3),
             dtype=np.uint8,
             buffer=self.depth_image_shm.buf,
@@ -148,12 +154,12 @@ class MultiProcessRGBDReceiver(MultiProcessRGBReceiver):
     def get_depth_image(self) -> NumpyIntImageType:
         return self.depth_image_shm_array
 
-    def _close_shared_memory(self):
+    def _close_shared_memory(self) -> None:
         """Closing shared memory signal that"""
         self.depth_shm.close()
         self.depth_image_shm.close()
 
-    def stop_receiving(self):
+    def stop_receiving(self) -> None:
         super().stop_receiving()
         self._close_shared_memory()
 
@@ -164,12 +170,19 @@ class MultiProcessRGBDLogger(MultiProcessRGBLogger):
         shared_memory_namespace: str,
         camera_resolution_width: int,
         camera_resolution_height: int,
-        rotation: int = None,  # e.g. cv2.ROTATE_90_COUNTERCLOCKWISE
+        opencv_image_rotation_id: Optional[int] = None,
     ):
+        """
+        Args:
+            shared_memory_namespace: _description_
+            camera_resolution_width: _description_
+            camera_resolution_height: _description_
+            rotation : Additional rotation to apply to the images before logging, expressed as an OpenCV Rotation Code, e.g. cv2.ROTATE_90_CLOCKWISE. Defaults to None, which implies doing nothing.
+        """
         super().__init__(shared_memory_namespace, camera_resolution_width, camera_resolution_height)
-        self._rotation = rotation
+        self._opencv_image_rotation_id = opencv_image_rotation_id
 
-    def run(self):
+    def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
         import rerun
 
@@ -188,9 +201,9 @@ class MultiProcessRGBDLogger(MultiProcessRGBLogger):
                 image = self.multiProcessRGBDReceiver.get_rgb_image()
                 depth_image = self.multiProcessRGBDReceiver.get_depth_image()
 
-                if self._rotation is not None:
-                    image = cv2.rotate(image, self._rotation)
-                    depth_image = cv2.rotate(depth_image, self._rotation)
+                if self._opencv_image_rotation_id is not None:
+                    image = cv2.rotate(image, self._opencv_image_rotation_id)
+                    depth_image = cv2.rotate(depth_image, self._opencv_image_rotation_id)
 
                 rerun.log_image(self._shared_memory_namespace, image)
                 rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image)
