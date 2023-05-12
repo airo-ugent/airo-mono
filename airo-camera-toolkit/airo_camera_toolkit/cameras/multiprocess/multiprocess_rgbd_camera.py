@@ -170,7 +170,7 @@ class MultiProcessRerunRGBDLogger(MultiProcessRerunRGBLogger):
         shared_memory_namespace: str,
         camera_resolution_width: int,
         camera_resolution_height: int,
-        rotation_degrees_clockwise: Optional[int] = 0,
+        rotation_degrees_clockwise: int = 0,
     ):
         super().__init__(
             shared_memory_namespace,

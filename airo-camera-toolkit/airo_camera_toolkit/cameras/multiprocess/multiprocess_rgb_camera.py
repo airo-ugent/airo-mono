@@ -181,13 +181,16 @@ class MultiProcessRerunRGBLogger(Process):
         shared_memory_namespace: str,
         camera_resolution_width: int,
         camera_resolution_height: int,
-        rotation_degrees_clockwise: Optional[int] = 0,
+        rotation_degrees_clockwise: int = 0,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
         self._camera_resolution_width = camera_resolution_width
         self._camera_resolution_height = camera_resolution_height
         self.shutdown_event = multiprocessing.Event()
+
+        if rotation_degrees_clockwise is None:
+            rotation_degrees_clockwise = 0
 
         remainder = rotation_degrees_clockwise % 90
         if remainder != 0:
