@@ -175,18 +175,25 @@ class MultiProcessRGBReceiver(RGBCamera):
         self._close_shared_memory()
 
 
-class MultiProcessRGBLogger(Process):
+class MultiProcessRerunRGBLogger(Process):
     def __init__(
         self,
         shared_memory_namespace: str,
         camera_resolution_width: int,
         camera_resolution_height: int,
+        rotation_degrees_clockwise: Optional[int] = 0,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
         self._camera_resolution_width = camera_resolution_width
         self._camera_resolution_height = camera_resolution_height
         self.shutdown_event = multiprocessing.Event()
+
+        remainder = rotation_degrees_clockwise % 90
+        if remainder != 0:
+            raise ValueError("rotation_degrees must be a multiple of 90")
+        # Divide by 90, and negate because numpy rotates counter-clockwise
+        self._numpy_rot90_k = -rotation_degrees_clockwise // 90
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
@@ -203,11 +210,15 @@ class MultiProcessRGBLogger(Process):
 
         while not self.shutdown_event.is_set():
             timestamp = self.multiProcessRGBReceiver.get_rgb_image_timestamp()
-            if timestamp > previous_timestamp:
-                image = self.multiProcessRGBReceiver.get_rgb_image()
-                rerun.log_image(self._shared_memory_namespace, image)
-                previous_timestamp = timestamp
-            time.sleep(0.001)  # Check every millisecond
+            if timestamp <= previous_timestamp:
+                time.sleep(0.001)  # Check every millisecond
+                continue
+
+            image = self.multiProcessRGBReceiver.get_rgb_image()
+            if self._numpy_rot90_k != 0:
+                image = np.rot90(image, self._numpy_rot90_k)
+            rerun.log_image(self._shared_memory_namespace, image)
+            previous_timestamp = timestamp
 
         self.multiProcessRGBReceiver.stop_receiving()
 

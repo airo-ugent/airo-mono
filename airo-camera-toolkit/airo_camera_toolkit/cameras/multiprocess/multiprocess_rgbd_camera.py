@@ -7,7 +7,7 @@ import cv2
 import loguru
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
-    MultiProcessRGBLogger,
+    MultiProcessRerunRGBLogger,
     MultiProcessRGBPublisher,
     MultiProcessRGBReceiver,
 )
@@ -103,7 +103,7 @@ class MultiProcessRGBDPublisher(MultiProcessRGBPublisher):
         self.depth_image_shm.unlink()
 
 
-class MultiProcessRGBDReceiver(MultiProcessRGBReceiver):
+class MultiProcessRGBDReceiver(MultiProcessRGBReceiver, RGBDCamera):
     """Implements the RGBD camera interface for a camera that is running in a different process and shares its data using shared memory blocks.
     To be used with the Publisher class.
     """
@@ -164,23 +164,20 @@ class MultiProcessRGBDReceiver(MultiProcessRGBReceiver):
         self._close_shared_memory()
 
 
-class MultiProcessRGBDLogger(MultiProcessRGBLogger):
+class MultiProcessRerunRGBDLogger(MultiProcessRerunRGBLogger):
     def __init__(
         self,
         shared_memory_namespace: str,
         camera_resolution_width: int,
         camera_resolution_height: int,
-        opencv_image_rotation_id: Optional[int] = None,
+        rotation_degrees_clockwise: Optional[int] = 0,
     ):
-        """
-        Args:
-            shared_memory_namespace: _description_
-            camera_resolution_width: _description_
-            camera_resolution_height: _description_
-            rotation : Additional rotation to apply to the images before logging, expressed as an OpenCV Rotation Code, e.g. cv2.ROTATE_90_CLOCKWISE. Defaults to None, which implies doing nothing.
-        """
-        super().__init__(shared_memory_namespace, camera_resolution_width, camera_resolution_height)
-        self._opencv_image_rotation_id = opencv_image_rotation_id
+        super().__init__(
+            shared_memory_namespace,
+            camera_resolution_width,
+            camera_resolution_height,
+            rotation_degrees_clockwise,
+        )
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
@@ -197,18 +194,20 @@ class MultiProcessRGBDLogger(MultiProcessRGBLogger):
 
         while not self.shutdown_event.is_set():
             timestamp = self.multiProcessRGBDReceiver.get_rgb_image_timestamp()
-            if timestamp > previous_timestamp:
-                image = self.multiProcessRGBDReceiver.get_rgb_image()
-                depth_image = self.multiProcessRGBDReceiver.get_depth_image()
+            if timestamp <= previous_timestamp:
+                time.sleep(0.001)  # Check every millisecond
+                continue
 
-                if self._opencv_image_rotation_id is not None:
-                    image = cv2.rotate(image, self._opencv_image_rotation_id)
-                    depth_image = cv2.rotate(depth_image, self._opencv_image_rotation_id)
+            image = self.multiProcessRGBDReceiver.get_rgb_image()
+            depth_image = self.multiProcessRGBDReceiver.get_depth_image()
 
-                rerun.log_image(self._shared_memory_namespace, image)
-                rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image)
-                previous_timestamp = timestamp
-            time.sleep(0.001)  # Check every millisecond
+            if self._numpy_rot90_k != 0:
+                image = np.rot90(image, self._numpy_rot90_k)
+                depth_image = np.rot90(depth_image, self._numpy_rot90_k)
+
+            rerun.log_image(self._shared_memory_namespace, image)
+            rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image)
+            previous_timestamp = timestamp
 
         self.multiProcessRGBDReceiver.stop_receiving()
 
