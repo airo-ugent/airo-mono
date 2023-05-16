@@ -1,6 +1,6 @@
 """code for sharing the data of a camera that implements the RGBDCamera interface between processes using shared memory"""
 import time
-from multiprocessing import shared_memory
+from multiprocessing import resource_tracker, shared_memory
 from typing import Optional
 
 import cv2
@@ -158,6 +158,10 @@ class MultiProcessRGBDReceiver(MultiProcessRGBReceiver, RGBDCamera):
         """Closing shared memory signal that"""
         self.depth_shm.close()
         self.depth_image_shm.close()
+
+        # Same comment as in base class:
+        resource_tracker.unregister(self.depth_shm._name, "shared_memory")
+        resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")
 
     def stop_receiving(self) -> None:
         super().stop_receiving()

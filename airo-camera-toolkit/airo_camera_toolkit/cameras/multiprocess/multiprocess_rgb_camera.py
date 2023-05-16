@@ -1,13 +1,15 @@
 """code for sharing the data of a camera that implements the RGBDCamera interface between processes using shared memory"""
 import multiprocessing
 import time
-from multiprocessing import Process, shared_memory
+from multiprocessing import Process, resource_tracker, shared_memory
 from typing import Optional
 
 import loguru
 import numpy as np
+from airo_camera_toolkit.utils import ImageConverter
 
 logger = loguru.logger
+import cv2
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType
 
@@ -168,6 +170,15 @@ class MultiProcessRGBReceiver(RGBCamera):
         self.rgb_timestamp_shm.close()
         self.intrinsics_shm.close()
 
+        # Normally, we wouldn't have to do this unregistering. However, without it, the resource tracker incorrectly
+        # destroys access to the shared memory blocks when the process is terminated. This is a known 3 year old bug
+        # that hasn't been resolved yet: https://bugs.python.org/issue39959
+        # Concretely, the problem was that once any MultiprocessRGBReceiver object was destroyed, all further access to
+        # the shared memory blocks would fail with a FileNotFoundError.
+        resource_tracker.unregister(self.rgb_shm._name, "shared_memory")
+        resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
+        resource_tracker.unregister(self.rgb_timestamp_shm._name, "shared_memory")
+
     def stop_receiving(self) -> None:
         self._close_shared_memory()
 
@@ -182,11 +193,13 @@ class MultiProcessRerunRGBLogger(Process):
         camera_resolution_width: int,
         camera_resolution_height: int,
         rotation_degrees_clockwise: Optional[int] = 0,
+        save_images_to_disk: bool = False,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
         self._camera_resolution_width = camera_resolution_width
         self._camera_resolution_height = camera_resolution_height
+        self.save_images_to_disk = save_images_to_disk
         self.shutdown_event = multiprocessing.Event()
 
         remainder = rotation_degrees_clockwise % 90
@@ -218,6 +231,14 @@ class MultiProcessRerunRGBLogger(Process):
             if self._numpy_rot90_k != 0:
                 image = np.rot90(image, self._numpy_rot90_k)
             rerun.log_image(self._shared_memory_namespace, image)
+
+            if self.save_images_to_disk:
+                # write image to disk:
+                image_opencv = ImageConverter.from_numpy_format(image).image_in_opencv_format
+                # format the timestamp
+                timestamp_str = str(timestamp).replace(".", "_")
+                cv2.imwrite(f"{self._shared_memory_namespace}_{timestamp_str}.png", image_opencv)
+
             previous_timestamp = timestamp
 
         self.multiProcessRGBReceiver.stop_receiving()
@@ -230,8 +251,6 @@ if __name__ == "__main__":
     """example of how to use the MultiProcessRGBDPublisher and MultiProcessRGBDReceiver.
     You can also use the MultiProcessRGBDReceiver in a different process (e.g. in a different python script)
     """
-
-    import cv2
     from airo_camera_toolkit.cameras.zed2i import Zed2i
 
     resolution_identifier = Zed2i.RESOLUTION_1080
