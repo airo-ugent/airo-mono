@@ -45,8 +45,16 @@ class MultiProcessRGBPublisher(Process):
     def _setup(self) -> None:
         """in-process creation of camera object and shared memory blocks"""
         # have to create camera here to make sure the shared memory blocks in the camera are created in the same process
+
+        # Opening cameras fails often so retry a few times
+        # for _ in range(3):
+        #     try:
         self._camera = self._camera_cls(**self._camera_kwargs)
         assert isinstance(self._camera, RGBCamera)
+        # except Exception as e:
+        #     print(f"Camera {self._shared_memory_namespace} could not be instantiated, waiting 10 seconds and retrying, expection was:")
+        #     print(e)
+        #     time.sleep(10)
 
         # create shared memory blocks here so that we can use the actual image sizes and don't need to pass resolutions in the constructor
         dummy_rgb_image = self._camera.get_rgb_image()
@@ -124,7 +132,7 @@ class MultiProcessRGBReceiver(RGBCamera):
         super().__init__()
 
         is_shm_created = False
-        for _ in range(10):
+        for _ in range(20):
             # if the sender process was just started, the shared memory blocks might not be created yet
             # so retry a few times to access them
             try:
@@ -143,6 +151,10 @@ class MultiProcessRGBReceiver(RGBCamera):
                 time.sleep(2)
         if not is_shm_created:
             raise FileNotFoundError("Shared memory not found.")
+
+        resource_tracker.unregister(self.rgb_shm._name, "shared_memory")
+        resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
+        resource_tracker.unregister(self.rgb_timestamp_shm._name, "shared_memory")
 
         # create numpy arrays that are backed by the shared memory blocks
         self.rgb_shm_array: np.ndarray = np.ndarray(
@@ -175,9 +187,9 @@ class MultiProcessRGBReceiver(RGBCamera):
         # that hasn't been resolved yet: https://bugs.python.org/issue39959
         # Concretely, the problem was that once any MultiprocessRGBReceiver object was destroyed, all further access to
         # the shared memory blocks would fail with a FileNotFoundError.
-        resource_tracker.unregister(self.rgb_shm._name, "shared_memory")
-        resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
-        resource_tracker.unregister(self.rgb_timestamp_shm._name, "shared_memory")
+        # resource_tracker.unregister(self.rgb_shm._name, "shared_memory")
+        # resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
+        # resource_tracker.unregister(self.rgb_timestamp_shm._name, "shared_memory")
 
     def stop_receiving(self) -> None:
         self._close_shared_memory()
@@ -233,7 +245,15 @@ class MultiProcessRerunRGBLogger(Process):
             image = self.multiProcessRGBReceiver.get_rgb_image()
             if self._numpy_rot90_k != 0:
                 image = np.rot90(image, self._numpy_rot90_k)
-            rerun.log_image(self._shared_memory_namespace, image)
+
+            # Float to int conversion for faster logging
+            try:
+                image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
+            except Exception as e:
+                print(e)
+                continue
+            image_rgb = image_bgr[:, :, ::-1]
+            rerun.log_image(self._shared_memory_namespace, image_rgb)
 
             if self.save_images_to_disk:
                 # write image to disk:

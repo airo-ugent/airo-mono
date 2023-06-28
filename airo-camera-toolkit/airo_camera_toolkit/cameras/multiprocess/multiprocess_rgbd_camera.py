@@ -11,6 +11,7 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
     MultiProcessRGBPublisher,
     MultiProcessRGBReceiver,
 )
+from airo_camera_toolkit.utils import ImageConverter
 
 logger = loguru.logger
 from airo_camera_toolkit.interfaces import RGBDCamera
@@ -135,6 +136,10 @@ class MultiProcessRGBDReceiver(MultiProcessRGBReceiver, RGBDCamera):
         if not is_shm_created:
             raise FileNotFoundError("Shared memory not found")
 
+        # Same comment as in base class:
+        resource_tracker.unregister(self.depth_shm._name, "shared_memory")
+        resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")
+
         # create numpy arrays that are backed by the shared memory blocks
         self.depth_shm_array: np.ndarray = np.ndarray(
             (camera_resolution_height, camera_resolution_width),
@@ -160,8 +165,8 @@ class MultiProcessRGBDReceiver(MultiProcessRGBReceiver, RGBDCamera):
         self.depth_image_shm.close()
 
         # Same comment as in base class:
-        resource_tracker.unregister(self.depth_shm._name, "shared_memory")
-        resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")
+        # resource_tracker.unregister(self.depth_shm._name, "shared_memory")
+        # resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")
 
     def stop_receiving(self) -> None:
         super().stop_receiving()
@@ -205,11 +210,16 @@ class MultiProcessRerunRGBDLogger(MultiProcessRerunRGBLogger):
             image = self.multiProcessRGBDReceiver.get_rgb_image()
             depth_image = self.multiProcessRGBDReceiver.get_depth_image()
 
+            # Float to int conversion for faster logging
+            image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
+            image = image_bgr[:, :, ::-1]
+
             if self._numpy_rot90_k != 0:
                 image = np.rot90(image, self._numpy_rot90_k)
                 depth_image = np.rot90(depth_image, self._numpy_rot90_k)
 
             rerun.log_image(self._shared_memory_namespace, image)
+
             rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image)
             previous_timestamp = timestamp
 
