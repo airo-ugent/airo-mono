@@ -1,9 +1,11 @@
+from typing import Tuple
+
 import pytest
 from airo_camera_toolkit.image_transforms import Crop, Resize, Rotation90
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 
 
-def _test_transform(point: tuple[int, int], transform: ImageTransform):
+def _test_transform(point: Tuple[int, int], transform: ImageTransform):
     transformed_point = transform.transform_point(point)
     reversed_point = transform.reverse_transform_point(transformed_point)
     assert point == reversed_point
