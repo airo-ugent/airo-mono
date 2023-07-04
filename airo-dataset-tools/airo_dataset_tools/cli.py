@@ -67,7 +67,7 @@ def resize_coco_keypoints_dataset(annotations_json_path: str, width: int, height
     coco_dataset_dir = os.path.dirname(annotations_json_path)
     annotations_file_name = os.path.basename(annotations_json_path)
     dataset_parent_dir = os.path.dirname(coco_dataset_dir)
-    transformed_dataset_dir = os.path.join(dataset_parent_dir, f"{annotations_file_name}_resized_{width}x{height}")
+    transformed_dataset_dir = os.path.join(dataset_parent_dir, f"{annotations_file_name.split('.')[0]}_resized_{width}x{height}")
     os.makedirs(transformed_dataset_dir, exist_ok=True)
 
     transforms = [A.Resize(height, width)]
