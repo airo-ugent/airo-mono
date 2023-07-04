@@ -70,7 +70,6 @@ class Job(BaseModel):
     labels: Labels
 
 
-
 class Meta(BaseModel):
     job: Optional[Job] = None
     task: Optional[Job] = None
@@ -83,8 +82,6 @@ class Meta(BaseModel):
             return self.task
         else:
             raise ValueError("No task or job found in meta. This should not happen")
-
-
 
 
 class AnnotationItem(BaseModel):
