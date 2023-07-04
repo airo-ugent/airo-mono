@@ -48,7 +48,7 @@ def cvat_image_to_coco(  # noqa: C901, too complex
 
     # create the COCOKeypointCatgegories
     categories_dict = defaultdict(list)
-    
+
     for annotation_category in cvat_parsed.annotations.meta.get_job_or_task().labels.label:
         assert isinstance(annotation_category, LabelItem)
         category_str, annotation_name = annotation_category.name.split(".")
@@ -114,7 +114,6 @@ def cvat_image_to_coco(  # noqa: C901, too complex
                         coco_annotations[-1].bbox = mask.bbox
 
                 annotation_id_counter += 1
-
 
     coco_model = CocoKeypointsDataset(images=coco_images, annotations=coco_annotations, categories=coco_categories)
     return coco_model.dict(exclude_none=True)
