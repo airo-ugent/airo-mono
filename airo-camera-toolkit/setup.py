@@ -12,11 +12,11 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "matplotlib",
-        "opencv-contrib-python==4.7.0.72",  # opencv has a tendency to make breaking changes
         "rerun-sdk",
         "click",
         "loguru",
         "pyrealsense2",
+        "opencv-contrib-python==4.7.0.72",  # opencv has a tendency to make breaking changes
     ],
     extras_require={
         "external": [
