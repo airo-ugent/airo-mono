@@ -9,7 +9,7 @@ setuptools.setup(
     description="TODO",
     install_requires=[
         "numpy",
-        "pydantic",
+        "pydantic<2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
         "pycocotools",
         "xmltodict",
         "tqdm",
