@@ -138,7 +138,7 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
         ), f"keypoints coordinates must be in pixel space, but max_coordinate is {max_coordinate_value}"
         return v
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def num_keypoints_matches_amount_of_labeled_keypoints(cls, values: dict) -> dict:
 
         labeled_keypoints = 0
