@@ -53,6 +53,7 @@ class Labels(BaseModel):
 
 class Job(BaseModel):
     id: str
+    name: Optional[str] = None
     size: str
     mode: str
     overlap: str
@@ -69,9 +70,21 @@ class Job(BaseModel):
     labels: Labels
 
 
+
 class Meta(BaseModel):
-    job: Job
+    job: Optional[Job] = None
+    task: Optional[Job] = None
     dumped: str
+
+    def get_job_or_task(self) -> Job:
+        if self.job:
+            return self.job
+        elif self.task:
+            return self.task
+        else:
+            raise ValueError("No task or job found in meta. This should not happen")
+
+
 
 
 class AnnotationItem(BaseModel):
