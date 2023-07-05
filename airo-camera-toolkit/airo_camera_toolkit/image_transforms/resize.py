@@ -9,6 +9,19 @@ from airo_camera_toolkit.image_transforms.image_transform import (
 
 class Resize(ImageTransform):
     def __init__(self, input_shape: ImageShapeType, h: int, w: int, round_transformed_points: bool = True):
+        """Create a new Resize transform.
+
+        Note: Transforming a point to or from a resized image can lead to non-integer coordinates. Pixel coordinates
+            are however often expected to be integers, e.g. by the OpenCV draw functions. So by default, this class
+            will round transformed points to the nearest integer. If you want to avoid the errors introduced by
+            rounding, you can set `round_transformed_points` to False to get the exact transformed points as floats.
+
+        Args:
+            input_shape: Shape of the images that will be resized.
+            h: Height of the resized image.
+            w: Width of the resized image.
+            round_transformed_points: Whether to round transformed points to the nearest integer.
+        """
         super().__init__(input_shape)
         self.h = h
         self.w = w
