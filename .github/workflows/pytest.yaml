@@ -31,7 +31,7 @@ jobs:
     - name: Run Tests
       run: pytest ${{matrix.package}}/
     - name: Run Notebooks
-      run:
+      run: |
         pip install nbmake
         python -m ipykernel install --user --name airo-mono
         pytest --nbmake airo-camera-toolkit/airo_camera_toolkit/image_transforms/tutorial.ipynb
