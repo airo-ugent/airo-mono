@@ -7,7 +7,7 @@ from airo_camera_toolkit.image_transforms.image_transform import (
 )
 
 
-class Rotation90(ImageTransform):
+class Rotate90(ImageTransform):
     """Rotate an image by multiples of 90 degrees."""
 
     def __init__(
