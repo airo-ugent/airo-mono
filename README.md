@@ -40,7 +40,7 @@ The following table shows the required command per package:
 
 | Package | command |
 |-------|-------|
-|`airo-camera-toolkit`|`python -m pip install 'airo-camera-toolkit[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit'`| 
+|`airo-camera-toolkit`|`python -m pip install 'airo-camera-toolkit[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit'`|
 |`airo-dataset-tools`|`python -m pip install 'airo-dataset-tools[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools'`|
 |`airo-robots`|`python -m pip install 'airo-robots[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-robots'`|
 |`airo-spatial-algebra`|`python -m pip install 'airo-spatial-algebra[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-spatial-algebra' `|
