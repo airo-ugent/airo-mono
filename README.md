@@ -36,6 +36,19 @@ There are a number of ways to install packages from this repo. As this repo is s
 
 if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install ' <pkg-name>[external] @ git+https://github.com/airo-ugent/airo-mono@<branch/tag>#subdirectory=<package-dir>'`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/). There will now be a `src/` folder in your project where pip has downloaded the repo and from where the package is installed, but you can ignore this as it will be automatically excluded from source control. You can (and should?) lock the pip install to a specific commit in your dependency manager (pip/conda/...)
 
+The following table shows the required command per package:
+
+| Package | command |
+|-------|-------|
+|`airo-camera-toolkit`|`python -m pip install 'airo-camera-toolkit[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit'`| 
+|`airo-dataset-tools`|`python -m pip install 'airo-dataset-tools[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools'`|
+|`airo-robots`|`python -m pip install 'airo-robots[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-robots'`|
+|`airo-spatial-algebra`|`python -m pip install 'airo-spatial-algebra[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-spatial-algebra' `|
+|`airo-teleop`|`python -m pip install 'airo-teleop[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-teleop'`|
+|`airo-typing`  |`python -m pip install 'airo-typing[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-typing'`|
+
+or alternatively, you can install all packages at once by running the [installation script](scripts/install-airo-mono.sh).
+
 **git submodule**
 
 Alternatively you can add this repo as a submodule and install the relevant packages afterwards with regular pip commands. This might be useful for as long as this repo is making fast/breaking changes without good version management, as you can lock the submodule on a specific commit.
