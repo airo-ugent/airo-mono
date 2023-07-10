@@ -15,7 +15,6 @@ setuptools.setup(
         "xmltodict",
         "tqdm",
         "fiftyone",  # visualization
-        "albumentations",
         "Pillow",
         "types-Pillow",
     ],
