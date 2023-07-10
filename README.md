@@ -82,7 +82,7 @@ pre-commit install
 ```
 
 ### Coding style
-Formatting is done with black (code style), isort (sort imports and autoflake (remove unused imports and variables). Flake8 is used as linter. These are bundled with [pre-commit](https://pre-commit.com/) as configured in the `.pre-commit-config.yaml` file. You can manually run pre-commit with `pre-commit run -a`.
+Formatting is done with black (code style), isort (sort imports) and autoflake (remove unused imports and variables). Flake8 is used as linter. These are bundled with [pre-commit](https://pre-commit.com/) as configured in the `.pre-commit-config.yaml` file. You can manually run pre-commit with `pre-commit run -a`.
 
 Packages can be typed (optional, but strongly recommended). For this, mypy is used. To run mypy on a package: `mypy <package-outer-dir>`.
 
