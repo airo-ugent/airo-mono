@@ -2,7 +2,7 @@
 This repository contains ready-to-use python packages to accelerate the development of robotic manipulation systems.
 Instead of reimplementing the same functionalities over and over, this repo provides ready-to-use implementations and aims to leverage experience by updating the implementations with best practices along the way.
 
-You can read more about  the scope and motivation of this repo [here](docs/about_this_repo.md).
+You can read more about the scope and motivation of this repo [here](docs/about_this_repo.md).
 ## Overview
 The repository is structured as a monorepo (hence the name) with multiple python packages.
 Below is a short overview of the packages:
