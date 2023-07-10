@@ -94,7 +94,11 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         def done_condition() -> bool:
             return all([awaitable.is_action_done() for awaitable in awaitables])
 
-        return AwaitableAction(done_condition, awaitables[0]._default_timeout, awaitables[0]._default_sleep_resolution)
+        return AwaitableAction(
+            done_condition,
+            awaitables[0]._default_timeout,
+            awaitables[0]._default_sleep_resolution,
+        )
 
     def servo_to_tcp_pose(
         self,
@@ -130,7 +134,11 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         def done_condition() -> bool:
             return all([awaitable.is_action_done() for awaitable in awaitables])
 
-        return AwaitableAction(done_condition, awaitables[0]._default_timeout, awaitables[0]._default_sleep_resolution)
+        return AwaitableAction(
+            done_condition,
+            awaitables[0]._default_timeout,
+            awaitables[0]._default_sleep_resolution,
+        )
 
     def transform_pose_to_left_arm_base(self, pose_in_base: HomogeneousMatrixType) -> HomogeneousMatrixType:
         """Transform a pose in the base frame to the left arm base frame"""
@@ -139,6 +147,23 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
     def transform_pose_to_right_arm_base(self, pose_in_base: HomogeneousMatrixType) -> HomogeneousMatrixType:
         """Transform a pose in the base frame to the right arm base frame"""
         return np.linalg.inv(self._right_manipulator_pose_in_base) @ pose_in_base
+
+    def is_tcp_pose_reachable_for_left(self, tcp_pose_in_base: HomogeneousMatrixType) -> bool:
+        tcp_pose_left_base = self.transform_pose_to_left_arm_base(tcp_pose_in_base)
+        return self._left_manipulator.is_tcp_pose_reachable(tcp_pose_left_base)
+
+    def is_tcp_pose_reachable_for_right(self, tcp_pose_in_base: HomogeneousMatrixType) -> bool:
+        tcp_pose_right_base = self.transform_pose_to_right_arm_base(tcp_pose_in_base)
+        return self._right_manipulator.is_tcp_pose_reachable(tcp_pose_right_base)
+
+    def are_tcp_poses_reachable(
+        self,
+        left_tcp_pose_in_base: HomogeneousMatrixType,
+        right_tcp_pose_in_base: HomogeneousMatrixType,
+    ) -> bool:
+        left_reachable = self.is_tcp_pose_reachable_for_left(left_tcp_pose_in_base)
+        right_reachable = self.is_tcp_pose_reachable_for_right(right_tcp_pose_in_base)
+        return left_reachable and right_reachable
 
 
 if __name__ == "__main__":
@@ -166,8 +191,20 @@ if __name__ == "__main__":
     ).homogeneous_matrix
 
     print("Moving to start poses")
+    left_reachable = dual_arm.is_tcp_pose_reachable_for_left(left_target_pose)
+    right_reachable = dual_arm.is_tcp_pose_reachable_for_right(right_target_pose)
+    both_reachable = dual_arm.are_tcp_poses_reachable(left_target_pose, right_target_pose)
+    print("Left target pose:")
     print(left_target_pose)
+    print("Left reachable: ", left_reachable)
+    print("Left arm current pose in base:")
     print(dual_arm.left_manipulator.get_tcp_pose())
+    print("Right target pose:")
+    print(right_target_pose)
+    print("Right reachable: ", right_reachable)
+    print("Right arm current pose in base:")
+    print(dual_arm.right_manipulator.get_tcp_pose())
+    print("Both poses reachable: ", both_reachable)
     dual_arm.move_linear_to_tcp_pose(left_target_pose, right_target_pose, 0.1).wait(timeout=10)
 
     time.sleep(1.0)
