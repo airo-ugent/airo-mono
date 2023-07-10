@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software in publications, please cite it as below."
+authors:
+- family-names: "Lips"
+  given-names: "Thomas"
+- family-names: "De Gusseme"
+  given-names: "Victor-Louis"
+title: "airo-mono: ready-to-use python packages to accelerate the development of robotic manipulation systems"
+url: "https://github.com/airo-ugent/airo-mono"
+date-released: 2023-3-10
+version: 0.0.1

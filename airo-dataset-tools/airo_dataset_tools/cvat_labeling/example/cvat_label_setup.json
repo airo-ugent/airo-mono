@@ -1,0 +1,86 @@
+[
+    {
+      "name": "towel.corner1",
+      "id": 7,
+      "color": "#dc381e",
+      "type": "points",
+      "attributes": []
+    },
+    {
+      "name": "towel.corner2",
+      "id": 8,
+      "color": "#f819b8",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "towel.corner3",
+      "id": 9,
+      "color": "#a97ba3",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "towel.corner4",
+      "id": 10,
+      "color": "#286150",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "towel.bbox",
+      "id": 11,
+      "color": "#00d1e6",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "towel.mask",
+      "id": 12,
+      "color": "#31688e",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "tshirt.bbox",
+      "id": 13,
+      "color": "#2282f5",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "tshirt.mask",
+      "id": 14,
+      "color": "#e152ef",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "tshirt.waist_left",
+      "id": 15,
+      "color": "#fc55d0",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "tshirt.waist_right",
+      "id": 16,
+      "color": "#41bf78",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "tshirt.shoulder_left",
+      "id": 17,
+      "color": "#41e723",
+      "type": "any",
+      "attributes": []
+    },
+    {
+      "name": "tshirt.shoulder_right",
+      "id": 18,
+      "color": "#8b6c77",
+      "type": "any",
+      "attributes": []
+    }
+  ]
