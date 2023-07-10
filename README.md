@@ -136,6 +136,7 @@ Creating a new package is kind of a hassle atm, in the future we might add a coo
 - add package name to matrix of CI flows
 - add package to top-level readme [here](#overview)
 - add package to the `environment.yaml`
+- add package to the [install script](scripts/install-airo-mono.sh)
 
 ### Command Line Interfaces
 It can become convenient to expose certain functionality as a command line interface (CLI).
