@@ -14,6 +14,8 @@ Establish a Ethernet connection between the control box and the external compute
     * Gateway: `10.42.0.1`
     * Preferred DNS server: `10.42.0.1`
 
+On MacOS, this corresponds to creating a network with IPv4 configured manually at 10.42.0.1 (subnet mask 255.255.0.0) and configure IPv4 automatically.  
+
 If you're lucky, the control box will already say "Network is connected".
 If pinging the control box from the external computer works, you're done and can read the next section to Enable remote control mode:
 ```bash
