@@ -36,6 +36,6 @@ jobs:
         python -m ipykernel install --user --name airo-mono
         shopt -s globstar
         echo "Notebooks found:"
-        ls **/*.ipynb
+        ls ${{matrix.package}}/**/*.ipynb
         echo "Testing notebooks..."
         pytest --nbmake ${{matrix.package}}/**/*.ipynb
