@@ -1,8 +1,8 @@
-# Image Transforms :framed_picture:
+# Reversible Image Transforms :framed_picture:
 
 A few basics image transforms to help manipulate images into the shape, size and orientation needed for perception or visualization.
 Our main use case is converting camera images to the shape needed for our keypoint detection models.
-We also provide functionality to reverse transfrom the coordinates of the detected keypoints to the original image space.
+We also provide functionality to reverse transfrom the coordinates of the detected keypoints to the original image space. This is not available in image transform libraries such as Albumentations but is important for robotics applications: you often need to reproject the points using the camera intrinsics, which are known for the original but not for the transformed image.
 
 Implemented transforms:
 * [`Crop`](image_transforms/crop.py)
