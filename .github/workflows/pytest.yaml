@@ -34,4 +34,4 @@ jobs:
       run: |
         pip install nbmake
         python -m ipykernel install --user --name airo-mono
-        pytest --nbmake '**/*.ipynb'
+        pytest --nbmake ${{matrix.package}/**/*.ipynb
