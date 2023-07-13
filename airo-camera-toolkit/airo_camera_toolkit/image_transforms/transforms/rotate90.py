@@ -46,6 +46,9 @@ class Rotate90(ImageTransform):
 
     def transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
+        assert x >= 0 and x < self._input_w
+        assert y >= 0 and y < self._input_h
+
         if self._num_rotations == 1:
             return y, self._input_w - x
         elif self._num_rotations == 2:

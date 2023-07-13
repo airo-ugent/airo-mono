@@ -40,6 +40,8 @@ class Resize(ImageTransform):
 
     def transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
+        assert x >= 0 and x < self._input_w
+        assert y >= 0 and y < self._input_h
 
         w_scale = self.w / self._input_w
         h_scale = self.h / self._input_h
@@ -54,6 +56,8 @@ class Resize(ImageTransform):
 
     def reverse_transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
+        assert x >= 0 and x < self.w
+        assert y >= 0 and y < self.h
         w_scale_inverse = self._input_w / self.w
         h_scale_inverse = self._input_h / self.h
 

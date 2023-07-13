@@ -43,8 +43,12 @@ class Crop(ImageTransform):
 
     def transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
+        assert x >= self.x and x < self.x + self.w
+        assert y >= self.y and y < self.y + self.h
         return x - self.x, y - self.y
 
     def reverse_transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
+        assert x >= 0 and x < self.w
+        assert y >= 0 and y < self.h
         return x + self.x, y + self.y
