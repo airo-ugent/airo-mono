@@ -31,9 +31,11 @@ jobs:
     - name: Run Tests
       run: pytest ${{matrix.package}}/
     - name: Run Notebooks
-      run: |
+      run: | # don't forget to enable glob expansion!
         pip install nbmake
         python -m ipykernel install --user --name airo-mono
         shopt -s globstar
+        echo "Notebooks found:"
         ls **/*.ipynb
-        pytest --nbmake **/*.ipynb
+        echo "Testing notebooks..."
+        pytest --nbmake ${{matrix.package}}/**/*.ipynb
