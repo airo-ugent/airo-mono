@@ -34,7 +34,8 @@ jobs:
       run: | # don't forget to enable glob expansion!
         pip install nbmake
         python -m ipykernel install --user --name airo-mono
-        shopt -s globstar
+        shopt -s globstar -nullglob
+        ls -R
         echo "Notebooks found:"
         ls ${{matrix.package}}/**/*.ipynb
         echo "Testing notebooks..."
