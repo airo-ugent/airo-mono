@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -57,7 +57,7 @@ class BinarySegmentationMask:
         return (bbox[0], bbox[1], bbox[2], bbox[3])
 
     @property
-    def as_polygon(self) -> List[Polygon]:
+    def as_polygon(self) -> Optional[List[Polygon]]:
         # from https://github.com/cocodataset/cocoapi/issues/476#issuecomment-871804850
         contours, _ = cv2.findContours(self.bitmap, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         segmentation = []
@@ -68,7 +68,8 @@ class BinarySegmentationMask:
                 segmentation.append(contour.astype(float).flatten().tolist())
                 valid_poly += 1
         if valid_poly == 0:
-            raise ValueError
+            print("No valid polygons found in segmentation mask")
+            return None
         return segmentation
 
     @property

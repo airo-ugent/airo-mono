@@ -2,7 +2,7 @@
 This repository contains ready-to-use python packages to accelerate the development of robotic manipulation systems.
 Instead of reimplementing the same functionalities over and over, this repo provides ready-to-use implementations and aims to leverage experience by updating the implementations with best practices along the way.
 
-You can read more about  the scope and motivation of this repo [here](docs/about_this_repo.md).
+You can read more about the scope and motivation of this repo [here](docs/about_this_repo.md).
 ## Overview
 The repository is structured as a monorepo (hence the name) with multiple python packages.
 Below is a short overview of the packages:
@@ -34,7 +34,20 @@ There are a number of ways to install packages from this repo. As this repo is s
 
 **directly from github**
 
-if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install ' <pkg-name>[external] @ git+https://github.com/airo-ugent/airo-mono@<branch/tag>#subdirectory=<package-dir>'`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/). There will now be a `src/` folder in your project where pip has downloaded the repo and from where the package is installed, but you can ignore this as it will be automatically excluded from source control. You can (and should?) lock the pip install to a specific commit in your dependency manager (pip/conda/...)
+if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install ' <pkg-name>[external] @ git+https://github.com/airo-ugent/airo-mono@<branch/tag>#subdirectory=<package-dir>'`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/). There will now be a `src/` folder in your project where pip has downloaded the repo and from where the package is installed, but you can ignore this as it will be automatically excluded from source control. You can (and should?) lock the pip install to a specific commit in your dependency manager (pip/conda/...). The [external] specification only works on pip versions >= 22 so make sure your pip version is up-to-date with `pip install --upgrade pip`.
+
+The following table shows the required command per package:
+
+| Package | command |
+|-------|-------|
+|`airo-camera-toolkit`|`python -m pip install 'airo-camera-toolkit[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit'`|
+|`airo-dataset-tools`|`python -m pip install 'airo-dataset-tools[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools'`|
+|`airo-robots`|`python -m pip install 'airo-robots[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-robots'`|
+|`airo-spatial-algebra`|`python -m pip install 'airo-spatial-algebra[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-spatial-algebra' `|
+|`airo-teleop`|`python -m pip install 'airo-teleop[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-teleop'`|
+|`airo-typing`  |`python -m pip install 'airo-typing[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-typing'`|
+
+or alternatively, you can install all packages at once by running the [installation script](scripts/install-airo-mono.sh).
 
 **git submodule**
 
@@ -69,7 +82,7 @@ pre-commit install
 ```
 
 ### Coding style
-Formatting is done with black (code style), isort (sort imports and autoflake (remove unused imports and variables). Flake8 is used as linter. These are bundled with [pre-commit](https://pre-commit.com/) as configured in the `.pre-commit-config.yaml` file. You can manually run pre-commit with `pre-commit run -a`.
+Formatting is done with black (code style), isort (sort imports) and autoflake (remove unused imports and variables). Flake8 is used as linter. These are bundled with [pre-commit](https://pre-commit.com/) as configured in the `.pre-commit-config.yaml` file. You can manually run pre-commit with `pre-commit run -a`.
 
 Packages can be typed (optional, but strongly recommended). For this, mypy is used. To run mypy on a package: `mypy <package-outer-dir>`.
 
@@ -123,6 +136,7 @@ Creating a new package is kind of a hassle atm, in the future we might add a coo
 - add package name to matrix of CI flows
 - add package to top-level readme [here](#overview)
 - add package to the `environment.yaml`
+- add package to the [install script](scripts/install-airo-mono.sh)
 
 ### Command Line Interfaces
 It can become convenient to expose certain functionality as a command line interface (CLI).

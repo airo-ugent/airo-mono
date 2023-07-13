@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import Any, Tuple
 
 import numpy as np
-import pyrealsense2 as rs  # type: ignore
+
+try:
+    import pyrealsense2 as rs  # type: ignore
+except ImportError:
+    print("install the Realsense SDK and pyrealsense2 first")
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType, OpenCVIntImageType

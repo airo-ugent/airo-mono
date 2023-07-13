@@ -32,7 +32,7 @@ def cvat_image_to_coco(  # noqa: C901, too complex
     Args:
         cvat_xml_path (str): _description_
         add_bbox (bool): add bounding box annotations to the COCO dataset, requires all keypoint annotations to have a bbox annotation
-        add_segmentation (bool): add segmentation annotations to the COCO dataset, requires all keypoint annotations to have a mask annotation
+        add_segmentation (bool): add segmentation annotations to the COCO dataset, requires all keypoint annotations to have a mask annotation. Bboxes will be created from the segmentation masks.
 
     Returns: COCO Keypoints dataset model as a dict
     """
@@ -48,7 +48,8 @@ def cvat_image_to_coco(  # noqa: C901, too complex
 
     # create the COCOKeypointCatgegories
     categories_dict = defaultdict(list)
-    for annotation_category in cvat_parsed.annotations.meta.job.labels.label:
+
+    for annotation_category in cvat_parsed.annotations.meta.get_job_or_task().labels.label:
         assert isinstance(annotation_category, LabelItem)
         category_str, annotation_name = annotation_category.name.split(".")
         categories_dict[category_str].append(annotation_name)
@@ -104,9 +105,14 @@ def cvat_image_to_coco(  # noqa: C901, too complex
                         cvat_image, instance_id
                     )
                     coco_annotations[-1].iscrowd = 0
-                    coco_annotations[-1].area = BinarySegmentationMask.from_coco_segmentation_mask(
+                    mask = BinarySegmentationMask.from_coco_segmentation_mask(
                         coco_annotations[-1].segmentation, coco_image.width, coco_image.height
-                    ).area
+                    )
+                    coco_annotations[-1].area = mask.area
+
+                    if not add_bbox:
+                        coco_annotations[-1].bbox = mask.bbox
+
                 annotation_id_counter += 1
 
     coco_model = CocoKeypointsDataset(images=coco_images, annotations=coco_annotations, categories=coco_categories)
