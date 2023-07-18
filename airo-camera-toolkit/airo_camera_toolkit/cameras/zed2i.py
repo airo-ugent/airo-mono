@@ -103,7 +103,8 @@ class Zed2i(StereoRGBDCamera):
 
         # TODO: create a configuration class for the runtime parameters
         self.runtime_params = sl.RuntimeParameters()
-        self.runtime_params.sensing_mode = sl.SENSING_MODE.STANDARD  # standard > fill for accuracy. See docs.
+        # Enabling fill mode changed for SDK 4.0: https://www.stereolabs.com/developers/release/4.0/migration-guide/
+        self.runtime_params.enable_fill_mode = False  # standard > fill for accuracy. See docs.
         self.runtime_params.texture_confidence_threshold = 100
         self.runtime_params.confidence_threshold = 100
         self.depth_enabled = True
@@ -148,10 +149,9 @@ class Zed2i(StereoRGBDCamera):
     def pose_of_right_view_in_left_view(self) -> HomogeneousMatrixType:
         # get the 'rectified' pose of the right view wrt to the left view
         # should be approx a translation along the x-axis of 120mm (Zed2i camera), expressed in the unit of the coordinates, which we set to meters.
-        # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1CalibrationParameters.html#a99ec1eeeb66c781c27b574fdc36881d2
-        matrix = np.eye(4)
-        matrix[:3, 3] = self.camera.get_camera_information().camera_configuration.calibration_parameters.T
-        return matrix
+        # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1CalibrationParameters.html
+        # Note: the CalibrationParameters class changed for the SDK 4.0, the old .T attribute we used was removed.
+        return self.camera.get_camera_information().camera_configuration.calibration_parameters.stereo_transform.m
 
     @property
     def depth_enabled(self) -> bool:
