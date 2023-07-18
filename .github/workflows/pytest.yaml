@@ -30,3 +30,18 @@ jobs:
         pip install ${{matrix.package}}/[external]
     - name: Run Tests
       run: pytest ${{matrix.package}}/
+    - name: Run Notebooks
+      # cannot use glob patter because that fails if no notebooks are found (in which case the glob pattern is empty.)
+      # so cannot do something like pytest --nbmake ${{matrix.package}}/**/*.ipynb
+      # and we also don't want to re-execute all regular tests (pytest --nbmake .)
+      # so manually iterate over all files and run pytest --nbmake on each one.
+
+      # don't forget to enable glob! https://github.com/orgs/community/discussions/25638
+      run: |
+        pip install nbmake
+        python -m ipykernel install --user --name airo-mono
+        shopt -s globstar nullglob
+        echo "Testing notebooks..."
+        for nb in ${{matrix.package}}/**/*.ipynb; do
+          pytest --nbmake $nb;
+        done

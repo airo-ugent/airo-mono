@@ -9,7 +9,7 @@ setuptools.setup(
     description="Interfaces, hardware implementations of those interfaces and other functionalities to control robot manipulators and grippers at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
-    install_requires=["numpy", "ur-rtde", "click"],
+    install_requires=["numpy", "ur-rtde", "click==8.1.3"],  # 8.1.4 breaks mypy
     extras_require={
         "external": [
             f"airo_typing @ file://localhost/{root_folder}/airo-typing",
