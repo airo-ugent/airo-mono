@@ -18,7 +18,7 @@ _RGB_TIMESTAMP_SHM_NAME = "rgb_timestamp"
 _INTRINSICS_SHM_NAME = "intrinsics"
 
 
-class MultiProcessRGBPublisher(Process):
+class MultiprocessRGBPublisher(Process):
     """publishes the data of a camera that implements the RGBCamera interface to shared memory blocks.
     Shared memory blocks can then be accessed in other processes using their names,
     cf. https://docs.python.org/3/library/multiprocessing.shared_memory.html#module-multiprocessing.shared_memory
@@ -118,7 +118,7 @@ class MultiProcessRGBPublisher(Process):
         # self.depth_image_shm.unlink()
 
 
-class MultiProcessRGBReceiver(RGBCamera):
+class MultiprocessRGBReceiver(RGBCamera):
     """Implements the RGBD camera interface for a camera that is running in a different process and shares its data using shared memory blocks.
     To be used with the Publisher class.
     """
@@ -198,7 +198,7 @@ class MultiProcessRGBReceiver(RGBCamera):
         self._close_shared_memory()
 
 
-class MultiProcessRerunRGBLogger(Process):
+class MultiprocessRGBRerunLogger(Process):
     def __init__(
         self,
         shared_memory_namespace: str,
@@ -227,8 +227,16 @@ class MultiProcessRerunRGBLogger(Process):
         """main loop of the process, runs until the process is terminated"""
         import rerun
 
+        print("logger authkey:")
+        print(multiprocessing.current_process().authkey)
+
+        print("Connecting to rerun")
+        # rerun.init("Realsense test")
+        rerun.init("rerun")
         rerun.connect()
-        self.multiProcessRGBReceiver = MultiProcessRGBReceiver(
+        # print(rerun.get_global_data_recording())
+
+        self.multiprocessRGBReceiver = MultiprocessRGBReceiver(
             self._shared_memory_namespace,
             self._camera_resolution_width,
             self._camera_resolution_height,
@@ -237,12 +245,12 @@ class MultiProcessRerunRGBLogger(Process):
         previous_timestamp = time.time()
 
         while not self.shutdown_event.is_set():
-            timestamp = self.multiProcessRGBReceiver.get_rgb_image_timestamp()
+            timestamp = self.multiprocessRGBReceiver.get_rgb_image_timestamp()
             if timestamp <= previous_timestamp:
                 time.sleep(0.001)  # Check every millisecond
                 continue
 
-            image = self.multiProcessRGBReceiver.get_rgb_image()
+            image = self.multiprocessRGBReceiver.get_rgb_image()
             if self._numpy_rot90_k != 0:
                 image = np.rot90(image, self._numpy_rot90_k)
 
@@ -252,8 +260,11 @@ class MultiProcessRerunRGBLogger(Process):
             except Exception as e:
                 print(e)
                 continue
+
+            print("Logging image")
             image_rgb = image_bgr[:, :, ::-1]
             rerun.log_image(self._shared_memory_namespace, image_rgb)
+            print("Logging succeeded")
 
             if self.save_images_to_disk:
                 # write image to disk:
@@ -264,22 +275,22 @@ class MultiProcessRerunRGBLogger(Process):
 
             previous_timestamp = timestamp
 
-        self.multiProcessRGBReceiver.stop_receiving()
+        self.multiprocessRGBReceiver.stop_receiving()
 
     def stop_logging(self) -> None:
         self.shutdown_event.set()
 
 
 if __name__ == "__main__":
-    """example of how to use the MultiProcessRGBDPublisher and MultiProcessRGBDReceiver.
-    You can also use the MultiProcessRGBDReceiver in a different process (e.g. in a different python script)
+    """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
+    You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
     from airo_camera_toolkit.cameras.zed2i import Zed2i
 
     resolution_identifier = Zed2i.RESOLUTION_1080
     resolution = Zed2i.resolution_sizes[resolution_identifier]
 
-    p = MultiProcessRGBPublisher(
+    p = MultiprocessRGBPublisher(
         Zed2i,
         camera_kwargs={
             "resolution": resolution_identifier,
@@ -288,7 +299,7 @@ if __name__ == "__main__":
         },
     )
     p.start()
-    receiver = MultiProcessRGBReceiver("camera", *resolution)
+    receiver = MultiprocessRGBReceiver("camera", *resolution)
 
     while True:
         logger.info("Getting image")

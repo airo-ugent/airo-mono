@@ -7,9 +7,9 @@ import cv2
 import loguru
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
-    MultiProcessRerunRGBLogger,
-    MultiProcessRGBPublisher,
-    MultiProcessRGBReceiver,
+    MultiprocessRGBPublisher,
+    MultiprocessRGBReceiver,
+    MultiprocessRGBRerunLogger,
 )
 from airo_camera_toolkit.utils import ImageConverter
 
@@ -21,7 +21,7 @@ _DEPTH_SHM_NAME = "depth"
 _DEPTH_IMAGE_SHM_NAME = "depth_image"
 
 
-class MultiProcessRGBDPublisher(MultiProcessRGBPublisher):
+class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
     """publishes the data of a camera that implements the RGBDCamera interface to shared memory blocks.
     Shared memory blocks can then be accessed in other processes using their names,
     cf. https://docs.python.org/3/library/multiprocessing.shared_memory.html#module-multiprocessing.shared_memory
@@ -104,7 +104,7 @@ class MultiProcessRGBDPublisher(MultiProcessRGBPublisher):
         self.depth_image_shm.unlink()
 
 
-class MultiProcessRGBDReceiver(MultiProcessRGBReceiver, RGBDCamera):
+class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
     """Implements the RGBD camera interface for a camera that is running in a different process and shares its data using shared memory blocks.
     To be used with the Publisher class.
     """
@@ -173,7 +173,7 @@ class MultiProcessRGBDReceiver(MultiProcessRGBReceiver, RGBDCamera):
         self._close_shared_memory()
 
 
-class MultiProcessRerunRGBDLogger(MultiProcessRerunRGBLogger):
+class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
     def __init__(
         self,
         shared_memory_namespace: str,
@@ -193,7 +193,7 @@ class MultiProcessRerunRGBDLogger(MultiProcessRerunRGBLogger):
         import rerun
 
         rerun.connect()
-        self.multiProcessRGBDReceiver = MultiProcessRGBDReceiver(
+        self.multiprocessRGBDReceiver = MultiprocessRGBDReceiver(
             self._shared_memory_namespace,
             self._camera_resolution_width,
             self._camera_resolution_height,
@@ -202,13 +202,13 @@ class MultiProcessRerunRGBDLogger(MultiProcessRerunRGBLogger):
         previous_timestamp = time.time()
 
         while not self.shutdown_event.is_set():
-            timestamp = self.multiProcessRGBDReceiver.get_rgb_image_timestamp()
+            timestamp = self.multiprocessRGBDReceiver.get_rgb_image_timestamp()
             if timestamp <= previous_timestamp:
                 time.sleep(0.001)  # Check every millisecond
                 continue
 
-            image = self.multiProcessRGBDReceiver.get_rgb_image()
-            depth_image = self.multiProcessRGBDReceiver.get_depth_image()
+            image = self.multiprocessRGBDReceiver.get_rgb_image()
+            depth_image = self.multiprocessRGBDReceiver.get_depth_image()
 
             # Float to int conversion for faster logging
             image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
@@ -223,12 +223,12 @@ class MultiProcessRerunRGBDLogger(MultiProcessRerunRGBLogger):
             rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image)
             previous_timestamp = timestamp
 
-        self.multiProcessRGBDReceiver.stop_receiving()
+        self.multiprocessRGBDReceiver.stop_receiving()
 
 
 if __name__ == "__main__":
-    """example of how to use the MultiProcessRGBDPublisher and MultiProcessRGBDReceiver.
-    You can also use the MultiProcessRGBDReceiver in a different process (e.g. in a different python script)
+    """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
+    You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
 
     from airo_camera_toolkit.cameras.zed2i import Zed2i
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     resolution_identifier = Zed2i.RESOLUTION_720
     resolution = Zed2i.resolution_sizes[resolution_identifier]
 
-    p = MultiProcessRGBDPublisher(
+    p = MultiprocessRGBDPublisher(
         Zed2i,
         camera_kwargs={
             "resolution": resolution_identifier,
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         },
     )
     p.start()
-    receiver = MultiProcessRGBDReceiver("camera", *resolution)
+    receiver = MultiprocessRGBDReceiver("camera", *resolution)
 
     while True:
         logger.info("Getting image")
