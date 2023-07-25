@@ -20,7 +20,7 @@ publisher.start()
 
 # The receiver only need to know the shared memory namespace of the publisher and the image resolution.
 resolution = Zed2i.resolution_sizes[Zed2i.RESOLUTION_720]
-camera = MultiprocessRGBReceiver("zed_top", *resolution)
+camera = MultiprocessRGBReceiver("zed_top")
 
 # From this point on, the camera behaves like a regular airo-camera-toolkit camera
 while True:
