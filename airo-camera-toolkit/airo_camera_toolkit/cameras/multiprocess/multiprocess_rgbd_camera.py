@@ -9,16 +9,17 @@ import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
     MultiprocessRGBPublisher,
     MultiprocessRGBReceiver,
-    MultiprocessRGBRerunLogger,
+    shared_memory_block_like,
 )
-from airo_camera_toolkit.utils import ImageConverter
 
 logger = loguru.logger
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_typing import NumpyDepthMapType, NumpyIntImageType
 
 _DEPTH_SHM_NAME = "depth"
+_DEPTH__SHAPE_SHM_NAME = "depth_shape"
 _DEPTH_IMAGE_SHM_NAME = "depth_image"
+_DEPTH_IMAGE_SHAPE_SHM_NAME = "depth_image_shape"
 
 
 class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
@@ -44,60 +45,46 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         """in-process creation of camera object and shared memory blocks"""
         super()._setup()
         assert isinstance(self._camera, RGBDCamera)
-        # create shared memory blocks here so that we can use the actual image sizes and don't need to pass resolutions in the constructor
-        dummy_depth_map = self._camera.get_depth_map()
-        dummpy_depth_image = self._camera.get_depth_image()
 
-        self.depth_shm = shared_memory.SharedMemory(
-            create=True,
-            size=dummy_depth_map.nbytes,
-            name=f"{self._shared_memory_namespace}_{_DEPTH_SHM_NAME}",
-        )
-        self.depth_shm_array: np.ndarray = np.ndarray(
-            dummy_depth_map.shape,
-            dtype=dummy_depth_map.dtype,
-            buffer=self.depth_shm.buf,
-        )
+        depth_name = f"{self._shared_memory_namespace}_{_DEPTH_SHM_NAME}"
+        depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH__SHAPE_SHM_NAME}"
+        depth_image_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
+        depth_image_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHAPE_SHM_NAME}"
 
-        self.depth_image_shm = shared_memory.SharedMemory(
-            create=True,
-            size=dummpy_depth_image.nbytes,
-            name=f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}",
-        )
+        depth_map = self._camera.get_depth_map()
+        depth_map_shape = np.array([depth_map.shape])
+        depth_image = self._camera.get_depth_image()
+        depth_image_shape = np.array([depth_image.shape])
 
-        self.depth_image_shm_array: np.ndarray = np.ndarray(
-            dummpy_depth_image.shape,
-            dtype=dummpy_depth_image.dtype,
-            buffer=self.depth_image_shm.buf,
-        )
+        self.depth_shm, self.depth_shm_array = shared_memory_block_like(depth_map, depth_name)
+        self.depth_shape_shm, self.depth_shape_shm_array = shared_memory_block_like(depth_map_shape, depth_shape_name)
+        self.depth_image_shm, self.depth_image_shm_array = shared_memory_block_like(depth_image, depth_image_name)
+        (
+            self.depth_image_shape_shm,
+            self.depth_image_shape_shm_array,
+        ) = shared_memory_block_like(depth_image_shape, depth_image_shape_name)
 
-    def stop_publishing(self) -> None:
+    def stop(self) -> None:
         self.shutdown_event.set()
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
         self._setup()
-        assert isinstance(self._camera, RGBDCamera)
 
-        # only write intrinsics once, these do not change.
-        self.intrinsics_shm_array[:] = self._camera.intrinsics_matrix()[:]
         while not self.shutdown_event.is_set():
-            # TODO: use Lock to make sure that the data is not overwritten while it is being read and avoid tearing
-            img = self._camera.get_rgb_image()
-            depth = self._camera.get_depth_map()
+            image = self._camera.get_rgb_image()
+            depth_map = self._camera.get_depth_map()
             depth_image = self._camera.get_depth_image()
-            self.rgb_shm_array[:] = img[:]
-            self.depth_shm_array[:] = depth[:]
+            self.rgb_shm_array[:] = image[:]
+            self.depth_shm_array[:] = depth_map[:]
             self.depth_image_shm_array[:] = depth_image[:]
-            self.rgb_timestamp_shm.buf[:] = np.array([time.time()]).tobytes()
+            self.timestamp_shm_array[:] = np.array([time.time()])[:]
 
         self.unlink_shared_memory()
 
     def unlink_shared_memory(self) -> None:
         """unlink the shared memory blocks so that they are deleted when the process is terminated"""
         super().unlink_shared_memory()
-        assert self.depth_shm is not None
-        assert self.depth_image_shm is not None
         self.depth_shm.close()
         self.depth_image_shm.close()
         self.depth_shm.unlink()
@@ -109,49 +96,46 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
     To be used with the Publisher class.
     """
 
-    def __init__(
-        self,
-        shared_memory_namespace: str,
-        camera_resolution_width: int,
-        camera_resolution_height: int,
-    ) -> None:
-        super().__init__(shared_memory_namespace, camera_resolution_width, camera_resolution_height)
+    def __init__(self, shared_memory_namespace: str) -> None:
+        super().__init__(shared_memory_namespace)
 
-        is_shm_created = False
-        for _ in range(3):
-            # if the sender process was just started, the shared memory blocks might not be created yet
-            # so retry a few times to acces them
+        depth_name = f"{self._shared_memory_namespace}_{_DEPTH_SHM_NAME}"
+        depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH__SHAPE_SHM_NAME}"
+        depth_image_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
+        depth_image_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHAPE_SHM_NAME}"
+
+        # Attach to existing shared memory blocks. Retry a few times to give the publisher time to start up (opening
+        # connection to a camera can take a while).
+        is_shm_found = False
+        for i in range(10):
             try:
-                self.depth_shm = shared_memory.SharedMemory(name=f"{shared_memory_namespace}_{_DEPTH_SHM_NAME}")
-                self.depth_image_shm = shared_memory.SharedMemory(
-                    name=f"{shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
-                )
-
-                is_shm_created = True
+                self.depth_shm = shared_memory.SharedMemory(name=depth_name)
+                self.depth_shape_shm = shared_memory.SharedMemory(name=depth_shape_name)
+                self.depth_image_shm = shared_memory.SharedMemory(name=depth_image_name)
+                self.depth_image_shape_shm = shared_memory.SharedMemory(name=depth_image_shape_name)
+                is_shm_found = True
                 break
-            except FileNotFoundError as e:
-                print(e)
-                print("SHM not found, waiting 2 second")
-                time.sleep(2)
-        if not is_shm_created:
-            raise FileNotFoundError("Shared memory not found")
+            except FileNotFoundError:
+                print(
+                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" not found yet, retrying in 5 seconds.'
+                )
+                time.sleep(5)
+
+        if not is_shm_found:
+            raise FileNotFoundError("Shared memory not found.")
 
         # Same comment as in base class:
         resource_tracker.unregister(self.depth_shm._name, "shared_memory")
         resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")
 
-        # create numpy arrays that are backed by the shared memory blocks
-        self.depth_shm_array: np.ndarray = np.ndarray(
-            (camera_resolution_height, camera_resolution_width),
-            dtype=np.float32,
-            buffer=self.depth_shm.buf,
-        )
+        self.depth_shape_shm_array = np.ndarray((2,), dtype=np.int64, buffer=self.depth_shape_shm.buf)
+        self.depth_image_shape_shm_array = np.ndarray((3,), dtype=np.int64, buffer=self.depth_image_shape_shm.buf)
 
-        self.depth_image_shm_array: np.ndarray = np.ndarray(
-            (camera_resolution_height, camera_resolution_width, 3),
-            dtype=np.uint8,
-            buffer=self.depth_image_shm.buf,
-        )
+        depth_shape = tuple(self.depth_shape_shm_array[:])
+        depth_image_shape = tuple(self.depth_image_shape_shm_array[:])
+
+        self.depth_shm_array = np.ndarray(depth_shape, dtype=np.float32, buffer=self.depth_shm.buf)
+        self.depth_image_shm_array = np.ndarray(depth_image_shape, dtype=np.uint8, buffer=self.depth_image_shm.buf)
 
     def get_depth_map(self) -> NumpyDepthMapType:
         return self.depth_shm_array
@@ -164,66 +148,9 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         self.depth_shm.close()
         self.depth_image_shm.close()
 
-        # Same comment as in base class:
-        # resource_tracker.unregister(self.depth_shm._name, "shared_memory")
-        # resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")
-
     def stop(self) -> None:
         super().stop()
         self._close_shared_memory()
-
-
-class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
-    def __init__(
-        self,
-        shared_memory_namespace: str,
-        camera_resolution_width: int,
-        camera_resolution_height: int,
-        rotation_degrees_clockwise: int = 0,
-    ):
-        super().__init__(
-            shared_memory_namespace,
-            camera_resolution_width,
-            camera_resolution_height,
-            rotation_degrees_clockwise,
-        )
-
-    def run(self) -> None:
-        """main loop of the process, runs until the process is terminated"""
-        import rerun
-
-        rerun.connect()
-        self.multiprocessRGBDReceiver = MultiprocessRGBDReceiver(
-            self._shared_memory_namespace,
-            self._camera_resolution_width,
-            self._camera_resolution_height,
-        )
-
-        previous_timestamp = time.time()
-
-        while not self.shutdown_event.is_set():
-            timestamp = self.multiprocessRGBDReceiver.get_rgb_image_timestamp()
-            if timestamp <= previous_timestamp:
-                time.sleep(0.001)  # Check every millisecond
-                continue
-
-            image = self.multiprocessRGBDReceiver.get_rgb_image()
-            depth_image = self.multiprocessRGBDReceiver.get_depth_image()
-
-            # Float to int conversion for faster logging
-            image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
-            image = image_bgr[:, :, ::-1]
-
-            if self._numpy_rot90_k != 0:
-                image = np.rot90(image, self._numpy_rot90_k)
-                depth_image = np.rot90(depth_image, self._numpy_rot90_k)
-
-            rerun.log_image(self._shared_memory_namespace, image)
-
-            rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image)
-            previous_timestamp = timestamp
-
-        self.multiprocessRGBDReceiver.stop()
 
 
 if __name__ == "__main__":
@@ -245,13 +172,13 @@ if __name__ == "__main__":
         },
     )
     p.start()
-    receiver = MultiprocessRGBDReceiver("camera", *resolution)
+    receiver = MultiprocessRGBDReceiver("camera")
 
     while True:
         logger.info("Getting image")
         depth_map = receiver.get_depth_map()
         depth_image = receiver.get_depth_image()
-        cv2.imshow("Dpeth Map", depth_map)
+        cv2.imshow("Depth Map", depth_map)
         cv2.imshow("Depth Image", depth_image)
         key = cv2.waitKey(10)
         if key == ord("q"):
