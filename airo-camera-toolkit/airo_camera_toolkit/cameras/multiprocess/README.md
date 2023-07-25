@@ -26,4 +26,13 @@ Two classes are at the core of our solution:
 
 Note that the publisher is a subclass of `Process`, this way it can publish uninterrupted.
 The receiver is subclass of `RGBCamera` which ensures that it follows the interface of a regular airo-camera-toolkit camera.
+
+## Usage
 See [multiprocess_example.py](../../../docs/multiprocess_example.py) for a simple example of how to use these classes.
+The main difference with the regular workflow is that instead of instantiating a `RGBCamera` subclass, you now have to first create a `MultiprocessRGBPublisher` and then one or more `MultiprocessRGBReceiver`s.
+
+## Additional features
+TODO implement and explain::
+* Blocking MultiprocessRGBReceiver
+* RerunLogger
+* VideoRecorder .start() and .stop()

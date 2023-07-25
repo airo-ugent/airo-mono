@@ -1,12 +1,11 @@
-"""code for sharing the data of a camera that implements the RGBDCamera interface between processes using shared memory"""
+"""Publisher and receiver classes for multiprocess camera sharing."""
 import multiprocessing
 import time
 from multiprocessing import Process, resource_tracker, shared_memory
-from typing import Optional
+from typing import Tuple
 
 import loguru
 import numpy as np
-from airo_camera_toolkit.utils import ImageConverter
 
 logger = loguru.logger
 import cv2
@@ -14,12 +13,30 @@ from airo_camera_toolkit.interfaces import RGBCamera
 from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType
 
 _RGB_SHM_NAME = "rgb"
-_RGB_TIMESTAMP_SHM_NAME = "rgb_timestamp"
+_RGB_SHAPE_SHM_NAME = "rgb_shape"
+_TIMESTAMP_SHM_NAME = "timestamp"
 _INTRINSICS_SHM_NAME = "intrinsics"
 
 
+def shared_memory_block_like(array: np.ndarray, name: str) -> Tuple[shared_memory.SharedMemory, np.ndarray]:
+    """Creates a shared memory block with the same shape and dtype as the given array. Additionally, the shared memory
+    is initialized with the values of the given array (this convenient for data that won't change).
+
+    Args:
+        array: The array that will be used to determine the size of the shared memory block, in accordance with its shape and dtype.
+        name: The name of the shared memory block.
+
+    Returns:
+        The created shared memory block and a new array that is backed by the shared memory block.
+    """
+    shm = shared_memory.SharedMemory(create=True, size=array.nbytes, name=name)
+    shm_array = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
+    shm_array[:] = array[:]
+    return shm, shm_array
+
+
 class MultiprocessRGBPublisher(Process):
-    """publishes the data of a camera that implements the RGBCamera interface to shared memory blocks.
+    """Publishes the data of a camera that implements the RGBCamera interface to shared memory blocks.
     Shared memory blocks can then be accessed in other processes using their names,
     cf. https://docs.python.org/3/library/multiprocessing.shared_memory.html#module-multiprocessing.shared_memory
 
@@ -32,6 +49,13 @@ class MultiprocessRGBPublisher(Process):
         camera_kwargs: dict = {},
         shared_memory_namespace: str = "camera",
     ):
+        """Instantiates the publisher. Note that the publisher (and its process) will not start until start() is called.
+
+        Args:
+            camera_cls (type): The class e.g. Zed2i that this publisher will instantiate.
+            camera_kwargs (dict, optional): The kwargs that will be passed to the camera_cls constructor.
+            shared_memory_namespace (str, optional): The string that will be used to prefix the shared memory blocks that this class will create.
+        """
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
         self._camera_cls = camera_cls
@@ -39,83 +63,96 @@ class MultiprocessRGBPublisher(Process):
         self._camera = None
         self.shutdown_event = multiprocessing.Event()
 
-        self.rgb_shm: Optional[shared_memory.SharedMemory] = None
-        self.intrinsics_shm: Optional[shared_memory.SharedMemory] = None
+        # self.rgb_shm: Optional[shared_memory.SharedMemory] = None
+        # self.intrinsics_shm: Optional[shared_memory.SharedMemory] = None
 
     def _setup(self) -> None:
-        """in-process creation of camera object and shared memory blocks"""
-        # have to create camera here to make sure the shared memory blocks in the camera are created in the same process
+        """Note: to be able to retrieve camera image from the Publisher process, the camera must be instantiated in the
+        Publisher process. For this reason, we do not instantiate the camera in __init__ but, here instead.
 
-        # Opening cameras fails often so retry a few times
-        # for _ in range(3):
-        #     try:
+        We also create the shared memory blocks here, so that their lifetime is bound to the lifetime of the Publisher
+        process. Usually shared memory may outlive its creator process, but as the Publisher is the only process that
+        writes to the shared memory blocks, we want to make sure that they are deleted when the Publisher process is
+        terminated. This also frees up the names of the shared memory blocks so that they can be reused.
+
+
+        Four SharedMemory blocks are created, each block is prefixed with the namespace of the publisher. Two of these
+        are only written once, the other two are written continuously.
+
+        Constant blocks:
+        * intrinsics: the intrinsics matrix of the camera
+        * rgb_shape: the shape that rgb image array should be
+
+        Blocks that are written continuously:
+        * rgb: the most recently retrieved image
+        * timestamp: the timestamp of that image
+
+
+        To simplify access, we create numpy arrays that are backed by the shared memory blocks for the rgb image and
+        the intrinsics matrix.
+        """
+
+        # Instantiating a camera.
         self._camera = self._camera_cls(**self._camera_kwargs)
-        assert isinstance(self._camera, RGBCamera)
-        # except Exception as e:
-        #     print(f"Camera {self._shared_memory_namespace} could not be instantiated, waiting 10 seconds and retrying, expection was:")
-        #     print(e)
-        #     time.sleep(10)
+        assert isinstance(self._camera, RGBCamera)  # Check whether user passed a valid camera class
 
-        # create shared memory blocks here so that we can use the actual image sizes and don't need to pass resolutions in the constructor
-        dummy_rgb_image = self._camera.get_rgb_image()
-        dummy_intrinsics = self._camera.intrinsics_matrix()
+        rgb_name = f"{self._shared_memory_namespace}_{_RGB_SHM_NAME}"
+        rgb_shape_name = f"{self._shared_memory_namespace}_{_RGB_SHAPE_SHM_NAME}"
+        timestamp_name = f"{self._shared_memory_namespace}_{_TIMESTAMP_SHM_NAME}"
+        intrinsics_name = f"{self._shared_memory_namespace}_{_INTRINSICS_SHM_NAME}"
 
-        self.rgb_shm = shared_memory.SharedMemory(
-            create=True,
-            size=dummy_rgb_image.nbytes,
-            name=f"{self._shared_memory_namespace}_{_RGB_SHM_NAME}",
-        )
-        self.rgb_shm_array: np.ndarray = np.ndarray(
-            dummy_rgb_image.shape, dtype=dummy_rgb_image.dtype, buffer=self.rgb_shm.buf
-        )
+        # Get the example arrays (this is the easiest way to initialize the shared memory blocks with the correct size).
+        rgb = self._camera.get_rgb_image()
+        rgb_shape = np.array(rgb.shape)
+        timestamp = np.array([time.time()])
+        intrinsics = self._camera.intrinsics_matrix()
 
-        self.rgb_timestamp_shm = shared_memory.SharedMemory(
-            create=True,
-            size=8,
-            name=f"{self._shared_memory_namespace}_{_RGB_TIMESTAMP_SHM_NAME}",
-        )
+        # Create the shared memory blocks and numpy arrays that are backed by them.
+        self.rgb_shm, self.rgb_shm_array = shared_memory_block_like(rgb, rgb_name)
+        self.rgb_shape_shm, self.rgb_shape_shm_array = shared_memory_block_like(rgb_shape, rgb_shape_name)
+        self.timestamp_shm, self.timestamp_shm_array = shared_memory_block_like(timestamp, timestamp_name)
+        self.intrinsics_shm, self.intrinsics_shm_array = shared_memory_block_like(intrinsics, intrinsics_name)
 
-        self.intrinsics_shm = shared_memory.SharedMemory(
-            create=True,
-            size=dummy_intrinsics.nbytes,
-            name=f"{self._shared_memory_namespace}_{_INTRINSICS_SHM_NAME}",
-        )
-
-        self.intrinsics_shm_array: np.ndarray = np.ndarray(
-            dummy_intrinsics.shape,
-            dtype=dummy_intrinsics.dtype,
-            buffer=self.intrinsics_shm.buf,
-        )
-
-    def stop_publishing(self) -> None:
+    def stop(self) -> None:
         self.shutdown_event.set()
 
     def run(self) -> None:
-        """main loop of the process, runs until the process is terminated"""
-        self._setup()
-        assert isinstance(self._camera, RGBCamera)
+        """Main loop of the process, runs until the process is terminated.
 
-        # only write intrinsics once, these do not change.
-        self.intrinsics_shm_array[:] = self._camera.intrinsics_matrix()[:]
+        Each iteration a new image is retrieved from the camera and copied to the shared memory block.
+
+        Note that we update timestamp after image data has been copied. This ensure that if the receiver sees a new
+        timestamp, it will also see the new image data. Theoretically it is possble that the recevier reads new image
+        data, but the timestamp is still old. I'm not sure whether this is a problem in practice.
+
+        # TODO: invesitgate whether a Lock is required when copying the image data to the shared memory block. Also
+        whether it is possible to do this without having to spawn all processes from a single Python script (e.g. to
+        pass the Lock object).
+        """
+        self._setup()
 
         while not self.shutdown_event.is_set():
-            # TODO: use Lock to make sure that the data is not overwritten while it is being read and avoid tearing
-            img = self._camera.get_rgb_image()
-            self.rgb_shm_array[:] = img[:]
-            self.rgb_timestamp_shm.buf[:] = np.array([time.time()]).tobytes()
+            image = self._camera.get_rgb_image()
+            self.rgb_shm_array[:] = image[:]
+            self.timestamp_shm_array[:] = np.array([time.time()])[:]
 
         self.unlink_shared_memory()
 
     def unlink_shared_memory(self) -> None:
-        """unlink the shared memory blocks so that they are deleted when the process is terminated"""
-        assert self.rgb_shm is not None
-        assert self.intrinsics_shm is not None
+        """Cleanup of the SharedMemory as recommended by the docs:
+        https://docs.python.org/3/library/multiprocessing.shared_memory.html
 
+        However, I'm not sure how essential this actually is.
+        """
         self.rgb_shm.close()
+        self.rgb_shape_shm.close()
+        self.timestamp_shm.close()
         self.intrinsics_shm.close()
+
         self.rgb_shm.unlink()
+        self.rgb_shape_shm.unlink()
+        self.timestamp_shm.unlink()
         self.intrinsics_shm.unlink()
-        # self.depth_image_shm.unlink()
 
 
 class MultiprocessRGBReceiver(RGBCamera):
@@ -126,170 +163,107 @@ class MultiprocessRGBReceiver(RGBCamera):
     def __init__(
         self,
         shared_memory_namespace: str,
-        camera_resolution_width: int,
-        camera_resolution_height: int,
+        blocking: bool = True,
     ) -> None:
         super().__init__()
 
-        is_shm_created = False
-        for _ in range(20):
-            # if the sender process was just started, the shared memory blocks might not be created yet
-            # so retry a few times to access them
+        self.blocking = blocking
+
+        self._shared_memory_namespace = shared_memory_namespace
+        rgb_name = f"{self._shared_memory_namespace}_{_RGB_SHM_NAME}"
+        rgb_shape_name = f"{self._shared_memory_namespace}_{_RGB_SHAPE_SHM_NAME}"
+        timestamp_name = f"{self._shared_memory_namespace}_{_TIMESTAMP_SHM_NAME}"
+        intrinsics_name = f"{self._shared_memory_namespace}_{_INTRINSICS_SHM_NAME}"
+
+        # Attach to existing shared memory blocks. Retry a few times to give the publisher time to start up (opening
+        # connection to a camera can take a while).
+        is_shm_found = False
+        for i in range(10):
             try:
-                self.rgb_shm = shared_memory.SharedMemory(name=f"{shared_memory_namespace}_{_RGB_SHM_NAME}")
-                self.rgb_timestamp_shm = shared_memory.SharedMemory(
-                    name=f"{shared_memory_namespace}_{_RGB_TIMESTAMP_SHM_NAME}"
-                )
-                self.intrinsics_shm = shared_memory.SharedMemory(
-                    name=f"{shared_memory_namespace}_{_INTRINSICS_SHM_NAME}"
-                )
-                is_shm_created = True
+                self.rgb_shm = shared_memory.SharedMemory(name=rgb_name)
+                self.rgb_shape_shm = shared_memory.SharedMemory(name=rgb_shape_name)
+                self.timestamp_shm = shared_memory.SharedMemory(name=timestamp_name)
+                self.intrinsics_shm = shared_memory.SharedMemory(name=intrinsics_name)
+                is_shm_found = True
                 break
-            except FileNotFoundError as e:
-                print(e)
-                print("SharedMemory not found yet, waiting 2 second and retrying.")
-                time.sleep(2)
-        if not is_shm_created:
+            except FileNotFoundError:
+                print(
+                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" not found yet, retrying in 5 seconds.'
+                )
+                time.sleep(5)
+
+        if not is_shm_found:
             raise FileNotFoundError("Shared memory not found.")
-
-        resource_tracker.unregister(self.rgb_shm._name, "shared_memory")
-        resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
-        resource_tracker.unregister(self.rgb_timestamp_shm._name, "shared_memory")
-
-        # create numpy arrays that are backed by the shared memory blocks
-        self.rgb_shm_array: np.ndarray = np.ndarray(
-            (camera_resolution_height, camera_resolution_width, 3),
-            dtype=np.float32,
-            buffer=self.rgb_shm.buf,
-        )
-
-        self.intrinsics_shm_array: np.ndarray = np.ndarray((3, 3), dtype=np.float64, buffer=self.intrinsics_shm.buf)
-
-    def get_rgb_image_timestamp(self) -> float:
-        return np.frombuffer(self.rgb_timestamp_shm.buf, dtype=np.float64)[0]
-
-    # TODO: use locks to make sure that the data is not overwritten while it is being read and avoid tearing
-    # https://docs.python.org/3/library/multiprocessing.html#synchronization-between-processes
-    def get_rgb_image(self) -> NumpyFloatImageType:
-        return self.rgb_shm_array
-
-    def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
-        return self.intrinsics_shm_array
-
-    def _close_shared_memory(self) -> None:
-        """Closing shared memory, to signal that they are no longer need by this object."""
-        self.rgb_shm.close()
-        self.rgb_timestamp_shm.close()
-        self.intrinsics_shm.close()
 
         # Normally, we wouldn't have to do this unregistering. However, without it, the resource tracker incorrectly
         # destroys access to the shared memory blocks when the process is terminated. This is a known 3 year old bug
         # that hasn't been resolved yet: https://bugs.python.org/issue39959
         # Concretely, the problem was that once any MultiprocessRGBReceiver object was destroyed, all further access to
         # the shared memory blocks would fail with a FileNotFoundError.
-        # resource_tracker.unregister(self.rgb_shm._name, "shared_memory")
-        # resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
-        # resource_tracker.unregister(self.rgb_timestamp_shm._name, "shared_memory")
+        resource_tracker.unregister(self.rgb_shm._name, "shared_memory")
+        resource_tracker.unregister(self.rgb_shape_shm._name, "shared_memory")
+        resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
+        resource_tracker.unregister(self.timestamp_shm._name, "shared_memory")
 
-    def stop_receiving(self) -> None:
-        self._close_shared_memory()
+        # Timestamp and intrinsics are the same shape for all images, so I decided that we could hardcode their shape.
+        # However, images come in many shapes, which I also decided to pass via shared memory. (Previously, I required
+        # the image resolution to be passed to this class' constructor, but that was inconvenient to keep in sync
+        # between publisher and receiver scripts.)
+        # Create numpy arrays that are backed by the shared memory blocks
+        self.rgb_shape_shm_array = np.ndarray((3,), dtype=np.int64, buffer=self.rgb_shape_shm.buf)
+        self.intrinsics_shm_array = np.ndarray((3, 3), dtype=np.float64, buffer=self.intrinsics_shm.buf)
+        self.timestamp_shm_array = np.ndarray((1,), dtype=np.float64, buffer=self.timestamp_shm.buf)
+
+        # The shape of the image is not known in advance, so we need to retrieve it from the shared memory block.
+        rgb_shape = tuple(self.rgb_shape_shm_array[:])
+        self.rgb_shm_array = np.ndarray(rgb_shape, dtype=np.float32, buffer=self.rgb_shm.buf)
+
+        self.previous_timestamp = time.time()
+
+    def get_current_timestamp(self) -> float:
+        """Timestamp of the image that is currently in the shared memory block."""
+        return self.timestamp_shm_array[0]
+
+    def get_rgb_image(self) -> NumpyFloatImageType:
+        """Get an RGB image from the shared memory block. This function has two modes of operation: blocking and
+        non-blocking, depending on the value of the blocking attribute. If blocking is True, this function will wait
+        until a new timestamp is detected before returning. This ensures that the same image is never returned twice.
+        This is usually what consumers want and is consistent with regular RGBCamera implementations. When blocking is
+        False, this function will immediately return the current contents of the shared memory block.
+        """
+        if not self.blocking:
+            return self.rgb_shm_array
+
+        # Blocking mode of operation. Wait until the timestamp is newer than that of the image we have previously returned.
+        while not self.get_current_timestamp() > self.previous_timestamp:
+            time.sleep(0.001)
+
+        self.previous_timestamp = self.get_current_timestamp()
+        return self.rgb_shm_array
+
+    def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
+        return self.intrinsics_shm_array
+
+    def _close_shared_memory(self) -> None:
+        """Signal that the shared memory blocks are no longer needed from this process."""
+        self.rgb_shm.close()
+        self.rgb_shape_shm.close()
+        self.timestamp_shm.close()
+        self.intrinsics_shm.close()
 
     def __del__(self) -> None:
         self._close_shared_memory()
 
 
-class MultiprocessRGBRerunLogger(Process):
-    def __init__(
-        self,
-        shared_memory_namespace: str,
-        camera_resolution_width: int,
-        camera_resolution_height: int,
-        rotation_degrees_clockwise: int = 0,
-        save_images_to_disk: bool = False,
-    ):
-        super().__init__(daemon=True)
-        self._shared_memory_namespace = shared_memory_namespace
-        self._camera_resolution_width = camera_resolution_width
-        self._camera_resolution_height = camera_resolution_height
-        self.save_images_to_disk = save_images_to_disk
-        self.shutdown_event = multiprocessing.Event()
-
-        if rotation_degrees_clockwise is None:
-            rotation_degrees_clockwise = 0
-
-        remainder = rotation_degrees_clockwise % 90
-        if remainder != 0:
-            raise ValueError("rotation_degrees must be a multiple of 90")
-        # Divide by 90, and negate because numpy rotates counter-clockwise
-        self._numpy_rot90_k = -rotation_degrees_clockwise // 90
-
-    def run(self) -> None:
-        """main loop of the process, runs until the process is terminated"""
-        import rerun
-
-        print("logger authkey:")
-        print(multiprocessing.current_process().authkey)
-
-        print("Connecting to rerun")
-        # rerun.init("Realsense test")
-        rerun.init("rerun")
-        rerun.connect()
-        # print(rerun.get_global_data_recording())
-
-        self.multiprocessRGBReceiver = MultiprocessRGBReceiver(
-            self._shared_memory_namespace,
-            self._camera_resolution_width,
-            self._camera_resolution_height,
-        )
-
-        previous_timestamp = time.time()
-
-        while not self.shutdown_event.is_set():
-            timestamp = self.multiprocessRGBReceiver.get_rgb_image_timestamp()
-            if timestamp <= previous_timestamp:
-                time.sleep(0.001)  # Check every millisecond
-                continue
-
-            image = self.multiprocessRGBReceiver.get_rgb_image()
-            if self._numpy_rot90_k != 0:
-                image = np.rot90(image, self._numpy_rot90_k)
-
-            # Float to int conversion for faster logging
-            try:
-                image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
-            except Exception as e:
-                print(e)
-                continue
-
-            print("Logging image")
-            image_rgb = image_bgr[:, :, ::-1]
-            rerun.log_image(self._shared_memory_namespace, image_rgb)
-            print("Logging succeeded")
-
-            if self.save_images_to_disk:
-                # write image to disk:
-                image_opencv = ImageConverter.from_numpy_format(image).image_in_opencv_format
-                # format the timestamp
-                timestamp_str = str(timestamp).replace(".", "_")
-                cv2.imwrite(f"{self._shared_memory_namespace}_{timestamp_str}.png", image_opencv)
-
-            previous_timestamp = timestamp
-
-        self.multiprocessRGBReceiver.stop_receiving()
-
-    def stop_logging(self) -> None:
-        self.shutdown_event.set()
-
-
 if __name__ == "__main__":
-    """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
-    You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
+    """example of how to use the MultiprocessRGBPublisher and MultiprocessRGBReceiver.
+    You can also use the MultiprocessRGBReceiver in a different process (e.g. in a different python script)
     """
     from airo_camera_toolkit.cameras.zed2i import Zed2i
 
+    # Creating and starting the publisher
     resolution_identifier = Zed2i.RESOLUTION_1080
     resolution = Zed2i.resolution_sizes[resolution_identifier]
-
     p = MultiprocessRGBPublisher(
         Zed2i,
         camera_kwargs={
@@ -299,8 +273,9 @@ if __name__ == "__main__":
         },
     )
     p.start()
-    receiver = MultiprocessRGBReceiver("camera", *resolution)
 
+    # The receiver behaves just like a regular RGBCamera
+    receiver = MultiprocessRGBReceiver("camera")
     while True:
         logger.info("Getting image")
         image = receiver.get_rgb_image()

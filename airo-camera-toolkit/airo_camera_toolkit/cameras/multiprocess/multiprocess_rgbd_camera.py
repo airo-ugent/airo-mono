@@ -168,8 +168,8 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         # resource_tracker.unregister(self.depth_shm._name, "shared_memory")
         # resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")
 
-    def stop_receiving(self) -> None:
-        super().stop_receiving()
+    def stop(self) -> None:
+        super().stop()
         self._close_shared_memory()
 
 
@@ -223,7 +223,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
             rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image)
             previous_timestamp = timestamp
 
-        self.multiprocessRGBDReceiver.stop_receiving()
+        self.multiprocessRGBDReceiver.stop()
 
 
 if __name__ == "__main__":
