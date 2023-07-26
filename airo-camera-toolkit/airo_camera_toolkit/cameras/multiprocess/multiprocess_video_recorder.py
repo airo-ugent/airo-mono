@@ -1,6 +1,7 @@
 import multiprocessing
 import os
 import time
+from collections import deque
 from multiprocessing import Process
 
 import loguru
@@ -13,18 +14,55 @@ logger = loguru.logger
 import datetime
 
 
+class FPSMonitor:
+    def __init__(self, target_fps, queue_size=100, tolerance=0.05, name="FPSMonitor"):
+        self.target_fps = target_fps
+        self.tolerance = tolerance
+        self.name = name
+        self._durations = deque(maxlen=queue_size)
+        self._last_time = None
+
+    def get_fps(self):
+        if len(self._durations) == 0:
+            return 0
+
+        average_duration = sum(self._durations) / len(self._durations)
+        return 1 / average_duration
+
+    def check_fps(self):
+        fps = self.get_fps()
+        fps_relative_error = abs(fps - self.target_fps) / self.target_fps
+
+        if fps_relative_error > self.tolerance:
+            logger.warning(
+                f"{self.name} FPS is {fps:.2f} but should be {self.target_fps:.2f} (Error: {fps_relative_error:.3f}))"
+            )
+
+    def tick(self):
+        current_time = time.time()
+        if self._last_time is None:
+            self._last_time = current_time
+            return
+
+        duration = current_time - self._last_time
+        self._durations.append(duration)
+        self._last_time = current_time
+
+        if len(self._durations) == self._durations.maxlen:
+            self.check_fps()
+
+
 class MultiprocessVideoRecorder(Process):
     def __init__(
         self,
         shared_memory_namespace: str,
         video_path: str = None,
         image_transform: ImageTransform = None,
-        fps: int = 30,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
+        self._image_transform = image_transform
         self.shutdown_event = multiprocessing.Event()
-        self._fps = fps
 
         if video_path is None:
             output_dir = "output"
@@ -32,6 +70,7 @@ class MultiprocessVideoRecorder(Process):
             timestamp = datetime.datetime.now().strftime("%H:%M:%S:%f")[:-3]
             video_name = f"{timestamp}.mp4"
             video_path = os.path.join(output_dir, video_name)
+            video_path = os.path.abspath(video_path)
 
         self._video_path = video_path
 
@@ -40,16 +79,19 @@ class MultiprocessVideoRecorder(Process):
         import ffmpegcv
 
         receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
+        fps = receiver.fps_shm_array[0]
+        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", fps)
 
-        print(self._video_path)
-        print(self._fps)
-
-        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", self._fps)
+        fps_monitor = FPSMonitor(fps, name=f"{self._shared_memory_namespace} video recorder")
 
         while not self.shutdown_event.is_set():
             image_float = receiver.get_rgb_image()
             image = ImageConverter.from_numpy_format(image_float).image_in_opencv_format
+            if self._image_transform is not None:
+                image = self._image_transform.transform_image(image)
+
             video_writer.write(image)
+            fps_monitor.tick()
 
         video_writer.release()
 
@@ -59,7 +101,7 @@ class MultiprocessVideoRecorder(Process):
 
 if __name__ == "__main__":
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
-    recorder = MultiprocessVideoRecorder("camera")
+    recorder = MultiprocessVideoRecorder("zed_top")
     recorder.start()
     time.sleep(10)
     recorder.stop()

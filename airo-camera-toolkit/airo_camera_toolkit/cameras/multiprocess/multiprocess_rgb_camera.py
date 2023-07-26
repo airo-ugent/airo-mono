@@ -4,18 +4,19 @@ import time
 from multiprocessing import Process, resource_tracker, shared_memory
 from typing import Tuple
 
+import cv2
 import loguru
 import numpy as np
-
-logger = loguru.logger
-import cv2
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType
+
+logger = loguru.logger
 
 _RGB_SHM_NAME = "rgb"
 _RGB_SHAPE_SHM_NAME = "rgb_shape"
 _TIMESTAMP_SHM_NAME = "timestamp"
 _INTRINSICS_SHM_NAME = "intrinsics"
+_FPS_SHM_NAME = "fps"
 
 
 def shared_memory_block_like(array: np.ndarray, name: str) -> Tuple[shared_memory.SharedMemory, np.ndarray]:
@@ -76,12 +77,13 @@ class MultiprocessRGBPublisher(Process):
         terminated. This also frees up the names of the shared memory blocks so that they can be reused.
 
 
-        Four SharedMemory blocks are created, each block is prefixed with the namespace of the publisher. Two of these
+        Five SharedMemory blocks are created, each block is prefixed with the namespace of the publisher. Three of these
         are only written once, the other two are written continuously.
 
         Constant blocks:
         * intrinsics: the intrinsics matrix of the camera
         * rgb_shape: the shape that rgb image array should be
+        * fps: the fps of the camera
 
         Blocks that are written continuously:
         * rgb: the most recently retrieved image
@@ -100,18 +102,21 @@ class MultiprocessRGBPublisher(Process):
         rgb_shape_name = f"{self._shared_memory_namespace}_{_RGB_SHAPE_SHM_NAME}"
         timestamp_name = f"{self._shared_memory_namespace}_{_TIMESTAMP_SHM_NAME}"
         intrinsics_name = f"{self._shared_memory_namespace}_{_INTRINSICS_SHM_NAME}"
+        fps_name = f"{self._shared_memory_namespace}_{_FPS_SHM_NAME}"
 
         # Get the example arrays (this is the easiest way to initialize the shared memory blocks with the correct size).
         rgb = self._camera.get_rgb_image()
         rgb_shape = np.array(rgb.shape)
         timestamp = np.array([time.time()])
         intrinsics = self._camera.intrinsics_matrix()
+        fps = np.array([self._camera.fps], dtype=np.float64)
 
         # Create the shared memory blocks and numpy arrays that are backed by them.
         self.rgb_shm, self.rgb_shm_array = shared_memory_block_like(rgb, rgb_name)
         self.rgb_shape_shm, self.rgb_shape_shm_array = shared_memory_block_like(rgb_shape, rgb_shape_name)
         self.timestamp_shm, self.timestamp_shm_array = shared_memory_block_like(timestamp, timestamp_name)
         self.intrinsics_shm, self.intrinsics_shm_array = shared_memory_block_like(intrinsics, intrinsics_name)
+        self.fps_shm, self.fps_shm_array = shared_memory_block_like(fps, fps_name)
 
     def stop(self) -> None:
         self.shutdown_event.set()
@@ -148,11 +153,13 @@ class MultiprocessRGBPublisher(Process):
         self.rgb_shape_shm.close()
         self.timestamp_shm.close()
         self.intrinsics_shm.close()
+        self.fps_shm.close()
 
         self.rgb_shm.unlink()
         self.rgb_shape_shm.unlink()
         self.timestamp_shm.unlink()
         self.intrinsics_shm.unlink()
+        self.fps_shm.unlink()
 
 
 class MultiprocessRGBReceiver(RGBCamera):
@@ -174,6 +181,7 @@ class MultiprocessRGBReceiver(RGBCamera):
         rgb_shape_name = f"{self._shared_memory_namespace}_{_RGB_SHAPE_SHM_NAME}"
         timestamp_name = f"{self._shared_memory_namespace}_{_TIMESTAMP_SHM_NAME}"
         intrinsics_name = f"{self._shared_memory_namespace}_{_INTRINSICS_SHM_NAME}"
+        fps_name = f"{self._shared_memory_namespace}_{_FPS_SHM_NAME}"
 
         # Attach to existing shared memory blocks. Retry a few times to give the publisher time to start up (opening
         # connection to a camera can take a while).
@@ -184,6 +192,7 @@ class MultiprocessRGBReceiver(RGBCamera):
                 self.rgb_shape_shm = shared_memory.SharedMemory(name=rgb_shape_name)
                 self.timestamp_shm = shared_memory.SharedMemory(name=timestamp_name)
                 self.intrinsics_shm = shared_memory.SharedMemory(name=intrinsics_name)
+                self.fps_shm = shared_memory.SharedMemory(name=fps_name)
                 is_shm_found = True
                 break
             except FileNotFoundError:
@@ -204,6 +213,7 @@ class MultiprocessRGBReceiver(RGBCamera):
         resource_tracker.unregister(self.rgb_shape_shm._name, "shared_memory")
         resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
         resource_tracker.unregister(self.timestamp_shm._name, "shared_memory")
+        resource_tracker.unregister(self.fps_shm._name, "shared_memory")
 
         # Timestamp and intrinsics are the same shape for all images, so I decided that we could hardcode their shape.
         # However, images come in many shapes, which I also decided to pass via shared memory. (Previously, I required
@@ -213,6 +223,7 @@ class MultiprocessRGBReceiver(RGBCamera):
         self.rgb_shape_shm_array = np.ndarray((3,), dtype=np.int64, buffer=self.rgb_shape_shm.buf)
         self.intrinsics_shm_array = np.ndarray((3, 3), dtype=np.float64, buffer=self.intrinsics_shm.buf)
         self.timestamp_shm_array = np.ndarray((1,), dtype=np.float64, buffer=self.timestamp_shm.buf)
+        self.fps_shm_array = np.ndarray((1,), dtype=np.float64, buffer=self.fps_shm.buf)
 
         # The shape of the image is not known in advance, so we need to retrieve it from the shared memory block.
         rgb_shape = tuple(self.rgb_shape_shm_array[:])
@@ -250,6 +261,7 @@ class MultiprocessRGBReceiver(RGBCamera):
         self.rgb_shape_shm.close()
         self.timestamp_shm.close()
         self.intrinsics_shm.close()
+        self.fps_shm.close()
 
     def __del__(self) -> None:
         self._close_shared_memory()
