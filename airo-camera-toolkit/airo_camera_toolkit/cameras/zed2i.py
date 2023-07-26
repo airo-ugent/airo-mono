@@ -9,6 +9,8 @@ except ImportError:
         "You should install the ZED SDK and pip install the python bindings in your environment first, see the installation README."
     )
 
+import time
+
 import numpy as np
 from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
@@ -104,9 +106,21 @@ class Zed2i(StereoRGBDCamera):
             # close to open with correct params
             self.camera.close()
 
-        status = self.camera.open(self.camera_params)
+        N_OPEN_ATTEMPTS = 5
+        for i in range(N_OPEN_ATTEMPTS):
+            status = self.camera.open(self.camera_params)
+            if status == sl.ERROR_CODE.SUCCESS:
+                break
+            print(f"Opening Zed2i camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
+            if self.serial_number:
+                print(f"Rebooting {self.serial_number}")
+                sl.Camera.reboot(self.serial_number)
+            time.sleep(2)
+            print(sl.Camera.get_device_list())
+            self.camera = sl.Camera()
+
         if status != sl.ERROR_CODE.SUCCESS:
-            raise IndexError(f"could not open camera, error = {status}")
+            raise IndexError(f"Could not open Zed2i camera, error = {status}")
 
         # TODO: create a configuration class for the runtime parameters
         self.runtime_params = sl.RuntimeParameters()
