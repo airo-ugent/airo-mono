@@ -1,8 +1,10 @@
+import datetime
 import multiprocessing
 import os
 import time
 from collections import deque
 from multiprocessing import Process
+from typing import Optional
 
 import loguru
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
@@ -10,26 +12,24 @@ from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 from airo_camera_toolkit.utils import ImageConverter
 
 logger = loguru.logger
-# import ffmpegcv
-import datetime
 
 
 class FPSMonitor:
-    def __init__(self, target_fps, queue_size=100, tolerance=0.05, name="FPSMonitor"):
+    def __init__(self, target_fps: float, queue_size: int = 100, tolerance: float = 0.05, name: str = "FPSMonitor"):
         self.target_fps = target_fps
         self.tolerance = tolerance
         self.name = name
-        self._durations = deque(maxlen=queue_size)
-        self._last_time = None
+        self._durations: deque[float] = deque(maxlen=queue_size)
+        self._last_time: Optional[float] = None
 
-    def get_fps(self):
+    def get_fps(self) -> float:
         if len(self._durations) == 0:
-            return 0
+            return 0.0
 
         average_duration = sum(self._durations) / len(self._durations)
         return 1 / average_duration
 
-    def check_fps(self):
+    def check_fps(self) -> None:
         fps = self.get_fps()
         fps_relative_error = abs(fps - self.target_fps) / self.target_fps
 
@@ -38,7 +38,7 @@ class FPSMonitor:
                 f"{self.name} FPS is {fps:.2f} but should be {self.target_fps:.2f} (Error: {fps_relative_error:.3f}))"
             )
 
-    def tick(self):
+    def tick(self) -> None:
         current_time = time.time()
         if self._last_time is None:
             self._last_time = current_time
@@ -56,8 +56,8 @@ class MultiprocessVideoRecorder(Process):
     def __init__(
         self,
         shared_memory_namespace: str,
-        video_path: str = None,
-        image_transform: ImageTransform = None,
+        video_path: Optional[str] = None,
+        image_transform: Optional[ImageTransform] = None,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
@@ -76,7 +76,7 @@ class MultiprocessVideoRecorder(Process):
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
-        import ffmpegcv
+        import ffmpegcv  # type: ignore
 
         receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
         fps = receiver.fps_shm_array[0]

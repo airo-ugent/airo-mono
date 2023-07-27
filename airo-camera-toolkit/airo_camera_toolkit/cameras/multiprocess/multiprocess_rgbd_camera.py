@@ -70,6 +70,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
         self._setup()
+        assert isinstance(self._camera, RGBDCamera)  # For mypy
 
         while not self.shutdown_event.is_set():
             image = self._camera.get_rgb_image()
@@ -85,6 +86,10 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
     def unlink_shared_memory(self) -> None:
         """unlink the shared memory blocks so that they are deleted when the process is terminated"""
         super().unlink_shared_memory()
+
+        assert isinstance(self.depth_shm, shared_memory.SharedMemory)
+        assert isinstance(self.depth_image_shm, shared_memory.SharedMemory)
+
         self.depth_shm.close()
         self.depth_image_shm.close()
         self.depth_shm.unlink()
@@ -125,17 +130,21 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
             raise FileNotFoundError("Shared memory not found.")
 
         # Same comment as in base class:
-        resource_tracker.unregister(self.depth_shm._name, "shared_memory")
-        resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")
+        resource_tracker.unregister(self.depth_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")  # type: ignore[attr-defined]
 
-        self.depth_shape_shm_array = np.ndarray((2,), dtype=np.int64, buffer=self.depth_shape_shm.buf)
-        self.depth_image_shape_shm_array = np.ndarray((3,), dtype=np.int64, buffer=self.depth_image_shape_shm.buf)
+        self.depth_shape_shm_array: np.ndarray = np.ndarray((2,), dtype=np.int64, buffer=self.depth_shape_shm.buf)
+        self.depth_image_shape_shm_array: np.ndarray = np.ndarray(
+            (3,), dtype=np.int64, buffer=self.depth_image_shape_shm.buf
+        )
 
         depth_shape = tuple(self.depth_shape_shm_array[:])
         depth_image_shape = tuple(self.depth_image_shape_shm_array[:])
 
-        self.depth_shm_array = np.ndarray(depth_shape, dtype=np.float32, buffer=self.depth_shm.buf)
-        self.depth_image_shm_array = np.ndarray(depth_image_shape, dtype=np.uint8, buffer=self.depth_image_shm.buf)
+        self.depth_shm_array: np.ndarray = np.ndarray(depth_shape, dtype=np.float32, buffer=self.depth_shm.buf)
+        self.depth_image_shm_array: np.ndarray = np.ndarray(
+            depth_image_shape, dtype=np.uint8, buffer=self.depth_image_shm.buf
+        )
 
     def get_depth_map(self) -> NumpyDepthMapType:
         return self.depth_shm_array
@@ -148,8 +157,7 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         self.depth_shm.close()
         self.depth_image_shm.close()
 
-    def stop(self) -> None:
-        super().stop()
+    def __del__(self) -> None:
         self._close_shared_memory()
 
 

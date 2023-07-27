@@ -2,7 +2,7 @@
 import multiprocessing
 import time
 from multiprocessing import Process, resource_tracker, shared_memory
-from typing import Tuple
+from typing import Optional, Tuple
 
 import cv2
 import loguru
@@ -31,7 +31,7 @@ def shared_memory_block_like(array: np.ndarray, name: str) -> Tuple[shared_memor
         The created shared memory block and a new array that is backed by the shared memory block.
     """
     shm = shared_memory.SharedMemory(create=True, size=array.nbytes, name=name)
-    shm_array = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
+    shm_array: np.ndarray = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
     shm_array[:] = array[:]
     return shm, shm_array
 
@@ -64,8 +64,12 @@ class MultiprocessRGBPublisher(Process):
         self._camera = None
         self.shutdown_event = multiprocessing.Event()
 
-        # self.rgb_shm: Optional[shared_memory.SharedMemory] = None
-        # self.intrinsics_shm: Optional[shared_memory.SharedMemory] = None
+        # Declare these here so mypy doesn't complain.
+        self.rgb_shm: Optional[shared_memory.SharedMemory] = None
+        self.rgb_shape_shm: Optional[shared_memory.SharedMemory] = None
+        self.timestamp_shm: Optional[shared_memory.SharedMemory] = None
+        self.intrinsics_shm: Optional[shared_memory.SharedMemory] = None
+        self.fps_shm: Optional[shared_memory.SharedMemory] = None
 
     def _setup(self) -> None:
         """Note: to be able to retrieve camera image from the Publisher process, the camera must be instantiated in the
@@ -135,6 +139,7 @@ class MultiprocessRGBPublisher(Process):
         pass the Lock object).
         """
         self._setup()
+        assert isinstance(self._camera, RGBCamera)  # Just to make mypy happy, already checked in _setup()
 
         while not self.shutdown_event.is_set():
             image = self._camera.get_rgb_image()
@@ -149,6 +154,13 @@ class MultiprocessRGBPublisher(Process):
 
         However, I'm not sure how essential this actually is.
         """
+        # Assure mypy that these are not None anymore.
+        assert isinstance(self.rgb_shm, shared_memory.SharedMemory)
+        assert isinstance(self.rgb_shape_shm, shared_memory.SharedMemory)
+        assert isinstance(self.timestamp_shm, shared_memory.SharedMemory)
+        assert isinstance(self.intrinsics_shm, shared_memory.SharedMemory)
+        assert isinstance(self.fps_shm, shared_memory.SharedMemory)
+
         self.rgb_shm.close()
         self.rgb_shape_shm.close()
         self.timestamp_shm.close()
@@ -209,25 +221,26 @@ class MultiprocessRGBReceiver(RGBCamera):
         # that hasn't been resolved yet: https://bugs.python.org/issue39959
         # Concretely, the problem was that once any MultiprocessRGBReceiver object was destroyed, all further access to
         # the shared memory blocks would fail with a FileNotFoundError.
-        resource_tracker.unregister(self.rgb_shm._name, "shared_memory")
-        resource_tracker.unregister(self.rgb_shape_shm._name, "shared_memory")
-        resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")
-        resource_tracker.unregister(self.timestamp_shm._name, "shared_memory")
-        resource_tracker.unregister(self.fps_shm._name, "shared_memory")
+        # We also ignore mypy telling us to use .name instead of ._name, because the latter is used in the registration.
+        resource_tracker.unregister(self.rgb_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.rgb_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.intrinsics_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.timestamp_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.fps_shm._name, "shared_memory")  # type: ignore[attr-defined]
 
         # Timestamp and intrinsics are the same shape for all images, so I decided that we could hardcode their shape.
         # However, images come in many shapes, which I also decided to pass via shared memory. (Previously, I required
         # the image resolution to be passed to this class' constructor, but that was inconvenient to keep in sync
         # between publisher and receiver scripts.)
         # Create numpy arrays that are backed by the shared memory blocks
-        self.rgb_shape_shm_array = np.ndarray((3,), dtype=np.int64, buffer=self.rgb_shape_shm.buf)
-        self.intrinsics_shm_array = np.ndarray((3, 3), dtype=np.float64, buffer=self.intrinsics_shm.buf)
-        self.timestamp_shm_array = np.ndarray((1,), dtype=np.float64, buffer=self.timestamp_shm.buf)
-        self.fps_shm_array = np.ndarray((1,), dtype=np.float64, buffer=self.fps_shm.buf)
+        self.rgb_shape_shm_array: np.ndarray = np.ndarray((3,), dtype=np.int64, buffer=self.rgb_shape_shm.buf)
+        self.intrinsics_shm_array: np.ndarray = np.ndarray((3, 3), dtype=np.float64, buffer=self.intrinsics_shm.buf)
+        self.timestamp_shm_array: np.ndarray = np.ndarray((1,), dtype=np.float64, buffer=self.timestamp_shm.buf)
+        self.fps_shm_array: np.ndarray = np.ndarray((1,), dtype=np.float64, buffer=self.fps_shm.buf)
 
         # The shape of the image is not known in advance, so we need to retrieve it from the shared memory block.
         rgb_shape = tuple(self.rgb_shape_shm_array[:])
-        self.rgb_shm_array = np.ndarray(rgb_shape, dtype=np.float32, buffer=self.rgb_shm.buf)
+        self.rgb_shm_array: np.ndarray = np.ndarray(rgb_shape, dtype=np.float32, buffer=self.rgb_shm.buf)
 
         self.previous_timestamp = time.time()
 

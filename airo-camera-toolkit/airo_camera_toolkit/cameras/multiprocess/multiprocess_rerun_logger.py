@@ -1,6 +1,7 @@
 import multiprocessing
 import time
 from multiprocessing import Process
+from typing import Optional
 
 import loguru
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
@@ -16,7 +17,7 @@ class MultiprocessRGBRerunLogger(Process):
         self,
         shared_memory_namespace: str,
         rerun_application_id: str = "rerun",
-        image_transform: ImageTransform = None,
+        image_transform: Optional[ImageTransform] = None,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
@@ -55,7 +56,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         self,
         shared_memory_namespace: str,
         rerun_application_id: str = "rerun",
-        image_transform: ImageTransform = None,
+        image_transform: Optional[ImageTransform] = None,
     ):
         super().__init__(
             shared_memory_namespace,
@@ -65,6 +66,8 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
 
     def _log_depth_image(self) -> None:
         import rerun
+
+        assert isinstance(self._receiver, MultiprocessRGBDReceiver)
 
         depth_image = self._receiver.get_depth_image()
         if self._image_transform is not None:
@@ -89,7 +92,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
 
 
 if __name__ == "__main__":
-    logger = MultiprocessRGBRerunLogger("camera")
-    logger.start()
+    rerun_logger = MultiprocessRGBRerunLogger("camera")
+    rerun_logger.start()
     time.sleep(10)
-    logger.stop()
+    rerun_logger.stop()
