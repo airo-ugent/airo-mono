@@ -146,10 +146,27 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
             depth_image_shape, dtype=np.uint8, buffer=self.depth_image_shm.buf
         )
 
+        self.previous_depth_map_timestamp = time.time()
+        self.previous_depth_image_timestamp = time.time()
+
     def get_depth_map(self) -> NumpyDepthMapType:
+        if not self.blocking:
+            return self.depth_shm_array
+
+        while not self.get_current_timestamp() > self.previous_depth_map_timestamp:
+            time.sleep(0.001)
+
+        self.previous_depth_map_timestamp = self.get_current_timestamp()
         return self.depth_shm_array
 
     def get_depth_image(self) -> NumpyIntImageType:
+        if not self.blocking:
+            return self.depth_image_shm_array
+
+        while not self.get_current_timestamp() > self.previous_depth_image_timestamp:
+            time.sleep(0.001)
+
+        self.previous_depth_image_timestamp = self.get_current_timestamp()
         return self.depth_image_shm_array
 
     def _close_shared_memory(self) -> None:
