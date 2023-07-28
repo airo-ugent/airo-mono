@@ -29,7 +29,12 @@ class MultiprocessRGBRerunLogger(Process):
         import rerun
 
         image = self._receiver.get_rgb_image()
-        image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
+        # This randomly fails, just don't log an image if it does
+        try:
+            image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
+        except AssertionError as e:
+            print(e)
+            return
         image_rgb = image_bgr[:, :, ::-1]
         if self._image_transform is not None:
             image_rgb = self._image_transform.transform_image(image_rgb)
