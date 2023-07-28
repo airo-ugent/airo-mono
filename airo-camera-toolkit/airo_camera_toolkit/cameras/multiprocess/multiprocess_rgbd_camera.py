@@ -122,7 +122,7 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
                 break
             except FileNotFoundError:
                 print(
-                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" not found yet, retrying in 5 seconds.'
+                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" (RGBD) not found yet, retrying in 5 seconds.'
                 )
                 time.sleep(5)
 
@@ -131,7 +131,9 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
 
         # Same comment as in base class:
         resource_tracker.unregister(self.depth_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.depth_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
         resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.depth_image_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
 
         self.depth_shape_shm_array: np.ndarray = np.ndarray((2,), dtype=np.int64, buffer=self.depth_shape_shm.buf)
         self.depth_image_shape_shm_array: np.ndarray = np.ndarray(
