@@ -30,6 +30,10 @@ def test_image_converter_conversions():
     assert np.isclose(ImageConverter.from_opencv_format(opencv_shaped).image_in_numpy_format, numpy_shaped).all()
     assert np.isclose(ImageConverter.from_numpy_format(numpy_shaped).image_in_torch_format, torch_shaped).all()
     assert np.isclose(ImageConverter.from_torch_format(torch_shaped).image_in_opencv_format, opencv_shaped).all()
+    assert np.isclose(
+        ImageConverter.from_numpy_int_format(numpy_shaped.astype(np.uint8)).image_in_numpy_int_format,
+        numpy_shaped.astype(np.uint8),
+    ).all()
 
     # check conversion keeps int values the same
     opencv_shaped = np.random.randint(0, 255, (10, 10, 3), dtype=np.uint8)

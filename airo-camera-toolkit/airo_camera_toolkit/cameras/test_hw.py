@@ -31,6 +31,15 @@ def manual_test_rgb_camera(camera: RGBCamera) -> None:
     )
     plt.show()
 
+    int_image = camera.get_rgb_image_as_int8()
+    plt.imshow(int_image)
+    print(
+        """
+        This should look the same as the previous image, as it is the same image, just in a different format.
+        """
+    )
+    plt.show()
+
 
 def manual_test_depth_camera(camera: DepthCamera) -> None:
     dept_image = camera.get_depth_image()

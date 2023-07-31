@@ -56,9 +56,23 @@ class RGBCamera(Camera, abc.ABC):
         self._grab_images()
         return self._retrieve_rgb_image()
 
+    def get_rgb_image_as_int8(self) -> NumpyIntImageType:
+        """Get a new RGB image from the camera as uint8.
+        This is faster to retrieve as images are typically stored as ints in the buffer.
+        It is also more compact, so recommended for communication."""
+        self._grab_images()
+        return self._retrieve_rgb_image_as_int8()
+
     @abc.abstractmethod
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
         """Returns the current RGB image in the memory buffer."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _retrieve_rgb_image_as_int8(self) -> NumpyIntImageType:
+        """Returns the current RGB image in the memory buffer as uint8.
+        This is typically the format in which it is stored in memory.
+        Returning it directly avoids the overhead of converting it to floats first, which is what _retrieve_rgb_image() does."""
         raise NotImplementedError
 
 

@@ -10,7 +10,7 @@ except ImportError:
     print("install the Realsense SDK and pyrealsense2 first")
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils import ImageConverter
-from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType, OpenCVIntImageType
+from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType, NumpyIntImageType, OpenCVIntImageType
 
 
 class Realsense(RGBCamera):
@@ -93,10 +93,15 @@ class Realsense(RGBCamera):
         self._frames = self.pipeline.wait_for_frames()
 
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
+        image = self._retrieve_rgb_image_as_int8()
+        return ImageConverter.from_numpy_int_format(image).image_in_numpy_format
+
+    def _retrieve_rgb_image_as_int8(self) -> NumpyIntImageType:
         assert isinstance(self._frames, rs.composite_frame)
         color_frame = self._frames.get_color_frame()
         image: OpenCVIntImageType = np.asanyarray(color_frame.get_data())
-        return ImageConverter.from_opencv_format(image).image_in_numpy_format
+        image = image[..., ::-1]  # convert from BGR to RGB
+        return image
 
 
 if __name__ == "__main__":

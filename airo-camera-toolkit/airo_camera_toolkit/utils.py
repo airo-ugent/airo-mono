@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from airo_typing import NumpyFloatImageType, OpenCVIntImageType, TorchFloatImageType
+from airo_typing import NumpyFloatImageType, NumpyIntImageType, OpenCVIntImageType, TorchFloatImageType
 
 
 def is_image_array(image: object) -> bool:
@@ -70,15 +70,24 @@ class ImageConverter:
         return ImageConverter(image)
 
     @classmethod
+    def from_numpy_int_format(cls, image: NumpyIntImageType) -> ImageConverter:
+        assert is_int_image_array(image)
+        assert image.shape[2] == 3
+        # convert to floats (creates a copy)
+        image = image.astype(np.float32) / 255.0
+        return ImageConverter(image)
+
+    @classmethod
     def from_opencv_format(cls, image: OpenCVIntImageType) -> ImageConverter:
         assert is_int_image_array(image)
         assert image.shape[2] == 3
 
-        # convert to floats (creates a copy)
+        # convert to float (creates copy)
+        # can take a few ms..
+
         image = image.astype(np.float32) / 255.0
         # convert BGR to RGB
         image = image[:, :, ::-1]
-        # convert to float, can take a few ms..
 
         return ImageConverter(image)
 
@@ -107,3 +116,7 @@ class ImageConverter:
     @property
     def image_in_torch_format(self) -> TorchFloatImageType:
         return np.transpose(self._image_in_numpy_float_format, (2, 0, 1))
+
+    @property
+    def image_in_numpy_int_format(self) -> NumpyIntImageType:
+        return (self._image_in_numpy_float_format * 255.0).astype(np.uint8)
