@@ -59,7 +59,7 @@ class Realsense(RGBDCamera):
         color_stream_profiles = color_sensor.get_stream_profiles()
         for color_profile in color_stream_profiles:
             color_profile = color_profile.as_video_stream_profile()
-            print(color_profile) # uncomment to print all available profiles
+            #print(color_profile) # uncomment to print all available profiles
             if color_profile.fps() != self.fps:
                 continue
             if color_profile.width() != self.width:
@@ -94,8 +94,7 @@ class Realsense(RGBDCamera):
         depth_stream_profiles = depth_sensor.get_stream_profiles()
         for depth_profile in depth_stream_profiles:
             depth_profile = depth_profile.as_video_stream_profile()
-            print(depth_profile) # uncomment to print all available profiles
-            print(depth_profile.stream_type())
+            #print(depth_profile) # uncomment to print all available profiles
             if str(depth_profile.stream_type()) != "stream.depth":
                 continue
             if depth_profile.fps() != self.depth_fps:
