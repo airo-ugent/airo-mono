@@ -162,7 +162,7 @@ class Zed2i(StereoRGBDCamera):
     def depth_enabled(self, value: bool) -> None:
         self.runtime_params.enable_depth = value
 
-    def _grab_latest_image(self) -> None:
+    def _grab_images(self) -> None:
         """grabs (and waits for) the latest image(s) from the camera, rectifies them and computes the depth information (based on the depth mode setting)"""
         # this is a blocking call
         # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1Camera.html#a2338c15f49b5f132df373a06bd281822
@@ -171,29 +171,8 @@ class Zed2i(StereoRGBDCamera):
         if error_code != sl.ERROR_CODE.SUCCESS:
             raise IndexError("Could not grab new camera frame")
 
-    def get_depth_map(self) -> NumpyDepthMapType:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
-        self._grab_latest_image()
-        self.camera.retrieve_measure(self.depth_matrix, sl.MEASURE.DEPTH)
-        depth_map = self.depth_matrix.get_data()
-        return depth_map
-
-    def get_depth_image(self) -> NumpyIntImageType:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
-
-        self._grab_latest_image()
-        self.camera.retrieve_image(self.image_matrix, sl.VIEW.DEPTH)
-        image = self.image_matrix.get_data()
-        image = image[..., :3]  # drop alpha channel
-        image = image[..., ::-1]  # BGR to RGB
-        return image
-
-    def get_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
+    def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         assert view in StereoRGBDCamera._VIEWS
-
-        self._grab_latest_image()
         if view == StereoRGBDCamera.RIGHT_RGB:
             view = sl.VIEW.RIGHT
         else:
@@ -203,13 +182,29 @@ class Zed2i(StereoRGBDCamera):
         image = image[..., :3]  # remove alpha channel
         # convert from int to float image
         # this can take up ~ ms for larger images (can impact FPS)
-        return ImageConverter.from_opencv_format(image).image_in_numpy_format
+        image = ImageConverter.from_opencv_format(image).image_in_numpy_format
+        return image
+
+    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
+        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        self.camera.retrieve_measure(self.depth_matrix, sl.MEASURE.DEPTH)
+        depth_map = self.depth_matrix.get_data()
+        return depth_map
+
+    def _retrieve_depth_image(self) -> NumpyIntImageType:
+        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
+        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        self.camera.retrieve_image(self.image_matrix, sl.VIEW.DEPTH)
+        image = self.image_matrix.get_data()
+        image = image[..., :3]
+        return image
 
     def get_colored_point_cloud(self) -> ColoredPointCloudType:
         assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
 
-        self._grab_latest_image()
+        self._grab_images()
         self.camera.retrieve_measure(self.pointcloud_matrix, sl.MEASURE.XYZRGBA)
         # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
         # can be nan,nan,nan, nan (no point in the pointcloud on this pixel)
