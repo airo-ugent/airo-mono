@@ -182,11 +182,8 @@ class MultiprocessRGBReceiver(RGBCamera):
     def __init__(
         self,
         shared_memory_namespace: str,
-        blocking: bool = True,
     ) -> None:
         super().__init__()
-
-        self.blocking = blocking
 
         self._shared_memory_namespace = shared_memory_namespace
         rgb_name = f"{self._shared_memory_namespace}_{_RGB_SHM_NAME}"
@@ -248,21 +245,12 @@ class MultiprocessRGBReceiver(RGBCamera):
         """Timestamp of the image that is currently in the shared memory block."""
         return self.timestamp_shm_array[0]
 
-    def get_rgb_image(self) -> NumpyFloatImageType:
-        """Get an RGB image from the shared memory block. This function has two modes of operation: blocking and
-        non-blocking, depending on the value of the blocking attribute. If blocking is True, this function will wait
-        until a new timestamp is detected before returning. This ensures that the same image is never returned twice.
-        This is usually what consumers want and is consistent with regular RGBCamera implementations. When blocking is
-        False, this function will immediately return the current contents of the shared memory block.
-        """
-        if not self.blocking:
-            return self.rgb_shm_array
-
-        # Blocking mode of operation. Wait until the timestamp is newer than that of the image we have previously returned.
+    def _grab_images(self) -> None:
         while not self.get_current_timestamp() > self.previous_timestamp:
             time.sleep(0.001)
-
         self.previous_timestamp = self.get_current_timestamp()
+
+    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
         return self.rgb_shm_array
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:

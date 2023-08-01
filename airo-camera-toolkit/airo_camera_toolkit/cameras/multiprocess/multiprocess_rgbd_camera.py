@@ -74,8 +74,8 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
 
         while not self.shutdown_event.is_set():
             image = self._camera.get_rgb_image()
-            depth_map = self._camera.get_depth_map()
-            depth_image = self._camera.get_depth_image()
+            depth_map = self._camera._retrieve_depth_map()
+            depth_image = self._camera._retrieve_depth_image()
             self.rgb_shm_array[:] = image[:]
             self.depth_shm_array[:] = depth_map[:]
             self.depth_image_shm_array[:] = depth_image[:]
@@ -151,24 +151,10 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         self.previous_depth_map_timestamp = time.time()
         self.previous_depth_image_timestamp = time.time()
 
-    def get_depth_map(self) -> NumpyDepthMapType:
-        if not self.blocking:
-            return self.depth_shm_array
-
-        while not self.get_current_timestamp() > self.previous_depth_map_timestamp:
-            time.sleep(0.001)
-
-        self.previous_depth_map_timestamp = self.get_current_timestamp()
+    def _retrieve_depth_map(self) -> NumpyDepthMapType:
         return self.depth_shm_array
 
-    def get_depth_image(self) -> NumpyIntImageType:
-        if not self.blocking:
-            return self.depth_image_shm_array
-
-        while not self.get_current_timestamp() > self.previous_depth_image_timestamp:
-            time.sleep(0.001)
-
-        self.previous_depth_image_timestamp = self.get_current_timestamp()
+    def _retrieve_depth_image(self) -> NumpyIntImageType:
         return self.depth_image_shm_array
 
     def _close_shared_memory(self) -> None:
