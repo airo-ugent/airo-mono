@@ -85,13 +85,17 @@ class MultiprocessVideoRecorder(Process):
         fps_monitor = FPSMonitor(fps, name=f"{self._shared_memory_namespace} video recorder")
 
         while not self.shutdown_event.is_set():
-            image_float = receiver.get_rgb_image()
-            image = ImageConverter.from_numpy_format(image_float).image_in_opencv_format
-            if self._image_transform is not None:
-                image = self._image_transform.transform_image(image)
+            try:
+                image_float = receiver.get_rgb_image()
+                image = ImageConverter.from_numpy_format(image_float).image_in_opencv_format
+                if self._image_transform is not None:
+                    image = self._image_transform.transform_image(image)
 
-            video_writer.write(image)
-            fps_monitor.tick()
+                video_writer.write(image)
+                fps_monitor.tick()
+            except AssertionError as e:
+                print("Ignoring assertion error in video recorder")
+                print(e)
 
         video_writer.release()
 
