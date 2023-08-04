@@ -93,10 +93,10 @@ class Realsense(RGBCamera):
         self._frames = self.pipeline.wait_for_frames()
 
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
-        image = self._retrieve_rgb_image_as_int8()
+        image = self._retrieve_rgb_image_as_int()
         return ImageConverter.from_numpy_int_format(image).image_in_numpy_format
 
-    def _retrieve_rgb_image_as_int8(self) -> NumpyIntImageType:
+    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
         assert isinstance(self._frames, rs.composite_frame)
         color_frame = self._frames.get_color_frame()
         image: OpenCVIntImageType = np.asanyarray(color_frame.get_data())

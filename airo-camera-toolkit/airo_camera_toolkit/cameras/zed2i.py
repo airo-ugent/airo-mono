@@ -172,13 +172,13 @@ class Zed2i(StereoRGBDCamera):
             raise IndexError("Could not grab new camera frame")
 
     def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
-        image = self._retrieve_rgb_image_as_int8(view)
+        image = self._retrieve_rgb_image_as_int(view)
         # convert from int to float image
         # this can take up ~ ms for larger images (can impact FPS)
         image = ImageConverter.from_numpy_int_format(image).image_in_numpy_format
         return image
 
-    def _retrieve_rgb_image_as_int8(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
+    def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         assert view in StereoRGBDCamera._VIEWS
         if view == StereoRGBDCamera.RIGHT_RGB:
             view = sl.VIEW.RIGHT

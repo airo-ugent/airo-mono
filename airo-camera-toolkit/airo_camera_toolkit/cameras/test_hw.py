@@ -31,7 +31,7 @@ def manual_test_rgb_camera(camera: RGBCamera) -> None:
     )
     plt.show()
 
-    int_image = camera.get_rgb_image_as_int8()
+    int_image = camera.get_rgb_image_as_int()
     plt.imshow(int_image)
     print(
         """
