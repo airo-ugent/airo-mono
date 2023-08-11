@@ -42,19 +42,43 @@ class Camera(abc.ABC):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def _grab_images(self) -> None:
+        """Transfer the latest camera data (RGB, stereo RGB, depth) from the camera to a memory buffer."""
+        raise NotImplementedError
+
 
 class RGBCamera(Camera, abc.ABC):
     """Base class for all RGB cameras"""
 
-    @abc.abstractmethod
     def get_rgb_image(self) -> NumpyFloatImageType:
+        """Get a new RGB image from the camera."""
+        self._grab_images()
+        return self._retrieve_rgb_image()
+
+    def get_rgb_image_as_int(self) -> NumpyIntImageType:
+        """Get a new RGB image from the camera as uint8.
+        This is faster to retrieve as images are typically stored as ints in the buffer.
+        It is also more compact, so recommended for communication."""
+        self._grab_images()
+        return self._retrieve_rgb_image_as_int()
+
+    @abc.abstractmethod
+    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
+        """Returns the current RGB image in the memory buffer."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+        """Returns the current RGB image in the memory buffer as uint8.
+        This is typically the format in which it is stored in memory.
+        Returning it directly avoids the overhead of converting it to floats first, which is what _retrieve_rgb_image() does."""
         raise NotImplementedError
 
 
 class DepthCamera(Camera, abc.ABC):
     """Base class for all depth cameras"""
 
-    @abc.abstractmethod
     def get_depth_map(self) -> NumpyDepthMapType:
         """Get the latest depth map of the camera.
         The depth map is a 2D array of floats, that provide the estimated z-coordinate in the camera frame
@@ -63,12 +87,13 @@ class DepthCamera(Camera, abc.ABC):
         Returns:
             np.ndarray: _description_
         """
-        raise NotImplementedError
+        self._grab_images()
+        return self._retrieve_depth_map()
 
-    @abc.abstractmethod
     def get_depth_image(self) -> NumpyIntImageType:
         """an 8-bit (int) quantization of the latest depth map, which can be used for visualization"""
-        raise NotImplementedError
+        self._grab_images()
+        return self._retrieve_depth_image()
 
     def get_colored_point_cloud(self) -> ColoredPointCloudType:
         """Get the latest point cloud of the camera.
@@ -79,6 +104,16 @@ class DepthCamera(Camera, abc.ABC):
             np.ndarray: Nx6 array containing PointCloud with color information. Each entry is (x,y,z,r,g,b)
         """
         # TODO: offer a base implementation that uses the depth map and the rgb image to construct this pointcloud?
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+        """Returns the current depth map in the memory buffer."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _retrieve_depth_image(self) -> NumpyIntImageType:
+        """Returns the current depth image in the memory buffer."""
         raise NotImplementedError
 
 
@@ -93,8 +128,12 @@ class StereoRGBDCamera(RGBDCamera):
     RIGHT_RGB = "right"
     _VIEWS = (LEFT_RGB, RIGHT_RGB)
 
-    @abc.abstractmethod
     def get_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
+        self._grab_images()
+        return self._retrieve_rgb_image(view)
+
+    @abc.abstractmethod
+    def _retrieve_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
         raise NotImplementedError
 
     # TODO: check view argument value?

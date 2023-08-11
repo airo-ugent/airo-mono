@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 
@@ -45,6 +45,7 @@ class Realsense(RGBDCamera):
         self.depth_fps = depth_fps
 
         # Configure depth and color streams
+        self._frames: Optional[rs.composite_frame] = None  # type: ignore
         self.pipeline = rs.pipeline()
         config = rs.config()
 
@@ -135,18 +136,26 @@ class Realsense(RGBDCamera):
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         return self._intrinsics_matrix
 
-    def get_rgb_image(self) -> NumpyFloatImageType:
-        frames = self.pipeline.wait_for_frames()
-        color_frame = frames.get_color_frame()
-        image: OpenCVIntImageType = np.asanyarray(color_frame.get_data())
-        return ImageConverter.from_opencv_format(image).image_in_numpy_format
+    def _grab_images(self) -> None:
+        self._frames = self.pipeline.wait_for_frames()
 
-    def get_depth_map(self) -> NumpyDepthMapType:
-        image = self._get_depth_frame().astype(np.float32)
+    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
+        image = self._retrieve_rgb_image_as_int()
+        return ImageConverter.from_numpy_int_format(image).image_in_numpy_format
+
+    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+        assert isinstance(self._frames, rs.composite_frame)
+        color_frame = self._frames.get_color_frame()
+        image: OpenCVIntImageType = np.asanyarray(color_frame.get_data())
+        image = image[..., ::-1]  # convert from BGR to RGB
+        return image
+
+    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+        image = self._retrieve_depth_frame().astype(np.float32)
         return image * self.depth_factor
 
-    def get_depth_image(self) -> NumpyIntImageType:
-        image = self._get_depth_frame()  # uint16
+    def _retrieve_depth_image(self) -> NumpyIntImageType:
+        image = self._retrieve_depth_frame()  # uint16
 
         # Clip out of range
         val_max = 3000  # recommended max accurate range = 3000 mm
@@ -158,9 +167,9 @@ class Realsense(RGBDCamera):
         image_uint8[:,:] = (val_max-image[:,:]) / (val_max / 256)
         return image_uint8
 
-    def _get_depth_frame(self):
-        frames = self.pipeline.wait_for_frames()
-        aligned_frames = self.align.process(frames)
+    def _retrieve_depth_frame(self):
+        assert isinstance(self._frames, rs.composite_frame)
+        aligned_frames = self.align.process(self._frames)
         depth_frame = aligned_frames.get_depth_frame()
         image = np.asanyarray(depth_frame.get_data())
         return image
