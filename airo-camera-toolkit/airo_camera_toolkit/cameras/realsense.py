@@ -127,7 +127,7 @@ class Realsense(RGBDCamera):
         # Start streaming
         self.pipeline.start(config)
 
-    def __enter__(self) -> RGBCamera:
+    def __enter__(self) -> RGBDCamera:
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
@@ -167,7 +167,7 @@ class Realsense(RGBDCamera):
         image_uint8[:,:] = (val_max-image[:,:]) / (val_max / 256)
         return image_uint8
 
-    def _retrieve_depth_frame(self):
+    def _retrieve_depth_frame(self) -> NumpyIntImageType:
         assert isinstance(self._frames, rs.composite_frame)
         aligned_frames = self.align.process(self._frames)
         depth_frame = aligned_frames.get_depth_frame()
