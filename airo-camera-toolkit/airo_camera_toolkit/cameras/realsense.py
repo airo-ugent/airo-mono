@@ -168,6 +168,7 @@ class Realsense(RGBDCamera):
 
 if __name__ == "__main__":
     import cv2
+    import airo_camera_toolkit.cameras.test_hw as test
 
     camera = Realsense(
         fps=15,
@@ -176,6 +177,13 @@ if __name__ == "__main__":
     )
     print("Camera Intrinsics: \n", camera.intrinsics_matrix())
 
+    # Perform tests
+    test.manual_test_camera(camera)
+    test.manual_test_rgb_camera(camera)
+    test.manual_test_depth_camera(camera)
+    #test.profile_rgb_throughput(camera)
+
+    # Live viewer
     while True:
         color_image = camera.get_rgb_image()
         color_image = ImageConverter.from_numpy_format(color_image).image_in_opencv_format
