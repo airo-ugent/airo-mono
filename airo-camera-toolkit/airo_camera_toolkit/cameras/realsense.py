@@ -142,14 +142,27 @@ class Realsense(RGBDCamera):
         return ImageConverter.from_opencv_format(image).image_in_numpy_format
 
     def get_depth_map(self) -> NumpyDepthMapType:
-        image: NumpyDepthMapType = self.get_depth_image()
+        image = self._get_depth_frame().astype(np.float32)
         return image * self.depth_factor
 
     def get_depth_image(self) -> NumpyIntImageType:
+        image = self._get_depth_frame()  # uint16
+
+        # Clip out of range
+        val_max = 3000  # recommended max accurate range = 3000 mm
+        clip_mask = image > val_max
+        image[clip_mask] = val_max
+
+        # Convert to depth image
+        image_uint8 = np.zeros(image.shape, dtype=np.uint8)
+        image_uint8[:,:] = (val_max-image[:,:]) / (val_max / 256)
+        return image_uint8
+
+    def _get_depth_frame(self):
         frames = self.pipeline.wait_for_frames()
         aligned_frames = self.align.process(frames)
         depth_frame = aligned_frames.get_depth_frame()
-        image: NumpyIntImageType = np.asanyarray(depth_frame.get_data())
+        image = np.asanyarray(depth_frame.get_data())
         return image
 
 
@@ -166,10 +179,12 @@ if __name__ == "__main__":
     while True:
         color_image = camera.get_rgb_image()
         color_image = ImageConverter.from_numpy_format(color_image).image_in_opencv_format
-        depth_image = camera.get_depth_map()
+        depth_image = camera.get_depth_image()
+        depth_map = camera.get_depth_map()
 
         cv2.imshow("RealSense RGB", color_image)
-        cv2.imshow("RealSense Depth", depth_image)
+        cv2.imshow("RealSense Depth Image", depth_image)
+        cv2.imshow("RealSense Depth Map", depth_map)
         key = cv2.waitKey(10)
         if key == ord("q"):
             break
