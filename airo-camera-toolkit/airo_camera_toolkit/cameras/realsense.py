@@ -54,6 +54,10 @@ class Realsense(RGBDCamera):
         color_sensor = device.first_color_sensor()
         depth_sensor = device.first_depth_sensor()
 
+        # Align depth sensor to color sensor
+        align_to = rs.stream.color
+        self.align = rs.align(align_to)
+
         # Search color profile
         color_profile_found = False
         color_stream_profiles = color_sensor.get_stream_profiles()
@@ -104,15 +108,6 @@ class Realsense(RGBDCamera):
             if depth_profile.height() != self.depth_height:
                 continue
 
-            intrinsics = depth_profile.get_intrinsics()
-
-            self._depth_intrinsics_matrix = np.zeros((3, 3))
-            self._depth_intrinsics_matrix[0, 0] = intrinsics.fx
-            self._depth_intrinsics_matrix[1, 1] = intrinsics.fy
-            self._depth_intrinsics_matrix[0, 2] = intrinsics.ppx
-            self._depth_intrinsics_matrix[1, 2] = intrinsics.ppy
-            self._depth_intrinsics_matrix[2, 2] = 1
-
             config.enable_stream(
                 depth_profile.stream_type(),
                 depth_profile.width(),
@@ -152,7 +147,8 @@ class Realsense(RGBDCamera):
 
     def get_depth_image(self) -> NumpyIntImageType:
         frames = self.pipeline.wait_for_frames()
-        depth_frame = frames.get_depth_frame()
+        aligned_frames = self.align.process(frames)
+        depth_frame = aligned_frames.get_depth_frame()
         image: NumpyIntImageType = np.asanyarray(depth_frame.get_data())
         return image
 
