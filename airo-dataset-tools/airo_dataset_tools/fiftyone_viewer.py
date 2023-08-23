@@ -1,13 +1,14 @@
 import os
 from typing import List, Optional
 
-import fiftyone as fo
-
 
 def view_coco_dataset(
     labels_json_path: str, dataset_dir: Optional[str] = None, label_types: Optional[List[str]] = None
 ) -> None:
     """visualize a coco dataset in fiftyone"""
+    # lazy import because fiftyone is slow to import and makes the CLI slow.
+    import fiftyone as fo
+
     if dataset_dir is None:
         dataset_dir = os.path.dirname(labels_json_path)
     if label_types is None:
