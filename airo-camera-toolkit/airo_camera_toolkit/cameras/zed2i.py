@@ -4,10 +4,19 @@ from typing import Any, List, Optional
 
 try:
     import pyzed.sl as sl
+
 except ImportError:
     raise ImportError(
         "You should install the ZED SDK and pip install the python bindings in your environment first, see the installation README."
     )
+
+# check SDK version
+try:
+    version = sl.Camera().get_sdk_version()
+    assert version.split(".")[0] == "4"
+except AssertionError:
+    raise ImportError("You should install version 4.X of the SDK!")
+
 
 import numpy as np
 from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
@@ -261,6 +270,7 @@ if __name__ == "__main__":
     input("each camera connected to the pc should be listed, press enter to continue")
 
     # test rgbd stereo camera
+
     with Zed2i(Zed2i.RESOLUTION_2K, fps=15, depth_mode=Zed2i.PERFORMANCE_DEPTH_MODE) as zed:
         print(zed.get_colored_point_cloud()[0])  # TODO: test the pointcloud more explicity?
         manual_test_stereo_rgbd_camera(zed)
