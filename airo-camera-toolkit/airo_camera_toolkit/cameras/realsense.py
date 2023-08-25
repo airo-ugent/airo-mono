@@ -80,7 +80,7 @@ class Realsense(RGBDCamera):
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         self.pipeline.stop()
 
-    def _enable_color_stream(self, config, color_sensor, fps, width, height) -> rs.stream:
+    def _enable_color_stream(self, config: rs.config, color_sensor: rs.color_sensor, fps: float, width: int, height: int) -> rs.stream:  # type: ignore[no-any-unimported]
         color_stream_profiles = color_sensor.get_stream_profiles()
         for color_profile in color_stream_profiles:
             color_profile = color_profile.as_video_stream_profile()
@@ -103,7 +103,7 @@ class Realsense(RGBDCamera):
 
         raise ValueError(f"No color profile found for resolution {width}x{height} at {fps} fps")
 
-    def _enable_depth_stream(self, config, depth_sensor, fps, width, height) -> rs.stream:
+    def _enable_depth_stream(self, config: rs.config, depth_sensor: rs.sensor, fps: float, width: int, height: int) -> rs.stream:  # type: ignore[no-any-unimported]
         depth_stream_profiles = depth_sensor.get_stream_profiles()
         for depth_profile in depth_stream_profiles:
             depth_profile = depth_profile.as_video_stream_profile()
