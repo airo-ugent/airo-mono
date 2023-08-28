@@ -1,6 +1,9 @@
+import pathlib
+
 import setuptools
 from setuptools import find_packages
 
+root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo-dataset-tools",
     version="0.0.1",
@@ -20,6 +23,12 @@ setuptools.setup(
         "types-Pillow",
         "albumentations",
     ],
+    extras_require={
+        "external": [
+            f"airo_typing @ file://localhost/{root_folder}/airo-typing",
+            f"airo_spatial_algebra @ file://localhost/{root_folder}/airo-spatial-algebra",
+        ]
+    },
     packages=find_packages(),
     entry_points={
         "console_scripts": [
