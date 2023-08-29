@@ -167,6 +167,16 @@ class AnnotationWindow:
         annotation_type: Annotation,
         color: BGRColorType = GREEN,
     ) -> None:
+        """Draws the annotation that is currently being collected. This function is more complex than the oen for
+        finished annotations because it needs to confer more information. For example, we color polygons yellow if they
+        can be closed.
+
+        Args:
+            image: The image upon which the annotation will be drawn.
+            annotation_name: The name of the annotation.
+            annotation_type: The type of annotation.
+            color: Color for the drawn text, lines and points.
+        """
         mouse_position = self.current_mouse_position
         clicked_points = self.clicked_points
 
