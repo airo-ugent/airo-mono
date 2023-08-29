@@ -240,7 +240,11 @@ class MultiprocessRGBReceiver(RGBCamera):
         self.previous_timestamp = time.time()
 
     def get_current_timestamp(self) -> float:
-        """Timestamp of the image that is currently in the shared memory block."""
+        """Timestamp of the image that is currently in the shared memory block.
+
+        Warning: our current implementation, in theory the image and the timestamp could be out of sync when reading.
+        Having atomic read/writes of both the image and timestap (a la ROS) would solve this.
+        """
         return self.timestamp_shm_array[0]
 
     def _grab_images(self) -> None:
