@@ -8,7 +8,8 @@ import cv2
 import loguru
 import numpy as np
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType
+from airo_camera_toolkit.utils import ImageConverter
+from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType, NumpyIntImageType
 
 logger = loguru.logger
 
@@ -109,7 +110,7 @@ class MultiprocessRGBPublisher(Process):
         fps_name = f"{self._shared_memory_namespace}_{_FPS_SHM_NAME}"
 
         # Get the example arrays (this is the easiest way to initialize the shared memory blocks with the correct size).
-        rgb = self._camera.get_rgb_image()
+        rgb = self._camera.get_rgb_image_as_int()  # We pass uint8 images as they consume 4x less memory
         rgb_shape = np.array(rgb.shape)
         timestamp = np.array([time.time()])
         intrinsics = self._camera.intrinsics_matrix()
@@ -142,7 +143,7 @@ class MultiprocessRGBPublisher(Process):
         assert isinstance(self._camera, RGBCamera)  # Just to make mypy happy, already checked in _setup()
 
         while not self.shutdown_event.is_set():
-            image = self._camera.get_rgb_image()
+            image = self._camera.get_rgb_image_as_int()
             self.rgb_shm_array[:] = image[:]
             self.timestamp_shm_array[:] = np.array([time.time()])[:]
 
@@ -237,7 +238,7 @@ class MultiprocessRGBReceiver(RGBCamera):
 
         # The shape of the image is not known in advance, so we need to retrieve it from the shared memory block.
         rgb_shape = tuple(self.rgb_shape_shm_array[:])
-        self.rgb_shm_array: np.ndarray = np.ndarray(rgb_shape, dtype=np.float32, buffer=self.rgb_shm.buf)
+        self.rgb_shm_array: np.ndarray = np.ndarray(rgb_shape, dtype=np.uint8, buffer=self.rgb_shm.buf)
 
         self.previous_timestamp = time.time()
 
@@ -251,6 +252,11 @@ class MultiprocessRGBReceiver(RGBCamera):
         self.previous_timestamp = self.get_current_timestamp()
 
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
+        image = self._retrieve_rgb_image_as_int()
+        image = ImageConverter.from_numpy_int_format(image).image_in_numpy_format
+        return image
+
+    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
         return self.rgb_shm_array
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
