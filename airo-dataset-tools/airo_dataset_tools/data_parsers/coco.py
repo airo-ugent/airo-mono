@@ -65,7 +65,7 @@ IsCrowd = int  # 0 or 1
 
 
 class CocoInfo(BaseModel):
-    year: int
+    year: Union[int, str]
     version: str
     description: str
     contributor: str
