@@ -156,6 +156,7 @@ def draw_frame_on_image(
     rvec = charuco_se3.orientation_as_rotation_vector
     tvec = charuco_se3.translation
     image = cv2.drawFrameAxes(image, camera_matrix, None, rvec, tvec, 0.2)
+    return image
 
 
 def visualize_aruco_detections(
