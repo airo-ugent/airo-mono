@@ -61,3 +61,5 @@ dependencies:
     - ffmpegcv
 ```
 To start recording RGB videos from a `MultiprocessRGBPublisher` create a `MultiprocessRGBVideoRecorder` with the namespace of the publisher, and start it, as in the main function of [multiprocess_video_recorder.py](./multiprocess_video_recorder.py).
+Note that realtime video-encoding is computationally expensive, recording at 30 fps on laptops is not always possible.
+The video recorder will try to keep up with the framerate, but will drop frames if it can't.
