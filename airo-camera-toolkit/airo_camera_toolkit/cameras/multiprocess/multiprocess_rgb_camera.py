@@ -5,13 +5,10 @@ from multiprocessing import Process, resource_tracker, shared_memory
 from typing import Optional, Tuple
 
 import cv2
-import loguru
 import numpy as np
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType, NumpyIntImageType
-
-logger = loguru.logger
 
 _RGB_SHM_NAME = "rgb"
 _RGB_SHAPE_SHM_NAME = "rgb_shape"
@@ -281,12 +278,10 @@ if __name__ == "__main__":
     from airo_camera_toolkit.cameras.zed2i import Zed2i
 
     # Creating and starting the publisher
-    resolution_identifier = Zed2i.RESOLUTION_1080
-    resolution = Zed2i.resolution_sizes[resolution_identifier]
     p = MultiprocessRGBPublisher(
         Zed2i,
         camera_kwargs={
-            "resolution": resolution_identifier,
+            "resolution": Zed2i.RESOLUTION_1080,
             "fps": 30,
             "depth_mode": Zed2i.NONE_DEPTH_MODE,
         },
@@ -294,11 +289,14 @@ if __name__ == "__main__":
     p.start()
 
     # The receiver behaves just like a regular RGBCamera
-    receiver = MultiprocessRGBReceiver("camera")
+    namespace = "camera"
+    receiver = MultiprocessRGBReceiver(namespace)
+
+    cv2.namedWindow(namespace, cv2.WINDOW_NORMAL)
     while True:
-        logger.info("Getting image")
-        image = receiver.get_rgb_image()
-        cv2.imshow("RGB Image", image)
+        image_rgb = receiver.get_rgb_image_as_int()
+        image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
+        cv2.imshow(namespace, image)
         key = cv2.waitKey(10)
         if key == ord("q"):
             break

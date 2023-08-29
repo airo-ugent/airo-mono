@@ -28,11 +28,36 @@ Note that the publisher is a subclass of `Process`, this way it can publish unin
 The receiver is subclass of `RGBCamera` which ensures that it follows the interface of a regular airo-camera-toolkit camera.
 
 ## Usage
-See [multiprocess_example.py](../../../docs/multiprocess_example.py) for a simple example of how to use these classes.
-The main difference with the regular workflow is that instead of instantiating a `RGBCamera` subclass, you now have to first create a `MultiprocessRGBPublisher` and then one or more `MultiprocessRGBReceiver`s.
+See the  main function in [multiprocess_rgb_camera.py](./multiprocess_rgb_camera.py) for a simple example of how to use these classes with a ZED camera.
+The main difference with the regular workflow is that instead of instantiating a `Zed2i` object, you now have to first create a `MultiprocessRGBPublisher` with the class and its kwargs, and then one or more `MultiprocessRGBReceiver`s.
+
+> :information_source: Similar to how regular `RGBCamera`s behave, `MultiprocessRGBReceiver`s will block until a new image is available.
 
 ## Additional features
-TODO implement and explain::
-* Blocking MultiprocessRGBReceiver
-* RerunLogger
-* VideoRecorder .start() and .stop()
+Logging and recording images and videos is computationally expensive.
+This can interfere with robot controllers.
+For this reason we provide two additional classes that can be used to log and record images and videos in parallel and in separate processes.
+All they need to start working is the `namespace` of the camera publisher they should log or record.
+
+### Rerun Loggers
+The `MultiprocessRGBRerunLogger` logs RGB images to Rerun from its own process.
+First start a `MultiprocessRGBPublisher` and then a Rerun viewer from a termimal:
+```bash
+python -m rerun --memory-limit 8GB
+```
+Finally create a `MultiprocessRGBRerunLogger` with the namespace of the publisher, as in the main function of [mutliprocess_rerun_logger.py](./multiprocess_rerun_logger.py).
+
+A RGBD variant of this class is also available.
+
+### Video Recording
+To enable video recording install FFMPEG 6.0 and the python package [ffmpegcv](https://github.com/chenxinfeng4/ffmpegcv), this can be done via conda:
+
+```yaml
+dependencies:
+  - ffmpeg=6.0.0
+  - x265 # not 100% if this need to be installed separately
+  - pip
+  pip:
+    - ffmpegcv
+```
+To start recording RGB videos from a `MultiprocessRGBPublisher` create a `MultiprocessRGBVideoRecorder` with the namespace of the publisher, and start it, as in the main function of [multiprocess_video_recorder.py](./multiprocess_video_recorder.py).

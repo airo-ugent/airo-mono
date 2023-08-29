@@ -56,7 +56,7 @@ class MultiprocessVideoRecorder(Process):
 
 if __name__ == "__main__":
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
-    recorder = MultiprocessVideoRecorder("rgb")
+    recorder = MultiprocessVideoRecorder("camera")
     recorder.start()
     time.sleep(10)
     recorder.stop()
