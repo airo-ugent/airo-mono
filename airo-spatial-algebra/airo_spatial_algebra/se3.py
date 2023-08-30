@@ -118,7 +118,6 @@ class SE3Container:
     @property
     def orientation_as_rotation_vector(self) -> Vector3DType:
         axis, angle = self.orientation_as_axis_angle
-
         if axis is None:
             return np.zeros(3)
         return angle * axis
