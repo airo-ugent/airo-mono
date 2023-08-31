@@ -9,7 +9,6 @@ from typing import Any, List, Optional
 
 import cv2
 import numpy as np
-from airo_camera_toolkit.reprojection import project_frame_to_image_plane
 from airo_spatial_algebra import SE3Container
 from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, OpenCVIntImageType
 from cv2 import aruco
@@ -152,27 +151,24 @@ def get_pose_of_charuco_board(
 def draw_frame_on_image(
     image: OpenCVIntImageType, frame_pose_in_camera: HomogeneousMatrixType, camera_matrix: CameraIntrinsicsMatrixType
 ) -> OpenCVIntImageType:
-    """draws a 2D projection of a frame on the iamge. Be careful when interpreting this visually, it is often hard to estimate the true 3D direction of an axis' 2D projection."""
-    project_points = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-    origin, x_pos, y_pos, z_pos = project_frame_to_image_plane(
-        project_points, camera_matrix, frame_pose_in_camera
-    ).astype(int)
-    image = cv2.line(image, x_pos, origin, color=(0, 0, 255), thickness=2)
-    image = cv2.line(image, y_pos, origin, color=(0, 255, 0), thickness=2)
-    image = cv2.line(image, z_pos, origin, color=(255, 0, 0), thickness=2)
+    """Draws a 2D projection of a frame on the image. Be careful when interpreting this visually, it is often hard to estimate the true 3D direction of an axis' 2D projection."""
+    charuco_se3 = SE3Container.from_homogeneous_matrix(frame_pose_in_camera)
+    rvec = charuco_se3.orientation_as_rotation_vector
+    tvec = charuco_se3.translation
+    image = cv2.drawFrameAxes(image, camera_matrix, None, rvec, tvec, 0.2)
     return image
 
 
 def visualize_aruco_detections(
     image: OpenCVIntImageType, aruco_result: ArucoMarkerDetectionResult
 ) -> OpenCVIntImageType:
-    """draws the aruco marker countours/corners and their IDs on the image"""
+    """Draws the aruco marker countours/corners and their IDs on the image"""
     image = aruco.drawDetectedMarkers(image, [x for x in aruco_result.corners], aruco_result.ids)
     return image
 
 
 def visualize_charuco_detection(image: OpenCVIntImageType, result: CharucoCornerDetectionResult) -> OpenCVIntImageType:
-    """draws the charuco checkerboard corners and their IDs on the image"""
+    """Draws the charuco checkerboard corners and their IDs on the image"""
     image = aruco.drawDetectedCornersCharuco(image, np.array(result.corners), np.array(result.ids), (255, 255, 0))
     return image
 
