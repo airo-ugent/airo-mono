@@ -22,7 +22,7 @@ We provide a [documented](airo_dataset_tools/cvat_labeling/readme.md) worklow fo
 We also provide a number of tools for working with COCO datasets:
 - visualisation using [FiftyOne](https://voxel51.com/)
 - applying Albumentation transforms (e.g. resizing, flipping,...) to a COCO Keypoints dataset and its annotations, see [here](airo_dataset_tools/coco_tools/transform_dataset.py)
-- converting COCO instances to YOLO format (TODO)
+- converting COCO instances to YOLO format, see [here](airo_dataset_tools/coco_tools/coco_instances_to_yolo.py)
 - combining COCO datasets (via datumaro)(TODO)
 
 Most of the COCO tools are available in the CLI, which you can access by running `airo-dataset-tools --help` from the command line.

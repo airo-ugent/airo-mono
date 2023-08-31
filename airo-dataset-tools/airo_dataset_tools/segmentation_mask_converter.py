@@ -57,7 +57,7 @@ class BinarySegmentationMask:
         return (bbox[0], bbox[1], bbox[2], bbox[3])
 
     @property
-    def as_polygon(self) -> Optional(List[Polygon]):
+    def as_polygon(self) -> Optional[List[Polygon]]:
         # from https://github.com/cocodataset/cocoapi/issues/476#issuecomment-871804850
         contours, _ = cv2.findContours(self.bitmap, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         segmentation = []

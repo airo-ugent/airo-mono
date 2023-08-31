@@ -100,3 +100,11 @@ def test_quaternion_scalar_conversion():
         quat,
         SE3Container.scalar_first_quaternion_to_scalar_last(SE3Container.scalar_last_quaternion_to_scalar_first(quat)),
     ).all()
+
+
+def test_axis_angle_dtypes():
+    se3 = SE3Container.from_homogeneous_matrix(np.identity(4))
+    axis, angle = se3.orientation_as_axis_angle
+    assert isinstance(angle, float)
+    assert isinstance(axis, np.ndarray)
+    assert axis.dtype == np.float64
