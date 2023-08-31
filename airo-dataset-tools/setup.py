@@ -12,7 +12,7 @@ setuptools.setup(
     description="TODO",
     install_requires=[
         "numpy",
-        "pydantic<2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
+        "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
         "opencv-contrib-python==4.7.0.72",
         "opencv-python-headless==4.7.0.72",  # opencv headless gets installed by some packages, so install it manually to match versions with opencv-contrib-python
         "pycocotools",
