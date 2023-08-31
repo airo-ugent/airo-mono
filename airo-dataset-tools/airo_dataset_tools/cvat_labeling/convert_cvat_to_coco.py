@@ -116,7 +116,7 @@ def cvat_image_to_coco(  # noqa: C901, too complex
                 annotation_id_counter += 1
 
     coco_model = CocoKeypointsDataset(images=coco_images, annotations=coco_annotations, categories=coco_categories)
-    return coco_model.dict(exclude_none=True)
+    return coco_model.model_dump(exclude_none=True)
 
 
 ####################

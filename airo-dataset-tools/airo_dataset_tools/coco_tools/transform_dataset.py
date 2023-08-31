@@ -173,6 +173,6 @@ if __name__ == "__main__":
     coco_dataset = CocoKeypointsDataset(**coco_json)
     transformed_dataset = apply_transform_to_coco_dataset(transforms, coco_dataset, coco_dir, coco_target_dir)
 
-    transformed_dataset_dict = transformed_dataset.dict(exclude_none=True)
+    transformed_dataset_dict = transformed_dataset.model_dump(exclude_none=True)
     with open(os.path.join(coco_target_dir, coco_file_name), "w") as f:
         json.dump(transformed_dataset_dict, f)
