@@ -7,6 +7,7 @@ from typing import List, Optional
 import albumentations as A
 import click
 from airo_dataset_tools.coco_tools.coco_instances_to_yolo import create_yolo_dataset_from_coco_instances_dataset
+from airo_dataset_tools.coco_tools.split_dataset import split_and_save_coco_dataset
 from airo_dataset_tools.coco_tools.transform_dataset import apply_transform_to_coco_dataset
 from airo_dataset_tools.cvat_labeling.convert_cvat_to_coco import cvat_image_to_coco
 from airo_dataset_tools.data_parsers.coco import CocoKeypointsDataset
@@ -93,3 +94,21 @@ def coco_intances_to_yolo(coco_json: str, target_dir: str, use_segmentation: boo
     """Create a YOLO detections/segmentations dataset from a coco instances dataset"""
     print(f"converting coco instances dataset {coco_json} to yolo dataset {target_dir}")
     create_yolo_dataset_from_coco_instances_dataset(coco_json, target_dir, use_segmentation=use_segmentation)
+
+
+@cli.command(name="split-coco-dataset")
+@click.argument("json-path", type=click.Path(exists=True))
+@click.option("--split-ratios", type=float, multiple=True, required=True)
+@click.option("--shuffle-before-splitting", is_flag=True, default=True)
+def split_coco_dataset_cli(json_path: str, split_ratios: List[float], shuffle_before_splitting: bool) -> None:
+    """Split a COCO dataset into subsets according to the specified relative ratios and save them to disk.
+    Images are split with their corresponding annotations. No guarantees on class balance or annotation ratios.
+
+    If two ratios are specified, the dataset will be split into two subsets. these will be called train/val by default.
+    If three ratios are specified, the dataset will be split into three subsets. these will be called train/val/test by default.
+    """
+    split_and_save_coco_dataset(json_path, split_ratios, shuffle_before_splitting=shuffle_before_splitting)
+
+
+if __name__ == "__main__":
+    cli()
