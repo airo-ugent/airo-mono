@@ -113,7 +113,7 @@ class SE3Container:
     @property
     def orientation_as_axis_angle(self) -> AxisAngleType:
         angle, axis = self.se3.angvec()
-        return axis, angle
+        return axis.astype(np.float64), float(angle)
 
     @property
     def orientation_as_rotation_vector(self) -> Vector3DType:
