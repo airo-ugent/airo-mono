@@ -131,7 +131,7 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
 
     @field_validator("keypoints")
     @classmethod
-    def keypoints_coordinates_must_be_in_pixel_space(cls, v: Keypoints, values: dict) -> Keypoints:
+    def keypoints_coordinates_must_be_in_pixel_space(cls, v: Keypoints) -> Keypoints:
         max_coordinate_value = 0.0
         for i in range(0, len(v), 3):
             max_coordinate_value = max(v[i], max_coordinate_value)
@@ -143,7 +143,6 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
 
     @model_validator(mode="after")
     def num_keypoints_matches_amount_of_labeled_keypoints(self) -> "CocoKeypointAnnotation":
-
         labeled_keypoints = 0
         for v in self.keypoints[2::3]:
             if v > 0:
@@ -175,7 +174,7 @@ class CocoInstancesDataset(BaseModel):
 
     # skip on failure becasue this validator requires the annotations list to be non-empty
     @model_validator(mode="after")
-    def annotations_catergory_id_exist_in_categories(self) -> dict:
+    def annotations_catergory_id_exist_in_categories(self) -> "CocoInstancesDataset":
         category_ids = set([category.id for category in self.categories])
         for annotation in self.annotations:
             assert (
