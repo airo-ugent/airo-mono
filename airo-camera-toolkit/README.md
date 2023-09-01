@@ -86,7 +86,7 @@ See [reprojection.py](./airo_camera_toolkit/reprojection.py) for more details.
 
 ## Annotation tool
 
-See [annotation_tool.md](annotation_tool.md) for usage instructions.
+See [annotation_tool.md](./airo_camera_toolkit/annotation_tool.md) for usage instructions.
 
 ## Image Transforms
 
