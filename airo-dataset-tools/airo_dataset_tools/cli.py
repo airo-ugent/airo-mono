@@ -4,8 +4,8 @@ import json
 import os
 from typing import List, Optional
 
-import albumentations as A
 import click
+from airo_dataset_tools.coco_tools.albumentations import PillowResize
 from airo_dataset_tools.coco_tools.coco_instances_to_yolo import create_yolo_dataset_from_coco_instances_dataset
 from airo_dataset_tools.coco_tools.fiftyone_viewer import view_coco_dataset
 from airo_dataset_tools.coco_tools.split_dataset import split_and_save_coco_dataset
@@ -74,7 +74,7 @@ def resize_coco_keypoints_dataset(annotations_json_path: str, width: int, height
     )
     os.makedirs(transformed_dataset_dir, exist_ok=True)
 
-    transforms = [A.Resize(height, width)]
+    transforms = [PillowResize(height, width)]
     coco_json = json.load(open(annotations_json_path, "r"))
     coco_dataset = CocoKeypointsDataset(**coco_json)
     transformed_dataset = apply_transform_to_coco_dataset(
