@@ -85,7 +85,8 @@ class CocoImage(BaseModel):
     __hash__ = object.__hash__  # make hashable for use in set
 
 
-class CocoCategory(BaseModel):
+class CocoCategory(BaseModel, extra="allow"):
+
     supercategory: str  # should be set to "name" for root category
     id: CategoryID
     name: str
@@ -96,7 +97,8 @@ class CocoKeypointCategory(CocoCategory):
     skeleton: Optional[List[List[int]]] = None
 
 
-class CocoInstanceAnnotation(BaseModel):
+class CocoInstanceAnnotation(BaseModel, extra="allow"):  # allow extra fields, to parse subclasses
+
     id: int  # unique id for the annotation
     image_id: ImageID
     category_id: CategoryID
