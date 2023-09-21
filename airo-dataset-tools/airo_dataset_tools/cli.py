@@ -86,7 +86,7 @@ def resize_coco_keypoints_dataset(annotations_json_path: str, width: int, height
         json.dump(transformed_dataset_dict, f)
 
 
-@click.command(name="coco-instances-to-yolo")
+@cli.command(name="coco-instances-to-yolo")
 @click.option("--coco_json", type=str)
 @click.option("--target_dir", type=str)
 @click.option("--use_segmentation", is_flag=True)
