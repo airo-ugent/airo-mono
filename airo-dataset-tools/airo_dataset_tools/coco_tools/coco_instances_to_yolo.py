@@ -73,6 +73,13 @@ def create_yolo_dataset_from_coco_instances_dataset(
 
         relative_image_path = image_path.relative_to(_coco_dataset_json_path.parent)
 
+        # ultralytics parser finds the 'latest' occurance of 'images' in the dataset path,
+        #  so we need to replace any occurance of 'image' with 'img'
+        #  https://github.com/ultralytics/ultralytics/issues/3581
+
+        relative_image_path_str = str(relative_image_path).replace("image", "img")
+        relative_image_path = pathlib.Path(relative_image_path_str)
+
         image = cv2.imread(str(image_path))
         height, width, _ = image.shape
 
@@ -124,8 +131,7 @@ def create_yolo_dataset_from_coco_instances_dataset(
 
 
 if __name__ == "__main__":
-    """example usage of the above function to resize all images in a coco dataset.
-    Copy the following lines into your own codebase and modify as needed."""
+    """example usage"""
     import os
 
     path = pathlib.Path(__file__).parents[1] / "cvat_labeling" / "example" / "coco.json"

@@ -2,9 +2,10 @@
 import json
 import pathlib
 import random
-from typing import List
+from typing import List, Optional
 
-from airo_dataset_tools.data_parsers.coco import CocoInstanceAnnotation, CocoInstancesDataset, CocoKeypointsDataset
+from airo_dataset_tools.data_parsers.coco import CocoImage, CocoInstanceAnnotation, CocoInstancesDataset
+from pydantic.error_wrappers import ValidationError
 
 
 def split_coco_dataset(
@@ -28,7 +29,7 @@ def split_coco_dataset(
     if shuffle_before_splitting:
         random.shuffle(images)
 
-    image_splits = []
+    image_splits: List[List[CocoImage]] = []
     split_sizes = [round(ratio * len(images)) for ratio in split_ratios]
     split_sizes[-1] = len(images) - sum(split_sizes[:-1])  # make sure the total number of images is correct
     print(f"Split sizes: {split_sizes}")
@@ -50,16 +51,16 @@ def split_coco_dataset(
         # keep original image_ids and annotation_ids so that you could still reference the original dataset
         annotation_splits[split_id].append(annotation)
 
+    # check if none of the annotation splits are empty:
+    for split_id, annotation_split in enumerate(annotation_splits):
+        if len(annotation_split) == 0:
+            raise ValueError(
+                f"Split {split_id} is empty, which is not allowed. Please use a larger dataset or a smaller split ratio."
+            )
     # create a new COCO dataset for each subset
-    dataset_type: type
-    if isinstance(coco_dataset, CocoKeypointsDataset):
-        dataset_type = CocoKeypointsDataset
-    else:
-        dataset_type = CocoInstancesDataset
-
     coco_dataset_splits: List[CocoInstancesDataset] = []
     for annotation_split, image_split in zip(annotation_splits, image_splits):
-        coco_dataset_split = dataset_type(
+        coco_dataset_split = CocoInstancesDataset(
             categories=coco_dataset.categories, images=image_split, annotations=annotation_split
         )
         coco_dataset_splits.append(coco_dataset_split)
@@ -82,18 +83,13 @@ def split_and_save_coco_dataset(
     if len(split_ratios) > len(split_names):
         raise ValueError(f"Only {len(split_names)} splits are supported. {len(split_ratios)} splits were specified.")
 
-    coco_dataset: CocoInstancesDataset
+    coco_dataset: Optional[CocoInstancesDataset] = None
     with open(coco_json_path, "r") as f:
         try:
-            coco_dataset = CocoKeypointsDataset(**json.load(f))
-        except TypeError:
-            print("Could not load as CocoKeypointsDataset. Trying CocoInstancesDataset")
             coco_dataset = CocoInstancesDataset(**json.load(f))
-        finally:
-            if not isinstance(coco_dataset, CocoKeypointsDataset) and not isinstance(
-                coco_dataset, CocoInstancesDataset
-            ):
-                raise ValueError("Could not load as CocoKeypointsDataset or CocoInstancesDataset")
+        except ValidationError as e:
+            print(e)
+            raise ValueError("Could not load CocoInstancesDataset")
 
     coco_dataset_splits = split_coco_dataset(coco_dataset, split_ratios, shuffle_before_splitting)
 
@@ -105,5 +101,6 @@ def split_and_save_coco_dataset(
 
 
 if __name__ == "__main__":
-    json_path = pathlib.Path(__file__).parents[2] / "test" / "test_data" / "instances_val2017_small.json"
-    split_and_save_coco_dataset(str(json_path), [0.8, 0.2])
+    json_path = pathlib.Path(__file__).parents[2] / "test" / "test_data" / "person_keypoints_val2017_small.json"
+    print(json_path)
+    split_and_save_coco_dataset(str(json_path), [0.5, 0.5])
