@@ -43,11 +43,16 @@ def view_coco_dataset_cli(
 
 @cli.command(name="convert-cvat-to-coco-keypoints")
 @click.argument("cvat_xml_file", type=str, required=True)
+@click.argument("coco_categories_json_file", type=str, required=True)
 @click.option("--add_bbox", is_flag=True, default=False, help="include bounding box in coco annotations")
 @click.option("--add_segmentation", is_flag=True, default=False, help="include segmentation in coco annotations")
-def convert_cvat_to_coco_cli(cvat_xml_file: str, add_bbox: bool, add_segmentation: bool) -> None:
-    """Convert CVAT XML to COCO keypoints json"""
-    coco = cvat_image_to_coco(cvat_xml_file, add_bbox=add_bbox, add_segmentation=add_segmentation)
+def convert_cvat_to_coco_cli(
+    cvat_xml_file: str, coco_categories_json_file: str, add_bbox: bool, add_segmentation: bool
+) -> None:
+    """Convert CVAT XML to COCO keypoints json according to specified coco categories"""
+    coco = cvat_image_to_coco(
+        cvat_xml_file, coco_categories_json_file, add_bbox=add_bbox, add_segmentation=add_segmentation
+    )
     path = os.path.dirname(cvat_xml_file)
     filename = os.path.basename(cvat_xml_file)
     path = os.path.join(path, filename.split(".")[0] + ".json")
