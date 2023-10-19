@@ -137,7 +137,7 @@ def _validate_coco_categories_are_in_cvat(
             if coco_category.name == category_str:
                 break
         for category_keypoint in coco_category.keypoints:
-            assert category_keypoint in semantic_types, f"semantic type {category_keypoint.name} not found"
+            assert category_keypoint in semantic_types, f"semantic type {category_keypoint} not found"
 
 
 def _get_n_category_instances_in_image(cvat_image: ImageItem, category_name: str) -> int:
