@@ -73,7 +73,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         assert isinstance(self._camera, RGBDCamera)  # For mypy
 
         while not self.shutdown_event.is_set():
-            image = self._camera.get_rgb_image()
+            image = self._camera.get_rgb_image_as_int()
             depth_map = self._camera._retrieve_depth_map()
             depth_image = self._camera._retrieve_depth_image()
             self.rgb_shm_array[:] = image[:]

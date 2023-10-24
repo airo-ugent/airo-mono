@@ -148,6 +148,7 @@ class Zed2i(StereoRGBDCamera):
         # create reusable memory blocks for the measures
         # these will be allocated the first time they are used
         self.image_matrix = sl.Mat()
+        self.depth_image_matrix = sl.Mat()
         self.depth_matrix = sl.Mat()
         self.pointcloud_matrix = sl.Mat()
 
@@ -230,8 +231,8 @@ class Zed2i(StereoRGBDCamera):
     def _retrieve_depth_image(self) -> NumpyIntImageType:
         assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
-        self.camera.retrieve_image(self.image_matrix, sl.VIEW.DEPTH)
-        image = self.image_matrix.get_data()
+        self.camera.retrieve_image(self.depth_image_matrix, sl.VIEW.DEPTH)
+        image = self.depth_image_matrix.get_data()
         image = image[..., :3]
         return image
 
