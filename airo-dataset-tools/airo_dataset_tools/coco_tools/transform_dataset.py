@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any, Callable, List, Optional
 
@@ -14,7 +15,6 @@ from airo_dataset_tools.data_parsers.coco import (
 )
 from airo_dataset_tools.segmentation_mask_converter import BinarySegmentationMask
 from PIL import Image
-import json 
 
 
 def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
