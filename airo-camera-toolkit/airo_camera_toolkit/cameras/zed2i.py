@@ -18,6 +18,8 @@ except AssertionError:
     raise ImportError("You should install version 4.X of the SDK!")
 
 
+import time
+
 import numpy as np
 from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
@@ -67,6 +69,13 @@ class Zed2i(StereoRGBDCamera):
     RESOLUTION_VGA = sl.RESOLUTION.VGA  # (672x376)
     RESOLUTIONS = (RESOLUTION_720, RESOLUTION_1080, RESOLUTION_2K, RESOLUTION_VGA)
 
+    resolution_sizes = {
+        RESOLUTION_720: (1280, 720),
+        RESOLUTION_1080: (1920, 1080),
+        RESOLUTION_2K: (2208, 1242),
+        RESOLUTION_VGA: (672, 376),
+    }
+
     def __init__(  # type: ignore[no-any-unimported]
         self,
         resolution: sl.RESOLUTION = RESOLUTION_2K,
@@ -106,9 +115,21 @@ class Zed2i(StereoRGBDCamera):
             # close to open with correct params
             self.camera.close()
 
-        status = self.camera.open(self.camera_params)
+        N_OPEN_ATTEMPTS = 5
+        for i in range(N_OPEN_ATTEMPTS):
+            status = self.camera.open(self.camera_params)
+            if status == sl.ERROR_CODE.SUCCESS:
+                break
+            print(f"Opening Zed2i camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
+            if self.serial_number:
+                print(f"Rebooting {self.serial_number}")
+                sl.Camera.reboot(self.serial_number)
+            time.sleep(2)
+            print(sl.Camera.get_device_list())
+            self.camera = sl.Camera()
+
         if status != sl.ERROR_CODE.SUCCESS:
-            raise IndexError(f"could not open camera, error = {status}")
+            raise IndexError(f"Could not open Zed2i camera, error = {status}")
 
         # TODO: create a configuration class for the runtime parameters
         self.runtime_params = sl.RuntimeParameters()
