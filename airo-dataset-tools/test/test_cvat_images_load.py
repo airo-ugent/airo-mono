@@ -5,6 +5,7 @@ from airo_dataset_tools.data_parsers.cvat_images import CVATImagesParser
 
 path = pathlib.Path(__file__).parent.absolute()
 CVAT_EXAMPLE_PATH = str(path.parent / "airo_dataset_tools" / "cvat_labeling" / "example" / "annotations.xml")
+COCO_CATEGORIES_PATH = str(path.parent / "airo_dataset_tools" / "cvat_labeling" / "example" / "coco_categories.json")
 
 
 def test_example_cvat_annotations_loading():
