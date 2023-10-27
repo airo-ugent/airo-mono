@@ -9,7 +9,6 @@ from typing import List, Tuple
 import tqdm
 from airo_dataset_tools.cvat_labeling.load_xml_to_dict import get_dict_from_xml
 from airo_dataset_tools.data_parsers.coco import (
-    CocoCategory,
     CocoImage,
     CocoKeypointAnnotation,
     CocoKeypointCategory,
@@ -50,7 +49,7 @@ def cvat_image_to_coco(  # noqa: C901, too complex
     with open(coco_configuration_json_path, "r") as file:
         coco_categories_config = json.load(file)
     for category_dict in coco_categories_config["categories"]:
-        category = CocoCategory(**category_dict)
+        category = CocoKeypointCategory(**category_dict)
         coco_categories.append(category)
 
     _validate_coco_categories_are_in_cvat(

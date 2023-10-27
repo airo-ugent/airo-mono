@@ -34,8 +34,8 @@ class CameraIntrinsics(BaseModel):
     principal_point_in_pixels: PrincipalPoint
 
     # Distortion coefficients are stored so you can add as many as you want.
-    radial_distortion_coefficients: Optional[RadialDistortionCoefficients]
-    tangential_distortion_coefficients: Optional[TangentialDistortionCoefficients]
+    radial_distortion_coefficients: Optional[RadialDistortionCoefficients] = None
+    tangential_distortion_coefficients: Optional[TangentialDistortionCoefficients] = None
 
     @classmethod
     def from_matrix_and_resolution(
