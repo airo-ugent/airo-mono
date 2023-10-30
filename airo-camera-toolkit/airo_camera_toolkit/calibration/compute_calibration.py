@@ -16,7 +16,7 @@ from airo_camera_toolkit.calibration.fiducial_markers import (
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
 from airo_dataset_tools.data_parsers.pose import Pose
 from airo_spatial_algebra import SE3Container
-from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, OpenCVIntImageType
+from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType
 from loguru import logger
 
 
@@ -124,7 +124,7 @@ def eye_to_hand_pose_estimation(
 
 
 def compute_calibration(
-    images: List[OpenCVIntImageType],
+    board_poses_in_camera: List[HomogeneousMatrixType],
     tcp_poses_in_base: List[HomogeneousMatrixType],
     intrinsics: CameraIntrinsicsMatrixType,
     mode: str = "eye_in_hand",
@@ -132,10 +132,6 @@ def compute_calibration(
     aruco_dict=AIRO_DEFAULT_ARUCO_DICT,
     charuco_board=AIRO_DEFAULT_CHARUCO_BOARD,
 ):
-    board_poses_in_camera = [
-        detect_charuco_board(image, intrinsics, aruco_markers=aruco_dict, charuco_board=charuco_board)
-        for image in images
-    ]
 
     if mode == "eye_in_hand":
         # pose of camera in tcp frame
@@ -147,6 +143,18 @@ def compute_calibration(
         raise ValueError(f"Unknown mode {mode}")
 
     return camera_pose, calibration_error
+
+
+def save_board_detections(results_dir, board_poses_in_camera, images, intrinsics):
+    board_detections_dir = os.path.join(results_dir, "board_detections")
+    os.makedirs(board_detections_dir)
+    for i, (board_pose, image) in enumerate(zip(board_poses_in_camera, images)):
+        image_annotated = image.copy()
+        if board_pose is None:
+            continue
+        draw_frame_on_image(image_annotated, board_pose, intrinsics)
+        detection_filepath = os.path.join(board_detections_dir, f"board_detection_{i:04d}.jpg")
+        cv2.imwrite(detection_filepath, image_annotated)
 
 
 def compute_calibration_all_methods(
@@ -170,8 +178,17 @@ def compute_calibration_all_methods(
     calibration_errors = {}
     calibration_result_poses = {}
 
+    board_poses_in_camera = [
+        detect_charuco_board(image, intrinsics, aruco_markers=aruco_dict, charuco_board=charuco_board)
+        for image in images
+    ]
+
+    save_board_detections(results_dir, board_poses_in_camera, images, intrinsics)
+
     for name, method in calibration_methods.items():
-        camera_pose, calibration_error = compute_calibration(images, tcp_poses_in_base, intrinsics, mode, method)
+        camera_pose, calibration_error = compute_calibration(
+            board_poses_in_camera, tcp_poses_in_base, intrinsics, mode, method
+        )
         if calibration_error is None:
             calibration_error = np.inf
 

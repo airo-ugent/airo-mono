@@ -159,6 +159,7 @@ def collect_calibration_data(
 
         key = cv2.waitKey(1)
         if key == ord("q"):
+            robot.rtde_control.endTeachMode()
             break
 
         if key == ord("s"):
