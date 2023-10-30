@@ -11,6 +11,9 @@ class Resolution(BaseModel):
     width: int
     height: int
 
+    def as_tuple(self) -> Tuple[int, int]:
+        return self.width, self.height
+
 
 class FocalLengths(BaseModel):
     fx: float
