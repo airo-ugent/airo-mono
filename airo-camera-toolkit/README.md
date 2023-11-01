@@ -52,20 +52,10 @@ while True:
         break
 ```
 
-## Calibration
-By deafult we use a charuco board for hand-eye calibration.
- You can find the board in the `test/data` folder.
- To match the size of the markers to the desired size, the board should be printed on a 300mm x 220mm surface.
- Using Charuco boards is highly recommended as they are a lot more robust and precise than individual aruco markers, if you do use an aruco marker, make sure that the whitespace around the marker is at least 25% of the marker dimensions.
+## Hand-eye calibration
 
-Running the calibration:
-* Position the board:
-    * For **eye-to-hand** rigidly attach (grasp) the board to the robot end-effector.
-    * For **eye-in-hand** place the board in anywhere workspace of the robot.
-* Run the `calibration/hand_eye_calibration.py` script.
-* Collect approximately 6 pose-image pairs by moving the robot around.
-* Check whether the *reprojection error* is sufficiently low.
-* The resulting extrinsics are saved to `camera_pose.json`.
+See [calibration/README.md](./airo_camera_toolkit/calibration/README.md) for more details.
+
 
 ## Image format conversion
 Camera by default return images as numpy 32-bit float RGB images with values between 0 to 1 through `get_rgb_image()`.
