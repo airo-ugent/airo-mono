@@ -177,9 +177,8 @@ def resize_coco_keypoints_dataset(annotations_json_path: str, width: int, height
         transforms, coco_dataset, coco_dataset_dir, transformed_dataset_dir
     )
 
-    transformed_dataset_dict = transformed_dataset.dict(exclude_none=True)
     with open(os.path.join(transformed_dataset_dir, annotations_file_name), "w") as f:
-        json.dump(transformed_dataset_dict, f)
+        json.dump(transformed_dataset.model_dump(exclude_none=True), f)
 
 
 if __name__ == "__main__":

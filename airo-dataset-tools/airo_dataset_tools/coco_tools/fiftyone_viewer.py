@@ -11,7 +11,7 @@ def view_coco_dataset(
 
     if dataset_dir is None:
         dataset_dir = os.path.dirname(labels_json_path)
-    if label_types is None:
+    if label_types is None or not label_types:
         label_types = ["detections", "segmentations", "keypoints"]
     else:
         assert all([label_type in ["detections", "segmentations", "keypoints"] for label_type in label_types])
