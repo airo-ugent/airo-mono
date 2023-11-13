@@ -61,6 +61,45 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
     def right_manipulator_pose_in_base(self) -> HomogeneousMatrixType:
         return self._right_manipulator_pose_in_base
 
+    def move_to_tcp_pose(
+        self,
+        left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
+        right_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
+        joint_speed: Optional[float] = None,
+    ) -> AwaitableAction:
+        """Move both arms to a given TCP pose in the base frame. You can specify None to not move one of the arms.
+        Args:
+            left_tcp_pose_in_base: The TCP pose of the left arm in the base frame. If None is specified, the left arm will not move.
+            right_tcp_pose_in_base: The TCP pose of the right arm in the base frame. If None is specified, the right arm will not move.
+            joint_speed: The joint speed of the manipulator in rad/s. If not specified, the default speed of the manipulator is used.
+
+        Returns:
+            awaitable with termination condition that both robots have reached their target pose or have timed out.
+        """
+
+        assert (
+            left_tcp_pose_in_base is not None or right_tcp_pose_in_base is not None
+        ), "At least one of the TCP poses should be specified"
+        awaitables: List[AwaitableAction] = []
+        if left_tcp_pose_in_base is not None:
+            left_tcp_pose_left_base = self.transform_pose_to_left_arm_base(left_tcp_pose_in_base)
+            left_awaitable = self._left_manipulator.move_to_tcp_pose(left_tcp_pose_left_base, joint_speed)
+            awaitables.append(left_awaitable)
+        if right_tcp_pose_in_base is not None:
+            right_tcp_pose_right_base = self.transform_pose_to_right_arm_base(right_tcp_pose_in_base)
+            right_awaitable = self._right_manipulator.move_to_tcp_pose(right_tcp_pose_right_base, joint_speed)
+            awaitables.append(right_awaitable)
+
+        # compose the awaitable actions
+        def done_condition() -> bool:
+            return all([awaitable.is_action_done() for awaitable in awaitables])
+
+        return AwaitableAction(
+            done_condition,
+            awaitables[0]._default_timeout,
+            awaitables[0]._default_sleep_resolution,
+        )
+
     def move_linear_to_tcp_pose(
         self,
         left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
