@@ -143,6 +143,38 @@ def get_pose_of_charuco_board(
     return charuco_pose_in_camera_frame
 
 
+def detect_charuco_board(
+    image: OpenCVIntImageType,
+    camera_matrix: CameraIntrinsicsMatrixType,
+    dist_coeffs: Optional[np.ndarray] = None,
+    aruco_markers: ArucoDictType = AIRO_DEFAULT_ARUCO_DICT,
+    charuco_board: CharucoDictType = AIRO_DEFAULT_CHARUCO_BOARD,
+) -> Optional[HomogeneousMatrixType]:
+    """Detect the pose of a charuco board from an image and the camera's intrinsics.
+
+    Args:
+        image: An image that might contain a charuco board.
+        camera_matrix: The intrinsics of the camera that took the image.
+        dist_coeffs: The distortion coefficients of the camera that took the image.
+        aruco_markers: The dictionary from OpenCV that specifies the aruco marker parameters.
+        charuco_board: The dictionary from OpenCV that specifies the charuco board parameters.
+
+    Returns:
+        Optional[HomogeneousMatrixType]: The pose of the charuco board in the camera frame, if it was detected.
+    """
+
+    aruco_result = detect_aruco_markers(image, aruco_markers)
+    if not aruco_result:
+        return None
+
+    charuco_result = detect_charuco_corners(image, aruco_result, charuco_board)
+    if not charuco_result:
+        return None
+
+    charuco_pose = get_pose_of_charuco_board(charuco_result, charuco_board, camera_matrix, dist_coeffs)
+    return charuco_pose
+
+
 #################
 # visualization #
 #################
@@ -193,7 +225,6 @@ if __name__ == "__main__":  # noqa: C901 - ignore complexity
         charuco_y_count: Optional[int] = None,
         charuco_tile_size: Optional[int] = None,
     ) -> None:
-
         aruco_dict = AIRO_DEFAULT_ARUCO_DICT
         detect_charuco = charuco_x_count is not None and charuco_y_count is not None and charuco_tile_size is not None
         if detect_charuco:

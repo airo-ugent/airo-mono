@@ -1,9 +1,11 @@
+import json
 import os
 from typing import Any, Callable, List, Optional
 
 import albumentations as A
 import numpy as np
 import tqdm
+from airo_dataset_tools.coco_tools.albumentations import PillowResize
 from airo_dataset_tools.data_parsers.coco import (
     CocoImage,
     CocoInstanceAnnotation,
@@ -153,26 +155,39 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
     return coco_dataset
 
 
+def resize_coco_keypoints_dataset(annotations_json_path: str, width: int, height: int) -> None:
+    """Resize a COCO dataset. Will create a new directory with the resized dataset on the same level as the original dataset.
+    Dataset is assumed to be
+    /dir
+        annotations.json # contains relative paths w.r.t. /dir
+        ...
+    """
+    coco_dataset_dir = os.path.dirname(annotations_json_path)
+    annotations_file_name = os.path.basename(annotations_json_path)
+    dataset_parent_dir = os.path.dirname(coco_dataset_dir)
+    transformed_dataset_dir = os.path.join(
+        dataset_parent_dir, f"{annotations_file_name.split('.')[0]}_resized_{width}x{height}"
+    )
+    os.makedirs(transformed_dataset_dir, exist_ok=True)
+
+    transforms = [PillowResize(height, width)]
+    coco_json = json.load(open(annotations_json_path, "r"))
+    coco_dataset = CocoKeypointsDataset(**coco_json)
+    transformed_dataset = apply_transform_to_coco_dataset(
+        transforms, coco_dataset, coco_dataset_dir, transformed_dataset_dir
+    )
+
+    transformed_dataset_dict = transformed_dataset.dict(exclude_none=True)
+    with open(os.path.join(transformed_dataset_dir, annotations_file_name), "w") as f:
+        json.dump(transformed_dataset_dict, f)
+
+
 if __name__ == "__main__":
     """example usage of the above function to resize all images in a coco dataset.
     Copy the following lines into your own codebase and modify as needed."""
-    import json
     import pathlib
 
     path = pathlib.Path(__file__).parents[1] / "cvat_labeling" / "example" / "coco.json"
 
     coco_json_path = str(path)
-    coco_dir = os.path.dirname(coco_json_path)
-    coco_file_name = os.path.basename(coco_json_path)
-    coco_target_dir = os.path.join(os.path.dirname(coco_dir), "transformed")
-    os.makedirs(coco_target_dir, exist_ok=True)
-
-    transforms = [A.Resize(128, 128)]
-
-    coco_json = json.load(open(coco_json_path, "r"))
-    coco_dataset = CocoKeypointsDataset(**coco_json)
-    transformed_dataset = apply_transform_to_coco_dataset(transforms, coco_dataset, coco_dir, coco_target_dir)
-
-    transformed_dataset_dict = transformed_dataset.model_dump(exclude_none=True)
-    with open(os.path.join(coco_target_dir, coco_file_name), "w") as f:
-        json.dump(transformed_dataset_dict, f)
+    resize_coco_keypoints_dataset(coco_json_path, 640, 480)

@@ -52,6 +52,17 @@ def test_coco_load_keypoints():
         assert isinstance(coco_keypoints.categories[0], CocoKeypointCategory)
 
 
+def test_coco_load_keypoints_as_instances_keeps_additional_fields():
+    # to parse data that actually belongs to a subclass, useful for some coco tools where it does not matter what category the dataset is..
+    test_dir = os.path.dirname(os.path.realpath(__file__))
+    annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small.json")
+
+    with open(annotations, "r") as file:
+        data = json.load(file)
+        coco_keypoints = CocoInstancesDataset(**data)
+        assert len(coco_keypoints.annotations[0].keypoints) > 0
+
+
 def test_coco_load_instances_incorrectly():
     """Test whether an exception is raised when we try to load the regular instances as a keypoints dataset."""
     test_dir = os.path.dirname(os.path.realpath(__file__))

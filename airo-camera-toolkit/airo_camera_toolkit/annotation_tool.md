@@ -14,7 +14,7 @@ The available annotations are `Keypoint`, `LineSegment`, `Line`, `BoundingBox` a
 
 ```python
 import cv2
-from airo_camera_toolkit.annotation import get_manual_annotations, Annotation
+from airo_camera_toolkit.annotation_tool import get_manual_annotations, Annotation
 
 annotation_spec = {
    "keypoint": Annotation.Keypoint,
