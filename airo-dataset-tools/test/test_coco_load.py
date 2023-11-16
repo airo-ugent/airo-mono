@@ -47,7 +47,7 @@ def test_coco_load_keypoints():
         coco_keypoints = CocoKeypointsDataset(**data)
         assert len(coco_keypoints.images) == 2
         assert len(coco_keypoints.categories) == 1
-        assert len(coco_keypoints.annotations) == 2
+        assert len(coco_keypoints.annotations) == 5
 
         assert isinstance(coco_keypoints.categories[0], CocoKeypointCategory)
 
