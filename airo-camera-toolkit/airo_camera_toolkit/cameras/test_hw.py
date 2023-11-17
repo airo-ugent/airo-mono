@@ -4,12 +4,14 @@
 from typing import Any, Callable
 
 import matplotlib.pyplot as plt
-from airo_camera_toolkit.interfaces import Camera, DepthCamera, RGBCamera, StereoRGBDCamera
+import numpy as np
+from airo_camera_toolkit.interfaces import Camera, DepthCamera, RGBCamera, RGBDCamera, StereoRGBDCamera
 
 
 def manual_test_camera(camera: Camera) -> None:
     intrinsics = camera.intrinsics_matrix()
-    print(f"the rectified intrinsics matrix = \n {intrinsics}")
+    with np.printoptions(precision=1, suppress=True):
+        print(f"the rectified intrinsics matrix = \n {intrinsics}")
     input(
         """Camera matrix should be as expected:
      cx,cy are +- 1/2 of the image resolution
@@ -54,7 +56,8 @@ def manual_test_depth_camera(camera: DepthCamera) -> None:
     plt.show()
 
     depth_map = camera.get_depth_map()
-    print(f"{depth_map=}")
+    with np.printoptions(precision=3, suppress=True):
+        print(f"{depth_map=}")
     print(f"{depth_map.shape=}")
     input(
         "The depth map values should be reasonable and the resolution should match the camera resolution. Press a key if all seems fine."
@@ -105,5 +108,16 @@ def profile_rgb_throughput(camera: RGBCamera) -> None:
     def get_100_images() -> None:
         for _ in range(100):
             camera.get_rgb_image()
+
+    profile(get_100_images)
+
+
+def profile_rgbd_throughput(camera: RGBDCamera) -> None:
+    """profile the throughput of the get_rgb_image() and _retrieve_depth_maps() functions"""
+
+    def get_100_images() -> None:
+        for _ in range(100):
+            camera.get_rgb_image()
+            camera._retrieve_depth_map()
 
     profile(get_100_images)
