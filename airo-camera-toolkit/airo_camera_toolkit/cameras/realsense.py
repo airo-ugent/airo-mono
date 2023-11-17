@@ -28,7 +28,7 @@ class Realsense(RGBDCamera):
 
     def __init__(
         self,
-        resolution: Tuple[int, int] = (1280, 720),
+        resolution: Tuple[int, int] = RESOLUTION_720,
         fps: int = 30,
         enable_depth: bool = True,
         enable_hole_filling: bool = True,
@@ -42,7 +42,8 @@ class Realsense(RGBDCamera):
         config.enable_stream(rs.stream.color, resolution[0], resolution[1], rs.format.rgb8, fps)
 
         if self._depth_enabled:
-            depth_resolution = (1280, 720) if fps <= 30 else (848, 480)  # Max resolution that can handle the fps
+            # Use max resolution that can handle the fps for depth (will be change by align_transform)
+            depth_resolution = Realsense.RESOLUTION_720 if fps <= 30 else Realsense.RESOLUTION_480
             config.enable_stream(rs.stream.depth, depth_resolution[0], depth_resolution[1], rs.format.z16, fps)
 
         self.pipeline = rs.pipeline()
