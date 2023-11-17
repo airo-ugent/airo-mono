@@ -22,13 +22,13 @@ color_stream_profiles = color_sensor.get_stream_profiles()
 depth_stream_profiles = depth_sensor.get_stream_profiles()
 
 
-def calculate_fov(width, height, fx, fy):
+def calculate_fov(width: int, height: int, fx: float, fy: float) -> Tuple[float, float]:
     fov_x = np.rad2deg(2 * np.arctan2(width, 2 * fx))
     fov_y = np.rad2deg(2 * np.arctan2(height, 2 * fy))
     return (fov_x, fov_y)
 
 
-def scan_profiles(stream_profiles: List[rs.stream_profile]) -> Tuple:
+def scan_profiles(stream_profiles: List[rs.stream_profile]) -> Tuple:  # type: ignore
     resolution_fps_combinations: Dict[Tuple[int, int], List[float]] = {}
     resolution_fov_combinations: Dict[Tuple[int, int], Tuple[float, float]] = {}
 
@@ -60,7 +60,7 @@ def scan_profiles(stream_profiles: List[rs.stream_profile]) -> Tuple:
     return resolution_fps_combinations, resolution_fov_combinations
 
 
-def print_profile_info(resolution_fps_combinations, resolution_fov_combinations):
+def print_profile_info(resolution_fps_combinations: Dict, resolution_fov_combinations: Dict) -> None:
     for resolution in resolution_fps_combinations:
         fov_string = (
             f"({resolution_fov_combinations[resolution][0]:.1f}°, {resolution_fov_combinations[resolution][1]:.1f}°)"
