@@ -57,7 +57,7 @@ def do_camera_robot_calibration(
     camera_intrinsics = CameraIntrinsics.from_matrix_and_resolution(intrinsics, resolution)
     intrinsics_filepath = os.path.join(data_dir, "intrinsics.json")
     with open(intrinsics_filepath, "w") as f:
-        json.dump(camera_intrinsics.dict(exclude_none=True), f, indent=4)
+        json.dump(camera_intrinsics.model_dump(exclude_none=True), f, indent=4)
 
     window_name = "Hand-eye calibration"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
