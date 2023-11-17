@@ -13,10 +13,10 @@ def test_keypoints_split():
     with open(annotations, "r") as file:
         data = json.load(file)
         coco_keypoints = CocoInstancesDataset(**data)
-        datasets = split_coco_dataset(coco_keypoints, [0.5, 0.5])
+        datasets = split_coco_dataset(coco_keypoints, [0.5, 0.5], shuffle_before_splitting=False)
         assert len(datasets) == 2
-        assert len(datasets[0].annotations) == 1
-        assert len(datasets[1].annotations) == 1
+        assert len(datasets[0].annotations) == 2
+        assert len(datasets[1].annotations) == 3
         assert len(datasets[0].images) == 1
         assert len(datasets[1].images) == 1
         assert len(datasets[0].annotations[0].keypoints) > 0

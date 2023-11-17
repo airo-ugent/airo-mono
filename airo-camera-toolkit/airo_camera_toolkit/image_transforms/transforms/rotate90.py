@@ -37,7 +37,7 @@ class Rotate90(ImageTransform):
         if len(self._input_shape) == 2:
             return h, w
 
-        c = self._input_shape[2]  # type: ignore
+        c = self._input_shape[2]
         return h, w, c
 
     def transform_image(self, image: HWCImageType) -> HWCImageType:

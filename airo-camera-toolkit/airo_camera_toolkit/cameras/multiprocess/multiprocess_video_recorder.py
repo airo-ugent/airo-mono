@@ -38,7 +38,8 @@ class MultiprocessVideoRecorder(Process):
 
         receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
         fps = receiver.fps_shm_array[0]
-        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", fps)
+        height, width, _ = receiver.rgb_shm_array.shape
+        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", fps, (width, height))
 
         while not self.shutdown_event.is_set():
             image_rgb = receiver.get_rgb_image_as_int()
@@ -56,7 +57,7 @@ class MultiprocessVideoRecorder(Process):
 
 if __name__ == "__main__":
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
-    recorder = MultiprocessVideoRecorder("camera")
+    recorder = MultiprocessVideoRecorder("zed_top")
     recorder.start()
     time.sleep(10)
     recorder.stop()

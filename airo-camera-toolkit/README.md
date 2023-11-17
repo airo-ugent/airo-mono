@@ -32,7 +32,7 @@ This will already allow you to use the hardare-independent functionality of this
 Depending on the hardware you are using, you might need to complete additional installation.
 Instructions can be found in the following files:
 * [ZED Installation](airo_camera_toolkit/cameras/zed_installation.md)
-* [RealSense Installation](https://github.com/IntelRealSense/librealsense)
+* [RealSense Installation](airo_camera_toolkit/cameras/realsense_installation.md)
 
 ## Getting started with cameras
 Camera can be accessed by instantiating the corresponding class:, e.g. for a ZED camera:
