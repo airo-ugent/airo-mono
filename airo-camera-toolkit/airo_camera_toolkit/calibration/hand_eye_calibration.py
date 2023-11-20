@@ -14,7 +14,7 @@ from airo_camera_toolkit.calibration.fiducial_markers import (
     AIRO_DEFAULT_ARUCO_DICT,
     AIRO_DEFAULT_CHARUCO_BOARD,
     ArucoDictType,
-    CharucoDictType,
+    CharucoBoardType,
 )
 from airo_camera_toolkit.interfaces import RGBCamera, RGBDCamera
 from airo_camera_toolkit.utils import ImageConverter
@@ -26,7 +26,7 @@ from loguru import logger
 def do_camera_robot_calibration(
     mode: str,
     aruco_dict: ArucoDictType,
-    charuco_board: CharucoDictType,
+    charuco_board: CharucoBoardType,
     camera: Union[RGBCamera, RGBDCamera],
     robot: PositionManipulator,
     calibration_dir: str,

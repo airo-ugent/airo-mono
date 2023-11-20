@@ -207,7 +207,7 @@ def compute_calibration_all_methods(
         pose_path = os.path.join(results_dir, f"camera_pose_{name}.json")
         pose_saveable = Pose.from_homogeneous_matrix(camera_pose)
         with open(pose_path, "w") as f:
-            json.dump(pose_saveable.dict(), f, indent=4)
+            json.dump(pose_saveable.model_dump(), f, indent=4)
 
         # Save an image with the pose drawn on it
         base_pose_in_camera = camera_pose
@@ -235,7 +235,9 @@ def load_calibration_data(calibration_dir: str):
 
     # Loading the intrinsics and resolution
     intrinsics_path = os.path.join(data_dir, "intrinsics.json")
-    camera_intrinsics = CameraIntrinsics.parse_file(intrinsics_path)
+    with open(intrinsics_path, "r") as f:
+        camera_intrinsics = CameraIntrinsics.model_validate_json(f.read())
+
     resolution = camera_intrinsics.image_resolution.as_tuple()
     intrinsics = camera_intrinsics.as_matrix()
 
@@ -243,7 +245,12 @@ def load_calibration_data(calibration_dir: str):
     pose_paths = sorted(glob.glob(os.path.join(data_dir, "tcp_pose_*.json")))
 
     images = [cv2.imread(image_path) for image_path in image_paths]
-    tcp_poses = [Pose.parse_file(filepath).as_homogeneous_matrix() for filepath in pose_paths]
+    tcp_poses = []
+    for filepath in pose_paths:
+        with open(filepath, "r") as f:
+            pose = Pose.model_validate_json(f.read())
+        tcp_poses.append(pose.as_homogeneous_matrix())
+
     return images, tcp_poses, intrinsics, resolution
 
 
