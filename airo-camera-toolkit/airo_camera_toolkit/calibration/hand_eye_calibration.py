@@ -30,7 +30,6 @@ def do_camera_robot_calibration(
     camera: Union[RGBCamera, RGBDCamera],
     robot: PositionManipulator,
     calibration_dir: str,
-    save_pointclouds: bool,
 ):
     """script to do hand-eye calibration with an UR robot and a ZED2i camera.
     Will open camera stream and visualize the detected markers.
@@ -40,9 +39,6 @@ def do_camera_robot_calibration(
     """
 
     # for now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
-    # TODO: make this more generic? either assume the teachmode is available for all robots, OR use teleop instead of teachmode.
-    if save_pointclouds and not isinstance(camera, RGBDCamera):
-        raise ValueError("save_pointclouds is True but camera is not an RGBDCamera")
 
     data_dir = create_calibration_data_dir(calibration_dir)
     calibration_dir = os.path.dirname(data_dir)  # TODO clean this up
@@ -50,7 +46,10 @@ def do_camera_robot_calibration(
     logger.info(f"Saving calibration data to {data_dir}")
     logger.info("Press S to save a sample, Q to quit.")
 
-    resolution = camera.resolution_sizes[camera.resolution]
+    # TODO unify this between cameras
+    # resolution = camera.resolution_sizes[camera.resolution] # ZED
+    resolution = camera.resolution  # Realsense
+
     intrinsics = camera.intrinsics_matrix()
 
     # Saving the intrinsics
@@ -83,7 +82,7 @@ def do_camera_robot_calibration(
         if key == ord("s"):
             # TODO reject samples where no board was detected?
             sample_index = len(tcp_poses_in_base)
-            tcp_pose, image_bgr = save_calibration_sample(sample_index, robot, camera, data_dir, save_pointclouds)
+            tcp_pose, image_bgr = save_calibration_sample(sample_index, robot, camera, data_dir)
             logger.info(f"Saved {sample_index + 1} sample(s).")
 
             tcp_poses_in_base.append(tcp_pose)
@@ -106,7 +105,6 @@ def do_camera_robot_calibration(
 if __name__ == "__main__":  # noqa C901 - ignore complexity warning
     """script for hand-eye calibration. Both eye-in-hand and eye-to-hand are supported."""
     import click
-    from airo_camera_toolkit.cameras.zed2i import Zed2i
     from airo_robots.manipulators.hardware.ur_rtde import URrtde
 
     aruco_dict = AIRO_DEFAULT_ARUCO_DICT
@@ -124,23 +122,21 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
     @click.option(
         "--calibration_dir", type=click.Path(exists=False), help="directory to save the calibration data to."
     )
-    @click.option(
-        "--save_pointclouds",
-        is_flag=True,
-        default=False,
-        help="save pointclouds in addition to images and tcp poses.",
-    )
-    def calibrate(
-        mode: str, robot_ip: str, camera_serial_number: int, calibration_dir: str, save_pointclouds: bool
-    ) -> None:
+    def calibrate(mode: str, robot_ip: str, camera_serial_number: int, calibration_dir: str) -> None:
         robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
-        print(f"zed serial numbers: {Zed2i.list_camera_serial_numbers()}")
 
-        depth_mode = Zed2i.NONE_DEPTH_MODE
-        if save_pointclouds:
-            depth_mode = Zed2i.NEURAL_DEPTH_MODE
+        # TODO improve camera selection
+        if (
+            camera_serial_number is not None and len(camera_serial_number) == 8
+        ):  # temporary way for serial number resolution
+            from airo_camera_toolkit.cameras.zed2i import Zed2i
 
-        camera = Zed2i(serial_number=camera_serial_number, depth_mode=depth_mode)
-        do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot, calibration_dir, save_pointclouds)
+            camera = Zed2i(serial_number=camera_serial_number, depth_mode=Zed2i.NONE_DEPTH_MODE)
+        else:  # assume it's a realsense camera
+            from airo_camera_toolkit.cameras.realsense import Realsense
+
+            camera = Realsense(fps=30, resolution=Realsense.RESOLUTION_1080, enable_depth=False)
+
+        do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot, calibration_dir)
 
     calibrate()

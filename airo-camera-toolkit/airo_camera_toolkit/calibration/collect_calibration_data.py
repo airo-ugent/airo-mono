@@ -2,11 +2,10 @@ import datetime
 import json
 import os
 import time
-from typing import Tuple, Union
+from typing import Union
 
 import click
 import cv2
-import numpy as np
 from airo_camera_toolkit.calibration.fiducial_markers import (
     AIRO_DEFAULT_ARUCO_DICT,
     AIRO_DEFAULT_CHARUCO_BOARD,
@@ -22,23 +21,6 @@ from airo_camera_toolkit.utils import ImageConverter
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
 from airo_dataset_tools.data_parsers.pose import Pose
 from airo_robots.manipulators.position_manipulator import PositionManipulator
-from airo_typing import NumpyDepthMapType, NumpyIntImageType
-
-import open3d as o3d  # isort: skip
-
-
-def make_pointcloud(
-    image: NumpyIntImageType, depth_map: NumpyDepthMapType, intrinsics: np.ndarray, resolution: Tuple[int, int]
-):
-    image_o3d = o3d.geometry.Image(image.copy())
-    depth_map_o3d = o3d.geometry.Image(depth_map)
-    rgbd_o3d = o3d.geometry.RGBDImage.create_from_color_and_depth(
-        image_o3d, depth_map_o3d, depth_scale=1.0, depth_trunc=100.0, convert_rgb_to_intensity=False
-    )
-    intrinsics_o3d = o3d.camera.PinholeCameraIntrinsic(resolution[0], resolution[1], intrinsics)
-
-    pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_o3d, intrinsics_o3d)
-    return pcd
 
 
 def create_calibration_data_dir(calibration_dir: str) -> None:
@@ -55,39 +37,27 @@ def create_calibration_data_dir(calibration_dir: str) -> None:
     return data_dir
 
 
-def save_calibration_sample(sample_index, robot, camera, data_dir, save_pointcloud=False):
+def save_calibration_sample(sample_index, robot, camera, data_dir):
     # Stop freedrive so robot is completely still at moment of the image capture
     robot.rtde_control.endTeachMode()
     time.sleep(0.5)
 
     image_rgb = camera.get_rgb_image_as_int()
-
-    if save_pointcloud:
-        resolution = camera.resolution_sizes[camera.resolution]
-        intrinsics = camera.intrinsics_matrix()
-        depth_map = camera._retrieve_depth_map()
-        pointcloud = make_pointcloud(image_rgb, depth_map, intrinsics, resolution)
-
     image_bgr = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
 
     tcp_pose = robot.get_tcp_pose()
 
     suffix = f"{sample_index:04d}"
     image_filename = f"image_{suffix}.png"
-    pointcloud_filename = f"pointcloud_{suffix}.ply"
     tcp_pose_filename = f"tcp_pose_{suffix}.json"
     image_filepath = os.path.join(data_dir, image_filename)
-    pointcloud_filepath = os.path.join(data_dir, pointcloud_filename)
     tcp_pose_filepath = os.path.join(data_dir, tcp_pose_filename)
 
     cv2.imwrite(image_filepath, image_bgr)
 
-    if save_pointcloud:
-        o3d.io.write_point_cloud(pointcloud_filepath, pointcloud)
-
     pose = Pose.from_homogeneous_matrix(tcp_pose)
     with open(tcp_pose_filepath, "w") as f:
-        json.dump(pose.dict(), f, indent=4)
+        json.dump(pose.model_dump(), f, indent=4)
 
     robot.rtde_control.teachMode()
 
@@ -116,7 +86,7 @@ def detect_and_draw_charuco(
 
 
 def collect_calibration_data(
-    robot: PositionManipulator, camera: Union[RGBCamera, RGBDCamera], calibration_dir: str, save_pointclouds=False
+    robot: PositionManipulator, camera: Union[RGBCamera, RGBDCamera], calibration_dir: str
 ) -> None:
     """collect calibration data for hand-eye calibration.
 
@@ -126,9 +96,6 @@ def collect_calibration_data(
         calibration_dir: directory to save the calibration data to.
     """
     from loguru import logger
-
-    if save_pointclouds and not isinstance(camera, RGBDCamera):
-        raise ValueError("save_pointclouds is True but camera is not an RGBDCamera")
 
     data_dir = create_calibration_data_dir(calibration_dir)
 
@@ -163,7 +130,7 @@ def collect_calibration_data(
             break
 
         if key == ord("s"):
-            save_calibration_sample(sample_index, robot, camera, data_dir, save_pointclouds)
+            save_calibration_sample(sample_index, robot, camera, data_dir)
             sample_index += 1
             logger.info(f"Saved {sample_index} sample(s).")
 
@@ -177,15 +144,7 @@ def collect_calibration_data(
     help="serial number of the camera to use if you have multiple cameras connected.",
 )
 @click.option("--calibration_dir", type=click.Path(exists=False), help="directory to save the calibration data to.")
-@click.option(
-    "--save_pointclouds",
-    is_flag=True,
-    default=False,
-    help="save pointclouds in addition to images and tcp poses.",
-)
-def collect_calibration_data_with_ur_and_zed(
-    robot_ip: str, camera_serial_number: int, calibration_dir: str, save_pointclouds: bool
-) -> None:
+def collect_calibration_data_with_ur_and_zed(robot_ip: str, camera_serial_number: int, calibration_dir: str) -> None:
     from airo_camera_toolkit.cameras.zed2i import Zed2i
     from airo_robots.manipulators.hardware.ur_rtde import URrtde
 
@@ -194,7 +153,7 @@ def collect_calibration_data_with_ur_and_zed(
     print(f"ZED serial numbers: {Zed2i.list_camera_serial_numbers()}")
     camera = Zed2i(depth_mode=Zed2i.NEURAL_DEPTH_MODE, serial_number=camera_serial_number)
 
-    collect_calibration_data(robot, camera, calibration_dir, save_pointclouds)
+    collect_calibration_data(robot, camera, calibration_dir)
 
 
 if __name__ == "__main__":
