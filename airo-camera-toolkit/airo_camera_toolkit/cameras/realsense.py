@@ -1,12 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Tuple
+from typing import Any, Optional
 
 import numpy as np
 import pyrealsense2 as rs  # type: ignore
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_camera_toolkit.utils import ImageConverter
-from airo_typing import CameraIntrinsicsMatrixType, NumpyDepthMapType, NumpyFloatImageType, NumpyIntImageType
+from airo_typing import (
+    CameraIntrinsicsMatrixType,
+    CameraResolutionType,
+    NumpyDepthMapType,
+    NumpyFloatImageType,
+    NumpyIntImageType,
+)
 
 
 class Realsense(RGBDCamera):
@@ -28,17 +34,24 @@ class Realsense(RGBDCamera):
 
     def __init__(
         self,
-        resolution: Tuple[int, int] = RESOLUTION_720,
+        resolution: CameraResolutionType = RESOLUTION_1080,
         fps: int = 30,
         enable_depth: bool = True,
         enable_hole_filling: bool = True,
+        serial_number: Optional[str] = None,
     ) -> None:
         self.resolution = resolution
         self.fps = fps
         self._depth_enabled = enable_depth
         self.hole_filling_enabled = enable_hole_filling
+        self.serial_number = serial_number
 
         config = rs.config()
+
+        if serial_number is not None:
+            # Note: Invalid serial_number leads to RuntimeError for pipeline.start(config)
+            config.enable_device(serial_number)
+
         config.enable_stream(rs.stream.color, resolution[0], resolution[1], rs.format.rgb8, fps)
 
         if self._depth_enabled:
@@ -47,6 +60,7 @@ class Realsense(RGBDCamera):
             config.enable_stream(rs.stream.depth, depth_resolution[0], depth_resolution[1], rs.format.z16, fps)
 
         self.pipeline = rs.pipeline()
+
         self.pipeline.start(config)
 
         # Get intrinsics matrix

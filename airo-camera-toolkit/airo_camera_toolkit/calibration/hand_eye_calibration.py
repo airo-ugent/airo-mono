@@ -1,12 +1,11 @@
 """functions and script (see __main__) for hand-eye calibration. Both eye-in-hand and eye-to-hand are supported."""
 import json
 import os
-from typing import Union
+from typing import List, Optional
 
 import cv2
 from airo_camera_toolkit.calibration.collect_calibration_data import (
     create_calibration_data_dir,
-    detect_and_draw_charuco,
     save_calibration_sample,
 )
 from airo_camera_toolkit.calibration.compute_calibration import compute_calibration_all_methods
@@ -15,11 +14,14 @@ from airo_camera_toolkit.calibration.fiducial_markers import (
     AIRO_DEFAULT_CHARUCO_BOARD,
     ArucoDictType,
     CharucoBoardType,
+    detect_and_visualize_charuco_pose,
 )
-from airo_camera_toolkit.interfaces import RGBCamera, RGBDCamera
+from airo_camera_toolkit.cameras.camera_discovery import click_camera_options, discover_camera
+from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
 from airo_robots.manipulators.position_manipulator import PositionManipulator
+from airo_typing import HomogeneousMatrixType, OpenCVIntImageType
 from loguru import logger
 
 
@@ -27,18 +29,20 @@ def do_camera_robot_calibration(
     mode: str,
     aruco_dict: ArucoDictType,
     charuco_board: CharucoBoardType,
-    camera: Union[RGBCamera, RGBDCamera],
+    camera: RGBCamera,
     robot: PositionManipulator,
-    calibration_dir: str,
-):
-    """script to do hand-eye calibration with an UR robot and a ZED2i camera.
-    Will open camera stream and visualize the detected markers.
-    Press S to capture pose, press Q to finish. Make sure the detections look good (corners/contours are accurate) before capturing.
-    Once you have at least 5 markers, you can press F to finish and get the extrinsics pose.
-    But gathering more poses will improve the accuracy of the calibration.
-    """
+    calibration_dir: Optional[str],
+) -> None:
+    """Script to do hand-eye calibration, both eye-in-hand and eye-to-hand are supported.
 
-    # for now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
+    Args:
+        mode: eye_in_hand or eye_to_hand
+        aruco_dict: The aruco dictionary used for the charuco board.
+        charuco_board: The charuco board used for calibration.
+        camera: The camera being used to collect the data.
+        robot: The robot being used to collect the data.
+        calibration_dir: The directory to save the calibration samples and results to, will be created if None
+    """
 
     data_dir = create_calibration_data_dir(calibration_dir)
     calibration_dir = os.path.dirname(data_dir)  # TODO clean this up
@@ -46,9 +50,7 @@ def do_camera_robot_calibration(
     logger.info(f"Saving calibration data to {data_dir}")
     logger.info("Press S to save a sample, Q to quit.")
 
-    # TODO unify this between cameras
-    # resolution = camera.resolution_sizes[camera.resolution] # ZED
-    resolution = camera.resolution  # Realsense
+    resolution = camera.resolution  # type: ignore
 
     intrinsics = camera.intrinsics_matrix()
 
@@ -61,28 +63,29 @@ def do_camera_robot_calibration(
     window_name = "Hand-eye calibration"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
-    robot.rtde_control.teachMode()  # This does generalize to all robots
+    # For now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
+    robot.rtde_control.teachMode()  # type: ignore
 
     MIN_POSES = 3
-    tcp_poses_in_base = []
-    images = []
+    tcp_poses_in_base: List[HomogeneousMatrixType] = []
+    images: List[OpenCVIntImageType] = []
 
     while True:
         # Live visualization of board detection
         image_rgb = camera.get_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
-        detect_and_draw_charuco(image, intrinsics, aruco_dict, charuco_board)
+        detect_and_visualize_charuco_pose(image, intrinsics, aruco_dict, charuco_board)
         cv2.imshow(window_name, image)
 
         key = cv2.waitKey(1)
         if key == ord("q"):
-            robot.rtde_control.endTeachMode()
+            robot.rtde_control.endTeachMode()  # type: ignore
             break
 
         if key == ord("s"):
             # TODO reject samples where no board was detected?
             sample_index = len(tcp_poses_in_base)
-            tcp_pose, image_bgr = save_calibration_sample(sample_index, robot, camera, data_dir)
+            tcp_pose, image_bgr = save_calibration_sample(sample_index, robot, camera, data_dir)  # type: ignore
             logger.info(f"Saved {sample_index + 1} sample(s).")
 
             tcp_poses_in_base.append(tcp_pose)
@@ -102,8 +105,7 @@ def do_camera_robot_calibration(
             )
 
 
-if __name__ == "__main__":  # noqa C901 - ignore complexity warning
-    """script for hand-eye calibration. Both eye-in-hand and eye-to-hand are supported."""
+if __name__ == "__main__":
     import click
     from airo_robots.manipulators.hardware.ur_rtde import URrtde
 
@@ -114,29 +116,34 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
     @click.option("--mode", default="eye_in_hand", help="eye_in_hand or eye_to_hand")
     @click.option("--robot_ip", default="10.42.0.162", help="robot ip address")
     @click.option(
-        "--camera_serial_number",
-        default=None,
-        type=int,
-        help="serial number of the camera to use if you have multiple cameras connected.",
-    )
-    @click.option(
         "--calibration_dir", type=click.Path(exists=False), help="directory to save the calibration data to."
     )
-    def calibrate(mode: str, robot_ip: str, camera_serial_number: int, calibration_dir: str) -> None:
+    @click_camera_options
+    def calibrate_with_ur(
+        mode: str,
+        robot_ip: str,
+        calibration_dir: Optional[str] = None,
+        camera_brand: Optional[str] = None,
+        camera_serial_number: Optional[str] = None,
+    ) -> None:
+        """Script to do hand-eye calibration with an UR robot. Will open camera stream and visualize the detected board
+        pose. Press S to capture pose, press Q to finish. Make sure the detections look good (corners/contours are
+        accurate) before capturing. Once you have collected at least 3 samples, the solving the calibration will be
+        attempted. To check the quality of the calibration, check the residual errors and the base pose visualizations
+        in the results directory. When you are satisfied with the results, you can copy the found camera pose (saved as
+        a json file) to use it in your application.
+
+        Notes:
+
+         * An increase in residual error when an additional sample is added does not necessarily mean that the
+        calibration has become worse.
+
+         * If residual error is low but the visualization looks wrong, you might have use the wrong mode (eye_in_hand
+         or eye_to_hand). Try rerunning the calibration with the compute_calibration.py script.
+        """
         robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
 
-        # TODO improve camera selection
-        if (
-            camera_serial_number is not None and len(camera_serial_number) == 8
-        ):  # temporary way for serial number resolution
-            from airo_camera_toolkit.cameras.zed2i import Zed2i
-
-            camera = Zed2i(serial_number=camera_serial_number, depth_mode=Zed2i.NONE_DEPTH_MODE)
-        else:  # assume it's a realsense camera
-            from airo_camera_toolkit.cameras.realsense import Realsense
-
-            camera = Realsense(fps=30, resolution=Realsense.RESOLUTION_1080, enable_depth=False)
-
+        camera = discover_camera(camera_brand, camera_serial_number)
         do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot, calibration_dir)
 
-    calibrate()
+    calibrate_with_ur()

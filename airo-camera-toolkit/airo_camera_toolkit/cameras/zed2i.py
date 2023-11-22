@@ -26,6 +26,7 @@ from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
+    CameraResolutionType,
     ColoredPointCloudType,
     HomogeneousMatrixType,
     NumpyDepthMapType,
@@ -63,25 +64,24 @@ class Zed2i(StereoRGBDCamera):
     # for info on image resolution, pixel sizes, fov..., see:
     # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
     # make sure to check the combination of frame rates and resolution is available.
-    RESOLUTION_720 = sl.RESOLUTION.HD720  # (1280x720)
-    RESOLUTION_1080 = sl.RESOLUTION.HD1080  # (1920x1080)
-    RESOLUTION_2K = sl.RESOLUTION.HD2K  # (2208 x 1242 )
-    RESOLUTION_VGA = sl.RESOLUTION.VGA  # (672x376)
-    RESOLUTIONS = (RESOLUTION_720, RESOLUTION_1080, RESOLUTION_2K, RESOLUTION_VGA)
+    RESOLUTION_2K = (2208, 1242)
+    RESOLUTION_1080 = (1920, 1080)
+    RESOLUTION_720 = (1280, 720)
+    RESOLUTION_VGA = (672, 376)
 
-    resolution_sizes = {
-        RESOLUTION_720: (1280, 720),
-        RESOLUTION_1080: (1920, 1080),
-        RESOLUTION_2K: (2208, 1242),
-        RESOLUTION_VGA: (672, 376),
+    resolution_to_identifier = {
+        RESOLUTION_2K: sl.RESOLUTION.HD2K,
+        RESOLUTION_1080: sl.RESOLUTION.HD1080,
+        RESOLUTION_720: sl.RESOLUTION.HD720,
+        RESOLUTION_VGA: sl.RESOLUTION.VGA,
     }
 
     def __init__(  # type: ignore[no-any-unimported]
         self,
-        resolution: sl.RESOLUTION = RESOLUTION_2K,
+        resolution: CameraResolutionType = RESOLUTION_2K,
         fps: int = 15,
         depth_mode: sl.DEPTH_MODE = NONE_DEPTH_MODE,
-        serial_number: Optional[int] = None,
+        serial_number: Optional[str] = None,
         svo_filepath: Optional[str] = None,
     ) -> None:
         self.resolution = resolution
@@ -102,7 +102,7 @@ class Zed2i(StereoRGBDCamera):
             input_type.set_from_svo_file(svo_filepath)
             self.camera_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=False)
 
-        self.camera_params.camera_resolution = resolution
+        self.camera_params.camera_resolution = Zed2i.resolution_to_identifier[resolution]
         self.camera_params.camera_fps = fps
         # https://www.stereolabs.com/docs/depth-sensing/depth-settings/
         self.camera_params.depth_mode = depth_mode
@@ -153,7 +153,6 @@ class Zed2i(StereoRGBDCamera):
         self.pointcloud_matrix = sl.Mat()
 
     def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> CameraIntrinsicsMatrixType:
-
         # get the 'rectified' intrinsics matrices.
         # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1CameraParameters.html
         if view == self.LEFT_RGB:

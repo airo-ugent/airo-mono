@@ -10,14 +10,24 @@ import numpy as np
 from airo_camera_toolkit.calibration.fiducial_markers import (
     AIRO_DEFAULT_ARUCO_DICT,
     AIRO_DEFAULT_CHARUCO_BOARD,
+    ArucoDictType,
+    CharucoBoardType,
     detect_charuco_board,
     draw_frame_on_image,
 )
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
 from airo_dataset_tools.data_parsers.pose import Pose
 from airo_spatial_algebra import SE3Container
-from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType
+from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, HomogeneousMatrixType, OpenCVIntImageType
 from loguru import logger
+
+cv2_CALIBRATION_METHODS = {
+    "Tsai": cv2.CALIB_HAND_EYE_TSAI,
+    "Park": cv2.CALIB_HAND_EYE_PARK,
+    "Haraud": cv2.CALIB_HAND_EYE_HORAUD,
+    "Andreff": cv2.CALIB_HAND_EYE_ANDREFF,
+    "Daniilidis": cv2.CALIB_HAND_EYE_DANIILIDIS,
+}
 
 
 def compute_hand_eye_calibration_error(
@@ -25,12 +35,14 @@ def compute_hand_eye_calibration_error(
     board_poses_in_camera: List[HomogeneousMatrixType],
     camera_pose: HomogeneousMatrixType,
 ) -> float:
-    """compute the error between the left and right side of the AX =XB equation to have an estimate of the error of the calibration
-    Decent calibrations should have an average error (way) below 0.01
+    """Compute the error between the left and right side of the AX=XB equation to have an estimate of the error of the
+    calibration. In our experience, average error below 0.01 are pretty good.
+
     Args:
         tcp_poses_in_base: list of tcp poses in base frame
         board_poses_in_camera: list of marker poses in camera frame
-        camera_pose: camera pose in base frame (eye-to-hand) or camera pose in tcp frame(eye-in-hand))"""
+        camera_pose: camera pose in base frame (eye-to-hand) or camera pose in tcp frame(eye-in-hand))
+    """
     error = 0.0
     for i in range(len(tcp_poses_in_base) - 1):
         tcp_pose_in_base = tcp_poses_in_base[i]
@@ -50,9 +62,15 @@ def compute_hand_eye_calibration_error(
 def eye_in_hand_pose_estimation(
     tcp_poses_in_base: List[HomogeneousMatrixType],
     board_poses_in_camera: List[HomogeneousMatrixType],
-    method=cv2.CALIB_HAND_EYE_ANDREFF,
+    method: int = cv2.CALIB_HAND_EYE_ANDREFF,
 ) -> Tuple[Optional[HomogeneousMatrixType], Optional[float]]:
-    """wrapper around the opencv eye-in-hand extrinsics calibration function."""
+    """Wrapper around the opencv eye-in-hand extrinsics calibration function.
+
+    Args:
+        tcp_poses_in_base: list of tcp poses in base frame
+        board_poses_in_camera: list of marker poses in camera frame
+        method: one of the cv2.CALIB_HAND_EYE_* methods
+    """
     tcp_orientations_as_rotvec_in_base = [
         SE3Container.from_homogeneous_matrix(tcp_pose).orientation_as_rotation_vector for tcp_pose in tcp_poses_in_base
     ]
@@ -107,14 +125,18 @@ def eye_in_hand_pose_estimation(
 def eye_to_hand_pose_estimation(
     tcp_poses_in_base: List[HomogeneousMatrixType],
     board_poses_in_camera: List[HomogeneousMatrixType],
-    method=cv2.CALIB_HAND_EYE_PARK,
+    method: int = cv2.CALIB_HAND_EYE_ANDREFF,
 ) -> Tuple[Optional[HomogeneousMatrixType], Optional[float]]:
-    """wrapper around the opencv eye-to-hand extrinsics calibration function."""
+    """Wrapper around the opencv eye-to-hand extrinsics calibration function.
 
-    # the AX=XB problem for the eye-to-hand is equivalent to the AX=XB problem for the eye-in-hand if you invert the poses of the tcp
+    Args:
+        tcp_poses_in_base: list of tcp poses in base frame
+        board_poses_in_camera: list of marker poses in camera frame
+        method: one of the cv2.CALIB_HAND_EYE_* methods
+    """
+    #  Invert the tcp_poses to make the AX=XB problem for eye_to_hand mode equivalent to the eye_in_hand mode.
     # cf https://docs.opencv.org/4.5.4/d9/d0c/group__calib3d.html#gaebfc1c9f7434196a374c382abf43439b
     # cf https://forum.opencv.org/t/eye-to-hand-calibration/5690/2
-
     base_pose_in_tcp_frame = [np.linalg.inv(tcp_pose) for tcp_pose in tcp_poses_in_base]
 
     camera_pose_in_base, calibration_error = eye_in_hand_pose_estimation(
@@ -126,13 +148,21 @@ def eye_to_hand_pose_estimation(
 def compute_calibration(
     board_poses_in_camera: List[HomogeneousMatrixType],
     tcp_poses_in_base: List[HomogeneousMatrixType],
-    intrinsics: CameraIntrinsicsMatrixType,
     mode: str = "eye_in_hand",
     method: int = cv2.CALIB_HAND_EYE_ANDREFF,
-    aruco_dict=AIRO_DEFAULT_ARUCO_DICT,
-    charuco_board=AIRO_DEFAULT_CHARUCO_BOARD,
-):
+) -> Tuple[Optional[HomogeneousMatrixType], Optional[float]]:
+    """Compute the calibration for a given mode and method.
 
+    Args:
+        board_poses_in_camera: list of marker poses in camera frame
+        tcp_poses_in_base: list of tcp poses in base frame
+        mode: one of "eye_in_hand" or "eye_to_hand"
+        method: one of the cv2.CALIB_HAND_EYE_* methods
+
+    Returns:
+        camera_pose: if successful, camera pose in base frame (eye-to-hand) or camera pose in tcp frame(eye-in-hand))
+        calibration_error: error of the calibration
+    """
     if mode == "eye_in_hand":
         # pose of camera in tcp frame
         camera_pose, calibration_error = eye_in_hand_pose_estimation(tcp_poses_in_base, board_poses_in_camera, method)
@@ -145,7 +175,21 @@ def compute_calibration(
     return camera_pose, calibration_error
 
 
-def save_board_detections(results_dir, board_poses_in_camera, images, intrinsics):
+def save_board_detections(
+    results_dir: str,
+    board_poses_in_camera: List[Optional[HomogeneousMatrixType]],
+    images: List[OpenCVIntImageType],
+    intrinsics: CameraIntrinsicsMatrixType,
+) -> None:
+    """Convenience function to that saves jpg images of with the board pose drawn on it.
+
+    Args:
+        results_dir: directory to save the results to, must exist
+        board_poses_in_camera: list of marker poses in camera frame, may contain None
+        images: list of images of the calibration board
+        intrinsics: camera intrinsics
+    """
+
     board_detections_dir = os.path.join(results_dir, "board_detections")
     os.makedirs(board_detections_dir)
     for i, (board_pose, image) in enumerate(zip(board_poses_in_camera, images)):
@@ -158,37 +202,50 @@ def save_board_detections(results_dir, board_poses_in_camera, images, intrinsics
 
 
 def compute_calibration_all_methods(
-    results_dir,
-    images,
-    tcp_poses_in_base,
-    intrinsics,
-    mode="eye_in_hand",
-    aruco_dict=AIRO_DEFAULT_ARUCO_DICT,
-    charuco_board=AIRO_DEFAULT_CHARUCO_BOARD,
-):
-    calibration_methods = {
-        "Tsai": cv2.CALIB_HAND_EYE_TSAI,
-        "Park": cv2.CALIB_HAND_EYE_PARK,
-        "Haraud": cv2.CALIB_HAND_EYE_HORAUD,
-        "Andreff": cv2.CALIB_HAND_EYE_ANDREFF,
-        "Daniilidis": cv2.CALIB_HAND_EYE_DANIILIDIS,
-    }
-    calibration_errors_filepath = os.path.join(results_dir, "residual_errors.json")
+    results_dir: str,
+    images: List[OpenCVIntImageType],
+    tcp_poses_in_base: List[HomogeneousMatrixType],
+    intrinsics: CameraIntrinsicsMatrixType,
+    mode: str = "eye_in_hand",
+    aruco_dict: ArucoDictType = AIRO_DEFAULT_ARUCO_DICT,
+    charuco_board: CharucoBoardType = AIRO_DEFAULT_CHARUCO_BOARD,
+) -> Tuple[dict, dict]:
+    """Computes the calibration solution for all methods available in OpenCV and saves the results to a directory.
 
+    Args:
+        results_dir: directory to save the results to, must exist
+        images: list of images of the calibration board
+        tcp_poses_in_base: list of tcp poses in base frame
+        intrinsics: camera intrinsics
+        mode: one of "eye_in_hand" or "eye_to_hand"
+        aruco_dict: aruco dictionary
+        charuco_board: charuco board
+
+    Returns:
+        calibration_result_poses: dictionary of the camera pose for each method
+        calibration_errors: dictionary of the calibration error for each method
+    """
+    calibration_errors_filepath = os.path.join(results_dir, "residual_errors.json")
     calibration_errors = {}
     calibration_result_poses = {}
 
     board_poses_in_camera = [
-        detect_charuco_board(image, intrinsics, aruco_markers=aruco_dict, charuco_board=charuco_board)
-        for image in images
+        detect_charuco_board(image, intrinsics, aruco_dict=aruco_dict, charuco_board=charuco_board) for image in images
     ]
 
     save_board_detections(results_dir, board_poses_in_camera, images, intrinsics)
 
-    for name, method in calibration_methods.items():
-        camera_pose, calibration_error = compute_calibration(
-            board_poses_in_camera, tcp_poses_in_base, intrinsics, mode, method
-        )
+    # Removes poses where no board was detected
+    tcp_poses_in_base = [
+        tcp_poses_in_base[i] for i, board_pose in enumerate(board_poses_in_camera) if board_pose is not None
+    ]
+    board_poses_in_camera: List[HomogeneousMatrixType] = [  # type: ignore
+        board_pose for board_pose in board_poses_in_camera if board_pose is not None
+    ]
+    logger.info(f"Board poses were detected in {len(board_poses_in_camera)} of the calibration samples.")
+
+    for name, method in cv2_CALIBRATION_METHODS.items():
+        camera_pose, calibration_error = compute_calibration(board_poses_in_camera, tcp_poses_in_base, mode, method)  # type: ignore
         if calibration_error is None:
             calibration_error = np.inf
 
@@ -213,7 +270,7 @@ def compute_calibration_all_methods(
         base_pose_in_camera = camera_pose
         if mode == "eye_to_hand":
             base_pose_in_camera = np.linalg.inv(camera_pose)
-        image = images[0].copy()
+        image = images[-1].copy()
         draw_frame_on_image(image, base_pose_in_camera, intrinsics)
         cv2.putText(
             image,
@@ -230,7 +287,17 @@ def compute_calibration_all_methods(
     return calibration_result_poses, calibration_errors
 
 
-def load_calibration_data(calibration_dir: str):
+def load_calibration_data(
+    calibration_dir: str,
+) -> Tuple[List[OpenCVIntImageType], List[HomogeneousMatrixType], CameraIntrinsicsMatrixType, CameraResolutionType]:
+    """Function to load calibration samples and camera parameters from a "data" directory in a calibration_dir
+
+    Args:
+        calibration_dir: directory containing the "data" directory
+
+    Returns:
+        Calibration data and camera parameters
+    """
     data_dir = os.path.join(calibration_dir, "data")
 
     # Loading the intrinsics and resolution
@@ -261,7 +328,9 @@ def load_calibration_data(calibration_dir: str):
 )
 @click.option("--mode", default="eye_in_hand", help="eye_in_hand or eye_to_hand")
 def compute_calibration_from_saved_data(calibration_dir: str, mode: str = "eye_in_hand") -> None:
+    """Runs all OpenCV calibration methods on the data saved in a calibration directory."""
     images, tcp_poses, intrinsics, _ = load_calibration_data(calibration_dir)
+
     results_dir = os.path.join(calibration_dir, "results")
     if os.path.exists(results_dir):
         datetime_str = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")

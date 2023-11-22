@@ -9,7 +9,7 @@ from typing import Any, List, Optional
 
 import cv2
 import numpy as np
-from airo_camera_toolkit.cameras.resolve_camera import resolve_camera
+from airo_camera_toolkit.cameras.camera_discovery import click_camera_options, discover_camera
 from airo_spatial_algebra import SE3Container
 from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, OpenCVIntImageType
 from cv2 import aruco
@@ -148,7 +148,7 @@ def detect_charuco_board(
     image: OpenCVIntImageType,
     camera_matrix: CameraIntrinsicsMatrixType,
     dist_coeffs: Optional[np.ndarray] = None,
-    aruco_markers: ArucoDictType = AIRO_DEFAULT_ARUCO_DICT,
+    aruco_dict: ArucoDictType = AIRO_DEFAULT_ARUCO_DICT,
     charuco_board: CharucoBoardType = AIRO_DEFAULT_CHARUCO_BOARD,
 ) -> Optional[HomogeneousMatrixType]:
     """Detect the pose of a charuco board from an image and the camera's intrinsics.
@@ -164,7 +164,7 @@ def detect_charuco_board(
         Optional[HomogeneousMatrixType]: The pose of the charuco board in the camera frame, if it was detected.
     """
 
-    aruco_result = detect_aruco_markers(image, aruco_markers)
+    aruco_result = detect_aruco_markers(image, aruco_dict)
     if not aruco_result:
         return None
 
@@ -256,13 +256,14 @@ if __name__ == "__main__":
     @click.option("--charuco_x_count", default=7, help="Number of checkerboard tiles in the x direction")
     @click.option("--charuco_y_count", default=5, help="Number of checkerboard tiles in the y direction")
     @click.option("--charuco_tile_size", default=0.04, help="Size of the charuco checkerboard tiles in meters")
-    @click.option("--camera_brand", help="The brand of the camera you are using, one of ['zed', 'realsense']")
+    @click_camera_options
     def visualize_marker_detections_live(
         aruco_marker_size: float,
         charuco_x_count: Optional[int] = None,
         charuco_y_count: Optional[int] = None,
-        charuco_tile_size: Optional[int] = None,
+        charuco_tile_size: Optional[float] = None,
         camera_brand: Optional[str] = None,
+        camera_serial_number: Optional[str] = None,
     ) -> None:
         aruco_dict = AIRO_DEFAULT_ARUCO_DICT
         detect_charuco = charuco_x_count is not None and charuco_y_count is not None and charuco_tile_size is not None
@@ -271,7 +272,7 @@ if __name__ == "__main__":
                 (charuco_x_count, charuco_y_count), charuco_tile_size, aruco_marker_size, aruco_dict
             )
 
-        camera = resolve_camera(camera_brand)
+        camera = discover_camera(camera_brand, camera_serial_number)
 
         window_name = "Charuco detection"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
