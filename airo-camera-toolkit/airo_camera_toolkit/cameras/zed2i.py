@@ -69,7 +69,7 @@ class Zed2i(StereoRGBDCamera):
     RESOLUTION_720 = (1280, 720)
     RESOLUTION_VGA = (672, 376)
 
-    resolution_to_identifier = {
+    resolution_to_identifier_dict = {
         RESOLUTION_2K: sl.RESOLUTION.HD2K,
         RESOLUTION_1080: sl.RESOLUTION.HD1080,
         RESOLUTION_720: sl.RESOLUTION.HD720,
@@ -102,7 +102,7 @@ class Zed2i(StereoRGBDCamera):
             input_type.set_from_svo_file(svo_filepath)
             self.camera_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=False)
 
-        self.camera_params.camera_resolution = Zed2i.resolution_to_identifier[resolution]
+        self.camera_params.camera_resolution = Zed2i.resolution_to_identifier_dict[resolution]
         self.camera_params.camera_fps = fps
         # https://www.stereolabs.com/docs/depth-sensing/depth-settings/
         self.camera_params.depth_mode = depth_mode

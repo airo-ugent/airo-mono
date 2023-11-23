@@ -213,7 +213,7 @@ def detect_and_visualize_charuco_pose(
     charuco_board: CharucoBoardType = AIRO_DEFAULT_CHARUCO_BOARD,
     draw_aruco_detection: bool = True,
     draw_charuco_detection: bool = True,
-) -> None:
+) -> Optional[HomogeneousMatrixType]:
     """Detects and visualizes the pose of a charuco board in an image.
 
     Args:
@@ -224,23 +224,25 @@ def detect_and_visualize_charuco_pose(
     """
     aruco_result = detect_aruco_markers(image, aruco_dict)
     if not aruco_result:
-        return
+        return None
 
     if draw_aruco_detection:
         image = visualize_aruco_detections(image, aruco_result)
 
     charuco_result = detect_charuco_corners(image, aruco_result, charuco_board)
     if not charuco_result:
-        return
+        return None
 
     if draw_charuco_detection:
         image = visualize_charuco_detection(image, charuco_result)
 
     charuco_pose = get_pose_of_charuco_board(charuco_result, charuco_board, intrinsics, None)
     if charuco_pose is None:
-        return
+        return None
 
     image = draw_frame_on_image(image, charuco_pose, intrinsics)
+
+    return charuco_pose
 
 
 if __name__ == "__main__":

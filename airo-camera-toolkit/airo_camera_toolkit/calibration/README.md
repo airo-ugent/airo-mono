@@ -54,6 +54,7 @@ For this reason, we also save images with the corresponding robot base frame vis
 
 **Finishing the calibration**:
 
+In the results directory, check the `base_pose_in_camera_*.jpg` images to see whether the position and the axes of the robot base frame are plausible (e.g. as the in image above).
 If you are satisfied with the results, you can stop the script by pressing `q`.
 The camera pose solutions are saved as json files in the `results` directory.
 These can be loaded into Python and turned into 4x4 homogeneous matrices using the `Pose` class from `airo-dataset-tools`.
