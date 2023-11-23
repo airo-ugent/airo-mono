@@ -102,7 +102,8 @@ def collect_calibration_data(robot: PositionManipulator, camera: RGBCamera, cali
     logger.info(f"Saving calibration data to {data_dir}")
     logger.info("Press S to save a sample, Q to quit.")
 
-    resolution = camera.resolution
+    # Ignore type because RGBCamera does not have a resolution attribute
+    resolution = camera.resolution  # type: ignore
     intrinsics = camera.intrinsics_matrix()
 
     # Saving the intrinsics
