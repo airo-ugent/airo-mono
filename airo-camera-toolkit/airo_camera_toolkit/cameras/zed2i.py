@@ -18,6 +18,8 @@ except AssertionError:
     raise ImportError("You should install version 4.X of the SDK!")
 
 
+import time
+
 import numpy as np
 from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
@@ -67,6 +69,13 @@ class Zed2i(StereoRGBDCamera):
     RESOLUTION_VGA = sl.RESOLUTION.VGA  # (672x376)
     RESOLUTIONS = (RESOLUTION_720, RESOLUTION_1080, RESOLUTION_2K, RESOLUTION_VGA)
 
+    resolution_sizes = {
+        RESOLUTION_720: (1280, 720),
+        RESOLUTION_1080: (1920, 1080),
+        RESOLUTION_2K: (2208, 1242),
+        RESOLUTION_VGA: (672, 376),
+    }
+
     def __init__(  # type: ignore[no-any-unimported]
         self,
         resolution: sl.RESOLUTION = RESOLUTION_2K,
@@ -106,9 +115,21 @@ class Zed2i(StereoRGBDCamera):
             # close to open with correct params
             self.camera.close()
 
-        status = self.camera.open(self.camera_params)
+        N_OPEN_ATTEMPTS = 5
+        for i in range(N_OPEN_ATTEMPTS):
+            status = self.camera.open(self.camera_params)
+            if status == sl.ERROR_CODE.SUCCESS:
+                break
+            print(f"Opening Zed2i camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
+            if self.serial_number:
+                print(f"Rebooting {self.serial_number}")
+                sl.Camera.reboot(self.serial_number)
+            time.sleep(2)
+            print(sl.Camera.get_device_list())
+            self.camera = sl.Camera()
+
         if status != sl.ERROR_CODE.SUCCESS:
-            raise IndexError(f"could not open camera, error = {status}")
+            raise IndexError(f"Could not open Zed2i camera, error = {status}")
 
         # TODO: create a configuration class for the runtime parameters
         self.runtime_params = sl.RuntimeParameters()
@@ -127,6 +148,7 @@ class Zed2i(StereoRGBDCamera):
         # create reusable memory blocks for the measures
         # these will be allocated the first time they are used
         self.image_matrix = sl.Mat()
+        self.depth_image_matrix = sl.Mat()
         self.depth_matrix = sl.Mat()
         self.pointcloud_matrix = sl.Mat()
 
@@ -209,8 +231,8 @@ class Zed2i(StereoRGBDCamera):
     def _retrieve_depth_image(self) -> NumpyIntImageType:
         assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
-        self.camera.retrieve_image(self.image_matrix, sl.VIEW.DEPTH)
-        image = self.image_matrix.get_data()
+        self.camera.retrieve_image(self.depth_image_matrix, sl.VIEW.DEPTH)
+        image = self.depth_image_matrix.get_data()
         image = image[..., :3]
         return image
 

@@ -37,7 +37,7 @@ class Rotate90(ImageTransform):
         if len(self._input_shape) == 2:
             return h, w
 
-        c = self._input_shape[2]  # type: ignore
+        c = self._input_shape[2]
         return h, w, c
 
     def transform_image(self, image: HWCImageType) -> HWCImageType:
@@ -50,19 +50,19 @@ class Rotate90(ImageTransform):
         assert y >= 0 and y < self._input_h
 
         if self._num_rotations == 1:
-            return y, self._input_w - x
+            return y, self._input_w - x - 1
         elif self._num_rotations == 2:
-            return self._input_w - x, self._input_h - y
+            return self._input_w - x - 1, self._input_h - y - 1
         elif self._num_rotations == 3:
-            return self._input_h - y, x
+            return self._input_h - y - 1, x
         return x, y
 
     def reverse_transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
         if self._num_rotations == 1:
-            return self._input_w - y, x
+            return self._input_w - y - 1, x
         elif self._num_rotations == 2:
-            return self._input_w - x, self._input_h - y
+            return self._input_w - x - 1, self._input_h - y - 1
         elif self._num_rotations == 3:
-            return y, self._input_h - x
+            return y, self._input_h - x - 1
         return x, y

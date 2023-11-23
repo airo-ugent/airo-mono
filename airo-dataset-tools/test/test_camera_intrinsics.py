@@ -32,9 +32,11 @@ def test_camera_intrinsics_save_and_load(tmp_path: pathlib.Path):
     )
 
     with open(tmp_path / "camera_intrinsics.json", "w") as file:
-        json.dump(camera_intrinsics.dict(exclude_none=True), file, indent=4)
+        json.dump(camera_intrinsics.model_dump(exclude_none=True), file, indent=4)
 
-    camera_intrinsics2 = CameraIntrinsics.parse_file(tmp_path / "camera_intrinsics.json")
+    with open(tmp_path / "camera_intrinsics.json", "r") as file:
+        camera_intrinsics2 = CameraIntrinsics.model_validate_json(file.read())
+
     assert camera_intrinsics2.image_resolution.width == 2208
     assert camera_intrinsics2.image_resolution.height == 1520
     assert camera_intrinsics2.focal_lengths_in_pixels.fx == 1067.91

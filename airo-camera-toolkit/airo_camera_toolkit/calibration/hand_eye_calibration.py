@@ -261,6 +261,6 @@ if __name__ == "__main__":  # noqa C901 - ignore complexity warning
             rotation_euler_xyz_in_radians=EulerAngles(roll=roll, pitch=pitch, yaw=yaw),
         )
         with open("camera_pose.json", "w") as f:
-            json.dump(pose_saveable.dict(), f, indent=4)
+            json.dump(pose_saveable.model_dump(), f, indent=4)
 
     calibrate()

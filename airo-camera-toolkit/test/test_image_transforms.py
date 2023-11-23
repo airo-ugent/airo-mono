@@ -23,6 +23,18 @@ def test_rotate_transform_points(n_rotations: int):
     _test_transform(original_point, transform)
 
 
+def test_rotate_off_by_one():
+    rotate90 = Rotate90(input_shape=(720, 1280, 3))
+    original_point = (1279, 0)
+    rotate90_point = rotate90.transform_point(original_point)
+    assert rotate90_point == (0, 0)
+
+    rotate180 = Rotate90(input_shape=(720, 1280, 3), num_rotations=2)
+    original_point = (1279, 719)
+    rotate180_point = rotate180.transform_point(original_point)
+    assert rotate180_point == (0, 0)
+
+
 def test_resize_transform_points():
     transform = Resize(input_shape=(101, 208, 3), h=51, w=109)
     original_point = (50, 75)

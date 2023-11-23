@@ -12,9 +12,11 @@ def test_pose_save_and_load(tmp_path: pathlib.Path):
     )
 
     with open(tmp_path / "pose.json", "w") as file:
-        json.dump(pose.dict(exclude_none=True), file, indent=4)
+        json.dump(pose.model_dump(exclude_none=True), file, indent=4)
 
-    pose2 = Pose.parse_file(tmp_path / "pose.json")
+    with open(tmp_path / "pose.json", "r") as file:
+        pose2 = Pose.model_validate_json(file.read())
+
     assert pose2.position_in_meters.x == 1.0
     assert pose2.position_in_meters.y == 2.0
     assert pose2.position_in_meters.z == 3.0

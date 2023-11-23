@@ -17,6 +17,8 @@ airo_camera_toolkit
 │   ├── fiducial_markers.py     # Detecting and localising aruco markers and charuco boards
 │   └── hand_eye_calibration.py # Camera-robot extrinsics calibration, eye-in-hand and eye-to-hand
 └── image_transforms            # Invertible transforms for cropping/scaling images with keypoints
+│   └── ...
+└── multiprocess                # Multiprocessing for
     └── ...
 
 ```
@@ -30,7 +32,7 @@ This will already allow you to use the hardare-independent functionality of this
 Depending on the hardware you are using, you might need to complete additional installation.
 Instructions can be found in the following files:
 * [ZED Installation](airo_camera_toolkit/cameras/zed_installation.md)
-* [RealSense Installation](https://github.com/IntelRealSense/librealsense)
+* [RealSense Installation](airo_camera_toolkit/cameras/realsense_installation.md)
 
 ## Getting started with cameras
 Camera can be accessed by instantiating the corresponding class:, e.g. for a ZED camera:
@@ -92,10 +94,13 @@ See [annotation_tool.md](./airo_camera_toolkit/annotation_tool.md) for usage ins
 
 See the [README](./airo_camera_toolkit/image_transforms/README.md) in the `image_transforms` folder for more details.
 
-
 ## Real-time visualisation
 For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](docs/rerun-zed-example.ipynb).
+See this [README](./docs/rerun.md) for more details.
 
+## Multiprocessing
+Camera processing can be computationally expensive.
+If this is a problem for your application, see [multiprocess/README.md](./airo_camera_toolkit/cameras/multiprocess/README.md).
 
 ## References
 For more background on cameras, in particular on the meaning of intrinsics, extrinics, distortion coefficients, pinhole (and other) camera models, see:
