@@ -14,7 +14,7 @@ setuptools.setup(
         "opencv-contrib-python==4.7.0.72",  # opencv has a tendency to make breaking changes
         "opencv-python-headless==4.7.0.72",  # opencv headless gets installed by some packages, so install it manually to match versions with opencv-contrib-python
         "matplotlib",
-        "rerun-sdk",
+        "rerun-sdk==0.9.0",
         "click==8.1.3",  # 8.1.4 breaks mypy
         "loguru",
     ],
