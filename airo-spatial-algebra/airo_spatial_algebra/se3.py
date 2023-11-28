@@ -14,6 +14,7 @@ from airo_typing import (
 )
 from scipy.spatial.transform import Rotation
 from spatialmath import SE3, UnitQuaternion
+from spatialmath.base import trnorm
 
 
 class SE3Container:
@@ -53,12 +54,14 @@ class SE3Container:
 
     @classmethod
     def from_homogeneous_matrix(cls, matrix: HomogeneousMatrixType) -> SE3Container:
+        _assert_is_se3_matrix(matrix)
         return cls(SE3(matrix))
 
     @classmethod
     def from_rotation_matrix_and_translation(
         cls, rotation_matrix: RotationMatrixType, translation: Optional[Vector3DType] = None
     ) -> SE3Container:
+        _assert_is_so3_matrix(rotation_matrix)
         return cls(SE3.Rt(rotation_matrix, translation))
 
     @classmethod
@@ -95,6 +98,8 @@ class SE3Container:
         orientation_matrix = np.zeros((3, 3))
         for i, axis in enumerate([x_axis, y_axis, z_axis]):
             orientation_matrix[:, i] = axis / np.linalg.norm(axis)
+
+        _assert_is_so3_matrix(orientation_matrix)
 
         return cls(SE3.Rt(orientation_matrix, translation))
 
@@ -162,3 +167,48 @@ class SE3Container:
     def scalar_last_quaternion_to_scalar_first(scalar_last_quaternion: QuaternionType) -> np.ndarray:
         scalar_first_quaternion = np.roll(scalar_last_quaternion, 1)
         return scalar_first_quaternion
+
+
+def normalize_so3_matrix(matrix: np.ndarray) -> np.ndarray:
+    """normalize an SO3 matrix (i.e. a rotation matrix) to be orthogonal and have determinant 1 (right-handed coordinate system)
+    see https://en.wikipedia.org/wiki/3D_rotation_group
+
+    Can be used to fix numerical issues with rotation matrices
+
+    will make sure x,y,z are unit vectors, then
+    will construct new x vector as y cross z, then construct new y vector as z cross x, so that x,y,z are orthogonal
+
+    """
+    assert matrix.shape == (3, 3), "matrix is not a 3x3 matrix"
+    return trnorm(matrix)
+
+
+def _assert_is_so3_matrix(matrix: np.ndarray) -> None:
+    """check if matrix is a valid SO3 matrix
+    this requires the matrix to be orthogonal (base vectors are perpendicular) and have determinant 1 (right-handed coordinate system)
+    see https://en.wikipedia.org/wiki/3D_rotation_group
+
+    This function will raise a ValueError if the matrix is not valid
+
+    """
+    if matrix.shape != (3, 3):
+        raise ValueError("matrix is not a 3x3 matrix")
+    if not np.allclose(matrix @ matrix.T, np.eye(3)):
+        raise ValueError(
+            "matrix is not orthnormal, i.e. its base vectors are not perpendicular. If you are sure this is a numerical issue, use normalize_so3_matrix()"
+        )
+    if not np.allclose(np.linalg.det(matrix), 1):
+        raise ValueError("matrix does not have determinant 1 (not right-handed)")
+
+
+def _assert_is_se3_matrix(matrix: np.ndarray) -> None:
+    """check if matrix is a valid SE3 matrix (i.e. a valid pose)
+    this requires the rotation part to be a valid SO3 matrix and the translation part to be a 3D vector
+
+    This function will raise a ValueError if the matrix is not valid
+    """
+    if matrix.shape != (4, 4):
+        raise ValueError("matrix is not a 4x4 matrix")
+    if not np.allclose(matrix[3, :], np.array([0, 0, 0, 1])):
+        raise ValueError("last row of matrix is not [0,0,0,1]")
+    _assert_is_so3_matrix(matrix[:3, :3])
