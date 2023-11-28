@@ -8,7 +8,10 @@ from airo_camera_toolkit.calibration.collect_calibration_data import (
     create_calibration_data_dir,
     save_calibration_sample,
 )
-from airo_camera_toolkit.calibration.compute_calibration import compute_calibration_all_methods
+from airo_camera_toolkit.calibration.compute_calibration import (
+    compute_calibration_all_methods,
+    draw_base_pose_on_image,
+)
 from airo_camera_toolkit.calibration.fiducial_markers import (
     AIRO_DEFAULT_ARUCO_DICT,
     AIRO_DEFAULT_CHARUCO_BOARD,
@@ -69,12 +72,15 @@ def do_camera_robot_calibration(
     MIN_POSES = 3
     tcp_poses_in_base: List[HomogeneousMatrixType] = []
     images: List[OpenCVIntImageType] = []
+    camera_pose_best = None
 
     while True:
         # Live visualization of board detection
         image_rgb = camera.get_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
         detect_and_visualize_charuco_pose(image, intrinsics, aruco_dict, charuco_board)
+        tcp_pose = robot.get_tcp_pose()
+        draw_base_pose_on_image(image, intrinsics, camera_pose_best, mode, tcp_pose)
         cv2.imshow(window_name, image)
 
         key = cv2.waitKey(1)
@@ -100,9 +106,12 @@ def do_camera_robot_calibration(
             os.makedirs(results_dir)
             logger.info(f"Running calibration with {n_samples} (image, tcp_pose) pairs")
             logger.info(f"Saving calibration results to {results_dir}")
-            compute_calibration_all_methods(
+            poses_dict, errors_dict = compute_calibration_all_methods(
                 results_dir, images, tcp_poses_in_base, intrinsics, mode, aruco_dict, charuco_board
             )
+
+            min_error_key = min(errors_dict, key=errors_dict.get)
+            camera_pose_best = poses_dict[min_error_key]
 
 
 if __name__ == "__main__":

@@ -201,6 +201,42 @@ def save_board_detections(
         cv2.imwrite(detection_filepath, image_annotated)
 
 
+def draw_base_pose_on_image(
+    image: OpenCVIntImageType,
+    intrinsics: CameraIntrinsicsMatrixType,
+    camera_pose: Optional[HomogeneousMatrixType],
+    mode: str = "eye_in_hand",
+    tcp_pose: Optional[HomogeneousMatrixType] = None,
+):
+    """Draws the robot's base pose on an image, using the camera_pose resulting from the calibration.
+
+    Args:
+        image: image to draw on
+        camera_pose: camera pose in base frame (eye-to-hand) or camera pose in tcp frame(eye-in-hand))
+        intrinsics: camera intrinsics
+        mode: one of "eye_in_hand" or "eye_to_hand"
+        tcp_pose: tcp pose in base frame that corresponds to the image
+    """
+    if camera_pose is None:
+        return
+
+    if mode == "eye_to_hand":
+        X_B_C = camera_pose  # Camera in base frame
+        X_C_B = np.linalg.inv(X_B_C)
+    if mode == "eye_in_hand":
+        if tcp_pose is None:
+            return  # tcp pose is required to visualize base in eye_in_hand mode
+
+        X_TCP_C = camera_pose  # Camera in TCP frame
+        X_B_TCP = tcp_pose
+        X_C_TCP = np.linalg.inv(X_TCP_C)
+        X_TCP_B = np.linalg.inv(X_B_TCP)
+        X_C_B = X_C_TCP @ X_TCP_B
+
+    base_pose_in_camera = X_C_B
+    draw_frame_on_image(image, base_pose_in_camera, intrinsics)
+
+
 def compute_calibration_all_methods(
     results_dir: str,
     images: List[OpenCVIntImageType],
@@ -268,22 +304,10 @@ def compute_calibration_all_methods(
 
         # Save an image with the pose drawn on it (use last image taken)
         image = images[-1].copy()
-
-        if mode == "eye_to_hand":
-            X_B_C = camera_pose  # Camera in base frame
-            X_C_B = np.linalg.inv(X_B_C)
-        if mode == "eye_in_hand":
-            X_TCP_C = camera_pose  # Camera in TCP frame
-            X_B_TCP = tcp_poses_in_base[-1]
-            X_C_TCP = np.linalg.inv(X_TCP_C)
-            X_TCP_B = np.linalg.inv(X_B_TCP)
-            X_C_B = X_C_TCP @ X_TCP_B
-
-        base_pose_in_camera = X_C_B
-        draw_frame_on_image(image, base_pose_in_camera, intrinsics)
+        draw_base_pose_on_image(image, intrinsics, camera_pose, mode, tcp_poses_in_base[-1])
 
         # Write residual error on image
-        error_str = f"{calibration_error:.4f}"
+        error_str = f"{name}: {calibration_error:.4f}"
         cv2.putText(image, error_str, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
         cv2.imwrite(os.path.join(results_dir, f"base_pose_in_camera_{name}.jpg"), image)
 
