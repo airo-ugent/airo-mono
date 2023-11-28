@@ -110,7 +110,7 @@ def do_camera_robot_calibration(
                 results_dir, images, tcp_poses_in_base, intrinsics, mode, aruco_dict, charuco_board
             )
 
-            min_error_key = min(errors_dict, key=errors_dict.get)
+            min_error_key = min(errors_dict, key=lambda x: errors_dict.get(x) or float("inf"))
             camera_pose_best = poses_dict[min_error_key]
 
 

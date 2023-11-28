@@ -207,7 +207,7 @@ def draw_base_pose_on_image(
     camera_pose: Optional[HomogeneousMatrixType],
     mode: str = "eye_in_hand",
     tcp_pose: Optional[HomogeneousMatrixType] = None,
-):
+) -> None:
     """Draws the robot's base pose on an image, using the camera_pose resulting from the calibration.
 
     Args:
