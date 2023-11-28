@@ -266,22 +266,25 @@ def compute_calibration_all_methods(
         with open(pose_path, "w") as f:
             json.dump(pose_saveable.model_dump(), f, indent=4)
 
-        # Save an image with the pose drawn on it
-        base_pose_in_camera = camera_pose
-        if mode == "eye_to_hand":
-            base_pose_in_camera = np.linalg.inv(camera_pose)
+        # Save an image with the pose drawn on it (use last image taken)
         image = images[-1].copy()
+
+        if mode == "eye_to_hand":
+            X_B_C = camera_pose  # Camera in base frame
+            X_C_B = np.linalg.inv(X_B_C)
+        if mode == "eye_in_hand":
+            X_TCP_C = camera_pose  # Camera in TCP frame
+            X_B_TCP = tcp_poses_in_base[-1]
+            X_C_TCP = np.linalg.inv(X_TCP_C)
+            X_TCP_B = np.linalg.inv(X_B_TCP)
+            X_C_B = X_C_TCP @ X_TCP_B
+
+        base_pose_in_camera = X_C_B
         draw_frame_on_image(image, base_pose_in_camera, intrinsics)
-        cv2.putText(
-            image,
-            f"{name}: {calibration_error:.4f}",
-            (10, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            2,
-            (0, 255, 0),
-            2,
-            cv2.LINE_AA,
-        )
+
+        # Write residual error on image
+        error_str = f"{calibration_error:.4f}"
+        cv2.putText(image, error_str, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
         cv2.imwrite(os.path.join(results_dir, f"base_pose_in_camera_{name}.jpg"), image)
 
     return calibration_result_poses, calibration_errors
