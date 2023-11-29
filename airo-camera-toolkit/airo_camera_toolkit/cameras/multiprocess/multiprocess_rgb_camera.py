@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils import ImageConverter
-from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType, NumpyIntImageType
+from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
 
 _RGB_SHM_NAME = "rgb"
 _RGB_SHAPE_SHM_NAME = "rgb_shape"
@@ -246,6 +246,12 @@ class MultiprocessRGBReceiver(RGBCamera):
         Having atomic read/writes of both the image and timestap (a la ROS) would solve this.
         """
         return self.timestamp_shm_array[0]
+
+    @property
+    def resolution(self) -> CameraResolutionType:
+        """The resolution of the camera, in pixels."""
+        shape_array = [int(x) for x in self.rgb_shape_shm_array[:2]]
+        return (shape_array[0], shape_array[1])
 
     def _grab_images(self) -> None:
         while not self.get_current_timestamp() > self.previous_timestamp:

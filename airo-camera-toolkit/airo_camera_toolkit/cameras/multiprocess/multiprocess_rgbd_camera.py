@@ -173,13 +173,12 @@ if __name__ == "__main__":
 
     from airo_camera_toolkit.cameras.zed2i import Zed2i
 
-    resolution_identifier = Zed2i.RESOLUTION_720
-    resolution = Zed2i.resolution_sizes[resolution_identifier]
+    resolution = Zed2i.RESOLUTION_720
 
     p = MultiprocessRGBDPublisher(
         Zed2i,
         camera_kwargs={
-            "resolution": resolution_identifier,
+            "resolution": resolution,
             "fps": 30,
             "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
