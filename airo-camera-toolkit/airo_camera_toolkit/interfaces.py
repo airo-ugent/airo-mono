@@ -2,6 +2,7 @@ import abc
 
 from airo_typing import (
     CameraIntrinsicsMatrixType,
+    CameraResolutionType,
     ColoredPointCloudType,
     HomogeneousMatrixType,
     NumpyDepthMapType,
@@ -51,6 +52,12 @@ class Camera(abc.ABC):
 class RGBCamera(Camera, abc.ABC):
     """Base class for all RGB cameras"""
 
+    @property
+    @abc.abstractmethod
+    def resolution(self) -> CameraResolutionType:
+        """The resolution of the camera, in pixels."""
+        raise NotImplementedError
+
     def get_rgb_image(self) -> NumpyFloatImageType:
         """Get a new RGB image from the camera."""
         self._grab_images()
@@ -72,7 +79,8 @@ class RGBCamera(Camera, abc.ABC):
     def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
         """Returns the current RGB image in the memory buffer as uint8.
         This is typically the format in which it is stored in memory.
-        Returning it directly avoids the overhead of converting it to floats first, which is what _retrieve_rgb_image() does."""
+        Returning it directly avoids the overhead of converting it to floats first, which is what _retrieve_rgb_image() does.
+        """
         raise NotImplementedError
 
 
@@ -149,5 +157,6 @@ class StereoRGBDCamera(RGBDCamera):
         ususally this is simply a translation along the x-axis and referred to as the disparity.
         cf https://en.wikipedia.org/wiki/Binocular_disparity
 
-        The left view is usually considered to be the 'camera frame', i.e. this is the frame that is used to define the camara extrinsics matrix"""
+        The left view is usually considered to be the 'camera frame', i.e. this is the frame that is used to define the camara extrinsics matrix
+        """
         raise NotImplementedError

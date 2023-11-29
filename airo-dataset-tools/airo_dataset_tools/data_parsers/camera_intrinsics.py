@@ -3,13 +3,16 @@ from __future__ import annotations
 from typing import List, Optional, Tuple
 
 import numpy as np
-from airo_typing import CameraIntrinsicsMatrixType
+from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType
 from pydantic import BaseModel
 
 
 class Resolution(BaseModel):
     width: int
     height: int
+
+    def as_tuple(self) -> CameraResolutionType:
+        return self.width, self.height
 
 
 class FocalLengths(BaseModel):
