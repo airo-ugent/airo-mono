@@ -84,7 +84,7 @@ class Zed2i(StereoRGBDCamera):
         serial_number: Optional[str] = None,
         svo_filepath: Optional[str] = None,
     ) -> None:
-        self.resolution = resolution
+        self._resolution = resolution
         self.fps = fps
         self.depth_mode = depth_mode
         self.serial_number = serial_number
@@ -151,6 +151,10 @@ class Zed2i(StereoRGBDCamera):
         self.depth_image_matrix = sl.Mat()
         self.depth_matrix = sl.Mat()
         self.pointcloud_matrix = sl.Mat()
+
+    @property
+    def resolution(self) -> CameraResolutionType:
+        return self._resolution
 
     def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> CameraIntrinsicsMatrixType:
         # get the 'rectified' intrinsics matrices.

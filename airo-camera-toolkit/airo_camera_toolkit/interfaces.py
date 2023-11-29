@@ -2,6 +2,7 @@ import abc
 
 from airo_typing import (
     CameraIntrinsicsMatrixType,
+    CameraResolutionType,
     ColoredPointCloudType,
     HomogeneousMatrixType,
     NumpyDepthMapType,
@@ -50,6 +51,12 @@ class Camera(abc.ABC):
 
 class RGBCamera(Camera, abc.ABC):
     """Base class for all RGB cameras"""
+
+    @property
+    @abc.abstractmethod
+    def resolution(self) -> CameraResolutionType:
+        """The resolution of the camera, in pixels."""
+        raise NotImplementedError
 
     def get_rgb_image(self) -> NumpyFloatImageType:
         """Get a new RGB image from the camera."""

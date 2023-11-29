@@ -40,7 +40,7 @@ class Realsense(RGBDCamera):
         enable_hole_filling: bool = True,
         serial_number: Optional[str] = None,
     ) -> None:
-        self.resolution = resolution
+        self._resolution = resolution
         self.fps = fps
         self._depth_enabled = enable_depth
         self.hole_filling_enabled = enable_hole_filling
@@ -98,6 +98,10 @@ class Realsense(RGBDCamera):
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         return self._intrinsics_matrix
+
+    @property
+    def resolution(self) -> CameraResolutionType:
+        return self._resolution
 
     def _grab_images(self) -> None:
         self._composite_frame = self.pipeline.wait_for_frames()

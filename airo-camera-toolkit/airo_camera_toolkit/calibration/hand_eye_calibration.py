@@ -53,7 +53,7 @@ def do_camera_robot_calibration(
     logger.info(f"Saving calibration data to {data_dir}")
     logger.info("Press S to save a sample, Q to quit.")
 
-    resolution = camera.resolution  # type: ignore
+    resolution = camera.resolution
 
     intrinsics = camera.intrinsics_matrix()
 
