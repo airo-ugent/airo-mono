@@ -67,7 +67,9 @@ def do_camera_robot_calibration(
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
     # For now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
-    robot.rtde_control.teachMode()  # type: ignore
+    # TODO: make this more generic by providing a teach mode function in the PositionManipulator interface?
+    assert isinstance(robot, URrtde), "Only UR robots are supported for now."
+    robot.rtde_control.teachMode()
 
     MIN_POSES = 3
     tcp_poses_in_base: List[HomogeneousMatrixType] = []
@@ -85,13 +87,13 @@ def do_camera_robot_calibration(
 
         key = cv2.waitKey(1)
         if key == ord("q"):
-            robot.rtde_control.endTeachMode()  # type: ignore
+            robot.rtde_control.endTeachMode()
             break
 
         if key == ord("s"):
             # TODO reject samples where no board was detected?
             sample_index = len(tcp_poses_in_base)
-            tcp_pose, image_bgr = save_calibration_sample(sample_index, robot, camera, data_dir)  # type: ignore
+            tcp_pose, image_bgr = save_calibration_sample(sample_index, robot, camera, data_dir)
             logger.info(f"Saved {sample_index + 1} sample(s).")
 
             tcp_poses_in_base.append(tcp_pose)
