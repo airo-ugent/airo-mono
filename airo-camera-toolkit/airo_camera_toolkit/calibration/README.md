@@ -18,12 +18,14 @@ Then using at least 3 samples of the form: `(tcp_pose_in_robot_base_frame, board
 
 **Starting the calibration**:
 
-1. Place or grasp the Charuco board firmly (grasp pose can be chosen freely)
+1. For `eye_in_hand` mode: place the Charuco board (fixed) in the workspace of the robot.
+
+   For `eye_to_hand` mode: grasp the Charuco board firmly, grasp pose can be chosen freely.
 2. Put the robot in `Remote Control` mode
-3. Then run the `hand_eye_calibration.py` script to start the calibration, e.g:
+3. Then run the CLI to start the calibration, e.g:
 
 ```shell
-python hand_eye_calibration.py --mode eye_to_hand --robot_ip=10.42.0.163
+airo-camera-toolkit hand-eye-calibration --mode eye_to_hand --robot_ip=10.42.0.163
 ```
 
 You will should be shown an OpenCV window with the camera feed and the detected Charuco board that looks like this:
@@ -65,7 +67,7 @@ Calibration samples and result that are collected are stored in a `calibration_d
 This directory is used by the `hand_eye_calibration.py`, `collection_calibration_data.py` and `compute_calibration.py` scripts..
 Its structure is as follows:
 
-```cs
+```
 calibration_dir
 ├── data # backup of collected samples
 |   ├── intrinsics.json

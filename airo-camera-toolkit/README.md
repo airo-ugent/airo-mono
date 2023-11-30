@@ -57,7 +57,7 @@ while True:
 Find the pose of a camera relative to a robot. In the [`calibration`](./airo_camera_toolkit/calibration/) folder, run this to get started:
 
 ```shell
-python hand_eye_calibration.py --help
+airo-camera-toolkit hand-eye-calibration --help
 ```
 
 See [calibration/README.md](./airo_camera_toolkit/calibration/README.md) for more details.
