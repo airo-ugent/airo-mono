@@ -27,5 +27,10 @@ setuptools.setup(
         ]
     },
     packages=setuptools.find_packages(),
+    entry_points={
+        "console_scripts": [
+            "airo-camera-toolkit = airo_camera_toolkit.cli:cli",
+        ],
+    },
     package_data={"airo_camera_toolkit": ["py.typed"]},
 )
