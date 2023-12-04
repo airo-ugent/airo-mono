@@ -1,5 +1,3 @@
-from test.test_config import _ImageTestValues
-
 import numpy as np
 from airo_camera_toolkit.reprojection import (
     extract_depth_from_depthmap_heuristic,
@@ -7,6 +5,8 @@ from airo_camera_toolkit.reprojection import (
     reproject_to_frame,
 )
 from PIL import Image
+
+from .test_config import _ImageTestValues
 
 
 def test_world_to_image_plane_projection():
