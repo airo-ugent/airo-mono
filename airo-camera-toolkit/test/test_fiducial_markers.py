@@ -1,3 +1,5 @@
+from test.test_config import _CalibrationTest
+
 import cv2
 import numpy as np
 from airo_camera_toolkit.calibration.fiducial_markers import (
@@ -8,8 +10,6 @@ from airo_camera_toolkit.calibration.fiducial_markers import (
     get_pose_of_charuco_board,
     get_poses_of_aruco_markers,
 )
-
-from .test_config import _CalibrationTest
 
 
 def test_empty_aruco_marker_detection():
