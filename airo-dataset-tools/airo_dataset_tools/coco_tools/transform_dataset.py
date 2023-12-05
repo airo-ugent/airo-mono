@@ -112,7 +112,8 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
         transformed_image_dir = os.path.join(target_image_path, os.path.dirname(coco_image.file_name))
         if not os.path.exists(transformed_image_dir):
             os.makedirs(transformed_image_dir)
-        transformed_image.save(os.path.join(target_image_path, coco_image.file_name))
+        # specify quality to use for JPEG, (format is determined by file extension)
+        transformed_image.save(os.path.join(target_image_path, coco_image.file_name), quality=95)
 
         # change the metadata of the image coco object
         coco_image.width = transformed_image.width
