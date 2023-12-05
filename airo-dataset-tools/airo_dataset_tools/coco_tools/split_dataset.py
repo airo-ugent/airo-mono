@@ -9,7 +9,10 @@ from pydantic.error_wrappers import ValidationError
 
 
 def split_coco_dataset(
-    coco_dataset: CocoInstancesDataset, split_ratios: List[float], shuffle_before_splitting: bool = True
+    coco_dataset: CocoInstancesDataset,
+    split_ratios: List[float],
+    shuffle_before_splitting: bool = True,
+    shuffle_seed: int = 42,
 ) -> List[CocoInstancesDataset]:
     """Split a COCO dataset into subsets by splitting the images according to the specified relative ratios.
     All annotations for an image will be placed in the same subset as the image.
@@ -18,7 +21,6 @@ def split_coco_dataset(
 
     Ratios must sum to 1.0.
     """
-
     ratio_sum = sum(split_ratios)
     if abs(ratio_sum - 1.0) > 2e-2:
         raise ValueError(f"Ratios must sum to 1.0. Ratios sum to {ratio_sum}.")
@@ -27,7 +29,11 @@ def split_coco_dataset(
     images = coco_dataset.images
 
     if shuffle_before_splitting:
-        random.shuffle(images)
+        # make shuffling reproducible
+        # use local random instance to not influence
+        # the global random state
+        rng = random.Random(shuffle_seed)
+        rng.shuffle(images)
 
     image_splits: List[List[CocoImage]] = []
     split_sizes = [round(ratio * len(images)) for ratio in split_ratios]
