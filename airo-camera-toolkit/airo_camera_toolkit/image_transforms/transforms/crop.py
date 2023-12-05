@@ -35,7 +35,7 @@ class Crop(ImageTransform):
         if len(self._input_shape) == 2:
             return self.h, self.w
 
-        c = self._input_shape[2]  # type: ignore
+        c = self._input_shape[2]
         return self.h, self.w, c
 
     def transform_image(self, image: HWCImageType) -> HWCImageType:

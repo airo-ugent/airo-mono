@@ -5,22 +5,21 @@ This code is partially based on a codebase by Peter De Roovere (https://github.c
 so part of the credit for this code goes to him.
 """
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import List, Optional
 
 import cv2
 import numpy as np
+from airo_camera_toolkit.cameras.camera_discovery import click_camera_options, discover_camera
 from airo_spatial_algebra import SE3Container
 from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, OpenCVIntImageType
 from cv2 import aruco
 
-# explicitly type these to Any, as the cv2.aruco module is not typed
-# and would be cast by mypy to Any implictly, which results in a warning
-ArucoDictType = Any
-CharucoDictType = Any
+ArucoDictType = cv2.aruco.Dictionary
+CharucoBoardType = cv2.aruco.CharucoBoard
 
 # see the pdf file in the airo-camera-toolkit/docs folder
 AIRO_DEFAULT_ARUCO_DICT: ArucoDictType = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
-AIRO_DEFAULT_CHARUCO_BOARD: CharucoDictType = aruco.CharucoBoard((7, 5), 0.04, 0.031, AIRO_DEFAULT_ARUCO_DICT)
+AIRO_DEFAULT_CHARUCO_BOARD: CharucoBoardType = aruco.CharucoBoard((7, 5), 0.04, 0.031, AIRO_DEFAULT_ARUCO_DICT)
 
 
 @dataclass
@@ -48,18 +47,18 @@ def detect_aruco_markers(image: OpenCVIntImageType, dictionary: ArucoDictType) -
     marker_corners, marker_ids, _ = aruco.detectMarkers(image, dictionary)
     if marker_corners is None or marker_ids is None:
         return None
-    marker_corners = np.stack(marker_corners)
-    marker_corners = refine_corner_detection(image, marker_corners)
-    result = ArucoMarkerDetectionResult(marker_corners, marker_ids, image)
+    marker_corners_array = np.stack(marker_corners)
+    marker_corners_array = refine_corner_detection(image, marker_corners_array)
+    result = ArucoMarkerDetectionResult(marker_corners_array, marker_ids, image)
     return result
 
 
 def detect_charuco_corners(
-    image: OpenCVIntImageType, markers_detection_result: ArucoMarkerDetectionResult, charuco_board: CharucoDictType
+    image: OpenCVIntImageType, markers_detection_result: ArucoMarkerDetectionResult, charuco_board: CharucoBoardType
 ) -> Optional[CharucoCornerDetectionResult]:
     """Detect CharuCo corners in the image using the detected markers in `markers_detection_result`."""
     nb_corners, charuco_corners, charuco_ids = aruco.interpolateCornersCharuco(
-        markerCorners=markers_detection_result.corners,
+        markerCorners=markers_detection_result.corners,  # type: ignore # typed as Seq but accepts np.ndarray
         markerIds=markers_detection_result.ids,
         image=image,
         board=charuco_board,
@@ -99,7 +98,7 @@ def get_poses_of_aruco_markers(
 ) -> Optional[List[HomogeneousMatrixType]]:
     """Get the poses of the detected markers in `markers_detection_result`."""
     rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
-        corners=markers_detection_result.corners,
+        corners=markers_detection_result.corners,  # type: ignore # typed as Seq but accepts np.ndarray
         markerLength=marker_size,
         cameraMatrix=camera_matrix,
         distCoeffs=dist_coeffs,
@@ -119,7 +118,7 @@ def get_poses_of_aruco_markers(
 
 def get_pose_of_charuco_board(
     charuco_corners_detection_result: CharucoCornerDetectionResult,
-    charuco_board: CharucoDictType,
+    charuco_board: CharucoBoardType,
     camera_matrix: CameraIntrinsicsMatrixType,
     dist_coeffs: Optional[np.ndarray] = None,
 ) -> Optional[HomogeneousMatrixType]:
@@ -141,6 +140,38 @@ def get_pose_of_charuco_board(
         rvec.flatten(), tvec.flatten()
     ).homogeneous_matrix
     return charuco_pose_in_camera_frame
+
+
+def detect_charuco_board(
+    image: OpenCVIntImageType,
+    camera_matrix: CameraIntrinsicsMatrixType,
+    dist_coeffs: Optional[np.ndarray] = None,
+    aruco_dict: ArucoDictType = AIRO_DEFAULT_ARUCO_DICT,
+    charuco_board: CharucoBoardType = AIRO_DEFAULT_CHARUCO_BOARD,
+) -> Optional[HomogeneousMatrixType]:
+    """Detect the pose of a charuco board from an image and the camera's intrinsics.
+
+    Args:
+        image: An image that might contain a charuco board.
+        camera_matrix: The intrinsics of the camera that took the image.
+        dist_coeffs: The distortion coefficients of the camera that took the image.
+        aruco_markers: The dictionary from OpenCV that specifies the aruco marker parameters.
+        charuco_board: The dictionary from OpenCV that specifies the charuco board parameters.
+
+    Returns:
+        Optional[HomogeneousMatrixType]: The pose of the charuco board in the camera frame, if it was detected.
+    """
+
+    aruco_result = detect_aruco_markers(image, aruco_dict)
+    if not aruco_result:
+        return None
+
+    charuco_result = detect_charuco_corners(image, aruco_result, charuco_board)
+    if not charuco_result:
+        return None
+
+    charuco_pose = get_pose_of_charuco_board(charuco_result, charuco_board, camera_matrix, dist_coeffs)
+    return charuco_pose
 
 
 #################
@@ -173,13 +204,51 @@ def visualize_charuco_detection(image: OpenCVIntImageType, result: CharucoCorner
     return image
 
 
-if __name__ == "__main__":  # noqa: C901 - ignore complexity
+def detect_and_visualize_charuco_pose(
+    image: OpenCVIntImageType,
+    intrinsics: CameraIntrinsicsMatrixType,
+    aruco_dict: ArucoDictType = AIRO_DEFAULT_ARUCO_DICT,
+    charuco_board: CharucoBoardType = AIRO_DEFAULT_CHARUCO_BOARD,
+    draw_aruco_detection: bool = True,
+    draw_charuco_detection: bool = True,
+) -> Optional[HomogeneousMatrixType]:
+    """Detects and visualizes the pose of a charuco board in an image.
+
+    Args:
+        image: An image that might contain a charuco board.
+        intrinsics: The intrinsics matrix of the camera that took the image.
+        aruco_dict: The dictionary from OpenCV that specifies the aruco marker parameters.
+        charuco_board: The OpenCV CharucoBoard object that specifies the charuco board parameters.
+    """
+    aruco_result = detect_aruco_markers(image, aruco_dict)
+    if not aruco_result:
+        return None
+
+    if draw_aruco_detection:
+        image = visualize_aruco_detections(image, aruco_result)
+
+    charuco_result = detect_charuco_corners(image, aruco_result, charuco_board)
+    if not charuco_result:
+        return None
+
+    if draw_charuco_detection:
+        image = visualize_charuco_detection(image, charuco_result)
+
+    charuco_pose = get_pose_of_charuco_board(charuco_result, charuco_board, intrinsics, None)
+    if charuco_pose is None:
+        return None
+
+    image = draw_frame_on_image(image, charuco_pose, intrinsics)
+
+    return charuco_pose
+
+
+if __name__ == "__main__":
     """CLI script for live visualisation of marker detection and pose estimation
     run python -m <file-name> --help to see the available options in the terminal.
     Defaults to the AIRO_DEFAULT_CHARUCO_BOARD.
     """
     import click
-    from airo_camera_toolkit.cameras.zed2i import Zed2i
     from airo_camera_toolkit.utils import ImageConverter
 
     @click.command()
@@ -187,57 +256,44 @@ if __name__ == "__main__":  # noqa: C901 - ignore complexity
     @click.option("--charuco_x_count", default=7, help="Number of checkerboard tiles in the x direction")
     @click.option("--charuco_y_count", default=5, help="Number of checkerboard tiles in the y direction")
     @click.option("--charuco_tile_size", default=0.04, help="Size of the charuco checkerboard tiles in meters")
-    def visualize_marker_detections(
+    @click_camera_options
+    def visualize_marker_detections_live(
         aruco_marker_size: float,
         charuco_x_count: Optional[int] = None,
         charuco_y_count: Optional[int] = None,
-        charuco_tile_size: Optional[int] = None,
+        charuco_tile_size: Optional[float] = None,
+        camera_brand: Optional[str] = None,
+        camera_serial_number: Optional[str] = None,
     ) -> None:
-
         aruco_dict = AIRO_DEFAULT_ARUCO_DICT
         detect_charuco = charuco_x_count is not None and charuco_y_count is not None and charuco_tile_size is not None
         if detect_charuco:
+            # Mypy doesn't infer these are not None from the line above, so we have to assert them
+            assert charuco_x_count is not None
+            assert charuco_y_count is not None
+            assert charuco_tile_size is not None
             charuco_board = aruco.CharucoBoard(
                 (charuco_x_count, charuco_y_count), charuco_tile_size, aruco_marker_size, aruco_dict
             )
 
-        camera = Zed2i()
+        camera = discover_camera(camera_brand, camera_serial_number)
+
+        window_name = "Charuco detection"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
         print("press Q to quit")
         while True:
-            aruco_result = None
-            charuco_result = None
-            aruco_poses = None
-            charuco_pose = None
-            image = camera.get_rgb_image()
-            image = ImageConverter.from_numpy_format(image).image_in_opencv_format
-
+            image_rgb = camera.get_rgb_image_as_int()
+            image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
             intrinsics = camera.intrinsics_matrix()
 
-            aruco_result = detect_aruco_markers(image, aruco_dict)
+            detect_and_visualize_charuco_pose(
+                image, intrinsics, aruco_dict, charuco_board, draw_aruco_detection=True, draw_charuco_detection=True
+            )
 
-            if aruco_result:
-                aruco_poses = get_poses_of_aruco_markers(aruco_result, 0.04, intrinsics)
-
-            if aruco_result:
-                charuco_result = detect_charuco_corners(image, aruco_result, charuco_board)
-
-                if charuco_result:
-                    charuco_pose = get_pose_of_charuco_board(charuco_result, charuco_board, intrinsics)
-            if aruco_result:
-                image = visualize_aruco_detections(image, aruco_result)
-                if aruco_poses is not None:
-                    image = draw_frame_on_image(image, aruco_poses[0], intrinsics)
-
-            if charuco_result:
-                image = visualize_charuco_detection(image, charuco_result)
-                if charuco_pose is not None:
-                    image = draw_frame_on_image(image, charuco_pose, intrinsics)
-
-            image = cv2.resize(image, (1024, 768))
-            cv2.imshow("image", image)
+            cv2.imshow(window_name, image)
             key = cv2.waitKey(1)
             if key == ord("q"):
                 break
 
-    visualize_marker_detections()
+    visualize_marker_detections_live()

@@ -17,6 +17,8 @@ airo_camera_toolkit
 │   ├── fiducial_markers.py     # Detecting and localising aruco markers and charuco boards
 │   └── hand_eye_calibration.py # Camera-robot extrinsics calibration, eye-in-hand and eye-to-hand
 └── image_transforms            # Invertible transforms for cropping/scaling images with keypoints
+│   └── ...
+└── multiprocess                # Multiprocessing for
     └── ...
 
 ```
@@ -30,7 +32,7 @@ This will already allow you to use the hardare-independent functionality of this
 Depending on the hardware you are using, you might need to complete additional installation.
 Instructions can be found in the following files:
 * [ZED Installation](airo_camera_toolkit/cameras/zed_installation.md)
-* [RealSense Installation](https://github.com/IntelRealSense/librealsense)
+* [RealSense Installation](airo_camera_toolkit/cameras/realsense_installation.md)
 
 ## Getting started with cameras
 Camera can be accessed by instantiating the corresponding class:, e.g. for a ZED camera:
@@ -50,20 +52,16 @@ while True:
         break
 ```
 
-## Calibration
-By deafult we use a charuco board for hand-eye calibration.
- You can find the board in the `test/data` folder.
- To match the size of the markers to the desired size, the board should be printed on a 300mm x 220mm surface.
- Using Charuco boards is highly recommended as they are a lot more robust and precise than individual aruco markers, if you do use an aruco marker, make sure that the whitespace around the marker is at least 25% of the marker dimensions.
+## Hand-eye calibration
 
-Running the calibration:
-* Position the board:
-    * For **eye-to-hand** rigidly attach (grasp) the board to the robot end-effector.
-    * For **eye-in-hand** place the board in anywhere workspace of the robot.
-* Run the `calibration/hand_eye_calibration.py` script.
-* Collect approximately 6 pose-image pairs by moving the robot around.
-* Check whether the *reprojection error* is sufficiently low.
-* The resulting extrinsics are saved to `camera_pose.json`.
+Find the pose of a camera relative to a robot. In the [`calibration`](./airo_camera_toolkit/calibration/) folder, run this to get started:
+
+```shell
+airo-camera-toolkit hand-eye-calibration --help
+```
+
+See [calibration/README.md](./airo_camera_toolkit/calibration/README.md) for more details.
+
 
 ## Image format conversion
 Camera by default return images as numpy 32-bit float RGB images with values between 0 to 1 through `get_rgb_image()`.
@@ -92,10 +90,13 @@ See [annotation_tool.md](./airo_camera_toolkit/annotation_tool.md) for usage ins
 
 See the [README](./airo_camera_toolkit/image_transforms/README.md) in the `image_transforms` folder for more details.
 
-
 ## Real-time visualisation
 For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](docs/rerun-zed-example.ipynb).
+See this [README](./docs/rerun.md) for more details.
 
+## Multiprocessing
+Camera processing can be computationally expensive.
+If this is a problem for your application, see [multiprocess/README.md](./airo_camera_toolkit/cameras/multiprocess/README.md).
 
 ## References
 For more background on cameras, in particular on the meaning of intrinsics, extrinics, distortion coefficients, pinhole (and other) camera models, see:

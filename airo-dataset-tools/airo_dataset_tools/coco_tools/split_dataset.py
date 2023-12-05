@@ -5,7 +5,7 @@ import random
 from typing import List, Optional
 
 from airo_dataset_tools.data_parsers.coco import CocoImage, CocoInstanceAnnotation, CocoInstancesDataset
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 
 
 def split_coco_dataset(
@@ -103,7 +103,7 @@ def split_and_save_coco_dataset(
 
         file_name = coco_json_path.replace(".json", f"_{split_names[split_id]}.json")
         with open(file_name, "w") as f:
-            json.dump(coco_dataset_split.dict(), f)
+            json.dump(coco_dataset_split.model_dump(exclude_none=True), f)
 
 
 if __name__ == "__main__":

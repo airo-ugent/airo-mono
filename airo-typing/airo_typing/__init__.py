@@ -85,6 +85,9 @@ TorchFloatImageType = np.ndarray
 NumpyDepthMapType = np.ndarray
 """ a depth map (z-buffer),float, (H,W)"""
 
+CameraResolutionType = Tuple[int, int]
+""" a tuple of image (width, height) in pixels"""
+
 CameraIntrinsicsMatrixType = np.ndarray
 """3x3 camera intrinsics matrix
 

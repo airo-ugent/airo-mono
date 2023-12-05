@@ -55,6 +55,10 @@ class URrtde(PositionManipulator):
 
         self.default_linear_acceleration = 1.2  # m/s^2
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
+        """
+        Leading axis = the axis that has to move the most to reach the target configuration. All other joint accelerations
+        will be scaled accordingly.
+        """
 
         # sensible values but you might need to tweak them for your purposes.
         self.servo_proportional_gain = 200

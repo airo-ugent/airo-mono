@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 
 class Segment(BaseModel):
@@ -95,7 +95,8 @@ class AnnotationItem(BaseModel):
 class Point(AnnotationItem):
     points: str
 
-    @validator("points")
+    @field_validator("points")
+    @classmethod
     def has_two_coordinates(cls, v: str) -> str:
         assert len(v.split(",")) == 2, "each point must be a single 2D coordinate for the AIRO flow."
         return v

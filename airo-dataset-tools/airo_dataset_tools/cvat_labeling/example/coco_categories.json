@@ -1,0 +1,24 @@
+{
+    "categories": [
+        {
+            "supercategory": "",
+            "id": 1,
+            "name": "towel",
+            "keypoints": [
+                "corner1",
+                "corner2",
+                "corner3",
+                "corner4"
+            ]
+        },
+        {
+            "supercategory": "",
+            "id": 2,
+            "name": "tshirt",
+            "keypoints": [
+                "waist_left"
+
+            ]
+        }
+    ]
+}

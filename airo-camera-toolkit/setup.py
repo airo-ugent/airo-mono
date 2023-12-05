@@ -11,10 +11,10 @@ setuptools.setup(
     author_email="thomas.lips@ugent.be",
     install_requires=[
         "numpy",
-        "opencv-contrib-python==4.7.0.72",  # opencv has a tendency to make breaking changes
-        "opencv-python-headless==4.7.0.72",  # opencv headless gets installed by some packages, so install it manually to match versions with opencv-contrib-python
+        "opencv-contrib-python==4.8.1.78",  # We need opencv contrib for the aruco marker detection, but when some packages install (a different version of) opencv-python-headless, this breaks the contrib version. So we install both here to make sure they are the same version.
+        "opencv-python-headless==4.8.1.78",  # Lock to match contrib version.
         "matplotlib",
-        "rerun-sdk",
+        "rerun-sdk==0.9.0",
         "click==8.1.3",  # 8.1.4 breaks mypy
         "loguru",
     ],
@@ -27,5 +27,10 @@ setuptools.setup(
         ]
     },
     packages=setuptools.find_packages(),
+    entry_points={
+        "console_scripts": [
+            "airo-camera-toolkit = airo_camera_toolkit.cli:cli",
+        ],
+    },
     package_data={"airo_camera_toolkit": ["py.typed"]},
 )

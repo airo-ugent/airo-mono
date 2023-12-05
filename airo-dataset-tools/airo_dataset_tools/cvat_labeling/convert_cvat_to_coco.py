@@ -19,7 +19,7 @@ from airo_dataset_tools.segmentation_mask_converter import BinarySegmentationMas
 
 
 def cvat_image_to_coco(  # noqa: C901, too complex
-    cvat_xml_path: str, add_bbox: bool = True, add_segmentation: bool = True
+    cvat_xml_path: str, coco_configuration_json_path: str, add_bbox: bool = True, add_segmentation: bool = True
 ) -> dict:
     """Function that converts an annotation XML in the CVAT 1.1 Image format to the COCO keypoints format.
     If you don't need keypoints, you can simply use CVAT to create a COCOinstances format and should not use this function!
@@ -31,6 +31,7 @@ def cvat_image_to_coco(  # noqa: C901, too complex
 
     Args:
         cvat_xml_path (str): _description_
+        coco_configuration_json_path (str): path to the COCO categories to use for annotating this dataset.
         add_bbox (bool): add bounding box annotations to the COCO dataset, requires all keypoint annotations to have a bbox annotation
         add_segmentation (bool): add segmentation annotations to the COCO dataset, requires all keypoint annotations to have a mask annotation. Bboxes will be created from the segmentation masks.
 
@@ -44,29 +45,18 @@ def cvat_image_to_coco(  # noqa: C901, too complex
     coco_annotations: List[CocoKeypointAnnotation] = []
     coco_categories: List[CocoKeypointCategory] = []
 
+    # load the COCO categories from the configuration file
+    with open(coco_configuration_json_path, "r") as file:
+        coco_categories_config = json.load(file)
+    for category_dict in coco_categories_config["categories"]:
+        category = CocoKeypointCategory(**category_dict)
+        coco_categories.append(category)
+
+    _validate_coco_categories_are_in_cvat(
+        cvat_parsed, coco_categories, add_bbox=add_bbox, add_segmentation=add_segmentation
+    )
+
     annotation_id_counter = 1  # counter for the annotation ID
-
-    # create the COCOKeypointCatgegories
-    categories_dict = defaultdict(list)
-
-    for annotation_category in cvat_parsed.annotations.meta.get_job_or_task().labels.label:
-        assert isinstance(annotation_category, LabelItem)
-        category_str, annotation_name = annotation_category.name.split(".")
-        categories_dict[category_str].append(annotation_name)
-
-    for category_str, semantic_types in categories_dict.items():
-        if add_bbox:
-            assert "bbox" in semantic_types, "bbox annotations are required"
-        if add_segmentation:
-            assert "mask" in semantic_types, "segmentation masks are required"
-
-        semantic_types = [
-            semantic_type for semantic_type in semantic_types if semantic_type != "bbox" and semantic_type != "mask"
-        ]
-        coco_category = CocoKeypointCategory(
-            name=category_str, id=len(coco_categories) + 1, keypoints=semantic_types, supercategory=""
-        )
-        coco_categories.append(coco_category)
 
     # iterate over all cvat annotations (grouped per image)
     # and create the COCO Keypoint annotations
@@ -116,12 +106,37 @@ def cvat_image_to_coco(  # noqa: C901, too complex
                 annotation_id_counter += 1
 
     coco_model = CocoKeypointsDataset(images=coco_images, annotations=coco_annotations, categories=coco_categories)
-    return coco_model.dict(exclude_none=True)
+    return coco_model.model_dump(exclude_none=True)
 
 
 ####################
 ### helper functions
 ####################
+
+
+def _validate_coco_categories_are_in_cvat(
+    cvat_parsed: CVATImagesParser, coco_categories: List[CocoKeypointCategory], add_bbox: bool, add_segmentation: bool
+) -> None:
+    # gather the annotation from CVAT
+    cvat_categories_dict = defaultdict(list)
+
+    for annotation_category in cvat_parsed.annotations.meta.get_job_or_task().labels.label:
+        assert isinstance(annotation_category, LabelItem)
+        category_str, annotation_name = annotation_category.name.split(".")
+        cvat_categories_dict[category_str].append(annotation_name)
+
+    for category_str, semantic_types in cvat_categories_dict.items():
+        if add_bbox:
+            assert "bbox" in semantic_types, "bbox annotations are required"
+        if add_segmentation:
+            assert "mask" in semantic_types, "segmentation masks are required"
+        # find the matching COCO category
+        coco_category = None
+        for coco_category in coco_categories:
+            if coco_category.name == category_str:
+                break
+        for category_keypoint in coco_category.keypoints:
+            assert category_keypoint in semantic_types, f"semantic type {category_keypoint} not found"
 
 
 def _get_n_category_instances_in_image(cvat_image: ImageItem, category_name: str) -> int:
@@ -197,7 +212,7 @@ def _get_segmentation_for_instance_from_cvat_image(cvat_image: ImageItem, instan
     """returns the segmentation polygon for the instance in the cvat image."""
     instance_id_str = str(instance_id)
     if cvat_image.polygon is None:
-        raise ValueError("segmentation annotations are required for image {cvat_image.name}")
+        raise ValueError(f"segmentation annotations are required for image {cvat_image.name}")
     if not isinstance(cvat_image.polygon, list):
         if instance_id_str == cvat_image.polygon.group_id:
             polygon_str = cvat_image.polygon.points
@@ -274,6 +289,8 @@ if __name__ == "__main__":
     path = pathlib.Path(__file__).parent.absolute()
     cvat_xml_file = str(path / "example" / "annotations.xml")
 
-    coco = cvat_image_to_coco(cvat_xml_file, add_bbox=True, add_segmentation=False)
+    coco_categories_file = str(path / "example" / "coco_categories.json")
+
+    coco = cvat_image_to_coco(cvat_xml_file, coco_categories_file, add_bbox=True, add_segmentation=False)
     with open("coco.json", "w") as file:
         json.dump(coco, file)
