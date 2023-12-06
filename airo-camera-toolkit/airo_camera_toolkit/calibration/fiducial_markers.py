@@ -5,7 +5,7 @@ This code is partially based on a codebase by Peter De Roovere (https://github.c
 so part of the credit for this code goes to him.
 """
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import List, Optional
 
 import cv2
 import numpy as np
@@ -14,10 +14,8 @@ from airo_spatial_algebra import SE3Container
 from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, OpenCVIntImageType
 from cv2 import aruco
 
-# explicitly type these to Any, as the cv2.aruco module is not typed
-# and would be cast by mypy to Any implictly, which results in a warning
-ArucoDictType = Any  # cv2.aruco.Dictionary
-CharucoBoardType = Any  # cv2.aruco.CharucoBoard
+ArucoDictType = cv2.aruco.Dictionary
+CharucoBoardType = cv2.aruco.CharucoBoard
 
 # see the pdf file in the airo-camera-toolkit/docs folder
 AIRO_DEFAULT_ARUCO_DICT: ArucoDictType = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
@@ -49,9 +47,9 @@ def detect_aruco_markers(image: OpenCVIntImageType, dictionary: ArucoDictType) -
     marker_corners, marker_ids, _ = aruco.detectMarkers(image, dictionary)
     if marker_corners is None or marker_ids is None:
         return None
-    marker_corners = np.stack(marker_corners)
-    marker_corners = refine_corner_detection(image, marker_corners)
-    result = ArucoMarkerDetectionResult(marker_corners, marker_ids, image)
+    marker_corners_array = np.stack(marker_corners)
+    marker_corners_array = refine_corner_detection(image, marker_corners_array)
+    result = ArucoMarkerDetectionResult(marker_corners_array, marker_ids, image)
     return result
 
 
@@ -60,7 +58,7 @@ def detect_charuco_corners(
 ) -> Optional[CharucoCornerDetectionResult]:
     """Detect CharuCo corners in the image using the detected markers in `markers_detection_result`."""
     nb_corners, charuco_corners, charuco_ids = aruco.interpolateCornersCharuco(
-        markerCorners=markers_detection_result.corners,
+        markerCorners=markers_detection_result.corners,  # type: ignore # typed as Seq but accepts np.ndarray
         markerIds=markers_detection_result.ids,
         image=image,
         board=charuco_board,
@@ -100,7 +98,7 @@ def get_poses_of_aruco_markers(
 ) -> Optional[List[HomogeneousMatrixType]]:
     """Get the poses of the detected markers in `markers_detection_result`."""
     rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
-        corners=markers_detection_result.corners,
+        corners=markers_detection_result.corners,  # type: ignore # typed as Seq but accepts np.ndarray
         markerLength=marker_size,
         cameraMatrix=camera_matrix,
         distCoeffs=dist_coeffs,
@@ -270,6 +268,10 @@ if __name__ == "__main__":
         aruco_dict = AIRO_DEFAULT_ARUCO_DICT
         detect_charuco = charuco_x_count is not None and charuco_y_count is not None and charuco_tile_size is not None
         if detect_charuco:
+            # Mypy doesn't infer these are not None from the line above, so we have to assert them
+            assert charuco_x_count is not None
+            assert charuco_y_count is not None
+            assert charuco_tile_size is not None
             charuco_board = aruco.CharucoBoard(
                 (charuco_x_count, charuco_y_count), charuco_tile_size, aruco_marker_size, aruco_dict
             )
