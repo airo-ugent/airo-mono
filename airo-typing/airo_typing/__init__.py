@@ -101,10 +101,17 @@ this is the homogeneous matrix that describes the camera pose in the world frame
 
 
 PointCloudType = Vector3DArrayType
-""" a (N,3) numpy array that represents a point cloud"""
+""" a (N,3) float32 numpy array that represents a point cloud"""
 
-ColoredPointCloudType = np.ndarray
-" an (N,6) numpy array that represents a point cloud with color information. Color is in RGB, float (0-1) format."
+PointCloudNormalsType = Vector3DArrayType
+""" a (N,3) float32 numpy array that represents the normals of a point cloud"""
+
+PointCloudColorsType = np.ndarray
+""" a (N,3) uint8 numpy array that represents the RGB colors of a point cloud"""
+
+ColoredPointCloudType = Tuple[PointCloudType, PointCloudColorsType]
+" a tuple of (N,3) float32 positions and (N, 3) uint8 RGB colors that represents a point cloud with color information."
+
 # manipulator types
 
 JointConfigurationType = np.ndarray

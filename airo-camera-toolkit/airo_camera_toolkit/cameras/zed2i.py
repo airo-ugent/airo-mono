@@ -20,6 +20,7 @@ except AssertionError:
 
 import time
 
+import cv2
 import numpy as np
 from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
@@ -152,6 +153,9 @@ class Zed2i(StereoRGBDCamera):
         self.depth_matrix = sl.Mat()
         self.pointcloud_matrix = sl.Mat()
 
+        self.confidence_matrix = sl.Mat()
+        self.confidence_map = None
+
     @property
     def resolution(self) -> CameraResolutionType:
         return self._resolution
@@ -219,9 +223,10 @@ class Zed2i(StereoRGBDCamera):
         else:
             view = sl.VIEW.LEFT
         self.camera.retrieve_image(self.image_matrix, view)
-        image: OpenCVIntImageType = self.image_matrix.get_data()
-        image = image[..., :3]  # remove alpha channel
-        image = image[..., ::-1]  # convert from BGR to RGB
+        image_bgra: OpenCVIntImageType = self.image_matrix.get_data()
+        # image = image[..., :3]  # remove alpha channel
+        # image = image[..., ::-1]  # convert from BGR to RGB
+        image = cv2.cvtColor(image_bgra, cv2.COLOR_BGRA2RGB)
         return image
 
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
@@ -229,6 +234,10 @@ class Zed2i(StereoRGBDCamera):
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
         self.camera.retrieve_measure(self.depth_matrix, sl.MEASURE.DEPTH)
         depth_map = self.depth_matrix.get_data()
+
+        self.camera.retrieve_measure(self.confidence_matrix, sl.MEASURE.CONFIDENCE)
+        self.confidence_map = self.confidence_matrix.get_data()  # single channel float32 image
+
         return depth_map
 
     def _retrieve_depth_image(self) -> NumpyIntImageType:
@@ -244,25 +253,19 @@ class Zed2i(StereoRGBDCamera):
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
 
         self._grab_images()
-        self.camera.retrieve_measure(self.pointcloud_matrix, sl.MEASURE.XYZRGBA)
+        self.camera.retrieve_measure(self.pointcloud_matrix, sl.MEASURE.XYZ)
         # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
         # can be nan,nan,nan, nan (no point in the pointcloud on this pixel)
         # or x,y,z, nan (no color information on this pixel??)
         # or x,y,z, value (color information on this pixel)
 
-        # filter out all that have nan in any of the positions of the 3th dim
-        # and reshape to (width*height, 4)
         point_cloud = self.pointcloud_matrix.get_data()
-        point_cloud = point_cloud[~np.isnan(point_cloud).any(axis=2), :]
+        points = point_cloud[:, :, :3].reshape(-1, 3)
 
-        # unpack the colors, drop alpha channel and convert to 0-1 range
-        points = point_cloud[:, :3]
-        colors = point_cloud[:, 3]
-        rgba = np.ravel(colors).view(np.uint8).reshape(-1, 4)
-        rgb = rgba[:, :3]
-        rgb_float = rgb.astype(np.float32) / 255.0  # convert to 0-1 range
+        rgb = self._retrieve_rgb_image_as_int().reshape(-1, 3)
 
-        colored_pointcloud = np.concatenate((points, rgb_float), axis=1)
+        colored_pointcloud = points, rgb
+
         return colored_pointcloud
 
     @staticmethod
