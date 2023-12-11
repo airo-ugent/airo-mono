@@ -15,6 +15,7 @@ from airo_dataset_tools.data_parsers.coco import (
 )
 from airo_dataset_tools.segmentation_mask_converter import BinarySegmentationMask
 from PIL import Image
+from pydantic import ValidationError as PydanticValidationError
 
 
 def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
@@ -35,11 +36,14 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
         image_name_filter: optional filter for which images to transform based on their full path. Defaults to None.
 
     """
-    transform_keypoints = all(annotation.keypoints is not None for annotation in coco_dataset.annotations)
-    if transform_keypoints:
-        # cast to CocoKeypointsDataset
+    # check if this is a keypoints dataset
+    try:
         coco_dataset = CocoKeypointsDataset(**coco_dataset.model_dump(exclude_none=False))
-        print(coco_dataset.annotations[0].keypoints)
+        transform_keypoints = all(annotation.keypoints is not None for annotation in coco_dataset.annotations)
+
+    except PydanticValidationError:
+        transform_keypoints = False
+    # check if bboxes and masks are present
     transform_bbox = all(annotation.bbox is not None for annotation in coco_dataset.annotations)
     transform_segmentation = all(annotation.segmentation is not None for annotation in coco_dataset.annotations)
     print(f"Transforming keypoints = {transform_keypoints}")

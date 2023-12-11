@@ -8,7 +8,7 @@ import tqdm
 from airo_dataset_tools.data_parsers.coco import CocoInstancesDataset
 
 
-def merge_coco_annotations(dataset1: CocoInstancesDataset, dataset2: CocoInstancesDataset):
+def merge_coco_annotations(dataset1: CocoInstancesDataset, dataset2: CocoInstancesDataset) -> CocoInstancesDataset:
     """merge 2 coco annotations schemas. Categories and Annotations are assumed to be unique. Images can be present in both datasets.
 
     Images will be checked for duplicates based on their file name.
@@ -17,7 +17,7 @@ def merge_coco_annotations(dataset1: CocoInstancesDataset, dataset2: CocoInstanc
     categories_1 = dataset1.categories
     categories_2 = dataset2.categories
 
-    merged_categories = categories_1
+    merged_categories = list(categories_1)
     for category in categories_2:
         if category.id not in [category.id for category in merged_categories]:
             merged_categories.append(category)
@@ -46,7 +46,7 @@ def merge_coco_annotations(dataset1: CocoInstancesDataset, dataset2: CocoInstanc
             # dataset already contained this image, so we need to remap the annotations
             dataset_2_image_id_mapping[image.id] = merged_images[merged_image_paths.index(image.file_name)].id
 
-    merged_annotations = dataset1.annotations
+    merged_annotations = list(dataset1.annotations)
     max_dataset_annotation_id = max([annotation.id for annotation in merged_annotations])
     for annotation in dataset2.annotations:
         if annotation.image_id in dataset_2_image_id_mapping.keys():
@@ -73,23 +73,23 @@ def merge_coco_image_folders(dataset1_base_dir: str, dataset2_base_dir: str, tar
     <>.json // annotations with path relative to base_dir
     """
 
-    dataset1_base_dir = pathlib.Path(dataset1_base_dir)
-    dataset2_base_dir = pathlib.Path(dataset2_base_dir)
-    target_dir = pathlib.Path(target_dir)
+    dataset1_base_dir_path = pathlib.Path(dataset1_base_dir)
+    dataset2_base_dir_path = pathlib.Path(dataset2_base_dir)
+    target_dir_path = pathlib.Path(target_dir)
 
-    dataset1_image_paths = [image_path for image_path in dataset1_base_dir.iterdir()]
-    dataset2_image_paths = [image_path for image_path in dataset2_base_dir.iterdir()]
+    dataset1_image_paths = [image_path for image_path in dataset1_base_dir_path.iterdir()]
+    dataset2_image_paths = [image_path for image_path in dataset2_base_dir_path.iterdir()]
 
-    target_image_dir = target_dir / "images"
+    target_image_dir = target_dir_path / "images"
     target_image_dir.mkdir(parents=True, exist_ok=True)
 
     for image_path in tqdm.tqdm(
-        dataset1_image_paths, desc=f"copying images from {dataset1_base_dir.name} to {target_dir.name}"
+        dataset1_image_paths, desc=f"copying images from {dataset1_base_dir_path.name} to {target_dir_path.name}"
     ):
         shutil.copy(image_path, target_image_dir / image_path.name)
 
     for image_path in tqdm.tqdm(
-        dataset2_image_paths, desc=f"copying images from {dataset2_base_dir.name} to {target_dir.name}"
+        dataset2_image_paths, desc=f"copying images from {dataset2_base_dir_path.name} to {target_dir_path.name}"
     ):
         if not (target_image_dir / image_path.name).exists():
             shutil.copy(image_path, target_image_dir / image_path.name)
@@ -105,7 +105,7 @@ def merge_coco_datasets(json_path_1: str, json_path_2: str, target_json_path: st
     image_path_1 = pathlib.Path(json_path_1).parent / "images"
     image_path_2 = pathlib.Path(json_path_2).parent / "images"
 
-    merge_coco_image_folders(image_path_1, image_path_2, pathlib.Path(target_json_path).parent)
+    merge_coco_image_folders(str(image_path_1), str(image_path_2), str(pathlib.Path(target_json_path).parent))
 
     dataset1 = None
     with open(json_path_1, "r") as f:

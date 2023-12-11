@@ -109,7 +109,7 @@ def split_coco_dataset_cli(json_path: str, split_ratio: List[float], shuffle_bef
 @click.option("--target-json-path", type=str)
 def change_coco_images_prefix_cli(
     coco_json: str, current_prefix: str, new_prefix: str, target_json_path: Optional[str] = None
-):
+) -> None:
     """change the prefix of images in a coco dataset."""
     return change_coco_json_image_prefix(coco_json, current_prefix, new_prefix, target_json_path)
 
