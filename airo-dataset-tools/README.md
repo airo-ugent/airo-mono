@@ -13,5 +13,8 @@ They fall into two categories:
 * 3D poses
 * Camera instrinsics
 
+
 > [Pydantic](https://docs.pydantic.dev/latest/) is used heavily throughout this package.
 It allows you to easily create Python objects that can be saved and loaded to and from JSON files.
+
+[**CVAT labeling workflow & tools**](airo_dataset_tools/cvat_labeling/readme.md)

@@ -1,5 +1,5 @@
 import numpy as np
-from airo_dataset_tools.coco_tools.albumentations import PillowResize
+from airo_dataset_tools.coco_tools.transforms import PillowResize
 
 
 def test_resize():

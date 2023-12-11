@@ -5,7 +5,7 @@ from typing import Any, Callable, List, Optional
 import albumentations as A
 import numpy as np
 import tqdm
-from airo_dataset_tools.coco_tools.albumentations import PillowResize
+from airo_dataset_tools.coco_tools.transforms import PillowResize
 from airo_dataset_tools.data_parsers.coco import (
     CocoImage,
     CocoInstanceAnnotation,
@@ -15,6 +15,7 @@ from airo_dataset_tools.data_parsers.coco import (
 )
 from airo_dataset_tools.segmentation_mask_converter import BinarySegmentationMask
 from PIL import Image
+from pydantic import ValidationError as PydanticValidationError
 
 
 def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
@@ -35,7 +36,14 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
         image_name_filter: optional filter for which images to transform based on their full path. Defaults to None.
 
     """
-    transform_keypoints = isinstance(coco_dataset.annotations[0], CocoKeypointAnnotation)
+    # check if this is a keypoints dataset
+    try:
+        coco_dataset = CocoKeypointsDataset(**coco_dataset.model_dump(exclude_none=False))
+        transform_keypoints = all(annotation.keypoints is not None for annotation in coco_dataset.annotations)
+
+    except PydanticValidationError:
+        transform_keypoints = False
+    # check if bboxes and masks are present
     transform_bbox = all(annotation.bbox is not None for annotation in coco_dataset.annotations)
     transform_segmentation = all(annotation.segmentation is not None for annotation in coco_dataset.annotations)
     print(f"Transforming keypoints = {transform_keypoints}")
@@ -156,8 +164,10 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
     return coco_dataset
 
 
-def resize_coco_keypoints_dataset(annotations_json_path: str, width: int, height: int) -> None:
-    """Resize a COCO dataset. Will create a new directory with the resized dataset on the same level as the original dataset.
+def resize_coco_dataset(
+    annotations_json_path: str, width: int, height: int, target_dataset_dir: Optional[str] = None
+) -> None:
+    """Resize a COCO dataset. Will create a new directory at the `target_dataset_dir`with the resized dataset.
     Dataset is assumed to be
     /dir
         annotations.json # contains relative paths w.r.t. /dir
@@ -166,14 +176,17 @@ def resize_coco_keypoints_dataset(annotations_json_path: str, width: int, height
     coco_dataset_dir = os.path.dirname(annotations_json_path)
     annotations_file_name = os.path.basename(annotations_json_path)
     dataset_parent_dir = os.path.dirname(coco_dataset_dir)
-    transformed_dataset_dir = os.path.join(
-        dataset_parent_dir, f"{annotations_file_name.split('.')[0]}_resized_{width}x{height}"
-    )
+    if not target_dataset_dir:
+        transformed_dataset_dir = os.path.join(
+            dataset_parent_dir, f"{annotations_file_name.split('.')[0]}_resized_{width}x{height}"
+        )
+    else:
+        transformed_dataset_dir = target_dataset_dir
     os.makedirs(transformed_dataset_dir, exist_ok=True)
 
     transforms = [PillowResize(height, width)]
     coco_json = json.load(open(annotations_json_path, "r"))
-    coco_dataset = CocoKeypointsDataset(**coco_json)
+    coco_dataset = CocoInstancesDataset(**coco_json)
     transformed_dataset = apply_transform_to_coco_dataset(
         transforms, coco_dataset, coco_dataset_dir, transformed_dataset_dir
     )
@@ -190,4 +203,4 @@ if __name__ == "__main__":
     path = pathlib.Path(__file__).parents[1] / "cvat_labeling" / "example" / "coco.json"
 
     coco_json_path = str(path)
-    resize_coco_keypoints_dataset(coco_json_path, 640, 480)
+    resize_coco_dataset(coco_json_path, 640, 480)

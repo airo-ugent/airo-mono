@@ -3,3 +3,4 @@ mypy
 pytest
 pytest-xdist # multi-core
 pytest-cov # coverage
+nbmake # pytest notebook
