@@ -234,10 +234,6 @@ class Zed2i(StereoRGBDCamera):
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
         self.camera.retrieve_measure(self.depth_matrix, sl.MEASURE.DEPTH)
         depth_map = self.depth_matrix.get_data()
-
-        self.camera.retrieve_measure(self.confidence_matrix, sl.MEASURE.CONFIDENCE)
-        self.confidence_map = self.confidence_matrix.get_data()  # single channel float32 image
-
         return depth_map
 
     def _retrieve_depth_image(self) -> NumpyIntImageType:
@@ -248,11 +244,9 @@ class Zed2i(StereoRGBDCamera):
         image = image[..., :3]
         return image
 
-    def get_colored_point_cloud(self) -> ColoredPointCloudType:
+    def _retrieve_colored_point_cloud(self) -> ColoredPointCloudType:
         assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
-
-        self._grab_images()
         self.camera.retrieve_measure(self.pointcloud_matrix, sl.MEASURE.XYZ)
         # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
         # can be nan,nan,nan, nan (no point in the pointcloud on this pixel)
@@ -267,6 +261,17 @@ class Zed2i(StereoRGBDCamera):
         colored_pointcloud = points, rgb
 
         return colored_pointcloud
+
+    def _retrieve_confidence_map(self) -> NumpyFloatImageType:
+        self.camera.retrieve_measure(self.confidence_matrix, sl.MEASURE.CONFIDENCE)
+        return self.confidence_matrix.get_data()  # single channel float32 image
+
+    def get_colored_point_cloud(self) -> ColoredPointCloudType:
+        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
+        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+
+        self._grab_images()
+        return self._retrieve_colored_point_cloud()
 
     @staticmethod
     def list_camera_serial_numbers() -> List[str]:
