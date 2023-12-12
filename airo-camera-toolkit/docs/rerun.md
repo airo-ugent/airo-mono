@@ -11,7 +11,7 @@ rerun.log_image("zed_top", image)
 rerun.log_scalar("force_z", force[2])
 ...
 ```
-See the [example notebook](./rerun-zed-example.ipynb) for more.
+See the [example notebook](../notebooks/rerun-zed-example.ipynb) for more.
 
 > :information_source: A note on starting the Rerun viewer: you can start it by calling `rerun.spawn()` from Python. However when starting Rerun like that, [there is no way to specify a memory limit](https://www.rerun.io/docs/howto/limit-ram). This quickly becomes a problem when logging images, so we recommend starting Rerun from a terminal:
 >```
