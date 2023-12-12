@@ -14,7 +14,7 @@ setuptools.setup(
         "opencv-contrib-python==4.8.1.78",  # We need opencv contrib for the aruco marker detection, but when some packages install (a different version of) opencv-python-headless, this breaks the contrib version. So we install both here to make sure they are the same version.
         "opencv-python-headless==4.8.1.78",  # Lock to match contrib version.
         "matplotlib",
-        "rerun-sdk==0.9.0",
+        "rerun-sdk>=0.11.0",
         "click==8.1.3",  # 8.1.4 breaks mypy
         "loguru",
     ],

@@ -287,6 +287,8 @@ if __name__ == "__main__":
     """
     from airo_camera_toolkit.cameras.zed2i import Zed2i
 
+    namespace = "camera"
+
     # Creating and starting the publisher
     p = MultiprocessRGBPublisher(
         Zed2i,
@@ -295,11 +297,11 @@ if __name__ == "__main__":
             "fps": 30,
             "depth_mode": Zed2i.NONE_DEPTH_MODE,
         },
+        shared_memory_namespace=namespace,
     )
     p.start()
 
     # The receiver behaves just like a regular RGBCamera
-    namespace = "camera"
     receiver = MultiprocessRGBReceiver(namespace)
 
     cv2.namedWindow(namespace, cv2.WINDOW_NORMAL)

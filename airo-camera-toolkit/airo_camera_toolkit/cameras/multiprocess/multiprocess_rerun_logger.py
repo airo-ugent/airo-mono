@@ -26,7 +26,7 @@ class MultiprocessRGBRerunLogger(Process):
         self._image_transform = image_transform
 
     def _log_rgb_image(self) -> None:
-        import rerun
+        import rerun as rr
 
         image = self._receiver.get_rgb_image()
         # This randomly fails, just don't log an image if it does
@@ -38,14 +38,15 @@ class MultiprocessRGBRerunLogger(Process):
         image_rgb = image_bgr[:, :, ::-1]
         if self._image_transform is not None:
             image_rgb = self._image_transform.transform_image(image_rgb)
-        rerun.log_image(self._shared_memory_namespace, image_rgb, jpeg_quality=90)
+
+        rr.log(self._shared_memory_namespace, rr.Image(image_rgb).compress(jpeg_quality=90))
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
-        import rerun
+        import rerun as rr
 
-        rerun.init(self._rerun_application_id)
-        rerun.connect()
+        rr.init(self._rerun_application_id)
+        rr.connect()
 
         self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
 
@@ -70,14 +71,14 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         )
 
     def _log_depth_image(self) -> None:
-        import rerun
+        import rerun as rr
 
         assert isinstance(self._receiver, MultiprocessRGBDReceiver)
 
         depth_image = self._receiver.get_depth_image()
         if self._image_transform is not None:
             depth_image = self._image_transform.transform_image(depth_image)
-        rerun.log_image(f"{self._shared_memory_namespace}_depth", depth_image, jpeg_quality=90)
+        rr.log(f"{self._shared_memory_namespace}_depth", rr.Image(depth_image).compress(jpeg_quality=90))
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
@@ -97,7 +98,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
 
 
 if __name__ == "__main__":
-    rerun_logger = MultiprocessRGBRerunLogger("camera")
+    rerun_logger = MultiprocessRGBDRerunLogger("camera")
     rerun_logger.start()
     time.sleep(10)
     rerun_logger.stop()
