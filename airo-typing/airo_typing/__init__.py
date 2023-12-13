@@ -1,4 +1,5 @@
-from typing import Tuple, Union
+from dataclasses import dataclass
+from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 
@@ -68,6 +69,11 @@ TwistType = np.ndarray
 shorthand notation is ^C T^B_A, where C is the frame the velocity is measured in, B is the frame the velocity is expressed in.
 """
 
+# manipulator types
+
+JointConfigurationType = np.ndarray
+"""an (N,) numpy array that represents the joint angles for a robot"""
+
 ######################
 # camera related types
 ######################
@@ -99,20 +105,25 @@ CameraExtrinsicMatrixType = HomogeneousMatrixType
 """4x4 camera extrinsic matrix,
 this is the homogeneous matrix that describes the camera pose in the world frame"""
 
+##########################
+# 3D and point cloud types
+##########################
 
-PointCloudType = Vector3DArrayType
+BoundingBox3DType = Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+""" a tuple of two tuples that represent the min and max corners of a 3D bounding box"""
+
+PointCloudPositionsType = Vector3DArrayType
 """ a (N,3) float32 numpy array that represents a point cloud"""
-
-PointCloudNormalsType = Vector3DArrayType
-""" a (N,3) float32 numpy array that represents the normals of a point cloud"""
 
 PointCloudColorsType = np.ndarray
 """ a (N,3) uint8 numpy array that represents the RGB colors of a point cloud"""
 
-ColoredPointCloudType = Tuple[PointCloudType, PointCloudColorsType]
-" a tuple of (N,3) float32 positions and (N, 3) uint8 RGB colors that represents a point cloud with color information."
+PointCloudAttributesType = Dict[str, np.ndarray]
+""" a dictionary of numpy arrays that represent additional attributes of a point cloud, e.g. normals, confidence, etc. """
 
-# manipulator types
 
-JointConfigurationType = np.ndarray
-"""an (N,) numpy array that represents the joint angles for a robot"""
+@dataclass
+class PointCloud:
+    points: PointCloudPositionsType
+    colors: Optional[PointCloudColorsType] = None
+    attributes: Optional[PointCloudAttributesType] = None
