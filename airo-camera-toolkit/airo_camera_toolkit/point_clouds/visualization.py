@@ -10,8 +10,8 @@ def open3d_point(
     """Creates a small sphere mesh for visualization in open3d.
 
     Args:
-        position:  position of the point
-        color: RGB color of the point
+        position: 3D position of the point
+        color: RGB color of the point as 0-1 floats
         radius: radius of the sphere
 
     Returns:

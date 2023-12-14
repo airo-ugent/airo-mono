@@ -8,7 +8,7 @@ def filter_point_cloud(point_cloud: PointCloud, mask: np.ndarray) -> PointCloud:
 
     Args:
         point_cloud: the point cloud to filter
-        mask: the mask to filter the point cloud by, must be the same length as the point cloud
+        mask: the mask to filter the point cloud by, used to index the attribute arrays
 
     Returns:
         the new filtered point cloud
@@ -26,6 +26,23 @@ def filter_point_cloud(point_cloud: PointCloud, mask: np.ndarray) -> PointCloud:
     return point_cloud_filtered
 
 
+def crop_point_cloud_mask(point_cloud: PointCloud, bounding_box: BoundingBox3DType) -> np.ndarray:
+    """Creates a mask that can be used to filter a point cloud to the given bounding box.
+
+    Args:
+        bounding_box: the bounding box that surrounds the points to keep
+        point_cloud: the point cloud to crop
+
+    Returns:
+        the mask that can be used to filter the point cloud
+    """
+    points = point_cloud.points
+    x, y, z = points[:, 0], points[:, 1], points[:, 2]
+    (x_min, y_min, z_min), (x_max, y_max, z_max) = bounding_box
+    crop_mask = (x >= x_min) & (x <= x_max) & (y >= y_min) & (y <= y_max) & (z >= z_min) & (z <= z_max)
+    return crop_mask
+
+
 def crop_point_cloud(
     point_cloud: PointCloud,
     bounding_box: BoundingBox3DType,
@@ -40,9 +57,5 @@ def crop_point_cloud(
     Returns:
         the new cropped point cloud
     """
-    points = point_cloud.points
-    x, y, z = points[:, 0], points[:, 1], points[:, 2]
-    (x_min, y_min, z_min), (x_max, y_max, z_max) = bounding_box
-
-    crop_mask = (x >= x_min) & (x <= x_max) & (y >= y_min) & (y <= y_max) & (z >= z_min) & (z <= z_max)
-    return filter_point_cloud(point_cloud, crop_mask)
+    crop_mask = crop_point_cloud_mask(point_cloud, bounding_box)
+    return filter_point_cloud(point_cloud, crop_mask.nonzero())

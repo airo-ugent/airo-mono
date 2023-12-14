@@ -17,8 +17,9 @@ airo_camera_toolkit
 │   ├── fiducial_markers.py     # Detecting and localising aruco markers and charuco boards
 │   └── hand_eye_calibration.py # Camera-robot extrinsics calibration, eye-in-hand and eye-to-hand
 └── image_transforms            # Invertible transforms for cropping/scaling images with keypoints
-│   └── ...
-└── multiprocess                # Multiprocessing for
+└── point_clouds                # Point cloud processing, Open3D integration
+    └── ...
+└── multiprocess                # Multiprocessing
     └── ...
 
 ```
@@ -91,8 +92,11 @@ See [annotation_tool.md](./airo_camera_toolkit/annotation_tool.md) for usage ins
 See the [README](./airo_camera_toolkit/image_transforms/README.md) in the `image_transforms` folder for more details.
 
 ## Real-time visualisation
-For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](docs/rerun-zed-example.ipynb).
+For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](notebooks/rerun-zed-tutorial.ipynb).
 See this [README](./docs/rerun.md) for more details.
+
+## Point clouds
+See the tutorial notebook [here](notebooks/point_clouds_tutorial.ipynb) for an introduction.
 
 ## Multiprocessing
 Camera processing can be computationally expensive.

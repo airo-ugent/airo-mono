@@ -1,17 +1,50 @@
-import numpy as np
 import open3d as o3d
+import open3d.core as o3c
 from airo_typing import PointCloud
 
 
-def open3d_to_point_cloud(pcd: o3d.geometry.PointCloud) -> PointCloud:
-    points = np.asarray(pcd.points).astype(np.float32)
-    colors = (np.asarray(pcd.colors) * 255).astype(np.uint8) if pcd.has_colors() else None
-    return PointCloud(points, colors)
+def point_cloud_to_open3d(pointcloud: PointCloud) -> o3d.t.geometry.PointCloud:
+    """Converts a PointCloud dataclass object to an open3d tensor point cloud.
+    Note that the memory buffers of the underlying numpy arrays are shared between the two.
 
+    Args:
+        pointcloud: the point cloud to convert
 
-def point_cloud_to_open3d(pointcloud: PointCloud) -> o3d.geometry.PointCloud:
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pointcloud.points.astype(np.float64))
+    Returns:
+        pcd: the open3d tensor point cloud
+    """
+    positions = o3c.Tensor.from_numpy(pointcloud.points)
+
+    map_to_tensors = {
+        "positions": positions,
+    }
+
     if pointcloud.colors is not None:
-        pcd.colors = o3d.utility.Vector3dVector(pointcloud.colors.astype(np.float64) / 255)
+        colors = o3c.Tensor.from_numpy(pointcloud.colors)
+        map_to_tensors["colors"] = colors
+
+    if pointcloud.attributes is not None:
+        for attribute_name, array in pointcloud.attributes.items():
+            map_to_tensors[attribute_name] = o3c.Tensor.from_numpy(array)
+
+    pcd = o3d.t.geometry.PointCloud(map_to_tensors)
     return pcd
+
+
+def open3d_to_point_cloud(pcd: o3d.t.geometry.PointCloud) -> PointCloud:
+    """Converts an open3d point cloud to a PointCloud dataclass object.
+    Note that the memory buffers of the underlying numpy arrays are shared between the two.
+
+    Args:
+        pcd: the open3d tensor point cloud
+    """
+    points = pcd.point.positions.numpy()
+    colors = pcd.point.colors.numpy() if "colors" in pcd.point else None
+
+    attributes = {}
+    for attribute_name, array in pcd.point.items():
+        if attribute_name in ["positions", "colors"]:
+            continue
+        attributes[attribute_name] = array.numpy()
+
+    return PointCloud(points, colors)
