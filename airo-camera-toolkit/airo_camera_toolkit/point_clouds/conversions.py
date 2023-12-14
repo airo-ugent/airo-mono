@@ -1,9 +1,11 @@
+from typing import Any
+
 import open3d as o3d
 import open3d.core as o3c
 from airo_typing import PointCloud
 
 
-def point_cloud_to_open3d(pointcloud: PointCloud) -> o3d.t.geometry.PointCloud:
+def point_cloud_to_open3d(pointcloud: PointCloud) -> Any:  # TODO: change Any back to o3d.t.geometry.PointCloud
     """Converts a PointCloud dataclass object to an open3d tensor point cloud.
     Note that the memory buffers of the underlying numpy arrays are shared between the two.
 
@@ -31,7 +33,7 @@ def point_cloud_to_open3d(pointcloud: PointCloud) -> o3d.t.geometry.PointCloud:
     return pcd
 
 
-def open3d_to_point_cloud(pcd: o3d.t.geometry.PointCloud) -> PointCloud:
+def open3d_to_point_cloud(pcd: Any) -> PointCloud:  # TODO: change Any back to o3d.t.geometry.PointCloud
     """Converts an open3d point cloud to a PointCloud dataclass object.
     Note that the memory buffers of the underlying numpy arrays are shared between the two.
 

@@ -1,14 +1,16 @@
+from typing import Any
+
 import numpy as np
 from airo_typing import BoundingBox3DType, PointCloud
 
 
-def filter_point_cloud(point_cloud: PointCloud, mask: np.ndarray) -> PointCloud:
+def filter_point_cloud(point_cloud: PointCloud, mask: Any) -> PointCloud:
     """Creates a new point cloud that is filtered by the given mask.
     Will also filter the colors and attributes if they are present.
 
     Args:
         point_cloud: the point cloud to filter
-        mask: the mask to filter the point cloud by, used to index the attribute arrays
+        mask: the mask to filter the point cloud by, used to index the attribute arrays, can be boolean or indices
 
     Returns:
         the new filtered point cloud
