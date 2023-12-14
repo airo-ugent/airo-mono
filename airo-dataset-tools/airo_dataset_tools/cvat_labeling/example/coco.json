@@ -1,1 +1,154 @@
-{"categories": [{"supercategory": "", "id": 1, "name": "towel", "keypoints": ["corner1", "corner2", "corner3", "corner4"]}, {"supercategory": "", "id": 2, "name": "tshirt", "keypoints": ["waist_left"]}], "images": [{"id": 1, "width": 600, "height": 338, "file_name": "1.png"}, {"id": 2, "width": 500, "height": 281, "file_name": "2.png"}, {"id": 3, "width": 256, "height": 256, "file_name": "3.jpeg"}, {"id": 4, "width": 600, "height": 338, "file_name": "4.png"}], "annotations": [{"id": 1, "image_id": 1, "category_id": 2, "bbox": [192.41, 35.99, 252.02, 191.45], "keypoints": [234.8, 75.5, 2.0], "num_keypoints": 1}, {"id": 2, "image_id": 2, "category_id": 1, "bbox": [143.99, 77.48, 118.78999999999996, 115.07000000000001], "keypoints": [192.24, 171.52, 1.0, 240.5, 141.82, 1.0, 224.42, 80.57, 2.0, 143.99, 118.93, 2.0], "num_keypoints": 4}, {"id": 3, "image_id": 3, "category_id": 2, "bbox": [13.2, 24.21, 114.78999999999999, 207.54999999999998], "keypoints": [40.73, 217.36, 2.0], "num_keypoints": 1}, {"id": 4, "image_id": 3, "category_id": 2, "bbox": [137.31, 24.64, 101.22999999999999, 208.39], "keypoints": [216.09, 219.05, 2.0], "num_keypoints": 1}, {"id": 5, "image_id": 4, "category_id": 1, "bbox": [197.69, 67.95, 218.39999999999998, 220.25], "keypoints": [203.3, 137.2, 2.0, 292.35, 74.13, 2.0, 408.04, 186.74, 2.0, 308.43, 277.69, 2.0], "num_keypoints": 4}]}
+{
+    "categories": [
+        {
+            "supercategory": "",
+            "id": 1,
+            "name": "towel",
+            "keypoints": [
+                "corner1",
+                "corner2",
+                "corner3",
+                "corner4"
+            ]
+        },
+        {
+            "supercategory": "",
+            "id": 2,
+            "name": "tshirt",
+            "keypoints": [
+                "waist_left"
+            ]
+        }
+    ],
+    "images": [
+        {
+            "id": 1,
+            "width": 600,
+            "height": 338,
+            "file_name": "images/1.png"
+        },
+        {
+            "id": 2,
+            "width": 500,
+            "height": 281,
+            "file_name": "images/2.png"
+        },
+        {
+            "id": 3,
+            "width": 256,
+            "height": 256,
+            "file_name": "images/3.jpeg"
+        },
+        {
+            "id": 4,
+            "width": 600,
+            "height": 338,
+            "file_name": "images/4.png"
+        }
+    ],
+    "annotations": [
+        {
+            "id": 1,
+            "image_id": 1,
+            "category_id": 2,
+            "bbox": [
+                192.41,
+                35.99,
+                252.02,
+                191.45
+            ],
+            "keypoints": [
+                234.8,
+                75.5,
+                2.0
+            ],
+            "num_keypoints": 1
+        },
+        {
+            "id": 2,
+            "image_id": 2,
+            "category_id": 1,
+            "bbox": [
+                143.99,
+                77.48,
+                118.78999999999996,
+                115.07000000000001
+            ],
+            "keypoints": [
+                192.24,
+                171.52,
+                1.0,
+                240.5,
+                141.82,
+                1.0,
+                224.42,
+                80.57,
+                2.0,
+                143.99,
+                118.93,
+                2.0
+            ],
+            "num_keypoints": 4
+        },
+        {
+            "id": 3,
+            "image_id": 3,
+            "category_id": 2,
+            "bbox": [
+                13.2,
+                24.21,
+                114.78999999999999,
+                207.54999999999998
+            ],
+            "keypoints": [
+                40.73,
+                217.36,
+                2.0
+            ],
+            "num_keypoints": 1
+        },
+        {
+            "id": 4,
+            "image_id": 3,
+            "category_id": 2,
+            "bbox": [
+                137.31,
+                24.64,
+                101.22999999999999,
+                208.39
+            ],
+            "keypoints": [
+                216.09,
+                219.05,
+                2.0
+            ],
+            "num_keypoints": 1
+        },
+        {
+            "id": 5,
+            "image_id": 4,
+            "category_id": 1,
+            "bbox": [
+                197.69,
+                67.95,
+                218.39999999999998,
+                220.25
+            ],
+            "keypoints": [
+                203.3,
+                137.2,
+                2.0,
+                292.35,
+                74.13,
+                2.0,
+                408.04,
+                186.74,
+                2.0,
+                308.43,
+                277.69,
+                2.0
+            ],
+            "num_keypoints": 4
+        }
+    ]
+}

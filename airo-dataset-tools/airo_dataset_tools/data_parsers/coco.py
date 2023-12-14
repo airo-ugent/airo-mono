@@ -103,7 +103,7 @@ class CocoInstanceAnnotation(BaseModel, extra="allow"):  # allow extra fields, t
     image_id: ImageID
     category_id: CategoryID
 
-    bbox: Optional[Tuple[float, float, float, float]]
+    bbox: Optional[Tuple[float, float, float, float]] = None
 
     segmentation: Optional[Segmentation] = None
     area: Optional[float] = None
@@ -120,7 +120,7 @@ class CocoInstanceAnnotation(BaseModel, extra="allow"):  # allow extra fields, t
 
 class CocoKeypointAnnotation(CocoInstanceAnnotation):
     keypoints: Keypoints
-    num_keypoints: Optional[int]
+    num_keypoints: Optional[int] = None
 
     # make bbox optional
     bbox: Optional[Tuple[float, float, float, float]] = None
