@@ -1,5 +1,5 @@
 # airo-camera-toolkit
-This package contains code for working with RGB(D) cameras, images and pointclouds.
+This package contains code for working with RGB(D) cameras, images and point clouds.
 Overview of the functionality and the structure:
 ```cs
 airo_camera_toolkit

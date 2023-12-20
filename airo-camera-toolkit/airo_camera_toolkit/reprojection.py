@@ -94,7 +94,7 @@ def extract_depth_from_depthmap_heuristic(
     This function takes the percentile of a region around the specified point and assumes we are interested in the nearest object present.
     This is not always true (think about the backside of a box looking under a 45 degree angle) but it serves as a good proxy. The more confident
     you are of your keypoints and the better the heatmaps are, the lower you could set the mask size and percentile. If you are very, very confident
-    you could directly take the pointcloud as well instead of manually querying the heatmap, but I find that they are more noisy.
+    you could directly take the point cloud as well instead of manually querying the heatmap, but I find that they are more noisy.
 
     Also note that this function assumes there are no negative infinity values (no objects closer than 30cm!)
 

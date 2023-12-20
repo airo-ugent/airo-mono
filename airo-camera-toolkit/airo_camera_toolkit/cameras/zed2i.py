@@ -151,7 +151,7 @@ class Zed2i(StereoRGBDCamera):
         self.image_matrix = sl.Mat()
         self.depth_image_matrix = sl.Mat()
         self.depth_matrix = sl.Mat()
-        self.pointcloud_matrix = sl.Mat()
+        self.point_cloud_matrix = sl.Mat()
 
         self.confidence_matrix = sl.Mat()
         self.confidence_map = None
@@ -193,7 +193,7 @@ class Zed2i(StereoRGBDCamera):
 
     @property
     def depth_enabled(self) -> bool:
-        """Runtime parameter to enable/disable the depth & pointcloud computation. This speeds up the RGB image capture."""
+        """Runtime parameter to enable/disable the depth & point_cloud computation. This speeds up the RGB image capture."""
         return self.runtime_params.enable_depth
 
     @depth_enabled.setter
@@ -247,13 +247,13 @@ class Zed2i(StereoRGBDCamera):
     def _retrieve_colored_point_cloud(self) -> PointCloud:
         assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
-        self.camera.retrieve_measure(self.pointcloud_matrix, sl.MEASURE.XYZ)
+        self.camera.retrieve_measure(self.point_cloud_matrix, sl.MEASURE.XYZ)
         # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
-        # can be nan,nan,nan, nan (no point in the pointcloud on this pixel)
+        # can be nan,nan,nan, nan (no point in the point_cloud on this pixel)
         # or x,y,z, nan (no color information on this pixel??)
         # or x,y,z, value (color information on this pixel)
 
-        point_cloud = self.pointcloud_matrix.get_data()
+        point_cloud = self.point_cloud_matrix.get_data()
         points = point_cloud[:, :, :3].reshape(-1, 3)
         colors = self._retrieve_rgb_image_as_int().reshape(-1, 3)
 
@@ -302,7 +302,7 @@ if __name__ == "__main__":
     # test rgbd stereo camera
 
     with Zed2i(Zed2i.RESOLUTION_2K, fps=15, depth_mode=Zed2i.PERFORMANCE_DEPTH_MODE) as zed:
-        print(zed.get_colored_point_cloud().points)  # TODO: test the pointcloud more explicity?
+        print(zed.get_colored_point_cloud().points)  # TODO: test the point_cloud more explicity?
         manual_test_stereo_rgbd_camera(zed)
 
     # profile rgb throughput, should be at 60FPS, i.e. 0.017s
