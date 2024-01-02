@@ -6,6 +6,8 @@ This subpackage contains implementations of the camera interface for the cameras
 Implementations usually require the installation of SDKs, drivers etc. to communicate with the camera.
 This information can be found in `READMEs` for each camera:
 * [ZED Installation](zed_installation.md)
+* [RealSense Installation](realsense_installation.md)
+
 
 ## 2. Testing your hardware installation
 Furthermore, there is code for testing the hardware implementations.
