@@ -171,7 +171,7 @@ if __name__ == "__main__":
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
 
-    from airo_camera_toolkit.cameras.zed2i import Zed2i
+    from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
 
     resolution = Zed2i.RESOLUTION_720
 

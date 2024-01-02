@@ -44,11 +44,11 @@ def discover_camera(brand: Optional[str], serial_number: Optional[str] = None, *
     brand_enum = CameraBrand(brand)  # Attempt to convert to enum
 
     if brand_enum == CameraBrand.ZED:
-        from airo_camera_toolkit.cameras.zed2i import Zed2i
+        from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
 
         camera = Zed2i(serial_number=serial_number, **kwargs)
     elif brand_enum == CameraBrand.REALSENSE:
-        from airo_camera_toolkit.cameras.realsense import Realsense
+        from airo_camera_toolkit.cameras.realsense.realsense import Realsense
 
         camera = Realsense(serial_number=serial_number, **kwargs)  # type: ignore
     else:
