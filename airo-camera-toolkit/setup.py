@@ -15,7 +15,7 @@ setuptools.setup(
         "opencv-python-headless==4.8.1.78",  # Lock to match contrib version.
         "matplotlib",
         "rerun-sdk>=0.11.0",
-        "click==8.1.3",  # 8.1.4 breaks mypy
+        "click",
         "loguru",
     ],
     extras_require={
