@@ -22,8 +22,8 @@ import time
 
 import numpy as np
 from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
-from airo_camera_toolkit.image_converter import ImageConverter
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
+from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,

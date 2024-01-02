@@ -249,7 +249,7 @@ if __name__ == "__main__":
     Defaults to the AIRO_DEFAULT_CHARUCO_BOARD.
     """
     import click
-    from airo_camera_toolkit.image_converter import ImageConverter
+    from airo_camera_toolkit.utils.image_converter import ImageConverter
 
     @click.command()
     @click.option("--aruco_marker_size", default=0.031, help="Size of the aruco marker in meters")

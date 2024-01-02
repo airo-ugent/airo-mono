@@ -1,13 +1,13 @@
 from typing import List
 
 import numpy as np
-from airo_typing import CameraExtrinsicMatrixType, CameraIntrinsicsMatrixType
+from airo_typing import CameraExtrinsicMatrixType, CameraIntrinsicsMatrixType, Vector2DArrayType
 
 
 def multiview_triangulation_midpoint(
     extrinsics_matrices: List[CameraExtrinsicMatrixType],
     intrinsics_matrices: List[CameraIntrinsicsMatrixType],
-    image_coordinates,
+    image_coordinates: Vector2DArrayType,
 ):
     """triangulates a point from multiple views using the midpoint method, which minimizes the L2 distance in the camera space
     cf. https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8967077

@@ -1,5 +1,5 @@
 import numpy as np
-from airo_camera_toolkit.image_converter import (
+from airo_camera_toolkit.utils.image_converter import (
     ImageConverter,
     is_float_image_array,
     is_image_array,
