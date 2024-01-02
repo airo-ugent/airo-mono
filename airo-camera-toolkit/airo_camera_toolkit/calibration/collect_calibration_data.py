@@ -8,8 +8,8 @@ import click
 import cv2
 from airo_camera_toolkit.calibration.fiducial_markers import detect_and_visualize_charuco_pose
 from airo_camera_toolkit.cameras.camera_discovery import click_camera_options, discover_camera
+from airo_camera_toolkit.image_converter import ImageConverter
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_camera_toolkit.utils import ImageConverter
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
 from airo_dataset_tools.data_parsers.pose import Pose
 from airo_robots.manipulators.hardware.ur_rtde import URrtde

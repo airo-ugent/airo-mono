@@ -4,8 +4,8 @@ from typing import Any, Optional
 
 import numpy as np
 import pyrealsense2 as rs  # type: ignore
+from airo_camera_toolkit.image_converter import ImageConverter
 from airo_camera_toolkit.interfaces import RGBDCamera
-from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,

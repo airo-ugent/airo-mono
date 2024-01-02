@@ -6,8 +6,8 @@ from typing import Optional, Tuple
 
 import cv2
 import numpy as np
+from airo_camera_toolkit.image_converter import ImageConverter
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_camera_toolkit.utils import ImageConverter
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
 
 _RGB_SHM_NAME = "rgb"

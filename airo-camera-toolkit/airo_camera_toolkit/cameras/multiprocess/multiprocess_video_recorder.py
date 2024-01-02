@@ -6,8 +6,8 @@ from multiprocessing import Process
 from typing import Optional
 
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
+from airo_camera_toolkit.image_converter import ImageConverter
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
-from airo_camera_toolkit.utils import ImageConverter
 
 
 class MultiprocessVideoRecorder(Process):

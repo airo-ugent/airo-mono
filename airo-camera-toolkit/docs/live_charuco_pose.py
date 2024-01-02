@@ -1,7 +1,7 @@
 import cv2
 from airo_camera_toolkit.calibration.fiducial_markers import detect_charuco_board, draw_frame_on_image
 from airo_camera_toolkit.cameras.zed2i import Zed2i
-from airo_camera_toolkit.utils import ImageConverter
+from airo_camera_toolkit.image_converter import ImageConverter
 
 camera = Zed2i(fps=30)
 intrinsics = camera.intrinsics_matrix()

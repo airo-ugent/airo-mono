@@ -17,8 +17,8 @@ from airo_camera_toolkit.calibration.fiducial_markers import (
     CharucoBoardType,
     detect_and_visualize_charuco_pose,
 )
+from airo_camera_toolkit.image_converter import ImageConverter
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_camera_toolkit.utils import ImageConverter
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
 from airo_robots.manipulators.hardware.ur_rtde import URrtde
 from airo_robots.manipulators.position_manipulator import PositionManipulator

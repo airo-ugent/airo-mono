@@ -88,7 +88,7 @@ def click_camera_options(f: Callable) -> Callable:
 if __name__ == "__main__":
     import click
     import cv2
-    from airo_camera_toolkit.utils import ImageConverter
+    from airo_camera_toolkit.image_converter import ImageConverter
 
     @click.command()
     @click_camera_options
