@@ -61,6 +61,63 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
     def right_manipulator_pose_in_base(self) -> HomogeneousMatrixType:
         return self._right_manipulator_pose_in_base
 
+    def _move_to_tcp_pose_shared(
+        self,
+        move_linear: bool,
+        left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
+        right_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
+        speed: Optional[float] = None,
+    ) -> AwaitableAction:
+        """Shared implementation for move_to_tcp_pose and move_linear_to_tcp_pose. Do not call directly."""
+        assert (
+            left_tcp_pose_in_base is not None or right_tcp_pose_in_base is not None
+        ), "At least one of the TCP poses should be specified"
+        awaitables: List[AwaitableAction] = []
+        if left_tcp_pose_in_base is not None:
+            left_tcp_pose_left_base = self.transform_pose_to_left_arm_base(left_tcp_pose_in_base)
+
+            if move_linear:
+                left_awaitable = self._left_manipulator.move_linear_to_tcp_pose(left_tcp_pose_left_base, speed)
+            else:
+                left_awaitable = self._left_manipulator.move_to_tcp_pose(left_tcp_pose_left_base, speed)
+            awaitables.append(left_awaitable)
+
+        if right_tcp_pose_in_base is not None:
+            right_tcp_pose_right_base = self.transform_pose_to_right_arm_base(right_tcp_pose_in_base)
+            if move_linear:
+                right_awaitable = self._right_manipulator.move_linear_to_tcp_pose(right_tcp_pose_right_base, speed)
+            else:
+                right_awaitable = self._right_manipulator.move_to_tcp_pose(right_tcp_pose_right_base, speed)
+
+            awaitables.append(right_awaitable)
+
+        # compose the awaitable actions
+        def done_condition() -> bool:
+            return all([awaitable.is_action_done() for awaitable in awaitables])
+
+        return AwaitableAction(
+            done_condition,
+            awaitables[0]._default_timeout,
+            awaitables[0]._default_sleep_resolution,
+        )
+
+    def move_to_tcp_pose(
+        self,
+        left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
+        right_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
+        joint_speed: Optional[float] = None,
+    ) -> AwaitableAction:
+        """Move both arms to a given TCP pose in the base frame. You can specify None to not move one of the arms.
+        Args:
+            left_tcp_pose_in_base: The TCP pose of the left arm in the base frame. If None is specified, the left arm will not move.
+            right_tcp_pose_in_base: The TCP pose of the right arm in the base frame. If None is specified, the right arm will not move.
+            joint_speed: Speed for the joint movements in rad/s. If not specified, the default speed of the manipulator is used.
+
+        Returns:
+            awaitable with termination condition that both robots have reached their target pose or have timed out.
+        """
+        return self._move_to_tcp_pose_shared(False, left_tcp_pose_in_base, right_tcp_pose_in_base, joint_speed)
+
     def move_linear_to_tcp_pose(
         self,
         left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
@@ -76,29 +133,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         Returns:
             awaitable with termination condition that both robots have reached their target pose or have timed out.
         """
-
-        assert (
-            left_tcp_pose_in_base is not None or right_tcp_pose_in_base is not None
-        ), "At least one of the TCP poses should be specified"
-        awaitables: List[AwaitableAction] = []
-        if left_tcp_pose_in_base is not None:
-            left_tcp_pose_left_base = self.transform_pose_to_left_arm_base(left_tcp_pose_in_base)
-            left_awaitable = self._left_manipulator.move_linear_to_tcp_pose(left_tcp_pose_left_base, linear_speed)
-            awaitables.append(left_awaitable)
-        if right_tcp_pose_in_base is not None:
-            right_tcp_pose_right_base = self.transform_pose_to_right_arm_base(right_tcp_pose_in_base)
-            right_awaitable = self._right_manipulator.move_linear_to_tcp_pose(right_tcp_pose_right_base, linear_speed)
-            awaitables.append(right_awaitable)
-
-        # compose the awaitable actions
-        def done_condition() -> bool:
-            return all([awaitable.is_action_done() for awaitable in awaitables])
-
-        return AwaitableAction(
-            done_condition,
-            awaitables[0]._default_timeout,
-            awaitables[0]._default_sleep_resolution,
-        )
+        return self._move_to_tcp_pose_shared(True, left_tcp_pose_in_base, right_tcp_pose_in_base, linear_speed)
 
     def servo_to_tcp_pose(
         self,
@@ -172,6 +207,9 @@ if __name__ == "__main__":
     # or properly document what is expected of the robot setup before running this script.
     from airo_robots.manipulators.hardware.ur_rtde import URrtde
     from airo_spatial_algebra import SE3Container
+    from loguru import logger
+
+    logger.info("DualArmPositionManipulator test started.")
 
     np.set_printoptions(precision=3, suppress=True)
 
@@ -182,6 +220,13 @@ if __name__ == "__main__":
     right_arm_pose_in_base[0, 3] = -0.9
     dual_arm = DualArmPositionManipulator(left, left_arm_pose_in_base, right, right_arm_pose_in_base)
 
+    # Move to start joint configurations so we are sure the TCP poses are reachable without passing through singularities
+    joints_start = np.deg2rad([-90, -90, -90, -90, 90, 0])
+
+    logger.info("Moving to start joint configurations")
+    dual_arm.left_manipulator.move_to_joint_configuration(joints_start).wait()
+    dual_arm.right_manipulator.move_to_joint_configuration(joints_start).wait()
+
     left_target_pose = SE3Container.from_euler_angles_and_translation(
         np.array([np.pi, 0, 0]), np.array([-0.2, -0.3, 0.3])
     ).homogeneous_matrix
@@ -190,7 +235,7 @@ if __name__ == "__main__":
         np.array([np.pi, 0, 0]), np.array([-0.6, -0.3, 0.3])
     ).homogeneous_matrix
 
-    print("Moving to start poses")
+    logger.info("Checking if target poses are reachable")
     left_reachable = dual_arm.is_tcp_pose_reachable_for_left(left_target_pose)
     right_reachable = dual_arm.is_tcp_pose_reachable_for_right(right_target_pose)
     both_reachable = dual_arm.are_tcp_poses_reachable(left_target_pose, right_target_pose)
@@ -205,19 +250,22 @@ if __name__ == "__main__":
     print("Right arm current pose in base:")
     print(dual_arm.right_manipulator.get_tcp_pose())
     print("Both poses reachable: ", both_reachable)
-    dual_arm.move_linear_to_tcp_pose(left_target_pose, right_target_pose, 0.1).wait(timeout=10)
+
+    logger.info("Moving to target poses")
+    dual_arm.move_to_tcp_pose(left_target_pose, right_target_pose, joint_speed=0.5).wait(timeout=10)
 
     time.sleep(1.0)
 
-    print("Starting 20 servo movements of 1 cm.")
+    logger.info("Starting servo movements.")
     for _ in range(200):
         left_target_pose[0, 3] += 0.001
         right_target_pose[0, 3] += 0.001
         dual_arm.servo_to_tcp_pose(left_target_pose, right_target_pose, 0.02).wait(timeout=1)
-    left_target_pose[1, 3] -= 0.2
-    time.sleep(0.1)
 
-    print("Moving to the end poses.")
+    logger.info("Moving linearly")
+    left_target_pose[1, 3] -= 0.2
+    right_target_pose[1, 3] -= 0.2
+    time.sleep(0.5)
     dual_arm.move_linear_to_tcp_pose(left_target_pose, right_target_pose, 0.1).wait(timeout=10)
 
-    print("Finished.")
+    logger.info("DualArmPositionManipulator test finished.")
