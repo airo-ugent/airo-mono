@@ -9,7 +9,6 @@ from typing import List, Optional
 
 import cv2
 import numpy as np
-from airo_camera_toolkit.cameras.camera_discovery import click_camera_options, discover_camera
 from airo_spatial_algebra import SE3Container
 from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, OpenCVIntImageType
 from cv2 import aruco
@@ -249,6 +248,7 @@ if __name__ == "__main__":
     Defaults to the AIRO_DEFAULT_CHARUCO_BOARD.
     """
     import click
+    from airo_camera_toolkit.cameras.camera_discovery import click_camera_options, discover_camera
     from airo_camera_toolkit.utils.image_converter import ImageConverter
 
     @click.command()
