@@ -1,21 +1,25 @@
 from typing import List
 
 import numpy as np
-from airo_typing import CameraExtrinsicMatrixType, CameraIntrinsicsMatrixType, Vector2DArrayType
+from airo_typing import CameraExtrinsicMatrixType, CameraIntrinsicsMatrixType, Vector2DArrayType, Vector3DType
 
 
 def multiview_triangulation_midpoint(
     extrinsics_matrices: List[CameraExtrinsicMatrixType],
     intrinsics_matrices: List[CameraIntrinsicsMatrixType],
     image_coordinates: Vector2DArrayType,
-):
-    """triangulates a point from multiple views using the midpoint method, which minimizes the L2 distance in the camera space
+) -> Vector3DType:
+    """triangulates a point from multiple views using the midpoint method.
+    This method minimizes the L2 distance in the camera space between the estimated point and all rays
     cf. https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8967077
 
     Args:
         extrinsics_matrices: list of extrinsics matrices for each viewpoint
         intrinsics_matrices: list of intrinsics matrices for each viewpoint
         image_points: list of image coordinates of the 3D point for each viewpoint
+
+    Returns:
+        estimated 3D position in the world frame as a numpy array of shape (3,).
     """
 
     # determine the rays for each camera in the world frame
@@ -42,12 +46,23 @@ def multiview_triangulation_midpoint(
     return midpoint
 
 
-def get_triangulation_errors(
+def calculate_triangulation_errors(
     extrinsics_matrices: List[CameraExtrinsicMatrixType],
     intrinsics_matrices: List[CameraIntrinsicsMatrixType],
     image_coordinates,
     point,
-):
+) -> List[float]:
+    """calculates the Euclidean distances in the camera space between the estimated point and all rays, as a measure of triangulation error
+
+    Args:
+        extrinsics_matrices: list of extrinsics matrices for each viewpoint
+        intrinsics_matrices: list of intrinsics matrices for each viewpoint
+        image_points: list of image coordinates of the 3D point for each viewpoint
+        point: 3D point in the world frame
+
+    Returns:
+        list of Euclidean distances between the point and the rays for each viewpoint
+    """
     errors = []
     for extrinsics_matrix, intrinsics_matrix, image_point in zip(
         extrinsics_matrices, intrinsics_matrices, image_coordinates

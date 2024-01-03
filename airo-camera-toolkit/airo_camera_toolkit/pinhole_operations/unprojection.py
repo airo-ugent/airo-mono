@@ -1,3 +1,5 @@
+""" methods for getting from 2D image coordinates to 3D world coordinates using depth information (a.k.a. unprojection)"""
+
 import numpy as np
 from airo_spatial_algebra.operations import _HomogeneousPoints
 from airo_typing import (
@@ -9,45 +11,46 @@ from airo_typing import (
 )
 
 
-def raycast_points_to_world_z_plane(
+def unproject_using_depthmap(
     image_coordinates: Vector2DArrayType,
+    depth_map: NumpyDepthMapType,
     camera_intrinsics: CameraIntrinsicsMatrixType,
-    camera_in_frame_pose: HomogeneousMatrixType,
-    height: float = 0.0,
-) -> Vector3DArrayType:
-    """Reprojects points from the image plane to a Z-plane of the specified frame
+    **kwargs,
+) -> np.ndarray:
+    """
+    Unprojects image coordinates to 3D positions using a depth map.
 
-    This is useful if you known the height of the object in this frame,
-    which is the case for 2D items (cloth!) or for rigid, known 3D objects with a fixed orientation.
-
-    If the target frame is the world frame, the camera_in_frame_pose is the extrinsics matrix.
+    Args:
+        image_coordinates: numpy array of shape (N, 2) containing the 2D pixel coordinates of the points on the image plane
+        depth_map: numpy array of shape (height, width) containing the depth values for each pixel, i.e. the z-value of the 3D point in the camera frame corresponding to the pixel
+        camera_intrinsics: camera intrinsics matrix as a numpy array of shape (3, 3)
 
     Returns:
-        positions in the world frame on the Z=height plane wrt to the frame.
+        numpy array of shape (N, 3) containing the 3D positions of the points in the camera frame
+
     """
-    # convert to homogeneous coordinates and transpose to column vectors
-    homogeneous_coords = np.ones((image_coordinates.shape[0], 3))
-    homogeneous_coords[:, :2] = image_coordinates
-    homogeneous_coords = np.transpose(homogeneous_coords)
 
-    camera_frame_ray_vector = np.linalg.inv(camera_intrinsics) @ homogeneous_coords
-
-    translation = camera_in_frame_pose[0:3, 3]
-    rotation_matrix = camera_in_frame_pose[0:3, 0:3]
-
-    world_frame_ray_vectors = rotation_matrix @ camera_frame_ray_vector
-    world_frame_ray_vectors = np.transpose(world_frame_ray_vectors)
-    t = (height - translation[2]) / world_frame_ray_vectors[:, 2]
-    points = t[:, np.newaxis] * world_frame_ray_vectors + translation
-    return points
+    # TODO: should we make this extraction method more generic? though I prefer to keep it simple and not add too many options
+    depth_values = extract_depth_from_depthmap_heuristic(image_coordinates, depth_map, **kwargs)
+    return unproject_onto_depth_values(image_coordinates, depth_values, camera_intrinsics)
 
 
-def raycast_points_to_depth_values(
+def unproject_onto_depth_values(
     image_coordinates: Vector2DArrayType,
     depth_values: np.ndarray,
     camera_intrinsics: CameraIntrinsicsMatrixType,
 ) -> np.ndarray:
-    """ """
+    """
+    Unprojects image coordinates to 3D positions using depth values for each coordinate.
+
+    Args:
+        image_coordinates: numpy array of shape (N, 2) containing the 2D pixel coordinates of the points on the image plane
+        depth_values: numpy array of shape (N,) containing the depth values for each pixel, i.e. the z-value of the 3D point in the camera frame corresponding to the pixel
+        camera_intrinsics: camera intrinsics matrix as a numpy array of shape (3, 3)
+
+    Returns:
+        numpy array of shape (N, 3) containing the 3D positions of the points in the camera frame
+    """
     assert (
         image_coordinates.shape[0] == depth_values.shape[0]
     ), "coordinates and depth values must have the same length"
@@ -67,6 +70,45 @@ def raycast_points_to_depth_values(
 
     homogeneous_positions_in_camera_frame = _HomogeneousPoints(positions_in_camera_frame.T).homogeneous_points.T
     return homogeneous_positions_in_camera_frame[:3, ...].T
+
+
+def unproject_onto_world_z_plane(
+    image_coordinates: Vector2DArrayType,
+    camera_intrinsics: CameraIntrinsicsMatrixType,
+    camera_in_frame_pose: HomogeneousMatrixType,
+    height: float,
+) -> Vector3DArrayType:
+    """Unprojects image coordinates to 3D positions on a Z-plane of the specified frame
+
+    This is useful if you known the height of the object in this frame,
+    which is the case for 2D items (cloth!) or for rigid, known 3D objects with a fixed orientation.
+
+
+    Args:
+        image_coordinates: numpy array of shape (N, 2) containing the 2D pixel coordinates of the points on the image plane
+        camera_intrinsics: camera intrinsics matrix as a numpy array of shape (3, 3)
+        camera_in_frame_pose: pose of the camera in the target frame.
+            If the target frame is the world frame, the camera_in_frame_pose is the extrinsics matrix.
+        height: height of the plane in the target frame
+
+    Returns:
+        positions in the world frame on the Z=height plane wrt to the frame.
+    """
+    # convert to homogeneous coordinates and transpose to column vectors
+    homogeneous_coords = np.ones((image_coordinates.shape[0], 3))
+    homogeneous_coords[:, :2] = image_coordinates
+    homogeneous_coords = np.transpose(homogeneous_coords)
+
+    camera_frame_ray_vector = np.linalg.inv(camera_intrinsics) @ homogeneous_coords
+
+    translation = camera_in_frame_pose[0:3, 3]
+    rotation_matrix = camera_in_frame_pose[0:3, 0:3]
+
+    world_frame_ray_vectors = rotation_matrix @ camera_frame_ray_vector
+    world_frame_ray_vectors = np.transpose(world_frame_ray_vectors)
+    t = (height - translation[2]) / world_frame_ray_vectors[:, 2]
+    points = t[:, np.newaxis] * world_frame_ray_vectors + translation
+    return points
 
 
 def extract_depth_from_depthmap_heuristic(
