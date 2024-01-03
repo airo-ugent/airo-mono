@@ -87,7 +87,7 @@ class URrtde(PositionManipulator):
         self.rtde_control.moveL(tcp_rotvec_pose, linear_speed, self.default_linear_acceleration, asynchronous=True)
         return AwaitableAction(
             lambda: bool(np.linalg.norm(self.get_tcp_pose() - tcp_pose) < self._pose_reached_L2_threshold)
-            and (self._is_move_command_finished() or self.rtde_control.isSteady())
+            and self._is_move_command_finished()
         )
 
     def move_to_tcp_pose(
@@ -106,7 +106,7 @@ class URrtde(PositionManipulator):
         )
         return AwaitableAction(
             lambda: bool(np.linalg.norm(self.get_tcp_pose() - tcp_pose) < self._pose_reached_L2_threshold)
-            and (self._is_move_command_finished() or self.rtde_control.isSteady())
+            and self._is_move_command_finished()
         )
 
     def move_to_joint_configuration(
@@ -127,7 +127,7 @@ class URrtde(PositionManipulator):
                 np.linalg.norm(self.get_joint_configuration() - joint_configuration)
                 < self._joint_config_reached_L2_threshold
             )
-            and (self._is_move_command_finished() or self.rtde_control.isSteady())
+            and self._is_move_command_finished()
         )
 
     def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, duration: float) -> AwaitableAction:
