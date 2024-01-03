@@ -49,8 +49,8 @@ def multiview_triangulation_midpoint(
 def calculate_triangulation_errors(
     extrinsics_matrices: List[CameraExtrinsicMatrixType],
     intrinsics_matrices: List[CameraIntrinsicsMatrixType],
-    image_coordinates,
-    point,
+    image_coordinates: Vector2DArrayType,
+    point: Vector3DType,
 ) -> List[float]:
     """calculates the Euclidean distances in the camera space between the estimated point and all rays, as a measure of triangulation error
 
@@ -76,5 +76,5 @@ def calculate_triangulation_errors(
         error = np.linalg.norm(
             (np.eye(3) - ray[:, np.newaxis] @ ray[np.newaxis, :]) @ ((extrinsics_matrix[:3, 3]) - point)
         )
-        errors.append(error)
+        errors.append(error.item())
     return errors

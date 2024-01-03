@@ -15,7 +15,8 @@ def unproject_using_depthmap(
     image_coordinates: Vector2DArrayType,
     depth_map: NumpyDepthMapType,
     camera_intrinsics: CameraIntrinsicsMatrixType,
-    **kwargs,
+    depth_heuristic_mask_size: int = 11,
+    depth_heuristic_percentile: float = 0.05,
 ) -> np.ndarray:
     """
     Unprojects image coordinates to 3D positions using a depth map.
@@ -31,7 +32,9 @@ def unproject_using_depthmap(
     """
 
     # TODO: should we make this extraction method more generic? though I prefer to keep it simple and not add too many options
-    depth_values = extract_depth_from_depthmap_heuristic(image_coordinates, depth_map, **kwargs)
+    depth_values = extract_depth_from_depthmap_heuristic(
+        image_coordinates, depth_map, depth_heuristic_mask_size, depth_heuristic_percentile
+    )
     return unproject_onto_depth_values(image_coordinates, depth_values, camera_intrinsics)
 
 
