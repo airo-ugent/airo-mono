@@ -9,7 +9,7 @@ Most notably these include:
 - unprojection to go from a 2D coordinate to a 3D point by intersecting the ray with depth information
 
 
-For mathematical background:
+For mathematical background, see:
 
 - IRM course
 - Sleziski, [Computer Vision and Algorithms](https://szeliski.org/Book/)
