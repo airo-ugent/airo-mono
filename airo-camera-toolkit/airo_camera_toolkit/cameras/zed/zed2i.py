@@ -21,7 +21,6 @@ except AssertionError:
 import time
 
 import numpy as np
-from airo_camera_toolkit.cameras.test_hw import manual_test_stereo_rgbd_camera
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import (
@@ -287,6 +286,7 @@ class Zed2i(StereoRGBDCamera):
 
 if __name__ == "__main__":
     """this script serves as a 'test' for the zed implementation."""
+    from airo_camera_toolkit.cameras.manual_test_hw import manual_test_stereo_rgbd_camera, profile_rgb_throughput
 
     # zed specific tests:
     # - list all serial numbers of the cameras
@@ -301,7 +301,6 @@ if __name__ == "__main__":
         manual_test_stereo_rgbd_camera(zed)
 
     # profile rgb throughput, should be at 60FPS, i.e. 0.017s
-    from airo_camera_toolkit.cameras.test_hw import profile_rgb_throughput
 
     zed = Zed2i(Zed2i.RESOLUTION_720, fps=60)
     profile_rgb_throughput(zed)
