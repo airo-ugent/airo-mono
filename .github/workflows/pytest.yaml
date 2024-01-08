@@ -27,7 +27,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pytest
-        pip install ${{matrix.package}}/[external]
+        pip install airo-typing airo-spatial-algebra-airo-camera-toolkit airo-robots airo-teleop airo-dataset-tools
     - name: Run Tests
       run: pytest ${{matrix.package}}/
     - name: Run Notebooks
