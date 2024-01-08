@@ -1,16 +1,28 @@
+# how to use this?
+
+# for releasing new version:
+# bump-my-version bump micro <--no-tag> <--verbose> <-n>
+
+# for manually setting the version:
+# bump-my-version bump --new-version 2024.1.0
+
+# for marking dev build:
+# export SHORT_COMMIT_SHA=$(git rev-parse --short HEAD)
+# bump-my-version bump dev
+
 [tool.bumpversion]
 current_version = "0.0.1" # this is the single source of truth for the version
 
 # do not create tags or commits by default
 commit = false
-tag = false
+tag = true
 # allow to bump version even if there are uncommitted changes
 allow_dirty = true
 
 
 # parser
 # either YYYY.MM.MICRO or YYYY.MM.MICRO-build.date.COMMIT_SHA
-parse = "(?P<year>\\d+)\\.(?P<month>\\d+)\\.(?P<micro>\\d+)(?:\\-(?P<dev>release|build)\\.[0-9a-zA-Z-]+)?"
+parse = "(?P<year>[0-9]+)\\.(?P<month>[0-9]+)\\.(?P<micro>[0-9]+)(?:\\-(?P<dev>release|build)\\.[0-9a-zA-Z-]+)?"
 
 
 serialize = [
@@ -25,5 +37,11 @@ serialize = [
 # only build will appear in output if necessary
 values = ["release", "build"]
 
+[[tool.bumpversion.files]]
+glob = "**/setup.py"
 
+[[tool.bumpversion.files]]
+filename = "CHANGELOG.md"
+search = "Unreleased"
 
+#TODO: might want to auto-update internal dependencies!
