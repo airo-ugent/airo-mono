@@ -1,5 +1,5 @@
 [tool.bumpversion]
-current_version = "2.6.0.build.None"
+current_version = "2.7.0"
 commit = false
 tag = false
 allow_dirty = true
