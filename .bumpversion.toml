@@ -1,0 +1,21 @@
+[tool.bumpversion]
+current_version = "2023.0.1-dev.1"
+commit = false
+tag = false
+allow_dirty = true
+parse = """
+(?x)
+    (?P<year>[0-9]+)
+    \\.(?P<month>[0-9]+)
+    \\.(?P<id>[0-9]+)
+    ?
+
+"""
+serialize = [
+    "{year}.{month}.{id}"
+]
+
+
+[[tool.bumpversion.files]]
+glob = "*/setup.py"
+
