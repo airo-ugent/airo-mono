@@ -4,6 +4,7 @@
 The airo-mono repo uses a single global version using a `YYYY.MM.N version scheme`.
 Compatability between the packages is only guaranteed between identical versions, so you should use the same version of all packages.
 
+The single point of truth for the version is in the `.bumpversion.toml` file.
 
 ## Scheme
 We use a [Calender Version](https://calver.org/) scheme as follows:
@@ -12,9 +13,9 @@ We use a [Calender Version](https://calver.org/) scheme as follows:
 YYYY.MM.N
 ```
 
-where N is the MICRO part, used to distinguish between multiple releases in the same month. No semantic meaning can be attached to the versions and breaking changes might occur in each release for now.
+where YYYY.MM is the year and month in which the release is made and N is the MICRO part used to distinguish between multiple releases in the same month. No semantic meaning can be attached to the micro parts and breaking changes might occur in each release for now.
 
-## Releasing strategy
+## Versioning strategy
 The main branch ('our trunk') will always live at last released version. All development builds will hence have the **previous** release as base.
 This is slightly counter-intuitive but actually common practice (e.g. [Twisted](https://github.com/twisted/twisted/tree/trunk)).
 
@@ -30,6 +31,7 @@ YYYY.MM.N-build.date.sha
 ```
 
 the regular version is the to-be-released version. The build date is added after the tag, as well as the SHA of the corresponding commit for ease of use.
+To create a development build, run `bump-my-version bump dev`. Note that this command is meant for CI builds and it is not possible to bump build versions.
 ## Rationale
 ### Why not semantic versioning?
 
