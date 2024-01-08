@@ -18,12 +18,13 @@ branch=${1:-main}
 echo "Installing airo-mono from branch/commit $branch."
 
 package_names=(
-    "airo-camera-toolkit"
+    "airo-typing"
+    "airo-spatial-algebra"
     "airo-dataset-tools"
     "airo-robots"
-    "airo-spatial-algebra"
     "airo-teleop"
-    "airo-typing"
+    "airo-camera-toolkit"
+
 )
 
 # Base URL for the Git repository
@@ -32,7 +33,7 @@ base_url="https://github.com/airo-ugent/airo-mono@${branch}#subdirectory="
 # Loop through package names and execute pip install command
 for package_name in "${package_names[@]}"
 do
-    cmd="python -m pip install '${package_name}[external] @ git+${base_url}${package_name}'"
+    cmd="python -m pip install '${package_name} @ git+${base_url}${package_name}'"
     echo $cmd
     eval $cmd
     echo "Installed $package_name."
