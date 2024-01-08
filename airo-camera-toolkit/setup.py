@@ -17,16 +17,12 @@ setuptools.setup(
         "rerun-sdk>=0.11.0",
         "click",
         "loguru",
+        "airo-typing",
+        "airo-spatial-algebra",
+        "airo-robots",
+        "airo-dataset-tools",
     ],
-    extras_require={
-        "external": [
-            f"airo_typing @ file://localhost/{root_folder}/airo-typing",
-            f"airo_spatial_algebra @ file://localhost/{root_folder}/airo-spatial-algebra",
-            f"airo_robots @ file://localhost/{root_folder}/airo-robots",
-            f"airo_dataset_tools @ file://localhost/{root_folder}/airo-dataset-tools",
-        ]
-    },
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=["test"]),
     entry_points={
         "console_scripts": [
             "airo-camera-toolkit = airo_camera_toolkit.cli:cli",
