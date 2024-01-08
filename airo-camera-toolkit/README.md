@@ -1,26 +1,17 @@
 # airo-camera-toolkit
 This package contains code for working with RGB(D) cameras, images and pointclouds.
+
+
 Overview of the functionality and the structure:
 ```cs
-airo_camera_toolkit
-├── interfaces.py               # Common interfaces for all cameras.
-├── reprojection.py             # Projecting points between the 3D world and images
-│                               # and reprojecting points from image plane to world
-├── utils.py                    # Conversion between image formats: BGR to RGB, int to float, etc.
-│                               # or channel-first vs channel-last.
-├── annotation_tools.py         # Tool for annotating images with keypoints, lines, etc.
-└── cameras                     # Implementation of the interfaces for real cameras
-│   ├── zed2i.py                # Implementation using ZED SDK, run this file to test your ZED Installation
-│   ├── realsense.py            # Implementation using RealSense SDK
-│   └── manual_test_hw.py       # Used for manually testing in the above implementations.
-└── calibration
-│   ├── fiducial_markers.py     # Detecting and localising aruco markers and charuco boards
-│   └── hand_eye_calibration.py # Camera-robot extrinsics calibration, eye-in-hand and eye-to-hand
-└── image_transforms            # Invertible transforms for cropping/scaling images with keypoints
-│   └── ...
-└── multiprocess                # Multiprocessing for
-    └── ...
-
+airo-camera-toolkit/
+├── calibration/                # hand-eye extrinsics calibration
+├── cameras/                    # actual camera drivers
+├── image_transformations/      # reversible geometric 2D transforms
+├── pinhole_operations/         # 2D-3D operations
+├── utils/                      # a.o. annotation tool and converter
+├── interfaces.py
+└── cli.py
 ```
 
 ## Installation
@@ -63,7 +54,10 @@ airo-camera-toolkit hand-eye-calibration --help
 See [calibration/README.md](./airo_camera_toolkit/calibration/README.md) for more details.
 
 
-## Image format conversion
+
+## Utils
+
+### Image format conversion
 Camera by default return images as numpy 32-bit float RGB images with values between 0 to 1 through `get_rgb_image()`.
 This is most convenient for subsequent processing, e.g. with neural networks.
 For higher performance, 8-bit unsigned integer RGB images are also accessible through `get_rgb_image_as_int()`.
@@ -78,13 +72,15 @@ image_bgr = ImageConverter.from_numpy_int_format(image_rgb_int).image_in_opencv_
 ```
 
 
-## Reprojection
-
-See [reprojection.py](./airo_camera_toolkit/reprojection.py) for more details.
-
-## Annotation tool
+### Annotation tool
 
 See [annotation_tool.md](./airo_camera_toolkit/annotation_tool.md) for usage instructions.
+
+
+## Pinhole Operations
+
+2D - 3D geometric operations using the pinhole model. See [readme](./airo_camera_toolkit/pinhole_operations/Readme.md) for more information.
+
 
 ## Image Transforms
 
@@ -100,6 +96,7 @@ If this is a problem for your application, see [multiprocess/README.md](./airo_c
 
 ## References
 For more background on cameras, in particular on the meaning of intrinsics, extrinics, distortion coefficients, pinhole (and other) camera models, see:
+- Szeliski - Computer vision: Algorithms and Applications, available [here](https://szeliski.org/Book/)
  - https://web.eecs.umich.edu/~justincj/teaching/eecs442/WI2021/schedule.html
  - https://learnopencv.com/geometry-of-image-formation/ (extrinsics & intrinsics)
  - http://www.cs.cmu.edu/~16385/s17/Slides/11.1_Camera_matrix.pdf (idem)
