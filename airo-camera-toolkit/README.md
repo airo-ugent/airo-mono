@@ -96,7 +96,7 @@ If this is a problem for your application, see [multiprocess/README.md](./airo_c
 
 ## References
 For more background on cameras, in particular on the meaning of intrinsics, extrinics, distortion coefficients, pinhole (and other) camera models, see:
-- Seli
+- Szeliski - Computer vision: Algorithms and Applications, available [here](https://szeliski.org/Book/)
  - https://web.eecs.umich.edu/~justincj/teaching/eecs442/WI2021/schedule.html
  - https://learnopencv.com/geometry-of-image-formation/ (extrinsics & intrinsics)
  - http://www.cs.cmu.edu/~16385/s17/Slides/11.1_Camera_matrix.pdf (idem)
