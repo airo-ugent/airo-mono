@@ -1,31 +1,16 @@
 [tool.bumpversion]
-current_version = "0.0.1"
+current_version = "2.6.0.build.None"
 commit = false
 tag = false
 allow_dirty = true
-parse = """
-(?x)
-    (?P<year>[0-9]+)
-    \\.(?P<month>[0-9]+)
-    \\.(?P<id>[0-9]+)
-    (?:
-    \\-(?P<dev>build)
-    \\.(?P<build_id>[0-9]+)
-    \\.(?P<commit_sha>[a-f0-9]+)
-    )
-
-    ?
-
-"""
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(?:\\.(?P<dev>release|build)\\.[0-9a-zA-Z-]+)?"
 serialize = [
-    "{year}.{month}.{id}-{dev}.{build_id}.sha{commit_sha}",
-    "{year}.{month}.{id}",
-
+    "{major}.{minor}.{patch}.{dev}.{commit_sha}",
+    "{major}.{minor}.{patch}"
 ]
 
 
-[[tool.bumpversion.files]]
-glob = "*/setup.py"
-
+[tool.bumpversion.parts.dev]
+values = ["release", "build"]
 
 
