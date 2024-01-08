@@ -26,7 +26,7 @@ parse = "(?P<year>[0-9]+)\\.(?P<month>[0-9]+)\\.(?P<micro>[0-9]+)(?:\\-(?P<dev>r
 
 
 serialize = [
-    "{year}.{month}.{micro}-{dev}.{now:%D-%H-%M}.{$SHORT_COMMIT_SHA}", # the serializer for dev builds; commit SHA is env variable;
+    "{year}.{month}.{micro}-{dev}.{now:%Y/%m/%d-%H-%M}.{$SHORT_COMMIT_SHA}", # the serializer for dev builds; commit SHA is env variable;
     # note that builds cannot be incremented!
     # this is purely for covenience of building intermediate versions without actually bumping the version in the codebase
     "{year}.{month}.{micro}" # serializer for actual releases
