@@ -6,7 +6,7 @@ from setuptools import find_packages
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo-dataset-tools",
-    version="0.0.1",
+    version="2024.1.0",
     author="Victor-Louis De Gusseme",
     author_email="victorlouisdg@gmail.com",
     description="TODO",

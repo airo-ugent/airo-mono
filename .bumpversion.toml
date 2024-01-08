@@ -11,7 +11,7 @@
 # bump-my-version bump dev
 
 [tool.bumpversion]
-current_version = "0.0.1" # this is the single source of truth for the version
+current_version = "2024.1.0" # this is the single source of truth for the version
 
 # do not create tags or commits by default
 commit = false

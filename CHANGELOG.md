@@ -5,7 +5,7 @@ All notable changes for the packages in the airo-mono repo are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project uses a [CalVer](https://calver.org/) versioning scheme with monthly releases, see [here](versioning.md)
 
-## Unreleased
+## 2024.1.0
 
 ### Breaking changes
 
