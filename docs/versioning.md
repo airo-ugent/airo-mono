@@ -15,8 +15,10 @@ YYYY.MM.N
 where N is the MICRO part, used to distinguish between multiple releases in the same month. No semantic meaning can be attached to the versions and breaking changes might occur in each release for now.
 
 ## Releasing strategy
-The main branch ('our trunk') will always live at an unreleased version.
-When releasing a new version, it will be bumped immediately after the release.
+The main branch ('our trunk') will always live at last released version. All development builds will hence have the **previous** release as base.
+This is slightly counter-intuitive but actually common practice (e.g. [Twisted](https://github.com/twisted/twisted/tree/trunk)).
+
+When releasing a new version, the version on the main branch should hence be bumped before the release.
 
 For info on how to create releases, see [releasing.md](releasing.md).
 
