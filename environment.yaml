@@ -2,7 +2,7 @@ name: airo-mono
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
+  - python=3.11
   - pip
   - pip:
     - -e airo-typing/
