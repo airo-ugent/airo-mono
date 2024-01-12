@@ -7,7 +7,7 @@ import loguru
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import MultiprocessRGBDReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
-from airo_camera_toolkit.utils import ImageConverter
+from airo_camera_toolkit.utils.image_converter import ImageConverter
 
 logger = loguru.logger
 
