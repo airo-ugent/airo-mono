@@ -13,11 +13,13 @@ We use a [Calender Version](https://calver.org/) scheme as follows:
 YYYY.MM.N
 ```
 
+
 where YYYY.MM is the year and month in which the release is made and N is the MICRO part used to distinguish between multiple releases in the same month. No semantic meaning can be attached to the parts and breaking changes might occur in each release for now.
 
 ## Versioning strategy
 The main branch ('our trunk') will always live at last released version. All development builds will hence have the **previous** release as base.
 This is slightly counter-intuitive but actually common practice (e.g. [Twisted](https://github.com/twisted/twisted/tree/trunk)).
+
 
 ## version bumping
 
@@ -42,6 +44,7 @@ Next to updating the version strings in all relevant files, this will also creat
 
 ## Development distributions/builds
 Development builds can be used to build the development trunk (main branch) and their versioning scheme is
+
 ```
 YYYY.MM.N-build.date.sha
 ```

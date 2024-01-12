@@ -1,6 +1,7 @@
 # Releasing
 
 
+
 To create a new release there are two steps:
 
 
@@ -10,7 +11,6 @@ To create a new release there are two steps:
 
 
 ## Version bumping
-
 see [versioning](./versioning.md)
 
 ## Creating distribution

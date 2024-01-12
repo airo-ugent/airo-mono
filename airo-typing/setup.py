@@ -7,6 +7,6 @@ setuptools.setup(
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
     install_requires=["numpy"],
-    packages=["airo_typing"],
+    packages=setuptools.find_packages(exclude=["test"]),
     package_data={"airo_typing": ["py.typed"]},
 )
