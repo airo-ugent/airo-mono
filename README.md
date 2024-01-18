@@ -9,7 +9,7 @@ Below is a short overview of the packages:
 
 | Package | Description| owner |
 |-------|-------|--------|
-| `airo-camera-toolkit`|code for working with RGB(D) cameras, images and pointclouds |@tlpss|
+| `airo-camera-toolkit`|code for working with RGB(D) cameras, images and point clouds |@tlpss|
 |`airo-dataset-tools`| code for creating, loading and working with datasets| @Victorlouisdg|
 | `airo-robots`| minimal interfaces for interacting with the controllers of robot arms and grippers| @tlpss|
 | `airo-spatial-algebra`|code for working with SE3 poses |@tlpss|

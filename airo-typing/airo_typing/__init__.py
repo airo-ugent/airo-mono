@@ -1,4 +1,5 @@
-from typing import Tuple, Union
+from dataclasses import dataclass
+from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 
@@ -68,6 +69,11 @@ TwistType = np.ndarray
 shorthand notation is ^C T^B_A, where C is the frame the velocity is measured in, B is the frame the velocity is expressed in.
 """
 
+# manipulator types
+
+JointConfigurationType = np.ndarray
+"""an (N,) numpy array that represents the joint angles for a robot"""
+
 ######################
 # camera related types
 ######################
@@ -99,13 +105,25 @@ CameraExtrinsicMatrixType = HomogeneousMatrixType
 """4x4 camera extrinsic matrix,
 this is the homogeneous matrix that describes the camera pose in the world frame"""
 
+##########################
+# 3D and point cloud types
+##########################
 
-PointCloudType = Vector3DArrayType
-""" a (N,3) numpy array that represents a point cloud"""
+BoundingBox3DType = Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+""" a tuple of two tuples that represent the min and max corners of a 3D bounding box"""
 
-ColoredPointCloudType = np.ndarray
-" an (N,6) numpy array that represents a point cloud with color information. Color is in RGB, float (0-1) format."
-# manipulator types
+PointCloudPositionsType = Vector3DArrayType
+""" a (N,3) float32 numpy array that represents a point cloud"""
 
-JointConfigurationType = np.ndarray
-"""an (N,) numpy array that represents the joint angles for a robot"""
+PointCloudColorsType = np.ndarray
+""" a (N,3) uint8 numpy array that represents the RGB colors of a point cloud"""
+
+PointCloudAttributesType = Dict[str, np.ndarray]
+""" a dictionary of numpy arrays that represent additional attributes of a point cloud, e.g. normals, confidence, etc. """
+
+
+@dataclass
+class PointCloud:
+    points: PointCloudPositionsType
+    colors: Optional[PointCloudColorsType] = None
+    attributes: Optional[PointCloudAttributesType] = None

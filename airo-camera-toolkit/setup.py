@@ -16,6 +16,7 @@ setuptools.setup(
         "matplotlib",
         "rerun-sdk>=0.11.0",
         "click",
+        "open3d",
         "loguru",
         "airo-typing",
         "airo-spatial-algebra",

@@ -1,5 +1,5 @@
 # airo-camera-toolkit
-This package contains code for working with RGB(D) cameras, images and pointclouds.
+This package contains code for working with RGB(D) cameras, images and point clouds.
 
 
 Overview of the functionality and the structure:
@@ -9,6 +9,7 @@ airo-camera-toolkit/
 ├── cameras/                    # actual camera drivers
 ├── image_transformations/      # reversible geometric 2D transforms
 ├── pinhole_operations/         # 2D-3D operations
+├── point_clouds/               # conversions and operations
 ├── utils/                      # a.o. annotation tool and converter
 ├── interfaces.py
 └── cli.py
@@ -87,8 +88,11 @@ See [annotation_tool.md](./airo_camera_toolkit/annotation_tool.md) for usage ins
 See the [README](./airo_camera_toolkit/image_transforms/README.md) in the `image_transforms` folder for more details.
 
 ## Real-time visualisation
-For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](docs/rerun-zed-example.ipynb).
+For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](notebooks/rerun-zed-tutorial.ipynb).
 See this [README](./docs/rerun.md) for more details.
+
+## Point clouds
+See the tutorial notebook [here](notebooks/point_clouds_tutorial.ipynb) for an introduction.
 
 ## Multiprocessing
 Camera processing can be computationally expensive.

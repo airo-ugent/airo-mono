@@ -11,15 +11,26 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
  - internal dependencies are now listed as regular dependencies in the `setup.py` file to overcome issues and make the installation process less complicated. This implies you need to install packages according to their dependencies and can no longer use the `external` tag as in `pip install airo-typing[external]`.
  see [issue #91](https://github.com/airo-ugent/airo-mono/issues/91) and
  [PR](https://github.com/airo-ugent/airo-mono/pull/108) for more details.
+ - `PointCloud` dataclass replaces the `ColoredPointCloudType` to support point cloud attritubes
+
 
 ### Added
+- `PointCloud` dataclass as the main data structure for point clouds in airo-mono
+- Notebooks to get started with point clouds, checking performance and logging to rerun
+- Functions to crop point clouds and filter points with a mask (e.g. low-confidence points))
+- Functions to convert from our numpy-based dataclass to and from open3d point clouds
+- `BoundingBox3DType`
+
+
 
 ### Changed
 - dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103)
 
 ### Fixed
+- Fixed bug in `get_colored_point_cloud()` that removed some points see issue #25.
 
 ### Removed
+- `ColoredPointCloudType`
 
 ## 2024.1.0
 
