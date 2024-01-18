@@ -1,5 +1,5 @@
 # airo-camera-toolkit
-This package contains code for working with RGB(D) cameras, images and pointclouds.
+This package contains code for working with RGB(D) cameras, images and point clouds.
 
 
 Overview of the functionality and the structure:
@@ -9,6 +9,7 @@ airo-camera-toolkit/
 ├── cameras/                    # actual camera drivers
 ├── image_transformations/      # reversible geometric 2D transforms
 ├── pinhole_operations/         # 2D-3D operations
+├── point_clouds/               # conversions and operations
 ├── utils/                      # a.o. annotation tool and converter
 ├── interfaces.py
 └── cli.py
