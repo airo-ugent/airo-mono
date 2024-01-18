@@ -19,11 +19,11 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
-        python-version: 3.9
+        python-version: 3.11
     - name: Install package
       run: |
         python -m pip install --upgrade pip
         pip install mypy
-        pip install ${{matrix.package}}/[external]
+        pip install airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ airo-teleop/ airo-dataset-tools/
     - name: Run type checker
       run: mypy ${{matrix.package}}/

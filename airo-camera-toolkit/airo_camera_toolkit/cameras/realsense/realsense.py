@@ -5,7 +5,7 @@ from typing import Any, Optional
 import numpy as np
 import pyrealsense2 as rs  # type: ignore
 from airo_camera_toolkit.interfaces import RGBDCamera
-from airo_camera_toolkit.utils import ImageConverter
+from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,
@@ -138,7 +138,7 @@ class Realsense(RGBDCamera):
 
 
 if __name__ == "__main__":
-    import airo_camera_toolkit.cameras.test_hw as test
+    import airo_camera_toolkit.cameras.manual_test_hw as test
     import cv2
 
     camera = Realsense(fps=30, resolution=Realsense.RESOLUTION_1080, enable_hole_filling=True)

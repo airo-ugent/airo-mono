@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_camera_toolkit.utils import ImageConverter
+from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
 
 _RGB_SHM_NAME = "rgb"
@@ -285,7 +285,7 @@ if __name__ == "__main__":
     """example of how to use the MultiprocessRGBPublisher and MultiprocessRGBReceiver.
     You can also use the MultiprocessRGBReceiver in a different process (e.g. in a different python script)
     """
-    from airo_camera_toolkit.cameras.zed2i import Zed2i
+    from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
 
     namespace = "camera"
 

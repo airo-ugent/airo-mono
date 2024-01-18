@@ -30,28 +30,44 @@ Some packages also have a command line interface. Simply run `$package-name --he
 
 
 # Installation
-There are a number of ways to install packages from this repo. As this repo is still in development and has breaking changes every now and then, we recommend locking on specific commits.
+There are a number of ways to install packages from this repo. As this repo is still in development and has breaking changes every now and then, we recommend locking on specific commits or releases if you need stability.
 
-**directly from github**
+## regular install
+Installs the packages from PyPI.
 
-if you just want to use a package for a downstream application you can install it with pip like this: `python -m pip install ' <pkg-name>[external] @ git+https://github.com/airo-ugent/airo-mono@<branch/tag>#subdirectory=<package-dir>'`. Note the [external] specification, this is a quick hack to allow for working with a monorepo while using pip is package manager, read more [here](#developer-guide/). There will now be a `src/` folder in your project where pip has downloaded the repo and from where the package is installed, but you can ignore this as it will be automatically excluded from source control. You can (and should?) lock the pip install to a specific commit in your dependency manager (pip/conda/...). The [external] specification only works on pip versions >= 22 so make sure your pip version is up-to-date with `pip install --upgrade pip`.
 
-The following table shows the required command per package:
+not available yet
+`pip install airo-camera-toolkit ....`
+
+## installing from dev builds
+Installs from dev builds, which are created for each commit on the main.
+
+not availble yet.
+
+
+
+## from github source
+
+DEPRECATED.
+
+We discourage the use of this installation method!
 
 | Package | command |
 |-------|-------|
-|`airo-camera-toolkit`|`python -m pip install 'airo-camera-toolkit[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit'`|
-|`airo-dataset-tools`|`python -m pip install 'airo-dataset-tools[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools'`|
-|`airo-robots`|`python -m pip install 'airo-robots[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-robots'`|
-|`airo-spatial-algebra`|`python -m pip install 'airo-spatial-algebra[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-spatial-algebra' `|
-|`airo-teleop`|`python -m pip install 'airo-teleop[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-teleop'`|
-|`airo-typing`  |`python -m pip install 'airo-typing[external] @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-typing'`|
 
-or alternatively, you can install all packages at once by running the [installation script](scripts/install-airo-mono.sh).
+|`airo-typing`  |`python -m pip install 'airo-typing @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-typing'`|
+|`airo-dataset-tools`|`python -m pip install 'airo-dataset-tools @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools'`|
+|`airo-robots`|`python -m pip install 'airo-robots @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-robots'`|
+|`airo-spatial-algebra`|`python -m pip install 'airo-spatial-algebra @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-spatial-algebra' `|
+|`airo-teleop`|`python -m pip install 'airo-teleop @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-teleop'`|
+|`airo-camera-toolkit`|`python -m pip install 'airo-camera-toolkit @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit'`|
 
+Make sure you install the packages according to their dependency tree. If you have not installed the airo-mono packages on which a package depends first, you will get a missing import error (or it will install the package from PyPI..)
+
+## local installation
 **git submodule**
 
-Alternatively you can add this repo as a submodule and install the relevant packages afterwards with regular pip commands. This might be useful for as long as this repo is making fast/breaking changes without good version management, as you can lock the submodule on a specific commit.
+You can add this repo as a submodule and install the relevant packages afterwards with regular pip commands. This allows to seamlessly make contributions to this repo whilst working on your own project or if you want to pin on a specific version.
 
 In your repo, run:
 ```
@@ -59,18 +75,10 @@ git submodule init
 git submodule add https://github.com/airo-ugent/airo-mono@<commit>
 cd airo-mono
 ```
-You can now add the packages you need to your requirements or environment file. More about submodules can be found [here](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
+You can now add the packages you need to your requirements or environment file, either in development mode or through a regular pip install.
+More about submodules can be found [here](https://git-scm.com/book/en/v2/Git-Tools-Submodules). Make sure to install the packages in one pip command such that pip can install them in the appropriate order to deal with internal dependencies.
 
-**editable install**
 
-If you want to make changes, you should probably clone this repo first (optionally using git submodules)
-and then install all relevant packages in [editable](https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs) mode, so that any change you make is immediately 'visible' to your python interpreter. If you make make a standalone clone of this repo, you can simply run `conda env create -f environment.yaml`, which does this for you (and also installs some binaries for convenience).
-
-```
-git clone https://github.com/airo-ugent/airo-mono@<commit>
-cd airo-mono
-conda env create -f environment.yaml
-```
 # Developer guide
 ### setting up local environment
 To set up your development environment after cloning this repo, run:
@@ -108,17 +116,18 @@ The tests are executed for each package in isolation using [github actions Matri
 We test on python 3.8 (default on ubuntu 20.04), 3.9 and 3.10 (default on Ubuntu 22.04). It is important to test these versions explicitly, e.g. typing with `list` instead of `typing.List` is not allowed in 3.8, but it is in >=3.9.
 
 ### Management of (local) dependencies
-[more background on package and dependency management in python](https://ealizadeh.com/blog/guide-to-python-env-pkg-dependency-using-conda-poetry/)
 
-An issue with using a monorepo is that you want to have packages declare their local dependencies as well, while being able to install all packages in editable mode so that all changes that you make are immediately reflected (so that you can in fact edit multiple packages at the same time).
+An issue with using a monorepo is that you want to have packages declare their local dependencies as well. But before you publish your packages or if you want to test unreleased code (as usually), this creates an issue: where should pip find these local package? Though there exist more advanced package managers such as Poetry, ([more background on package and dependency management in python](https://ealizadeh.com/blog/guide-to-python-env-pkg-dependency-using-conda-poetry/)
+) that can handle this, we have opted to stick with pip to keep the barier for new developers lower.
 
-Pip makes this very hard as it by default reinstalls any local package (so it will get reinstalled even if it already was in your environment!) and since you cannot specify editable dependencies in the distutils setup.py.
 
-So if you install a package in editable mode and then install another in editable mode that has the first as a dependency, pip would reinstall that first package in 'normal' mode and your changes to that package would no longer be immediately reflected.
+This implies we simply add local dependencies in the setup file as regular dependencies, but we have to make sure pip can find the dependencies when installing the pacakges.There are two options to do so:
+1. You make sure that the local dependencies are installed before installing the package, either by running the pip install commands along the dependency tree, or by running all installs in a single pip commamd: `pip install <pkg1>  <pkg2> <pkg3>`
+2. you create distributions for the packages upfront and then tell pip where to find them (because they won't be on PyPI, which is where pip searches by default): `pip install --find-link https:// or /path/to/distributions/dir`
 
-Among others, this is why [many people](https://medium.com/opendoor-labs/our-python-monorepo-d34028f2b6fa) use [Poetry](https://python-poetry.org/docs/basic-usage/) as package manager for python monorepos. Poetry config files can be handled to fix this issue.
 
-However, for now we want to avoid adding this complexity for new contributors. Therefore we use an ad-hoc solution by specifying the local dependencies through an `extras_require` of the setup.py. Installing the package with its internal dependencies should hence be done with `pip install package[external]`, whereas an editable installation can still happen with `pip install -e package`. It's now on you to install the local dependencies in editable mode as well.
+Initially, we used a direct link to point to the path of the dependencies, but this created some issues and hence we now use this easier approach. see [#91](https://github.com/airo-ugent/airo-mono/issues/91) for more details.
+
 ### Creating a new package
 Creating a new package is kind of a hassle atm, in the future we might add a coockiecutter template for it. For now here are the steps you have to take:
 - create the nested structure
