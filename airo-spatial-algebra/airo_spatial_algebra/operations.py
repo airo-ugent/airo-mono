@@ -9,22 +9,21 @@ i.e. the user can  call <transform>(points) where points is just a numpy array,
 """
 
 import numpy as np
-from airo_typing import HomogeneousMatrixType, Vectors3DType
+from airo_typing import HomogeneousMatrixType, Vector3DArrayType, Vectors3DType
 
 
 class _HomogeneousPoints:
+    """Helper class to facilitate multiplicating 4x4 matrices with one or more 3D points.
+    This class internally handles the addition / removal of a dimension to the points.
+    """
+
     # TODO: extend to generic dimensions (1D,2D,3D).
-    # TODO: more apropaite name? this class mainly serves as 'input validation' and conversion to homogeneous coordinates
     def __init__(self, points: Vectors3DType):
         if not self.is_valid_points_type(points):
             raise ValueError(f"Invalid argument for {_HomogeneousPoints.__name__}.__init__ ")
-        if self.is_single_point(points):
-            self._homogeneous_points = np.concatenate([points, np.ones(1, dtype=np.float32)])
-            self._homogeneous_points = self._homogeneous_points[np.newaxis, :]
-        else:
-            self._homogeneous_points = np.concatenate(
-                [points, np.ones((points.shape[0], 1), dtype=np.float32)], axis=1
-            )
+
+        points = _HomogeneousPoints.ensure_array_2d(points)
+        self._homogeneous_points = np.concatenate([points, np.ones((points.shape[0], 1), dtype=np.float32)], axis=1)
 
     @staticmethod
     def is_valid_points_type(points: Vectors3DType) -> bool:
@@ -37,8 +36,13 @@ class _HomogeneousPoints:
         return False
 
     @staticmethod
-    def is_single_point(points: Vectors3DType) -> bool:
-        return len(points.shape) == 1
+    def ensure_array_2d(points: Vectors3DType) -> Vector3DArrayType:
+        """If points is a single shape (3,) point, then it is reshaped to (1,3)."""
+        if len(points.shape) == 1:
+            if len(points) != 3:
+                raise ValueError("points has only one dimension, but it's length is not 3")
+            points = points.reshape((1, 3))
+        return points
 
     @property
     def homogeneous_points(self) -> np.ndarray:
@@ -51,7 +55,6 @@ class _HomogeneousPoints:
         # normalize points (for safety, should never be necessary with affine transforms)
         # but we've had bugs of this type with projection operations, so better safe than sorry?
         scalars = self._homogeneous_points[:, 3][:, np.newaxis]
-        print(scalars)
         points = self.homogeneous_points[:, :3] / scalars
         # TODO: if the original poitns was (1,3) matrix, then the resulting points would be a (3,) vector.
         #  Is this desirable? and if not, how to avoid it?

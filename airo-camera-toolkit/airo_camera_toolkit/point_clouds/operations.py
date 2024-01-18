@@ -28,7 +28,7 @@ def filter_point_cloud(point_cloud: PointCloud, mask: Any) -> PointCloud:
     return point_cloud_filtered
 
 
-def crop_point_cloud_mask(point_cloud: PointCloud, bounding_box: BoundingBox3DType) -> np.ndarray:
+def generate_point_cloud_crop_mask(point_cloud: PointCloud, bounding_box: BoundingBox3DType) -> np.ndarray:
     """Creates a mask that can be used to filter a point cloud to the given bounding box.
 
     Args:
@@ -59,5 +59,5 @@ def crop_point_cloud(
     Returns:
         the new cropped point cloud
     """
-    crop_mask = crop_point_cloud_mask(point_cloud, bounding_box)
+    crop_mask = generate_point_cloud_crop_mask(point_cloud, bounding_box)
     return filter_point_cloud(point_cloud, crop_mask.nonzero())
