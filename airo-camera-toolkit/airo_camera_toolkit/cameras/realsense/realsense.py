@@ -59,6 +59,12 @@ class Realsense(RGBDCamera):
             depth_resolution = Realsense.RESOLUTION_720 if fps <= 30 else Realsense.RESOLUTION_480
             config.enable_stream(rs.stream.depth, depth_resolution[0], depth_resolution[1], rs.format.z16, fps)
 
+        # Avoid having to reconnect the USB cable
+        ctx = rs.context()
+        devices = ctx.query_devices()
+        for dev in devices:
+            dev.hardware_reset()
+
         self.pipeline = rs.pipeline()
 
         self.pipeline.start(config)
