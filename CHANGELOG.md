@@ -28,6 +28,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Fixed
 - Fixed bug in `get_colored_point_cloud()` that removed some points see issue #25.
+- Fixed bug requiring unplug-and-plug of USB cable for Realsense: see issue #109.
 
 ### Removed
 - `ColoredPointCloudType`
