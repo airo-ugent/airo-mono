@@ -251,7 +251,7 @@ class MultiprocessRGBReceiver(RGBCamera):
     def resolution(self) -> CameraResolutionType:
         """The resolution of the camera, in pixels."""
         shape_array = [int(x) for x in self.rgb_shape_shm_array[:2]]
-        return (shape_array[0], shape_array[1])
+        return (shape_array[1], shape_array[0])
 
     def _grab_images(self) -> None:
         while not self.get_current_timestamp() > self.previous_timestamp:
