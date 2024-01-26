@@ -31,6 +31,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Fixed bug requiring unplug-and-plug of USB cable for Realsense: see issue #109.
 - Removed camera imports in `airo_camera_toolkit.cameras`: see issue #110.
 - Added `__init__.py` to `realsense` and `utils` in `airo_camera_toolkit.cameras`, fixing installs with pip and issue #113.
+- Fixed bug that returned a transposed resolution in `MultiprocessRGBReceiver`.
 
 ### Removed
 - `ColoredPointCloudType`
