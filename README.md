@@ -54,7 +54,6 @@ We discourage the use of this installation method!
 
 | Package | command |
 |-------|-------|
-
 |`airo-typing`  |`python -m pip install 'airo-typing @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-typing'`|
 |`airo-dataset-tools`|`python -m pip install 'airo-dataset-tools @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools'`|
 |`airo-robots`|`python -m pip install 'airo-robots @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-robots'`|
