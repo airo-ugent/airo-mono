@@ -76,48 +76,23 @@ shorthand notation is ^C T^B_A, where C is the frame the velocity is measured in
 JointConfigurationType = np.ndarray
 """an (N,) numpy array that represents the joint angles for a robot"""
 
-#########################
-# Single-arm path types #
-#########################
-JointPathType = List[JointConfigurationType]
-""" a list of joint configurations that describe a path in joint space"""
+JointPathType = np.ndarray
+""" a (T, N) array of joint states (can be position/velocity/acceleration) that describe a path in joint space"""
 
-JointPathArrayType = np.ndarray
-""" a (N, DoFs) numpy array that represents a path in joint space"""
+PosePathType = np.ndarray
+""" a (T, 4, 4) list of homogeneous matrices that describe a path in cartesian space"""
 
-PosePathType = List[HomogeneousMatrixType]
-""" a list of homogeneous matrices that describe a path in cartesian space"""
-
-PosePathArrayType = np.ndarray
-""" a (N, 4, 4) numpy array that represents a path in cartesian space"""
-
-TimePathType = List[float]
-""" a list of times that describe a path in time, must be monotonically increasing"""
-
-TimePathArrayType = np.ndarray
-""" a (N,) numpy array that represents a path in time, must be monotonically increasing"""
-
-#######################
-# Dual-arm path types #
-#######################
-DualJointConfigurationType = np.ndarray
-""" a (2 * DoFs,) numpy array, result of np.hstack((left_joints, right_joints))"""
-
-DualJointPathType = List[DualJointConfigurationType]
-""" a list of dual arm joint configurations that describe a path in joint space"""
-
-DualJointPathArrayType = np.ndarray
-""" a (N, 2 * DoFs) array, result of np.hstack((left_joint_path, right_joint_path))"""
+TimePathType = np.ndarray
+""" a (T,) array of monotonically increasing times (float), corresponding to a path"""
 
 #######################
 # Single-arm types #
 #######################
-ForwardKinematicsType = Callable[[JointConfigurationType], HomogeneousMatrixType]
+ForwardKinematicsFunctionType = Callable[[JointConfigurationType], HomogeneousMatrixType]
 """ a function that computes the forward kinematics of a given joint configuration"""
 
-InverseKinematicsType = Callable[[HomogeneousMatrixType], List[JointConfigurationType]]
+InverseKinematicsFunctionType = Callable[[HomogeneousMatrixType], List[JointConfigurationType]]
 """ a function that computes one or more inverse kinematics solutions of a given TCP pose"""
-
 
 #########################
 # Motion planning types #
@@ -125,10 +100,6 @@ InverseKinematicsType = Callable[[HomogeneousMatrixType], List[JointConfiguratio
 
 JointConfigurationCheckerType = Callable[[JointConfigurationType], bool]
 """ a function that checks a certain condition on a joint configuration, e.g. collision checking"""
-
-DualJointConfigurationCheckerType = Callable[[DualJointConfigurationType], bool]
-""" a function that checks a dual joint configuration, where the JointConfigurationType is the stacked version of the left and right joint configurations"""
-
 
 ######################
 # camera related types
