@@ -79,24 +79,47 @@ JointConfigurationType = np.ndarray
 JointPathType = np.ndarray
 """ a (T, N) array of joint states (can be position/velocity/acceleration) that describe a path in joint space"""
 
+TimesType = np.ndarray
+""" a (T,) array of monotonically increasing times (float), corresponding to a path"""
+
+
+@dataclass
+class JointTrajectory:
+    positions: JointPathType
+    velocities: Optional[JointPathType] = None
+    accelerations: Optional[JointPathType] = None
+    efforts: Optional[JointPathType] = None
+    times: Optional[TimesType] = None  # time from start of trajectory | assumed 0->1 if None
+
+
+@dataclass
+class DualArmJointTrajectory:
+    positions_left: JointPathType
+    positions_right: JointPathType
+    velocities_left: Optional[JointPathType] = None
+    velocities_right: Optional[JointPathType] = None
+    accelerations_left: Optional[JointPathType] = None
+    accelerations_right: Optional[JointPathType] = None
+    efforts_left: Optional[JointPathType] = None
+    efforts_right: Optional[JointPathType] = None
+    times: Optional[TimesType] = None  # time from start of trajectory | assumed 0->1 if None
+
+
 PosePathType = np.ndarray
 """ a (T, 4, 4) list of homogeneous matrices that describe a path in cartesian space"""
 
-TimePathType = np.ndarray
-""" a (T,) array of monotonically increasing times (float), corresponding to a path"""
 
-#######################
-# Single-arm types #
-#######################
+@dataclass
+class PoseTrajectory:
+    poses: PosePathType
+    times: Optional[TimesType] = None
+
+
 ForwardKinematicsFunctionType = Callable[[JointConfigurationType], HomogeneousMatrixType]
 """ a function that computes the forward kinematics of a given joint configuration"""
 
 InverseKinematicsFunctionType = Callable[[HomogeneousMatrixType], List[JointConfigurationType]]
 """ a function that computes one or more inverse kinematics solutions of a given TCP pose"""
-
-#########################
-# Motion planning types #
-#########################
 
 JointConfigurationCheckerType = Callable[[JointConfigurationType], bool]
 """ a function that checks a certain condition on a joint configuration, e.g. collision checking"""
