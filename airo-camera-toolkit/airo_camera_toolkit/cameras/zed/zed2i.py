@@ -57,9 +57,10 @@ class Zed2i(StereoRGBDCamera):
     # no depth mode, higher troughput of the RGB images as the GPU has to do less work
     # can also turn depth off in the runtime params, which is recommended as it allows for switching at runtime.
     NONE_DEPTH_MODE = sl.DEPTH_MODE.NONE
-    PERFORMANCE_DEPTH_MODE = sl.DEPTH_MODE.QUALITY
+    PERFORMANCE_DEPTH_MODE = sl.DEPTH_MODE.PERFORMANCE
     QUALITY_DEPTH_MODE = sl.DEPTH_MODE.QUALITY
-    DEPTH_MODES = (NEURAL_DEPTH_MODE, NONE_DEPTH_MODE, PERFORMANCE_DEPTH_MODE, QUALITY_DEPTH_MODE)
+    ULTRA_DEPTH_MODE = sl.DEPTH_MODE.ULTRA
+    DEPTH_MODES = (NEURAL_DEPTH_MODE, NONE_DEPTH_MODE, PERFORMANCE_DEPTH_MODE, QUALITY_DEPTH_MODE, ULTRA_DEPTH_MODE)
 
     # for info on image resolution, pixel sizes, fov..., see:
     # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
