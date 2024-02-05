@@ -24,7 +24,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 
 ### Changed
-- Dropped support for python 3.8 and added 3.10 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
+- Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
 - Set python version to 3.10 because of an issue with the `ur_rtde` wheels [#121](https://github.com/airo-ugent/airo-mono/issues/121). Updated README.md to reflect this change.
 
 ### Fixed
