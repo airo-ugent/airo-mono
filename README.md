@@ -112,7 +112,7 @@ we use github actions to do the following checks on each PR, push to master (and
 
 The tests are executed for each package in isolation using [github actions Matrices](https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs), which means that only that package and its dependencies are installed in an environment to make sure each package correctly declares its dependencies. The downside is that this has some overhead in creating the environments, so we should probably look into caching them once the runtime becomes longer.
 
-We test on python 3.8 (default on ubuntu 20.04), 3.9 and 3.10 (default on Ubuntu 22.04). It is important to test these versions explicitly, e.g. typing with `list` instead of `typing.List` is not allowed in 3.8, but it is in >=3.9.
+We test on python 3.9 and 3.10 (default on Ubuntu 22.04). It is important to test these versions explicitly, e.g. typing with `list` instead of `typing.List` is not allowed in 3.8, but it is in >=3.9.
 
 ### Management of (local) dependencies
 
