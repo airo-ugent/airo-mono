@@ -84,25 +84,27 @@ TimesType = np.ndarray
 
 
 @dataclass
-class JointTrajectory:
-    positions: JointPathType
+class JointPathContainer:
+    positions: Optional[JointPathType] = None
     velocities: Optional[JointPathType] = None
     accelerations: Optional[JointPathType] = None
     efforts: Optional[JointPathType] = None
-    times: Optional[TimesType] = None  # time from start of trajectory | assumed 0->1 if None
 
 
 @dataclass
-class DualArmJointTrajectory:
-    positions_left: JointPathType
-    positions_right: JointPathType
-    velocities_left: Optional[JointPathType] = None
-    velocities_right: Optional[JointPathType] = None
-    accelerations_left: Optional[JointPathType] = None
-    accelerations_right: Optional[JointPathType] = None
-    efforts_left: Optional[JointPathType] = None
-    efforts_right: Optional[JointPathType] = None
-    times: Optional[TimesType] = None  # time from start of trajectory | assumed 0->1 if None
+class SingleArmTrajectory:
+    path: JointPathContainer
+    gripper_path: Optional[JointPathContainer]
+    times: TimesType  # time (seconds) from start of trajectory
+
+
+@dataclass
+class DualArmTrajectory:
+    path_left: JointPathContainer
+    path_right: JointPathContainer
+    gripper_left: Optional[JointPathContainer]
+    gripper_right: Optional[JointPathContainer]
+    times: TimesType  # time (seconds) from start of trajectory
 
 
 PosePathType = np.ndarray
