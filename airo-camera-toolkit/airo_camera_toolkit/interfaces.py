@@ -1,5 +1,6 @@
 import abc
 
+from airo_camera_toolkit.point_clouds.conversions import open3d_to_point_cloud
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,
@@ -111,8 +112,12 @@ class DepthCamera(Camera, abc.ABC):
         Returns:
             PointCloud: the points (= positions) and colors
         """
-        # TODO: offer a base implementation that uses the depth map and the rgb image to construct this pointcloud?
-        raise NotImplementedError
+
+        self._grab_images()
+        return self._retrieve_colored_point_cloud()
+
+        # # TODO: offer a base implementation that uses the depth map and the rgb image to construct this pointcloud?
+        # raise NotImplementedError
 
     @abc.abstractmethod
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
@@ -123,6 +128,33 @@ class DepthCamera(Camera, abc.ABC):
     def _retrieve_depth_image(self) -> NumpyIntImageType:
         """Returns the current depth image in the memory buffer."""
         raise NotImplementedError
+
+    def _retrieve_colored_point_cloud(self) -> PointCloud:
+        """Returns the current point cloud in the memory buffer.
+
+        Default implementation uses the depth map and RGB with open3d's create_from_rgbd_image() function.
+        See: https://www.open3d.org/docs/release/python_api/open3d.t.geometry.PointCloud.html#open3d.t.geometry.PointCloud.create_from_rgbd_image
+        """
+        import open3d as o3d
+
+        image_rgb_uint8 = self._retrieve_rgb_image_as_int()
+        depth_map = self._retrieve_depth_map()
+
+        resolution = image_rgb_uint8.shape[1], image_rgb_uint8.shape[0]
+        intrinsics = self.intrinsics_matrix()
+
+        # Convert airo-mono data types to open3d data types
+        image_o3d = o3d.t.geometry.Image(image_rgb_uint8)
+        depth_map_o3d = o3d.t.geometry.Image(depth_map)
+        rgbd_o3d = o3d.geometry.t.RGBDImage.create_from_color_and_depth(
+            image_o3d, depth_map_o3d, depth_scale=1.0, depth_max=1000.0, convert_rgb_to_intensity=False
+        )
+        intrinsics_o3d = o3d.t.camera.PinholeCameraIntrinsic(resolution[0], resolution[1], intrinsics)
+
+        pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_o3d, intrinsics_o3d)
+
+        point_cloud = open3d_to_point_cloud(pcd)
+        return point_cloud
 
 
 class RGBDCamera(RGBCamera, DepthCamera):

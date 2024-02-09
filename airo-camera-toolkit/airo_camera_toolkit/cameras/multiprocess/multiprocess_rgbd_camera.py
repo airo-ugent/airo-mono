@@ -1,4 +1,5 @@
 """code for sharing the data of a camera that implements the RGBDCamera interface between processes using shared memory"""
+
 import time
 from multiprocessing import resource_tracker, shared_memory
 from typing import Optional
@@ -121,10 +122,10 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
                 is_shm_found = True
                 break
             except FileNotFoundError:
-                print(
-                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" (RGBD) not found yet, retrying in 5 seconds.'
+                logger.info(
+                    f'SharedMemory namespace "{self._shared_memory_namespace}" (RGBD) not found yet, retrying in 2 seconds.'
                 )
-                time.sleep(5)
+                time.sleep(2)
 
         if not is_shm_found:
             raise FileNotFoundError("Shared memory not found.")

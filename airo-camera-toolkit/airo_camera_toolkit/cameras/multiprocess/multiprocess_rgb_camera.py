@@ -1,4 +1,5 @@
 """Publisher and receiver classes for multiprocess camera sharing."""
+
 import multiprocessing
 import time
 from multiprocessing import Process, resource_tracker, shared_memory
@@ -9,6 +10,7 @@ import numpy as np
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
+from loguru import logger
 
 _RGB_SHM_NAME = "rgb"
 _RGB_SHAPE_SHM_NAME = "rgb_shape"
@@ -97,8 +99,10 @@ class MultiprocessRGBPublisher(Process):
         """
 
         # Instantiating a camera.
+        logger.info(f"Instantiating a {self._camera_cls.__name__} camera.")
         self._camera = self._camera_cls(**self._camera_kwargs)
         assert isinstance(self._camera, RGBCamera)  # Check whether user passed a valid camera class
+        logger.info(f"Successfully instantiated a {self._camera_cls.__name__} camera.")
 
         rgb_name = f"{self._shared_memory_namespace}_{_RGB_SHM_NAME}"
         rgb_shape_name = f"{self._shared_memory_namespace}_{_RGB_SHAPE_SHM_NAME}"
@@ -109,16 +113,20 @@ class MultiprocessRGBPublisher(Process):
         # Get the example arrays (this is the easiest way to initialize the shared memory blocks with the correct size).
         rgb = self._camera.get_rgb_image_as_int()  # We pass uint8 images as they consume 4x less memory
         rgb_shape = np.array(rgb.shape)
+        logger.info(f"Successfully retrieved an image of shape {rgb.shape} from the camera.")
+
         timestamp = np.array([time.time()])
         intrinsics = self._camera.intrinsics_matrix()
         fps = np.array([self._camera.fps], dtype=np.float64)
 
         # Create the shared memory blocks and numpy arrays that are backed by them.
+        logger.info("Creating shared memory blocks.")
         self.rgb_shm, self.rgb_shm_array = shared_memory_block_like(rgb, rgb_name)
         self.rgb_shape_shm, self.rgb_shape_shm_array = shared_memory_block_like(rgb_shape, rgb_shape_name)
         self.timestamp_shm, self.timestamp_shm_array = shared_memory_block_like(timestamp, timestamp_name)
         self.intrinsics_shm, self.intrinsics_shm_array = shared_memory_block_like(intrinsics, intrinsics_name)
         self.fps_shm, self.fps_shm_array = shared_memory_block_like(fps, fps_name)
+        logger.info("Shared memory blocks created.")
 
     def stop(self) -> None:
         self.shutdown_event.set()
@@ -136,6 +144,7 @@ class MultiprocessRGBPublisher(Process):
         whether it is possible to do this without having to spawn all processes from a single Python script (e.g. to
         pass the Lock object).
         """
+        logger.info(f"{self.__class__.__name__} started.")
         self._setup()
         assert isinstance(self._camera, RGBCamera)  # Just to make mypy happy, already checked in _setup()
 
@@ -152,6 +161,8 @@ class MultiprocessRGBPublisher(Process):
 
         However, I'm not sure how essential this actually is.
         """
+        logger.info(f"Unlinking shared memory blocks for namespace {self._shared_memory_namespace}.")
+
         # Assure mypy that these are not None anymore.
         assert isinstance(self.rgb_shm, shared_memory.SharedMemory)
         assert isinstance(self.rgb_shape_shm, shared_memory.SharedMemory)
@@ -203,10 +214,10 @@ class MultiprocessRGBReceiver(RGBCamera):
                 is_shm_found = True
                 break
             except FileNotFoundError:
-                print(
-                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" not found yet, retrying in 5 seconds.'
+                logger.info(
+                    f'SharedMemory namespace "{self._shared_memory_namespace}" not found yet, retrying in 2 seconds.'
                 )
-                time.sleep(5)
+                time.sleep(2)
 
         if not is_shm_found:
             raise FileNotFoundError("Shared memory not found.")
