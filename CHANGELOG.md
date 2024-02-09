@@ -17,14 +17,16 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 - `PointCloud` dataclass as the main data structure for point clouds in airo-mono
 - Notebooks to get started with point clouds, checking performance and logging to rerun
-- Functions to crop point clouds and filter points with a mask (e.g. low-confidence points))
+- Functions to crop point clouds and filter points with a mask (e.g. low-confidence points)
 - Functions to convert from our numpy-based dataclass to and from open3d point clouds
 - `BoundingBox3DType`
+- `Zed2i.ULTRA_DEPTH_MODE` to enable the ultra depth setting for the Zed2i cameras
 
 
 
 ### Changed
-- dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103)
+- Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
+- Set python version to 3.10 because of an issue with the `ur_rtde` wheels [#121](https://github.com/airo-ugent/airo-mono/issues/121). Updated README.md to reflect this change.
 
 ### Fixed
 - Fixed bug in `get_colored_point_cloud()` that removed some points see issue #25.
@@ -32,6 +34,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Removed camera imports in `airo_camera_toolkit.cameras`: see issue #110.
 - Added `__init__.py` to `realsense` and `utils` in `airo_camera_toolkit.cameras`, fixing installs with pip and issue #113.
 - Fixed bug that returned a transposed resolution in `MultiprocessRGBReceiver`.
+- Using `Zed2i.PERFORMANCE_DEPTH_MODE` will now correctly use the performance mode instead of the quality mode.
 
 ### Removed
 - `ColoredPointCloudType`
