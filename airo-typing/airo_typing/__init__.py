@@ -94,7 +94,7 @@ class JointPathContainer:
 @dataclass
 class SingleArmTrajectory:
     path: JointPathContainer
-    gripper_path: Optional[JointPathContainer]
+    gripper_path: Optional[JointPathContainer] = None
     times: TimesType  # time (seconds) from start of trajectory
 
 
@@ -102,8 +102,8 @@ class SingleArmTrajectory:
 class DualArmTrajectory:
     path_left: JointPathContainer
     path_right: JointPathContainer
-    gripper_left: Optional[JointPathContainer]
-    gripper_right: Optional[JointPathContainer]
+    gripper_path_left: Optional[JointPathContainer] = None
+    gripper_path_right: Optional[JointPathContainer] = None
     times: TimesType  # time (seconds) from start of trajectory
 
 
