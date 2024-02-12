@@ -113,8 +113,8 @@ PosePathType = np.ndarray
 
 @dataclass
 class PoseTrajectory:
+    times: TimesType
     poses: PosePathType
-    times: Optional[TimesType] = None
 
 
 ForwardKinematicsFunctionType = Callable[[JointConfigurationType], HomogeneousMatrixType]
