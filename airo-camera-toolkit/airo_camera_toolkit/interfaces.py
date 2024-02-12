@@ -104,6 +104,20 @@ class DepthCamera(Camera, abc.ABC):
         self._grab_images()
         return self._retrieve_depth_image()
 
+    @abc.abstractmethod
+    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+        """Returns the current depth map in the memory buffer."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _retrieve_depth_image(self) -> NumpyIntImageType:
+        """Returns the current depth image in the memory buffer."""
+        raise NotImplementedError
+
+
+class RGBDCamera(RGBCamera, DepthCamera):
+    """Base class for all RGBD cameras"""
+
     def get_colored_point_cloud(self) -> PointCloud:
         """Get the latest point cloud of the camera.
         The point cloud contains the estimated position in the camera frame of points on the image plane (pixels).
@@ -115,19 +129,6 @@ class DepthCamera(Camera, abc.ABC):
 
         self._grab_images()
         return self._retrieve_colored_point_cloud()
-
-        # # TODO: offer a base implementation that uses the depth map and the rgb image to construct this pointcloud?
-        # raise NotImplementedError
-
-    @abc.abstractmethod
-    def _retrieve_depth_map(self) -> NumpyDepthMapType:
-        """Returns the current depth map in the memory buffer."""
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def _retrieve_depth_image(self) -> NumpyIntImageType:
-        """Returns the current depth image in the memory buffer."""
-        raise NotImplementedError
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
         """Returns the current point cloud in the memory buffer.
@@ -155,10 +156,6 @@ class DepthCamera(Camera, abc.ABC):
 
         point_cloud = open3d_to_point_cloud(pcd)
         return point_cloud
-
-
-class RGBDCamera(RGBCamera, DepthCamera):
-    """Base class for all RGBD cameras"""
 
 
 class StereoRGBDCamera(RGBDCamera):
