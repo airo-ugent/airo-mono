@@ -2,7 +2,7 @@
 
 import multiprocessing
 import time
-from multiprocessing import Process, resource_tracker, shared_memory
+from multiprocessing import resource_tracker, shared_memory
 from typing import Optional, Tuple
 
 import cv2
@@ -30,13 +30,19 @@ def shared_memory_block_like(array: np.ndarray, name: str) -> Tuple[shared_memor
     Returns:
         The created shared memory block and a new array that is backed by the shared memory block.
     """
-    shm = shared_memory.SharedMemory(create=True, size=array.nbytes, name=name)
+    try:
+        shm = shared_memory.SharedMemory(create=True, size=array.nbytes, name=name)
+    except FileExistsError:
+        logger.warning(f"Shared memory block with name {name} already exists, reusing it.")
+        # If we close() and unlink() here, receivers that are already accessing it freeze.
+        shm = shared_memory.SharedMemory(create=False, size=array.nbytes, name=name)
     shm_array: np.ndarray = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
     shm_array[:] = array[:]
     return shm, shm_array
 
 
-class MultiprocessRGBPublisher(Process):
+# TODO: figure out why inheriting from SpawnProcess does not solve the issue.
+class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
     """Publishes the data of a camera that implements the RGBCamera interface to shared memory blocks.
     Shared memory blocks can then be accessed in other processes using their names,
     cf. https://docs.python.org/3/library/multiprocessing.shared_memory.html#module-multiprocessing.shared_memory
@@ -57,6 +63,10 @@ class MultiprocessRGBPublisher(Process):
             camera_kwargs (dict, optional): The kwargs that will be passed to the camera_cls constructor.
             shared_memory_namespace (str, optional): The string that will be used to prefix the shared memory blocks that this class will create.
         """
+
+        # context = multiprocessing.get_context("spawn")  # Default "fork" leads to CUDA issues.
+        # Why it is a good idea in general to spawn: https://pythonspeed.com/articles/python-multiprocessing/
+
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
         self._camera_cls = camera_cls
@@ -144,6 +154,7 @@ class MultiprocessRGBPublisher(Process):
         whether it is possible to do this without having to spawn all processes from a single Python script (e.g. to
         pass the Lock object).
         """
+
         logger.info(f"{self.__class__.__name__} started.")
         self._setup()
         assert isinstance(self._camera, RGBCamera)  # Just to make mypy happy, already checked in _setup()
@@ -153,16 +164,12 @@ class MultiprocessRGBPublisher(Process):
             self.rgb_shm_array[:] = image[:]
             self.timestamp_shm_array[:] = np.array([time.time()])[:]
 
-        self.unlink_shared_memory()
-
     def unlink_shared_memory(self) -> None:
         """Cleanup of the SharedMemory as recommended by the docs:
         https://docs.python.org/3/library/multiprocessing.shared_memory.html
 
         However, I'm not sure how essential this actually is.
         """
-        logger.info(f"Unlinking shared memory blocks for namespace {self._shared_memory_namespace}.")
-
         # Assure mypy that these are not None anymore.
         assert isinstance(self.rgb_shm, shared_memory.SharedMemory)
         assert isinstance(self.rgb_shape_shm, shared_memory.SharedMemory)
@@ -181,6 +188,9 @@ class MultiprocessRGBPublisher(Process):
         self.timestamp_shm.unlink()
         self.intrinsics_shm.unlink()
         self.fps_shm.unlink()
+
+    def __del__(self) -> None:
+        self.unlink_shared_memory()
 
 
 class MultiprocessRGBReceiver(RGBCamera):
@@ -220,7 +230,9 @@ class MultiprocessRGBReceiver(RGBCamera):
                 time.sleep(2)
 
         if not is_shm_found:
-            raise FileNotFoundError("Shared memory not found.")
+            raise FileNotFoundError(f'Shared memory "{self._shared_memory_namespace}" not found.')
+
+        logger.info(f'SharedMemory namespace "{self._shared_memory_namespace}" found.')
 
         # Normally, we wouldn't have to do this unregistering. However, without it, the resource tracker incorrectly
         # destroys access to the shared memory blocks when the process is terminated. This is a known 3 year old bug
@@ -297,6 +309,8 @@ if __name__ == "__main__":
     You can also use the MultiprocessRGBReceiver in a different process (e.g. in a different python script)
     """
     from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
+
+    multiprocessing.set_start_method("spawn")
 
     namespace = "camera"
 

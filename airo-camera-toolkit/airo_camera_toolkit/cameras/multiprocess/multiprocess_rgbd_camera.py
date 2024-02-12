@@ -70,6 +70,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
+
         self._setup()
         assert isinstance(self._camera, RGBDCamera)  # For mypy
 
@@ -82,8 +83,6 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
             self.depth_image_shm_array[:] = depth_image[:]
             self.timestamp_shm_array[:] = np.array([time.time()])[:]
 
-        self.unlink_shared_memory()
-
     def unlink_shared_memory(self) -> None:
         """unlink the shared memory blocks so that they are deleted when the process is terminated"""
         super().unlink_shared_memory()
@@ -95,6 +94,9 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         self.depth_image_shm.close()
         self.depth_shm.unlink()
         self.depth_image_shm.unlink()
+
+    def __del__(self) -> None:
+        self.unlink_shared_memory()
 
 
 class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
@@ -164,6 +166,7 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         self.depth_image_shm.close()
 
     def __del__(self) -> None:
+        super().__del__()
         self._close_shared_memory()
 
 
@@ -172,7 +175,11 @@ if __name__ == "__main__":
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
 
+    import multiprocessing
+
     from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
+
+    multiprocessing.set_start_method("spawn")
 
     resolution = Zed2i.RESOLUTION_720
 
@@ -184,13 +191,14 @@ if __name__ == "__main__":
             "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
     )
+
     p.start()
     receiver = MultiprocessRGBDReceiver("camera")
 
     while True:
         logger.info("Getting image")
         depth_map = receiver.get_depth_map()
-        depth_image = receiver.get_depth_image()
+        depth_image = receiver._retrieve_depth_image()
         cv2.imshow("Depth Map", depth_map)
         cv2.imshow("Depth Image", depth_image)
         key = cv2.waitKey(10)

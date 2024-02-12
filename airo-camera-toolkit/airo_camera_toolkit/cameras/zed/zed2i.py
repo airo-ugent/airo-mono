@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, List, Optional
 
+from loguru import logger
+
 try:
     import pyzed.sl as sl
 
@@ -121,12 +123,12 @@ class Zed2i(StereoRGBDCamera):
             status = self.camera.open(self.camera_params)
             if status == sl.ERROR_CODE.SUCCESS:
                 break
-            print(f"Opening Zed2i camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
+            logger.info(f"Opening Zed2i camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
             if self.serial_number:
-                print(f"Rebooting {self.serial_number}")
+                logger.info(f"Rebooting {self.serial_number}")
                 sl.Camera.reboot(self.serial_number)
             time.sleep(2)
-            print(sl.Camera.get_device_list())
+            logger.info(f"Available ZED cameras: {sl.Camera.get_device_list()}")
             self.camera = sl.Camera()
 
         if status != sl.ERROR_CODE.SUCCESS:
