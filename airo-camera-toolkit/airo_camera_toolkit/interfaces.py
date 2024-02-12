@@ -140,19 +140,19 @@ class RGBDCamera(RGBCamera, DepthCamera):
 
         image_rgb_uint8 = self._retrieve_rgb_image_as_int()
         depth_map = self._retrieve_depth_map()
-
-        resolution = image_rgb_uint8.shape[1], image_rgb_uint8.shape[0]
         intrinsics = self.intrinsics_matrix()
 
         # Convert airo-mono data types to open3d data types
         image_o3d = o3d.t.geometry.Image(image_rgb_uint8)
         depth_map_o3d = o3d.t.geometry.Image(depth_map)
-        rgbd_o3d = o3d.geometry.t.RGBDImage.create_from_color_and_depth(
-            image_o3d, depth_map_o3d, depth_scale=1.0, depth_max=1000.0, convert_rgb_to_intensity=False
-        )
-        intrinsics_o3d = o3d.t.camera.PinholeCameraIntrinsic(resolution[0], resolution[1], intrinsics)
+        rgbd_o3d = o3d.t.geometry.RGBDImage(image_o3d, depth_map_o3d)
 
-        pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_o3d, intrinsics_o3d)
+        pcd = o3d.t.geometry.PointCloud.create_from_rgbd_image(
+            rgbd_o3d,
+            intrinsics,
+            depth_scale=1.0,
+            depth_max=1000.0,
+        )
 
         point_cloud = open3d_to_point_cloud(pcd)
         return point_cloud
