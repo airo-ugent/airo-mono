@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -69,10 +69,62 @@ TwistType = np.ndarray
 shorthand notation is ^C T^B_A, where C is the frame the velocity is measured in, B is the frame the velocity is expressed in.
 """
 
-# manipulator types
+#####################
+# Manipulator types #
+#####################
 
 JointConfigurationType = np.ndarray
 """an (N,) numpy array that represents the joint angles for a robot"""
+
+JointPathType = np.ndarray
+""" a (T, N) array of joint states (can be position/velocity/acceleration) that describe a path in joint space"""
+
+TimesType = np.ndarray
+""" a (T,) array of monotonically increasing times (float), corresponding to a path"""
+
+
+@dataclass
+class JointPathContainer:
+    positions: Optional[JointPathType] = None
+    velocities: Optional[JointPathType] = None
+    accelerations: Optional[JointPathType] = None
+    efforts: Optional[JointPathType] = None
+
+
+@dataclass
+class SingleArmTrajectory:
+    times: TimesType  # time (seconds) from start of trajectory
+    path: JointPathContainer
+    gripper_path: Optional[JointPathContainer] = None
+
+
+@dataclass
+class DualArmTrajectory:
+    times: TimesType  # time (seconds) from start of trajectory
+    path_left: JointPathContainer
+    path_right: JointPathContainer
+    gripper_path_left: Optional[JointPathContainer] = None
+    gripper_path_right: Optional[JointPathContainer] = None
+
+
+PosePathType = np.ndarray
+""" a (T, 4, 4) list of homogeneous matrices that describe a path in cartesian space"""
+
+
+@dataclass
+class PoseTrajectory:
+    times: TimesType
+    poses: PosePathType
+
+
+ForwardKinematicsFunctionType = Callable[[JointConfigurationType], HomogeneousMatrixType]
+""" a function that computes the forward kinematics of a given joint configuration"""
+
+InverseKinematicsFunctionType = Callable[[HomogeneousMatrixType], List[JointConfigurationType]]
+""" a function that computes one or more inverse kinematics solutions of a given TCP pose"""
+
+JointConfigurationCheckerType = Callable[[JointConfigurationType], bool]
+""" a function that checks a certain condition on a joint configuration, e.g. collision checking"""
 
 ######################
 # camera related types
