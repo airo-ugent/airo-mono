@@ -170,6 +170,10 @@ class StereoRGBDCamera(RGBDCamera):
         self._grab_images()
         return self._retrieve_rgb_image(view)
 
+    def get_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
+        self._grab_images()
+        return self._retrieve_rgb_image_as_int(view)
+
     @abc.abstractmethod
     def _retrieve_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
         raise NotImplementedError

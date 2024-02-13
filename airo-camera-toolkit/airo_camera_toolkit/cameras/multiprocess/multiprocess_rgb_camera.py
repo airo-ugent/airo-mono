@@ -333,8 +333,7 @@ class MultiprocessRGBReceiver(RGBCamera):
             self.fps_shm = None
 
     def __del__(self) -> None:
-        if self.was_shm_found:
-            self._close_shared_memory()
+        self._close_shared_memory()
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_typing import NumpyDepthMapType, NumpyFloatImageType, NumpyIntImageType
 
 _DEPTH_SHM_NAME = "depth"
-_DEPTH__SHAPE_SHM_NAME = "depth_shape"
+_DEPTH_SHAPE_SHM_NAME = "depth_shape"
 _DEPTH_IMAGE_SHM_NAME = "depth_image"
 _DEPTH_IMAGE_SHAPE_SHM_NAME = "depth_image_shape"
 _CONFIDENCE_MAP_SHM_NAME = "confidence_map"
@@ -54,7 +54,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         assert isinstance(self._camera, RGBDCamera)
 
         depth_name = f"{self._shared_memory_namespace}_{_DEPTH_SHM_NAME}"
-        depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH__SHAPE_SHM_NAME}"
+        depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_SHAPE_SHM_NAME}"
         depth_image_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
         depth_image_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHAPE_SHM_NAME}"
         confidence_map_name = f"{self._shared_memory_namespace}_{_CONFIDENCE_MAP_SHM_NAME}"
@@ -160,7 +160,7 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         super().__init__(shared_memory_namespace)
 
         depth_name = f"{self._shared_memory_namespace}_{_DEPTH_SHM_NAME}"
-        depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH__SHAPE_SHM_NAME}"
+        depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_SHAPE_SHM_NAME}"
         depth_image_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
         depth_image_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHAPE_SHM_NAME}"
         confidence_map_name = f"{self._shared_memory_namespace}_{_CONFIDENCE_MAP_SHM_NAME}"
@@ -172,7 +172,6 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         self.depth_image_shape_shm = shared_memory.SharedMemory(name=depth_image_shape_name)
         self.confidence_map_shm = shared_memory.SharedMemory(name=confidence_map_name)
         self.confidence_map_shape_shm = shared_memory.SharedMemory(name=confidence_map_shape_name)
-        self.was_shm_found = True
 
         # Same comment as in base class:
         resource_tracker.unregister(self.depth_shm._name, "shared_memory")  # type: ignore[attr-defined]
@@ -242,8 +241,7 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
 
     def __del__(self) -> None:
         super().__del__()
-        if self.was_shm_found:
-            self._close_shared_memory()
+        self._close_shared_memory()
 
 
 if __name__ == "__main__":
