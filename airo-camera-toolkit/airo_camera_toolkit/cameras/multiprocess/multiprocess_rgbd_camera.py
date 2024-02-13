@@ -15,12 +15,14 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
 
 logger = loguru.logger
 from airo_camera_toolkit.interfaces import RGBDCamera
-from airo_typing import NumpyDepthMapType, NumpyIntImageType
+from airo_typing import NumpyDepthMapType, NumpyFloatImageType, NumpyIntImageType
 
 _DEPTH_SHM_NAME = "depth"
 _DEPTH__SHAPE_SHM_NAME = "depth_shape"
 _DEPTH_IMAGE_SHM_NAME = "depth_image"
 _DEPTH_IMAGE_SHAPE_SHM_NAME = "depth_image_shape"
+_CONFIDENCE_MAP_SHM_NAME = "confidence_map"
+_CONFIDENCE_MAP_SHAPE_SHM_NAME = "confidence_map_shape"
 
 
 class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
@@ -40,7 +42,11 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
 
         self.depth_shm: Optional[shared_memory.SharedMemory] = None
+        self.depth_shape_shm: Optional[shared_memory.SharedMemory] = None
         self.depth_image_shm: Optional[shared_memory.SharedMemory] = None
+        self.depth_image_shape_shm: Optional[shared_memory.SharedMemory] = None
+        self.confidence_map_shm: Optional[shared_memory.SharedMemory] = None
+        self.confidence_map_shape_shm: Optional[shared_memory.SharedMemory] = None
 
     def _setup(self) -> None:
         """in-process creation of camera object and shared memory blocks"""
@@ -51,12 +57,17 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH__SHAPE_SHM_NAME}"
         depth_image_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
         depth_image_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHAPE_SHM_NAME}"
+        confidence_map_name = f"{self._shared_memory_namespace}_{_CONFIDENCE_MAP_SHM_NAME}"
+        confidence_map_shape_name = f"{self._shared_memory_namespace}_{_CONFIDENCE_MAP_SHAPE_SHM_NAME}"
 
         depth_map = self._camera.get_depth_map()
         depth_map_shape = np.array([depth_map.shape])
-        depth_image = self._camera.get_depth_image()
+        depth_image = self._camera._retrieve_depth_image()
         depth_image_shape = np.array([depth_image.shape])
+        confidence_map = self._camera._retrieve_confidence_map()  # TODO this is not an interface function yet.
+        confidence_map_shape = np.array([confidence_map.shape])
 
+        logger.info("Creating depth shared memory blocks.")
         self.depth_shm, self.depth_shm_array = shared_memory_block_like(depth_map, depth_name)
         self.depth_shape_shm, self.depth_shape_shm_array = shared_memory_block_like(depth_map_shape, depth_shape_name)
         self.depth_image_shm, self.depth_image_shm_array = shared_memory_block_like(depth_image, depth_image_name)
@@ -64,6 +75,13 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
             self.depth_image_shape_shm,
             self.depth_image_shape_shm_array,
         ) = shared_memory_block_like(depth_image_shape, depth_image_shape_name)
+        self.confidence_map_shm, self.confidence_map_shm_array = shared_memory_block_like(
+            confidence_map, confidence_map_name
+        )
+        self.confidence_map_shape_shm, self.confidence_map_shape_shm_array = shared_memory_block_like(
+            confidence_map_shape, confidence_map_shape_name
+        )
+        logger.info("Created depth shared memory blocks.")
 
     def stop(self) -> None:
         self.shutdown_event.set()
@@ -71,29 +89,63 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
 
+        logger.info(f"{self.__class__.__name__} process started.")
         self._setup()
         assert isinstance(self._camera, RGBDCamera)  # For mypy
+        logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
 
-        while not self.shutdown_event.is_set():
-            image = self._camera.get_rgb_image_as_int()
-            depth_map = self._camera._retrieve_depth_map()
-            depth_image = self._camera._retrieve_depth_image()
-            self.rgb_shm_array[:] = image[:]
-            self.depth_shm_array[:] = depth_map[:]
-            self.depth_image_shm_array[:] = depth_image[:]
-            self.timestamp_shm_array[:] = np.array([time.time()])[:]
+        try:
+            while not self.shutdown_event.is_set():
+                image = self._camera.get_rgb_image_as_int()
+                depth_map = self._camera._retrieve_depth_map()
+                depth_image = self._camera._retrieve_depth_image()
+                confidence_map = self._camera._retrieve_confidence_map()
+                self.rgb_shm_array[:] = image[:]
+                self.depth_shm_array[:] = depth_map[:]
+                self.depth_image_shm_array[:] = depth_image[:]
+                self.confidence_map_shm_array[:] = confidence_map[:]
+                self.timestamp_shm_array[:] = np.array([time.time()])[:]
+                self.running_event.set()
+        except Exception as e:
+            logger.error(f"Error in {self.__class__.__name__}: {e}")
+        finally:
+            self.unlink_shared_memory()
+            logger.info(f"{self.__class__.__name__} process terminated.")
 
     def unlink_shared_memory(self) -> None:
         """unlink the shared memory blocks so that they are deleted when the process is terminated"""
         super().unlink_shared_memory()
+        print(f"Unlinking depth shared memory blocks of {self.__class__.__name__}")
 
-        assert isinstance(self.depth_shm, shared_memory.SharedMemory)
-        assert isinstance(self.depth_image_shm, shared_memory.SharedMemory)
+        if self.depth_shm is not None:
+            self.depth_shm.close()
+            self.depth_shm.unlink()
+            self.depth_shm = None
 
-        self.depth_shm.close()
-        self.depth_image_shm.close()
-        self.depth_shm.unlink()
-        self.depth_image_shm.unlink()
+        if self.depth_shape_shm is not None:
+            self.depth_shape_shm.close()
+            self.depth_shape_shm.unlink()
+            self.depth_shape_shm = None
+
+        if self.depth_image_shm is not None:
+            self.depth_image_shm.close()
+            self.depth_image_shm.unlink()
+            self.depth_image_shm = None
+
+        if self.depth_image_shape_shm is not None:
+            self.depth_image_shape_shm.close()
+            self.depth_image_shape_shm.unlink()
+            self.depth_image_shape_shm = None
+
+        if self.confidence_map_shm is not None:
+            self.confidence_map_shm.close()
+            self.confidence_map_shm.unlink()
+            self.confidence_map_shm = None
+
+        if self.confidence_map_shape_shm is not None:
+            self.confidence_map_shape_shm.close()
+            self.confidence_map_shape_shm.unlink()
+            self.confidence_map_shape_shm = None
 
     def __del__(self) -> None:
         self.unlink_shared_memory()
@@ -111,48 +163,44 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH__SHAPE_SHM_NAME}"
         depth_image_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
         depth_image_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHAPE_SHM_NAME}"
+        confidence_map_name = f"{self._shared_memory_namespace}_{_CONFIDENCE_MAP_SHM_NAME}"
+        confidence_map_shape_name = f"{self._shared_memory_namespace}_{_CONFIDENCE_MAP_SHAPE_SHM_NAME}"
 
-        # Attach to existing shared memory blocks. Retry a few times to give the publisher time to start up (opening
-        # connection to a camera can take a while).
-        is_shm_found = False
-        for i in range(10):
-            try:
-                self.depth_shm = shared_memory.SharedMemory(name=depth_name)
-                self.depth_shape_shm = shared_memory.SharedMemory(name=depth_shape_name)
-                self.depth_image_shm = shared_memory.SharedMemory(name=depth_image_name)
-                self.depth_image_shape_shm = shared_memory.SharedMemory(name=depth_image_shape_name)
-                is_shm_found = True
-                break
-            except FileNotFoundError:
-                logger.info(
-                    f'SharedMemory namespace "{self._shared_memory_namespace}" (RGBD) not found yet, retrying in 2 seconds.'
-                )
-                time.sleep(2)
-
-        if not is_shm_found:
-            raise FileNotFoundError("Shared memory not found.")
+        self.depth_shm = shared_memory.SharedMemory(name=depth_name)
+        self.depth_shape_shm = shared_memory.SharedMemory(name=depth_shape_name)
+        self.depth_image_shm = shared_memory.SharedMemory(name=depth_image_name)
+        self.depth_image_shape_shm = shared_memory.SharedMemory(name=depth_image_shape_name)
+        self.confidence_map_shm = shared_memory.SharedMemory(name=confidence_map_name)
+        self.confidence_map_shape_shm = shared_memory.SharedMemory(name=confidence_map_shape_name)
+        self.was_shm_found = True
 
         # Same comment as in base class:
         resource_tracker.unregister(self.depth_shm._name, "shared_memory")  # type: ignore[attr-defined]
         resource_tracker.unregister(self.depth_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
         resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")  # type: ignore[attr-defined]
         resource_tracker.unregister(self.depth_image_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.confidence_map_shm._name, "shared_memory")  # type: ignore[attr-defined)
+        resource_tracker.unregister(self.confidence_map_shape_shm._name, "shared_memory")  # type: ignore[attr-defined)
 
         self.depth_shape_shm_array: np.ndarray = np.ndarray((2,), dtype=np.int64, buffer=self.depth_shape_shm.buf)
         self.depth_image_shape_shm_array: np.ndarray = np.ndarray(
             (3,), dtype=np.int64, buffer=self.depth_image_shape_shm.buf
         )
+        self.confidence_map_shape_shm_array: np.ndarray = np.ndarray(
+            (2,), dtype=np.int64, buffer=self.confidence_map_shape_shm.buf
+        )
 
         depth_shape = tuple(self.depth_shape_shm_array[:])
         depth_image_shape = tuple(self.depth_image_shape_shm_array[:])
+        confidence_map_shape = tuple(self.confidence_map_shape_shm_array[:])
 
         self.depth_shm_array: np.ndarray = np.ndarray(depth_shape, dtype=np.float32, buffer=self.depth_shm.buf)
         self.depth_image_shm_array: np.ndarray = np.ndarray(
             depth_image_shape, dtype=np.uint8, buffer=self.depth_image_shm.buf
         )
-
-        self.previous_depth_map_timestamp = time.time()
-        self.previous_depth_image_timestamp = time.time()
+        self.confidence_map_shm_array: np.ndarray = np.ndarray(
+            confidence_map_shape, dtype=np.float32, buffer=self.confidence_map_shm.buf
+        )
 
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
         return self.depth_shm_array
@@ -160,14 +208,42 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
     def _retrieve_depth_image(self) -> NumpyIntImageType:
         return self.depth_image_shm_array
 
+    def _retrieve_confidence_map(self) -> NumpyFloatImageType:
+        return self.confidence_map_shm_array
+
     def _close_shared_memory(self) -> None:
         """Closing shared memory signal that"""
-        self.depth_shm.close()
-        self.depth_image_shm.close()
+        super()._close_shared_memory()
+        print(f"Closing depth shared memory blocks of {self.__class__.__name__}")
+
+        if self.depth_shm is not None:
+            self.depth_shm.close()
+            self.depth_shm = None
+
+        if self.depth_shape_shm is not None:
+            self.depth_shape_shm.close()
+            self.depth_shape_shm = None
+
+        if self.depth_image_shm is not None:
+            self.depth_image_shm.close()
+            self.depth_image_shm = None
+
+        if self.depth_image_shape_shm is not None:
+            self.depth_image_shape_shm.close()
+            self.depth_image_shape_shm = None
+
+        if self.confidence_map_shm is not None:
+            self.confidence_map_shm.close()
+            self.confidence_map_shm = None
+
+        if self.confidence_map_shape_shm is not None:
+            self.confidence_map_shape_shm.close()
+            self.confidence_map_shape_shm = None
 
     def __del__(self) -> None:
         super().__del__()
-        self._close_shared_memory()
+        if self.was_shm_found:
+            self._close_shared_memory()
 
 
 if __name__ == "__main__":
@@ -183,7 +259,7 @@ if __name__ == "__main__":
 
     resolution = Zed2i.RESOLUTION_720
 
-    p = MultiprocessRGBDPublisher(
+    publisher = MultiprocessRGBDPublisher(
         Zed2i,
         camera_kwargs={
             "resolution": resolution,
@@ -192,15 +268,28 @@ if __name__ == "__main__":
         },
     )
 
-    p.start()
+    publisher.start()
     receiver = MultiprocessRGBDReceiver("camera")
+
+    cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
 
     while True:
         logger.info("Getting image")
         depth_map = receiver.get_depth_map()
         depth_image = receiver._retrieve_depth_image()
+        confidence_map = receiver._retrieve_confidence_map()
+        # point_cloud = receiver._retrieve_colored_point_cloud()
+
         cv2.imshow("Depth Map", depth_map)
         cv2.imshow("Depth Image", depth_image)
+        cv2.imshow("Confidence Map", confidence_map)
+
         key = cv2.waitKey(10)
         if key == ord("q"):
             break
+
+    receiver._close_shared_memory()
+    publisher.stop()
+    publisher.join()

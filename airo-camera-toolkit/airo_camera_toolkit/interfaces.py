@@ -147,6 +147,7 @@ class RGBDCamera(RGBCamera, DepthCamera):
         depth_map_o3d = o3d.t.geometry.Image(depth_map)
         rgbd_o3d = o3d.t.geometry.RGBDImage(image_o3d, depth_map_o3d)
 
+        # Note this is quite slow, > 100ms for a 2K image
         pcd = o3d.t.geometry.PointCloud.create_from_rgbd_image(
             rgbd_o3d,
             intrinsics,
