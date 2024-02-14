@@ -52,7 +52,7 @@ class OpenCVVideoCapture(RGBCamera):
             )
         return self._intrinsics_matrix
 
-    def _grab_images(self):
+    def _grab_images(self) -> None:
         ret, image = self.video_capture.read()
         if not ret:
             raise RuntimeError("Can't receive frame (stream end?). Exiting...")
