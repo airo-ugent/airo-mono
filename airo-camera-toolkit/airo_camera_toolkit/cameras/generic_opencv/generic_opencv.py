@@ -10,7 +10,7 @@ from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyF
 
 
 class OpenCVVideoCapture(RGBCamera):
-    """Wrapper around OpenCV's VideoCapure so we can test the camera interface without external cameras."""
+    """Wrapper around OpenCV's VideoCapture so we can test the camera interface without external cameras."""
 
     def __init__(
         self, video_capture_args: Tuple[Any] = (0,), intrinsics_matrix: Optional[CameraIntrinsicsMatrixType] = None
