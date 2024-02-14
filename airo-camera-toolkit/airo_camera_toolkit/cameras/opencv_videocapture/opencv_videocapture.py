@@ -13,8 +13,20 @@ from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyF
 class OpenCVVideoCapture(RGBCamera):
     """Wrapper around OpenCV's VideoCapture so we can test the camera interface without external cameras."""
 
+    # Some standard resolutions that are likely to be supported by webcams.
+    # 16:9
+    RESOLUTION_1080 = (1920, 1080)
+    RESOLUTION_720 = (1280, 720)
+    # 4:3
+    RESOLUTION_768 = (1024, 768)
+    RESOLUTION_480 = (640, 480)
+
     def __init__(
-        self, video_capture_args: Tuple[Any] = (0,), intrinsics_matrix: Optional[CameraIntrinsicsMatrixType] = None
+        self,
+        video_capture_args: Tuple[Any] = (0,),
+        intrinsics_matrix: Optional[CameraIntrinsicsMatrixType] = None,
+        resolution: CameraResolutionType = RESOLUTION_480,
+        fps: int = 30,
     ) -> None:
         self.video_capture = cv2.VideoCapture(*video_capture_args)
 
@@ -26,9 +38,15 @@ class OpenCVVideoCapture(RGBCamera):
         if not self.video_capture.isOpened():
             raise RuntimeError(f"Cannot open camera {video_capture_args[0]}. Is it connected?")
 
-        self.fps = self.video_capture.get(cv2.CAP_PROP_FPS)
+        # Note that the following will not forcibly set the resolution. If the user's webcam
+        # does not support the desired resolution, OpenCV will silently select a close match.
+        self.video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+        self.video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+        self.video_capture.set(cv2.CAP_PROP_FPS, fps)
+
         self._intrinsics_matrix = intrinsics_matrix
 
+        self.fps = self.video_capture.get(cv2.CAP_PROP_FPS)
         self._resolution = (
             math.floor(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
             math.floor(self.video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT)),
