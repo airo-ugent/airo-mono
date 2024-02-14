@@ -7,6 +7,8 @@ This subpackage contains implementations of the camera interface for the cameras
 
 It also contains code to enable multiprocessed use of the camera streams: [multiprocessed camera](./multiprocess/)
 
+There is also an implementation for generic RGB cameras using OpenCV `VideoCapture`: [generic OpenCV camera](./generic_opencv/)
+
 ## 1. Installation
 Implementations usually require the installation of SDKs, drivers etc. to communicate with the camera.
 This information can be found in `READMEs` for each camera:
