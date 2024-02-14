@@ -21,7 +21,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Functions to convert from our numpy-based dataclass to and from open3d point clouds
 - `BoundingBox3DType`
 - `Zed2i.ULTRA_DEPTH_MODE` to enable the ultra depth setting for the Zed2i cameras
-
+- `OpenCVVideoCapture` implementation of `RGBCamera` for working with arbitrary cameras
 
 
 ### Changed
