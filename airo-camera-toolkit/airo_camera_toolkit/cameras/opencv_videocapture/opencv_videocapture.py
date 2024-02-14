@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 from typing import Any, Optional, Tuple
 
 import cv2
@@ -16,8 +17,14 @@ class OpenCVVideoCapture(RGBCamera):
         self, video_capture_args: Tuple[Any] = (0,), intrinsics_matrix: Optional[CameraIntrinsicsMatrixType] = None
     ) -> None:
         self.video_capture = cv2.VideoCapture(*video_capture_args)
+
+        # If passing a video file, we want to check if it exists. Then, we can throw a more meaningful
+        # error if it does not.
+        if len(video_capture_args) > 0 and isinstance(video_capture_args[0], str):
+            if not os.path.isfile(video_capture_args[0]):
+                raise FileNotFoundError(f"Could not find video file {video_capture_args[0]}")
         if not self.video_capture.isOpened():
-            raise RuntimeError("Cannot open camera")
+            raise RuntimeError(f"Cannot open camera {video_capture_args[0]}. Is it connected?")
 
         self.fps = self.video_capture.get(cv2.CAP_PROP_FPS)
         self._intrinsics_matrix = intrinsics_matrix
