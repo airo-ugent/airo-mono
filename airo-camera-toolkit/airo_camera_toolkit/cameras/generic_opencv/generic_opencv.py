@@ -67,14 +67,24 @@ class OpenCVVideoCapture(RGBCamera):
 
 
 if __name__ == "__main__":
-    camera = OpenCVVideoCapture()
+    import airo_camera_toolkit.cameras.manual_test_hw as test
+    import numpy as np
+
+    camera = OpenCVVideoCapture(intrinsics_matrix=np.eye(3))
+
+    # Perform tests
+    test.manual_test_camera(camera)
+    test.manual_test_rgb_camera(camera)
+    test.profile_rgb_throughput(camera)
+
+    # Live viewer
+    cv2.namedWindow("OpenCV Webcam RGB", cv2.WINDOW_NORMAL)
 
     while True:
-        image = camera.get_rgb_image()
-        print(image.shape)
-        image = ImageConverter.from_numpy_format(image).image_in_opencv_format
+        color_image = camera.get_rgb_image_as_int()
+        color_image = ImageConverter.from_numpy_int_format(color_image).image_in_opencv_format
 
-        cv2.imshow("VideoCapture", image)
-        key = cv2.waitKey(10)
+        cv2.imshow("OpenCV Webcam RGB", color_image)
+        key = cv2.waitKey(1)
         if key == ord("q"):
             break
