@@ -56,6 +56,8 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         self.point_cloud_colors_shm: Optional[shared_memory.SharedMemory] = None
         self.point_cloud_colors_shape_shm: Optional[shared_memory.SharedMemory] = None
 
+        self.publish_depth_image = True
+
     def _setup(self) -> None:
         """in-process creation of camera object and shared memory blocks"""
         super()._setup()
@@ -126,13 +128,24 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         try:
             while not self.shutdown_event.is_set():
                 start_time = time.time()
+                start_grab_time = time.time()
                 image = self._camera.get_rgb_image_as_int()
+                end_grab_time = time.time()
+                start_depth_time = time.time()
                 depth_map = self._camera._retrieve_depth_map()
-                depth_image = self._camera._retrieve_depth_image()
+                end_depth_time = time.time()
+                if self.publish_depth_image:
+                    depth_image = self._camera._retrieve_depth_image()
                 confidence_map = self._camera._retrieve_confidence_map()
+
+                start_point_cloud_time = time.time()
+
                 point_cloud = self._camera._retrieve_colored_point_cloud()
+                end_point_cloud_time = time.time()
                 end_time = time.time()
-                logger.info(f"Time to grab images: {end_time - start_time:.3f} s")
+                logger.info(
+                    f"Time to retrieve images: {end_time - start_time:.3f} s, grab time: {end_grab_time - start_grab_time:.3f} s, depth time: {end_depth_time - start_depth_time:.3f} s, point cloud time {end_point_cloud_time - start_point_cloud_time:.3f}."
+                )
 
                 start_time = time.time()
                 while self.read_lock_shm_array[0] > 0 and self.write_lock_shm_array[0]:
@@ -142,13 +155,29 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
 
                 start_time = time.time()
                 self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+
+                import threading
+
+                def copy_to_shm_array(shm_array, array):
+                    shm_array[:] = array[:]  # not sure it second [:] is needed
+
+                # Do this copy in a separate thread, because it's the slowest:
+                # self.point_cloud_positions_shm_array[:] = point_cloud.points[:]
+                point_cloud_thread = threading.Thread(
+                    target=lambda: copy_to_shm_array(self.point_cloud_positions_shm_array, point_cloud.points)
+                )
+                point_cloud_thread.start()
+
                 self.rgb_shm_array[:] = image[:]
                 self.depth_shm_array[:] = depth_map[:]
-                self.depth_image_shm_array[:] = depth_image[:]
+                if self.publish_depth_image:
+                    self.depth_image_shm_array[:] = depth_image[:]
                 self.confidence_map_shm_array[:] = confidence_map[:]
-                self.point_cloud_positions_shm_array[:] = point_cloud.points[:]
                 self.point_cloud_colors_shm_array[:] = point_cloud.colors[:]
                 self.timestamp_shm_array[:] = np.array([time.time()])[:]
+
+                point_cloud_thread.join()
+
                 self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
                 end_time = time.time()
                 logger.info(f"Time to write to shared memory: {end_time - start_time:.3f} s")
@@ -330,7 +359,6 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         return self.confidence_map_buffer_array
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
-        logger.debug("Retrieving point cloud (TO BUFFER).")
         while self.write_lock_shm_array[0]:
             time.sleep(0.00001)
         self.read_lock_shm_array[0] += 1
@@ -412,6 +440,8 @@ if __name__ == "__main__":
             "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
     )
+
+    publisher.publish_depth_image = True
 
     publisher.start()
     receiver = MultiprocessRGBDReceiver("camera")

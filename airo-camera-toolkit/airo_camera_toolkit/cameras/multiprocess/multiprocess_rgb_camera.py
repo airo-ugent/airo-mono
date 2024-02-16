@@ -87,6 +87,7 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
         self.intrinsics_shm: Optional[shared_memory.SharedMemory] = None
         self.fps_shm: Optional[shared_memory.SharedMemory] = None
         self.write_lock_shm: Optional[shared_memory.SharedMemory] = None
+        self.read_lock_shm: Optional[shared_memory.SharedMemory] = None
 
     def start(self) -> None:
         """Starts the process. The process will not start until this method is called."""
@@ -346,7 +347,6 @@ class MultiprocessRGBReceiver(RGBCamera):
         return image
 
     def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
-        logger.debug("Retrieving RGB (TO BUFFER).")
         while self.write_lock_shm_array[0]:
             time.sleep(0.00001)
         self.read_lock_shm_array[0] += 1

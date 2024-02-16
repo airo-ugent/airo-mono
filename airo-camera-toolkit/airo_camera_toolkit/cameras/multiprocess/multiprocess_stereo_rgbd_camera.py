@@ -90,14 +90,21 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
                 image = self._camera.get_rgb_image_as_int()
                 image_right = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
                 depth_map = self._camera._retrieve_depth_map()
-                depth_image = self._camera._retrieve_depth_image()
+                if self.publish_depth_image:
+                    depth_image = self._camera._retrieve_depth_image()
                 confidence_map = self._camera._retrieve_confidence_map()
                 point_cloud = self._camera._retrieve_colored_point_cloud()
-                self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+
+                while self.read_lock_shm_array[0] > 0 and self.write_lock_shm_array[0]:
+                    time.sleep(0.00001)
+
                 self.rgb_shm_array[:] = image[:]
                 self.rgb_right_shm_array[:] = image_right[:]
                 self.depth_shm_array[:] = depth_map[:]
-                self.depth_image_shm_array[:] = depth_image[:]
+
+                if self.publish_depth_image:
+                    self.depth_image_shm_array[:] = depth_image[:]
+
                 self.confidence_map_shm_array[:] = confidence_map[:]
                 self.point_cloud_positions_shm_array[:] = point_cloud.points[:]
                 self.point_cloud_colors_shm_array[:] = point_cloud.colors[:]
@@ -189,15 +196,14 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
 
         # doing arr[0] = True/False might also work
         if view == StereoRGBDCamera.LEFT_RGB:
-            self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+            self.read_lock_shm_array[0] += 1
             self.rgb_buffer_array[:] = self.rgb_shm_array[:]
-            self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+            self.read_lock_shm_array[0] -= 1
             return self.rgb_buffer_array
         elif view == StereoRGBDCamera.RIGHT_RGB:
-            logger.debug("Retrieving RGB RIGHT (TO BUFFER).")
-            self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+            self.read_lock_shm_array[0] += 1
             self.rgb_right_buffer_array[:] = self.rgb_right_shm_array[:]
-            self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+            self.read_lock_shm_array[0] -= 1
             return self.rgb_right_buffer_array
         else:
             raise ValueError(f"Unknown view: {view}")
@@ -262,6 +268,8 @@ if __name__ == "__main__":
             "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
     )
+
+    publisher.publish_depth_image = False
 
     publisher.start()
     receiver = MultiprocessStereoRGBDReceiver("camera")
