@@ -176,6 +176,8 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
             rgb_right_shape, dtype=np.uint8, buffer=self.rgb_right_shm.buf
         )
 
+        self.rgb_right_buffer_array = np.ndarray(rgb_right_shape, dtype=np.uint8)
+
     def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         image = self._retrieve_rgb_image_as_int(view)
         image = ImageConverter.from_numpy_int_format(image).image_in_numpy_format
@@ -183,19 +185,20 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
 
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         while self.read_write_lock_shm_array[0]:
-            time.sleep(0.0001)
+            time.sleep(0.00001)
 
         # doing arr[0] = True/False might also work
         if view == StereoRGBDCamera.LEFT_RGB:
             self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
-            image_left = self.rgb_shm_array[:].copy()
+            self.rgb_buffer_array[:] = self.rgb_shm_array[:]
             self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
-            return image_left
+            return self.rgb_buffer_array
         elif view == StereoRGBDCamera.RIGHT_RGB:
+            logger.debug("Retrieving RGB RIGHT (TO BUFFER).")
             self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
-            image_right = self.rgb_right_shm_array[:].copy()
+            self.rgb_right_buffer_array[:] = self.rgb_right_shm_array[:]
             self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
-            return image_right
+            return self.rgb_right_buffer_array
         else:
             raise ValueError(f"Unknown view: {view}")
 
@@ -248,13 +251,14 @@ if __name__ == "__main__":
 
     multiprocessing.set_start_method("spawn")
 
-    resolution = Zed2i.RESOLUTION_720
+    resolution = Zed2i.RESOLUTION_2K
+    camera_fps = 15
 
     publisher = MultiprocessStereoRGBDPublisher(
         Zed2i,
         camera_kwargs={
             "resolution": resolution,
-            "fps": 30,
+            "fps": camera_fps,
             "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
     )
@@ -273,14 +277,25 @@ if __name__ == "__main__":
     cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
     cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
 
+    import rerun as rr
+
+    rr.init(f"{MultiprocessStereoRGBDReceiver.__name__} - Point cloud", spawn=True)
+
+    log_point_cloud = False
+
+    time_current = None
+    time_previous = None
+
     while True:
-        # logger.info("Getting image")
+        time_previous = time_current
+        time_current = time.time()
+
         image = receiver.get_rgb_image_as_int()
         image_right = receiver._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
         depth_map = receiver._retrieve_depth_map()
         depth_image = receiver._retrieve_depth_image()
         confidence_map = receiver._retrieve_confidence_map()
-        # point_cloud = receiver._retrieve_colored_point_cloud()
+        point_cloud = receiver._retrieve_colored_point_cloud()
 
         image_bgr = ImageConverter.from_numpy_int_format(image).image_in_opencv_format
         image_right_bgr = ImageConverter.from_numpy_int_format(image_right).image_in_opencv_format
@@ -291,9 +306,24 @@ if __name__ == "__main__":
         cv2.imshow("Depth Image", depth_image)
         cv2.imshow("Confidence Map", confidence_map)
 
+        if log_point_cloud:
+            rr.log("point_cloud", rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors))
+
         key = cv2.waitKey(10)
         if key == ord("q"):
             break
+        elif key == ord("l"):
+            log_point_cloud = not log_point_cloud
+
+        if time_previous is not None:
+            fps = 1 / (time_current - time_previous)
+
+            fps_str = f"{fps:.2f}".rjust(6, " ")
+            camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
+            if fps < 0.9 * camera_fps:
+                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (recorder might be missing frames)")
+            else:
+                logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 
     receiver._close_shared_memory()
     publisher.stop()

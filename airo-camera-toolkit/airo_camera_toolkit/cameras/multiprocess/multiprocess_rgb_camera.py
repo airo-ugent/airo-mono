@@ -299,6 +299,9 @@ class MultiprocessRGBReceiver(RGBCamera):
         rgb_shape = tuple(self.rgb_shape_shm_array[:])
         self.rgb_shm_array: np.ndarray = np.ndarray(rgb_shape, dtype=np.uint8, buffer=self.rgb_shm.buf)
 
+        # Preallocate the buffer array to avoid reallocation at each retrieve.
+        self.rgb_buffer_array = np.ndarray(rgb_shape, dtype=np.uint8)
+
         self.previous_timestamp = time.time()
 
     def get_current_timestamp(self) -> float:
@@ -317,7 +320,7 @@ class MultiprocessRGBReceiver(RGBCamera):
 
     def _grab_images(self) -> None:
         while not self.get_current_timestamp() > self.previous_timestamp:
-            time.sleep(0.001)
+            time.sleep(0.0001)
         self.previous_timestamp = self.get_current_timestamp()
 
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
@@ -327,12 +330,13 @@ class MultiprocessRGBReceiver(RGBCamera):
         return image
 
     def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+        logger.debug("Retrieving RGB (TO BUFFER).")
         while self.read_write_lock_shm_array[0]:
-            time.sleep(0.0001)
+            time.sleep(0.00001)
         self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
-        image_rgb = self.rgb_shm_array.copy()
+        self.rgb_buffer_array[:] = self.rgb_shm_array[:]
         self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
-        return image_rgb
+        return self.rgb_buffer_array
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         return self.intrinsics_shm_array
@@ -377,15 +381,17 @@ if __name__ == "__main__":
 
     multiprocessing.set_start_method("spawn")
 
+    resolution = Zed2i.RESOLUTION_2K
+    camera_fps = 15
     namespace = "camera"
 
     # Creating and starting the publisher
     publisher = MultiprocessRGBPublisher(
         Zed2i,
         camera_kwargs={
-            "resolution": Zed2i.RESOLUTION_1080,
-            "fps": 30,
-            "depth_mode": Zed2i.NONE_DEPTH_MODE,
+            "resolution": resolution,
+            "fps": camera_fps,
+            "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
         shared_memory_namespace=namespace,
     )
@@ -395,13 +401,30 @@ if __name__ == "__main__":
     receiver = MultiprocessRGBReceiver(namespace)
 
     cv2.namedWindow(namespace, cv2.WINDOW_NORMAL)
+
+    time_current = None
+    time_previous = None
+
     while True:
+        time_previous = time_current
+        time_current = time.time()
+
         image_rgb = receiver.get_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
         cv2.imshow(namespace, image)
         key = cv2.waitKey(10)
         if key == ord("q"):
             break
+
+        if time_previous is not None:
+            fps = 1 / (time_current - time_previous)
+
+            fps_str = f"{fps:.2f}".rjust(6, " ")
+            camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
+            if fps < 0.9 * camera_fps:
+                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (recorder might be missing frames)")
+            else:
+                logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 
     receiver._close_shared_memory()
     publisher.stop()

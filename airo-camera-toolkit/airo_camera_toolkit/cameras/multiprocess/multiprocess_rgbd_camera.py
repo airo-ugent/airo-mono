@@ -52,7 +52,9 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         self.confidence_map_shm: Optional[shared_memory.SharedMemory] = None
         self.confidence_map_shape_shm: Optional[shared_memory.SharedMemory] = None
         self.point_cloud_positions_shm: Optional[shared_memory.SharedMemory] = None
+        self.point_cloud_positions_shape_shm: Optional[shared_memory.SharedMemory] = None
         self.point_cloud_colors_shm: Optional[shared_memory.SharedMemory] = None
+        self.point_cloud_colors_shape_shm: Optional[shared_memory.SharedMemory] = None
 
     def _setup(self) -> None:
         """in-process creation of camera object and shared memory blocks"""
@@ -284,38 +286,46 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
             point_cloud_colors_shape, dtype=np.uint8, buffer=self.point_cloud_colors_shm.buf
         )
 
+        self.depth_buffer_array = np.ndarray(depth_shape, dtype=np.float32)
+        self.depth_image_buffer_array = np.ndarray(depth_image_shape, dtype=np.uint8)
+        self.confidence_map_buffer_array = np.ndarray(confidence_map_shape, dtype=np.float32)
+        self.point_cloud_positions_buffer_array = np.ndarray(point_cloud_positions_shape, dtype=np.float32)
+        self.point_cloud_colors_buffer_array = np.ndarray(point_cloud_colors_shape, dtype=np.uint8)
+
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
         while self.read_write_lock_shm_array[0]:
-            time.sleep(0.0001)
+            time.sleep(0.00001)
         self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
-        depth_map = self.depth_shm_array.copy()
+        self.depth_buffer_array[:] = self.depth_shm_array[:]
         self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
-        return depth_map
+        return self.depth_buffer_array
 
     def _retrieve_depth_image(self) -> NumpyIntImageType:
         while self.read_write_lock_shm_array[0]:
-            time.sleep(0.0001)
+            time.sleep(0.00001)
         self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
-        depth_image = self.depth_image_shm_array.copy()
+        self.depth_image_buffer_array[:] = self.depth_image_shm_array[:]
         self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
-        return depth_image
+        return self.depth_image_buffer_array
 
     def _retrieve_confidence_map(self) -> NumpyFloatImageType:
         while self.read_write_lock_shm_array[0]:
-            time.sleep(0.0001)
+            time.sleep(0.00001)
         self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
-        confidence_map = self.confidence_map_shm_array.copy()
+        self.confidence_map_buffer_array[:] = self.confidence_map_shm_array[:]
         self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
-        return confidence_map
+        return self.confidence_map_buffer_array
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
+        logger.debug("Retrieving point cloud (TO BUFFER).")
         while self.read_write_lock_shm_array[0]:
-            time.sleep(0.0001)
+            time.sleep(0.00001)
         self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
-        positions = self.point_cloud_positions_shm_array.copy()
-        colors = self.point_cloud_colors_shm_array.copy()
+        self.point_cloud_positions_buffer_array[:] = self.point_cloud_positions_shm_array[:]
+        self.point_cloud_colors_buffer_array[:] = self.point_cloud_colors_shm_array[:]
+
         self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
-        point_cloud = PointCloud(positions, colors)
+        point_cloud = PointCloud(self.point_cloud_positions_buffer_array, self.point_cloud_colors_buffer_array)
         return point_cloud
 
     def _close_shared_memory(self) -> None:  # noqa C901
@@ -379,13 +389,14 @@ if __name__ == "__main__":
 
     multiprocessing.set_start_method("spawn")
 
-    resolution = Zed2i.RESOLUTION_720
+    resolution = Zed2i.RESOLUTION_2K
+    camera_fps = 15
 
     publisher = MultiprocessRGBDPublisher(
         Zed2i,
         camera_kwargs={
             "resolution": resolution,
-            "fps": 30,
+            "fps": camera_fps,
             "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
     )
@@ -397,8 +408,13 @@ if __name__ == "__main__":
     cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
     cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
 
+    time_current = None
+    time_previous = None
+
     while True:
-        logger.info("Getting image")
+        time_previous = time_current
+        time_current = time.time()
+
         depth_map = receiver.get_depth_map()
         depth_image = receiver._retrieve_depth_image()
         confidence_map = receiver._retrieve_confidence_map()
@@ -411,6 +427,16 @@ if __name__ == "__main__":
         key = cv2.waitKey(10)
         if key == ord("q"):
             break
+
+        if time_previous is not None:
+            fps = 1 / (time_current - time_previous)
+
+            fps_str = f"{fps:.2f}".rjust(6, " ")
+            camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
+            if fps < 0.9 * camera_fps:
+                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (recorder might be missing frames)")
+            else:
+                logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 
     receiver._close_shared_memory()
     publisher.stop()

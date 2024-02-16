@@ -7,7 +7,6 @@ from typing import Optional
 
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
-from airo_camera_toolkit.utils.image_converter import ImageConverter
 from loguru import logger
 
 
@@ -17,6 +16,7 @@ class MultiprocessVideoRecorder(Process):
         shared_memory_namespace: str,
         video_path: Optional[str] = None,
         image_transform: Optional[ImageTransform] = None,
+        log_fps: bool = False,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
@@ -34,6 +34,7 @@ class MultiprocessVideoRecorder(Process):
             video_path = os.path.abspath(video_path)
 
         self._video_path = video_path
+        self.log_fps = log_fps
 
     def start(self) -> None:
         super().start()
@@ -45,20 +46,35 @@ class MultiprocessVideoRecorder(Process):
         import ffmpegcv  # type: ignore
 
         receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
-        fps = receiver.fps_shm_array[0]
+        camera_fps = receiver.fps_shm_array[0]
         height, width, _ = receiver.rgb_shm_array.shape
-        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", fps, (width, height))
+        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", camera_fps, (width, height))
 
         logger.info(f"Recording video to {self._video_path}")
 
+        time_current = None
+        time_previous = None
+
         while not self.shutdown_event.is_set():
-            image_rgb = receiver.get_rgb_image_as_int()
-            image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
-            # Known bug: vertical images still give horizontal videos
-            if self._image_transform is not None:
-                image = self._image_transform.transform_image(image)
-            video_writer.write(image)
+            time_previous = time_current
+            time_current = time.time()
+            receiver.get_rgb_image_as_int()
+            # image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
+            # # Known bug: vertical images still give horizontal videos
+            # if self._image_transform is not None:
+            #     image = self._image_transform.transform_image(image)
+            # video_writer.write(image)
             self.recording_started_event.set()
+
+            if time_previous is not None:
+                fps = 1 / (time_current - time_previous)
+
+                fps_str = f"{fps:.2f}".rjust(6, " ")
+                camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
+                if fps < 0.9 * camera_fps:
+                    logger.warning(f"FPS: {fps_str} / {camera_fps_str} (recorder might be missing frames)")
+                elif self.log_fps:
+                    logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 
         video_writer.release()
 
@@ -73,7 +89,7 @@ class MultiprocessVideoRecorder(Process):
 
 if __name__ == "__main__":
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
-    recorder = MultiprocessVideoRecorder("camera")
+    recorder = MultiprocessVideoRecorder("camera", log_fps=True)
     recorder.start()
     time.sleep(10)
     recorder.stop()
