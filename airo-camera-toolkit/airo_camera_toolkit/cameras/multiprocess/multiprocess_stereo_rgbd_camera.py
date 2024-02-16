@@ -92,12 +92,17 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
                 depth_map = self._camera._retrieve_depth_map()
                 depth_image = self._camera._retrieve_depth_image()
                 confidence_map = self._camera._retrieve_confidence_map()
+                point_cloud = self._camera._retrieve_colored_point_cloud()
+                self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
                 self.rgb_shm_array[:] = image[:]
                 self.rgb_right_shm_array[:] = image_right[:]
                 self.depth_shm_array[:] = depth_map[:]
                 self.depth_image_shm_array[:] = depth_image[:]
                 self.confidence_map_shm_array[:] = confidence_map[:]
+                self.point_cloud_positions_shm_array[:] = point_cloud.points[:]
+                self.point_cloud_colors_shm_array[:] = point_cloud.colors[:]
                 self.timestamp_shm_array[:] = np.array([time.time()])[:]
+                self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
                 self.running_event.set()
         except Exception as e:
             logger.error(f"Error in {self.__class__.__name__}: {e}")
@@ -177,10 +182,20 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
         return image
 
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
+        while self.read_write_lock_shm_array[0]:
+            time.sleep(0.0001)
+
+        # doing arr[0] = True/False might also work
         if view == StereoRGBDCamera.LEFT_RGB:
-            return self.rgb_shm_array
+            self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+            image_left = self.rgb_shm_array[:].copy()
+            self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+            return image_left
         elif view == StereoRGBDCamera.RIGHT_RGB:
-            return self.rgb_right_shm_array
+            self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+            image_right = self.rgb_right_shm_array[:].copy()
+            self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+            return image_right
         else:
             raise ValueError(f"Unknown view: {view}")
 
