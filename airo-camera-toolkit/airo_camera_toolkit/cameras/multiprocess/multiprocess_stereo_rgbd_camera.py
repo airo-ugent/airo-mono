@@ -93,7 +93,7 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
                 depth_image = self._camera._retrieve_depth_image()
                 confidence_map = self._camera._retrieve_confidence_map()
                 point_cloud = self._camera._retrieve_colored_point_cloud()
-                self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+                self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
                 self.rgb_shm_array[:] = image[:]
                 self.rgb_right_shm_array[:] = image_right[:]
                 self.depth_shm_array[:] = depth_map[:]
@@ -102,7 +102,7 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
                 self.point_cloud_positions_shm_array[:] = point_cloud.points[:]
                 self.point_cloud_colors_shm_array[:] = point_cloud.colors[:]
                 self.timestamp_shm_array[:] = np.array([time.time()])[:]
-                self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+                self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
                 self.running_event.set()
         except Exception as e:
             logger.error(f"Error in {self.__class__.__name__}: {e}")
@@ -184,20 +184,20 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
         return image
 
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
-        while self.read_write_lock_shm_array[0]:
+        while self.write_lock_shm_array[0]:
             time.sleep(0.00001)
 
         # doing arr[0] = True/False might also work
         if view == StereoRGBDCamera.LEFT_RGB:
-            self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+            self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
             self.rgb_buffer_array[:] = self.rgb_shm_array[:]
-            self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+            self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
             return self.rgb_buffer_array
         elif view == StereoRGBDCamera.RIGHT_RGB:
             logger.debug("Retrieving RGB RIGHT (TO BUFFER).")
-            self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+            self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
             self.rgb_right_buffer_array[:] = self.rgb_right_shm_array[:]
-            self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+            self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
             return self.rgb_right_buffer_array
         else:
             raise ValueError(f"Unknown view: {view}")
@@ -321,7 +321,7 @@ if __name__ == "__main__":
             fps_str = f"{fps:.2f}".rjust(6, " ")
             camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
             if fps < 0.9 * camera_fps:
-                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (recorder might be missing frames)")
+                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (too slow)")
             else:
                 logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 

@@ -125,12 +125,23 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
 
         try:
             while not self.shutdown_event.is_set():
+                start_time = time.time()
                 image = self._camera.get_rgb_image_as_int()
                 depth_map = self._camera._retrieve_depth_map()
                 depth_image = self._camera._retrieve_depth_image()
                 confidence_map = self._camera._retrieve_confidence_map()
                 point_cloud = self._camera._retrieve_colored_point_cloud()
-                self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+                end_time = time.time()
+                logger.info(f"Time to grab images: {end_time - start_time:.3f} s")
+
+                start_time = time.time()
+                while self.read_lock_shm_array[0] > 0 and self.write_lock_shm_array[0]:
+                    time.sleep(0.00001)
+                end_time = time.time()
+                logger.info(f"Time to wait for lock: {end_time - start_time:.3f} s")
+
+                start_time = time.time()
+                self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
                 self.rgb_shm_array[:] = image[:]
                 self.depth_shm_array[:] = depth_map[:]
                 self.depth_image_shm_array[:] = depth_image[:]
@@ -138,7 +149,9 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
                 self.point_cloud_positions_shm_array[:] = point_cloud.points[:]
                 self.point_cloud_colors_shm_array[:] = point_cloud.colors[:]
                 self.timestamp_shm_array[:] = np.array([time.time()])[:]
-                self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+                self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+                end_time = time.time()
+                logger.info(f"Time to write to shared memory: {end_time - start_time:.3f} s")
                 self.running_event.set()
         except Exception as e:
             logger.error(f"Error in {self.__class__.__name__}: {e}")
@@ -293,38 +306,37 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         self.point_cloud_colors_buffer_array = np.ndarray(point_cloud_colors_shape, dtype=np.uint8)
 
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
-        while self.read_write_lock_shm_array[0]:
+        while self.write_lock_shm_array[0]:
             time.sleep(0.00001)
-        self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+        self.read_lock_shm_array[0] += 1
         self.depth_buffer_array[:] = self.depth_shm_array[:]
-        self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+        self.read_lock_shm_array[0] -= 1
         return self.depth_buffer_array
 
     def _retrieve_depth_image(self) -> NumpyIntImageType:
-        while self.read_write_lock_shm_array[0]:
+        while self.write_lock_shm_array[0]:
             time.sleep(0.00001)
-        self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+        self.read_lock_shm_array[0] += 1
         self.depth_image_buffer_array[:] = self.depth_image_shm_array[:]
-        self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+        self.read_lock_shm_array[0] -= 1
         return self.depth_image_buffer_array
 
     def _retrieve_confidence_map(self) -> NumpyFloatImageType:
-        while self.read_write_lock_shm_array[0]:
+        while self.write_lock_shm_array[0]:
             time.sleep(0.00001)
-        self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+        self.read_lock_shm_array[0] += 1
         self.confidence_map_buffer_array[:] = self.confidence_map_shm_array[:]
-        self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+        self.read_lock_shm_array[0] -= 1
         return self.confidence_map_buffer_array
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
         logger.debug("Retrieving point cloud (TO BUFFER).")
-        while self.read_write_lock_shm_array[0]:
+        while self.write_lock_shm_array[0]:
             time.sleep(0.00001)
-        self.read_write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+        self.read_lock_shm_array[0] += 1
         self.point_cloud_positions_buffer_array[:] = self.point_cloud_positions_shm_array[:]
         self.point_cloud_colors_buffer_array[:] = self.point_cloud_colors_shm_array[:]
-
-        self.read_write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+        self.read_lock_shm_array[0] -= 1
         point_cloud = PointCloud(self.point_cloud_positions_buffer_array, self.point_cloud_colors_buffer_array)
         return point_cloud
 
@@ -418,7 +430,7 @@ if __name__ == "__main__":
         depth_map = receiver.get_depth_map()
         depth_image = receiver._retrieve_depth_image()
         confidence_map = receiver._retrieve_confidence_map()
-        # point_cloud = receiver._retrieve_colored_point_cloud()
+        point_cloud = receiver._retrieve_colored_point_cloud()
 
         cv2.imshow("Depth Map", depth_map)
         cv2.imshow("Depth Image", depth_image)
@@ -434,7 +446,7 @@ if __name__ == "__main__":
             fps_str = f"{fps:.2f}".rjust(6, " ")
             camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
             if fps < 0.9 * camera_fps:
-                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (recorder might be missing frames)")
+                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (too slow)")
             else:
                 logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 

@@ -7,6 +7,7 @@ from typing import Optional
 
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
+from airo_camera_toolkit.utils.image_converter import ImageConverter
 from loguru import logger
 
 
@@ -58,12 +59,12 @@ class MultiprocessVideoRecorder(Process):
         while not self.shutdown_event.is_set():
             time_previous = time_current
             time_current = time.time()
-            receiver.get_rgb_image_as_int()
-            # image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
+            image_rgb = receiver.get_rgb_image_as_int()
+            image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
             # # Known bug: vertical images still give horizontal videos
-            # if self._image_transform is not None:
-            #     image = self._image_transform.transform_image(image)
-            # video_writer.write(image)
+            if self._image_transform is not None:
+                image = self._image_transform.transform_image(image)
+            video_writer.write(image)
             self.recording_started_event.set()
 
             if time_previous is not None:
