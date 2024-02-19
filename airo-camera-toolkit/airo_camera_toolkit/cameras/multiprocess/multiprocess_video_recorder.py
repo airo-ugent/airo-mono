@@ -17,6 +17,7 @@ class MultiprocessVideoRecorder(Process):
         shared_memory_namespace: str,
         video_path: Optional[str] = None,
         image_transform: Optional[ImageTransform] = None,
+        fill_missing_frames: bool = True,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
@@ -24,6 +25,7 @@ class MultiprocessVideoRecorder(Process):
         self.recording_started_event = multiprocessing.Event()
         self.recording_finished_event = multiprocessing.Event()
         self.shutdown_event = multiprocessing.Event()
+        self.fill_missing_frames = fill_missing_frames
 
         if video_path is None:
             output_dir = "output"
@@ -64,30 +66,28 @@ class MultiprocessVideoRecorder(Process):
         while not self.shutdown_event.is_set():
             timestamp_receiver = receiver.get_current_timestamp()
 
-            # 1. wait until new timestamp is available, but if it takes > 2*camera_period, log a warning
-            if timestamp_receiver == timestamp_prev_frame:
-                # if receiver timestamp is not updated, check if it's been too long since last frame
-                timestamp_current = time.time()
-                timestamp_difference = timestamp_current - timestamp_prev_frame
+            if timestamp_receiver <= timestamp_prev_frame:
+                continue
 
-                if timestamp_difference >= 2.0 * camera_period:
-                    n_consecutive_frames_dropped += 1
-                    logger.warning(
-                        f"No frame received within {2.0 * camera_period:.3f} s, repeating previous frame in video (n = {n_consecutive_frames_dropped})."
-                    )
-                    image_rgb = image_previous
-                    timestamp_prev_frame += camera_period  # pretend that the frame was received
-                else:
-                    continue  # wait a bit longer before taking action
-            else:
-                # new frame arrived
-                if n_consecutive_frames_dropped > 0:
-                    logger.info(f"New frame received after missing {n_consecutive_frames_dropped} frames.")
-                n_consecutive_frames_dropped = 0
-                image_rgb = receiver._retrieve_rgb_image_as_int()
-                timestamp_prev_frame = timestamp_receiver
+            # New frame arrived
+            image_rgb_new = receiver._retrieve_rgb_image_as_int()
 
-            image = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+            timestamp_difference = timestamp_receiver - timestamp_prev_frame
+            missed_frames = int(timestamp_difference / camera_period) - 1
+
+            if missed_frames > 0:
+                logger.warning(f"Missed {missed_frames} frames (fill_missing_frames = {self.fill_missing_frames}).")
+
+                if self.fill_missing_frames:
+                    image_fill = cv2.cvtColor(image_previous, cv2.COLOR_RGB2BGR)
+                    for _ in range(missed_frames):
+                        video_writer.write(image_fill)
+                        n_consecutive_frames_dropped += 1
+
+            timestamp_prev_frame = timestamp_receiver
+            image_previous = image_rgb_new
+
+            image = cv2.cvtColor(image_rgb_new, cv2.COLOR_RGB2BGR)
 
             # Known bug: vertical images still give horizontal videos
             if self._image_transform is not None:
