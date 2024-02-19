@@ -60,6 +60,7 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
         camera_cls: type,
         camera_kwargs: dict = {},
         shared_memory_namespace: str = "camera",
+        log_debug: bool = False,
     ):
         """Instantiates the publisher. Note that the publisher (and its process) will not start until start() is called.
 
@@ -77,6 +78,7 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
         self._camera_cls = camera_cls
         self._camera_kwargs = camera_kwargs
         self._camera = None
+        self.log_debug = log_debug
         self.running_event = multiprocessing.Event()
         self.shutdown_event = multiprocessing.Event()
 

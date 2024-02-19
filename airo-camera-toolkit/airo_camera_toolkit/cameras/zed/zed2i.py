@@ -223,7 +223,7 @@ class Zed2i(StereoRGBDCamera):
         assert view in StereoRGBDCamera._VIEWS
         if view == StereoRGBDCamera.RIGHT_RGB:
             self.camera.retrieve_image(self.image_matrix_right, sl.VIEW.RIGHT)
-            image_bgra: OpenCVIntImageType = self.image_matrix.get_data()
+            image_bgra: OpenCVIntImageType = self.image_matrix_right.get_data()
         else:
             self.camera.retrieve_image(self.image_matrix, sl.VIEW.LEFT)
             image_bgra: OpenCVIntImageType = self.image_matrix.get_data()

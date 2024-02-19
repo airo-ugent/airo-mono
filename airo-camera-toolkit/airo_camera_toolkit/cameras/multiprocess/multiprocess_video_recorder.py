@@ -17,7 +17,6 @@ class MultiprocessVideoRecorder(Process):
         shared_memory_namespace: str,
         video_path: Optional[str] = None,
         image_transform: Optional[ImageTransform] = None,
-        log_fps: bool = False,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
@@ -36,7 +35,6 @@ class MultiprocessVideoRecorder(Process):
             video_path = os.path.abspath(video_path)
 
         self._video_path = video_path
-        self.log_fps = log_fps
 
     def start(self) -> None:
         super().start()
@@ -57,46 +55,59 @@ class MultiprocessVideoRecorder(Process):
         logger.info(f"Recording video to {self._video_path}")
 
         timestamp_prev_frame = None
+        image_previous = receiver.get_rgb_image_as_int()
+        timestamp_prev_frame = receiver.get_current_timestamp()
+        video_writer.write(cv2.cvtColor(image_previous, cv2.COLOR_RGB2BGR))
+        self.recording_started_event.set()
+        n_consecutive_frames_dropped = 0
 
         while not self.shutdown_event.is_set():
-            image_rgb = receiver.get_rgb_image_as_int()
-            timestamp_current_frame = receiver.get_current_timestamp()
+            timestamp_receiver = receiver.get_current_timestamp()
 
-            if timestamp_prev_frame is not None:
-                # This method of detecting dropped frames is better than simply checking FPS
-                timestamp_difference = timestamp_current_frame - timestamp_prev_frame
-                if timestamp_difference >= 1.2 * camera_period:
+            # 1. wait until new timestamp is available, but if it takes > 2*camera_period, log a warning
+            if timestamp_receiver == timestamp_prev_frame:
+                # if receiver timestamp is not updated, check if it's been too long since last frame
+                timestamp_current = time.time()
+                timestamp_difference = timestamp_current - timestamp_prev_frame
+
+                if timestamp_difference >= 2.0 * camera_period:
+                    n_consecutive_frames_dropped += 1
                     logger.warning(
-                        f"Timestamp difference with previous frame: {timestamp_difference:.3f} s (Frame dropped?)"
+                        f"No frame received within {2.0 * camera_period:.3f} s, repeating previous frame in video (n = {n_consecutive_frames_dropped})."
                     )
+                    image_rgb = image_previous
+                    timestamp_prev_frame += camera_period  # pretend that the frame was received
                 else:
-                    logger.debug(f"Timestamp difference with previous frame: {timestamp_difference:.3f} s")
-
-            timestamp_prev_frame = timestamp_current_frame
+                    continue  # wait a bit longer before taking action
+            else:
+                # new frame arrived
+                if n_consecutive_frames_dropped > 0:
+                    logger.info(f"New frame received after missing {n_consecutive_frames_dropped} frames.")
+                n_consecutive_frames_dropped = 0
+                image_rgb = receiver._retrieve_rgb_image_as_int()
+                timestamp_prev_frame = timestamp_receiver
 
             image = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
 
-            # # Known bug: vertical images still give horizontal videos
+            # Known bug: vertical images still give horizontal videos
             if self._image_transform is not None:
                 image = self._image_transform.transform_image(image)
 
             video_writer.write(image)
-            self.recording_started_event.set()
 
         video_writer.release()
-
         logger.info(f"Video saved to {self._video_path}")
-
         self.recording_finished_event.set()
 
     def stop(self) -> None:
         self.shutdown_event.set()
+        logger.info("Set video recording shutdown event.")
         self.recording_finished_event.wait()
 
 
 if __name__ == "__main__":
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
-    recorder = MultiprocessVideoRecorder("camera", log_fps=True)
+    recorder = MultiprocessVideoRecorder("camera")
     recorder.start()
     time.sleep(10)
     recorder.stop()

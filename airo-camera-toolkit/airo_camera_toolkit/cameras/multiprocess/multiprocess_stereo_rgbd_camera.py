@@ -37,8 +37,9 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
         camera_cls: type,
         camera_kwargs: dict = {},
         shared_memory_namespace: str = "camera",
+        log_debug: bool = False,
     ):
-        super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
+        super().__init__(camera_cls, camera_kwargs, shared_memory_namespace, log_debug)
 
         self.rgb_right_shm: Optional[shared_memory.SharedMemory] = None
         self.rgb_right_shape_shm: Optional[shared_memory.SharedMemory] = None
@@ -118,7 +119,7 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
                 timestamp_publish = time.time()
                 self.timestamp_shm_array[0] = timestamp_publish
 
-                if timestamp_prev_publish is not None:
+                if timestamp_prev_publish is not None and self.log_debug:
                     publish_period = timestamp_publish - timestamp_prev_publish
                     if publish_period > 1.1 * self.camera_period:
                         logger.warning(
@@ -131,11 +132,12 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
                 self.write_lock_shm_array[0] = False
                 time_shm_write_end = time.time()
 
-                logger.debug(
-                    f"Retrieval time: {time_retreive_end - time_retreive_start:.3f} s, (grab time: {time_grab_end - time_retreive_start:.3f} s),"
-                    f"Lock time: {time_lock_end - time_lock_start:.3f} s, "
-                    f"SHM write time: {time_shm_write_end - time_shm_write_start:.3f} s"
-                )
+                if self.log_debug:
+                    logger.debug(
+                        f"Retrieval time: {time_retreive_end - time_retreive_start:.3f} s, (grab time: {time_grab_end - time_retreive_start:.3f} s),"
+                        f"Lock time: {time_lock_end - time_lock_start:.3f} s, "
+                        f"SHM write time: {time_shm_write_end - time_shm_write_start:.3f} s"
+                    )
 
                 self.running_event.set()
         except Exception as e:
@@ -287,7 +289,6 @@ if __name__ == "__main__":
     camera_fps = 15
 
     # import os
-
     # os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
     publisher = MultiprocessStereoRGBDPublisher(
@@ -297,6 +298,7 @@ if __name__ == "__main__":
             "fps": camera_fps,
             "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
+        log_debug=True,
     )
 
     publisher.start()
@@ -329,9 +331,9 @@ if __name__ == "__main__":
         image = receiver.get_rgb_image_as_int()
         image_right = receiver._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
         depth_map = receiver._retrieve_depth_map()
-        # depth_image = receiver._retrieve_depth_image()
+        depth_image = receiver._retrieve_depth_image()
         confidence_map = receiver._retrieve_confidence_map()
-        # point_cloud = receiver._retrieve_colored_point_cloud()
+        point_cloud = receiver._retrieve_colored_point_cloud()
 
         image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
@@ -339,27 +341,17 @@ if __name__ == "__main__":
         cv2.imshow("RGB Image", image_bgr)
         cv2.imshow("RGB Image Right", image_right_bgr)
         cv2.imshow("Depth Map", depth_map)
-        # cv2.imshow("Depth Image", depth_image)
+        cv2.imshow("Depth Image", depth_image)
         cv2.imshow("Confidence Map", confidence_map)
 
-        # if log_point_cloud:
-        #     rr.log("point_cloud", rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors))
+        if log_point_cloud:
+            rr.log("point_cloud", rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors))
 
         key = cv2.waitKey(10)
         if key == ord("q"):
             break
         elif key == ord("l"):
             log_point_cloud = not log_point_cloud
-
-        # if time_previous is not None:
-        #     fps = 1 / (time_current - time_previous)
-
-        #     fps_str = f"{fps:.2f}".rjust(6, " ")
-        #     camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
-        #     if fps < 0.9 * camera_fps:
-        #         logger.warning(f"FPS: {fps_str} / {camera_fps_str} (too slow)")
-        #     else:
-        #         logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 
     receiver._close_shared_memory()
     publisher.stop()

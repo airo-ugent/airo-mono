@@ -42,8 +42,9 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         camera_cls: type,
         camera_kwargs: dict = {},
         shared_memory_namespace: str = "camera",
+        log_debug: bool = False,
     ):
-        super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
+        super().__init__(camera_cls, camera_kwargs, shared_memory_namespace, log_debug)
 
         self.depth_shm: Optional[shared_memory.SharedMemory] = None
         self.depth_shape_shm: Optional[shared_memory.SharedMemory] = None
