@@ -89,6 +89,8 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
         self.write_lock_shm: Optional[shared_memory.SharedMemory] = None
         self.read_lock_shm: Optional[shared_memory.SharedMemory] = None
 
+        self.camera_period = None  # set in setup
+
     def start(self) -> None:
         """Starts the process. The process will not start until this method is called."""
         super().start()
@@ -142,7 +144,10 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
 
         timestamp = np.array([time.time()])
         intrinsics = self._camera.intrinsics_matrix()
+
+        camera_fps = self._camera.fps
         fps = np.array([self._camera.fps], dtype=np.float64)
+        self.camera_period = 1 / camera_fps
 
         write_lock = np.array([False], dtype=np.bool_)
         read_lock = np.array([0], dtype=np.int_)
@@ -190,11 +195,11 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
                 # (Normally we should be the only writer though.)
                 while self.read_lock_shm_array[0] > 0 and self.write_lock_shm_array[0]:
                     time.sleep(0.00001)
-                self.write_lock_shm_array[:] = np.array([True], dtype=np.bool_)
+                self.write_lock_shm_array[0] = True
 
                 self.rgb_shm_array[:] = image[:]
-                self.timestamp_shm_array[:] = np.array([time.time()])[:]
-                self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+                self.timestamp_shm_array[0] = time.time()
+                self.write_lock_shm_array[0] = False
                 self.running_event.set()
         except Exception as e:
             logger.error(f"Error in {self.__class__.__name__}: {e}")
@@ -336,9 +341,13 @@ class MultiprocessRGBReceiver(RGBCamera):
         return (shape_array[1], shape_array[0])
 
     def _grab_images(self) -> None:
+        # logger.info(
+        #     f"Current timestamp: {self.get_current_timestamp():.3f}, previous timestamp: {self.previous_timestamp:.3f}"
+        # )
         while not self.get_current_timestamp() > self.previous_timestamp:
             time.sleep(0.0001)
         self.previous_timestamp = self.get_current_timestamp()
+        # logger.debug(f"Updating timestamp: {self.previous_timestamp:.3f}")
 
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
         # No need to check writing lock here because the _retrieve_rgb_image_as_int method does it.

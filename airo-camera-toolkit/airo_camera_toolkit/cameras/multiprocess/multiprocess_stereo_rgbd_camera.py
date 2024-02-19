@@ -85,31 +85,58 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
         assert isinstance(self._camera, StereoRGBDCamera)  # For mypy
         logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
 
+        timestamp_prev_publish = None
+
         try:
             while not self.shutdown_event.is_set():
-                image = self._camera.get_rgb_image_as_int()
+                time_retreive_start = time.time()
+                self._camera._grab_images()
+                time_grab_end = time.time()
+                image = self._camera._retrieve_rgb_image_as_int()
                 image_right = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
                 depth_map = self._camera._retrieve_depth_map()
-                if self.publish_depth_image:
-                    depth_image = self._camera._retrieve_depth_image()
+                depth_image = self._camera._retrieve_depth_image()
                 confidence_map = self._camera._retrieve_confidence_map()
                 point_cloud = self._camera._retrieve_colored_point_cloud()
+                time_retreive_end = time.time()
 
+                time_lock_start = time.time()
                 while self.read_lock_shm_array[0] > 0 and self.write_lock_shm_array[0]:
                     time.sleep(0.00001)
+                time_lock_end = time.time()
 
+                time_shm_write_start = time.time()
+                self.write_lock_shm_array[0] = True
                 self.rgb_shm_array[:] = image[:]
                 self.rgb_right_shm_array[:] = image_right[:]
                 self.depth_shm_array[:] = depth_map[:]
-
-                if self.publish_depth_image:
-                    self.depth_image_shm_array[:] = depth_image[:]
-
+                self.depth_image_shm_array[:] = depth_image[:]
                 self.confidence_map_shm_array[:] = confidence_map[:]
                 self.point_cloud_positions_shm_array[:] = point_cloud.points[:]
                 self.point_cloud_colors_shm_array[:] = point_cloud.colors[:]
-                self.timestamp_shm_array[:] = np.array([time.time()])[:]
-                self.write_lock_shm_array[:] = np.array([False], dtype=np.bool_)
+
+                timestamp_publish = time.time()
+                self.timestamp_shm_array[0] = timestamp_publish
+
+                if timestamp_prev_publish is not None:
+                    publish_period = timestamp_publish - timestamp_prev_publish
+                    if publish_period > 1.1 * self.camera_period:
+                        logger.warning(
+                            f"Time since previous publish: {publish_period:.3f} s. Publisher or camera running slow."
+                        )
+                    else:
+                        logger.debug(f"Time since previous publish: {publish_period:.3f} s")
+                timestamp_prev_publish = timestamp_publish
+
+                self.write_lock_shm_array[0] = False
+                time_shm_write_end = time.time()
+
+                logger.debug(
+                    f"Retrieval time: {time_retreive_end - time_retreive_start:.3f} s, (grab time: {time_grab_end - time_retreive_start:.3f} s),"
+                    f"Lock time: {time_lock_end - time_lock_start:.3f} s, "
+                    f"SHM write time: {time_shm_write_end - time_shm_write_start:.3f} s"
+                )
+
                 self.running_event.set()
         except Exception as e:
             logger.error(f"Error in {self.__class__.__name__}: {e}")
@@ -194,7 +221,6 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
         while self.write_lock_shm_array[0]:
             time.sleep(0.00001)
 
-        # doing arr[0] = True/False might also work
         if view == StereoRGBDCamera.LEFT_RGB:
             self.read_lock_shm_array[0] += 1
             self.rgb_buffer_array[:] = self.rgb_shm_array[:]
@@ -260,6 +286,10 @@ if __name__ == "__main__":
     resolution = Zed2i.RESOLUTION_2K
     camera_fps = 15
 
+    # import os
+
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+
     publisher = MultiprocessStereoRGBDPublisher(
         Zed2i,
         camera_kwargs={
@@ -268,8 +298,6 @@ if __name__ == "__main__":
             "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
         },
     )
-
-    publisher.publish_depth_image = False
 
     publisher.start()
     receiver = MultiprocessStereoRGBDReceiver("camera")
@@ -301,21 +329,21 @@ if __name__ == "__main__":
         image = receiver.get_rgb_image_as_int()
         image_right = receiver._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
         depth_map = receiver._retrieve_depth_map()
-        depth_image = receiver._retrieve_depth_image()
+        # depth_image = receiver._retrieve_depth_image()
         confidence_map = receiver._retrieve_confidence_map()
-        point_cloud = receiver._retrieve_colored_point_cloud()
+        # point_cloud = receiver._retrieve_colored_point_cloud()
 
-        image_bgr = ImageConverter.from_numpy_int_format(image).image_in_opencv_format
-        image_right_bgr = ImageConverter.from_numpy_int_format(image_right).image_in_opencv_format
+        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
 
         cv2.imshow("RGB Image", image_bgr)
         cv2.imshow("RGB Image Right", image_right_bgr)
         cv2.imshow("Depth Map", depth_map)
-        cv2.imshow("Depth Image", depth_image)
+        # cv2.imshow("Depth Image", depth_image)
         cv2.imshow("Confidence Map", confidence_map)
 
-        if log_point_cloud:
-            rr.log("point_cloud", rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors))
+        # if log_point_cloud:
+        #     rr.log("point_cloud", rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors))
 
         key = cv2.waitKey(10)
         if key == ord("q"):
@@ -323,15 +351,15 @@ if __name__ == "__main__":
         elif key == ord("l"):
             log_point_cloud = not log_point_cloud
 
-        if time_previous is not None:
-            fps = 1 / (time_current - time_previous)
+        # if time_previous is not None:
+        #     fps = 1 / (time_current - time_previous)
 
-            fps_str = f"{fps:.2f}".rjust(6, " ")
-            camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
-            if fps < 0.9 * camera_fps:
-                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (too slow)")
-            else:
-                logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
+        #     fps_str = f"{fps:.2f}".rjust(6, " ")
+        #     camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
+        #     if fps < 0.9 * camera_fps:
+        #         logger.warning(f"FPS: {fps_str} / {camera_fps_str} (too slow)")
+        #     else:
+        #         logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 
     receiver._close_shared_memory()
     publisher.stop()
