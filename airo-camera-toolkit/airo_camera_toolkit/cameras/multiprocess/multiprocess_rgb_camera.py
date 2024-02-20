@@ -91,6 +91,7 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
         self.write_lock_shm: Optional[shared_memory.SharedMemory] = None
         self.read_lock_shm: Optional[shared_memory.SharedMemory] = None
 
+        self.fps = None  # set in setup
         self.camera_period = None  # set in setup
 
     def start(self) -> None:
@@ -147,9 +148,9 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
         timestamp = np.array([time.time()])
         intrinsics = self._camera.intrinsics_matrix()
 
-        camera_fps = self._camera.fps
-        fps = np.array([self._camera.fps], dtype=np.float64)
-        self.camera_period = 1 / camera_fps
+        self.fps = self._camera.fps
+        fps = np.array([self.fps], dtype=np.float64)
+        self.camera_period = 1 / self.fps
 
         write_lock = np.array([False], dtype=np.bool_)
         read_lock = np.array([0], dtype=np.int_)
@@ -318,6 +319,8 @@ class MultiprocessRGBReceiver(RGBCamera):
         self.fps_shm_array: np.ndarray = np.ndarray((1,), dtype=np.float64, buffer=self.fps_shm.buf)
         self.write_lock_shm_array: np.ndarray = np.ndarray((1,), dtype=np.bool_, buffer=self.write_lock_shm.buf)
         self.read_lock_shm_array: np.ndarray = np.ndarray((1,), dtype=np.int_, buffer=self.read_lock_shm.buf)
+
+        self.fps = self.fps_shm_array[0]
 
         # The shape of the image is not known in advance, so we need to retrieve it from the shared memory block.
         rgb_shape = tuple(self.rgb_shape_shm_array[:])
