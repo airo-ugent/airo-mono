@@ -6,15 +6,15 @@ from airo_camera_toolkit.image_transforms.image_transform import (
 )
 
 
-def crop(image: HWCImageType, x: int, y: int, h: int, w: int) -> HWCImageType:
+def crop(image: HWCImageType, x: int, y: int, w: int, h: int) -> HWCImageType:
     """Crop a smaller rectangular part out of an image. We use the same rectangle convention as OpenCV.
 
     Args:
         image (HWCImageType): the image to crop
         x: the x-coordinate of the top-left corner of the crop, measured in pixels starting from the left edge of the image.
         y: the y-coordinate of the top-left corner of the crop, measured in pixels starting from the top edge of the image.
-        h: the height of the crop in pixels.
         w: the width of the crop in pixels.
+        h: the height of the crop in pixels.
     """
     # Note that the first index of the array is the y-coordinate, because this indexes the rows of the image and the y-axis runs from top to bottom.
     return image[y : y + h, x : x + w, :].copy()
@@ -23,12 +23,14 @@ def crop(image: HWCImageType, x: int, y: int, h: int, w: int) -> HWCImageType:
 class Crop(ImageTransform):
     """"""
 
-    def __init__(self, input_shape: ImageShapeType, x: int, y: int, h: int, w: int):
+    def __init__(self, input_shape: ImageShapeType, x: int, y: int, w: int, h: int):
         super().__init__(input_shape)
         self.x = x
         self.y = y
-        self.h = h
+        print("w", w)
+        print("h", h)
         self.w = w
+        self.h = h
 
     @property
     def shape(self) -> ImageShapeType:
@@ -39,7 +41,7 @@ class Crop(ImageTransform):
         return self.h, self.w, c
 
     def transform_image(self, image: HWCImageType) -> HWCImageType:
-        return crop(image, self.x, self.y, self.h, self.w)
+        return crop(image, self.x, self.y, self.w, self.h)
 
     def transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
