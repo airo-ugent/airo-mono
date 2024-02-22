@@ -17,6 +17,9 @@ def crop(image: HWCImageType, x: int, y: int, w: int, h: int) -> HWCImageType:
         h: the height of the crop in pixels.
     """
     # Note that the first index of the array is the y-coordinate, because this indexes the rows of the image and the y-axis runs from top to bottom.
+    if len(image.shape) == 2:
+        return image[y : y + h, x : x + w].copy()
+
     return image[y : y + h, x : x + w, :].copy()
 
 
@@ -27,8 +30,6 @@ class Crop(ImageTransform):
         super().__init__(input_shape)
         self.x = x
         self.y = y
-        print("w", w)
-        print("h", h)
         self.w = w
         self.h = h
 
