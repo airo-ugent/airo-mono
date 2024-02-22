@@ -79,8 +79,8 @@ class OpenCVVideoCapture(RGBCamera):
 
     def _grab_images(self) -> None:
         ret, image = self.video_capture.read()
-        if not ret:
-            raise RuntimeError("Can't receive frame (stream end?). Exiting...")
+        if not ret:  # When streaming a video, we will at some point reach the end.
+            raise EOFError("Can't receive frame (stream end?). Exiting...")
 
         self._frame = image
 
