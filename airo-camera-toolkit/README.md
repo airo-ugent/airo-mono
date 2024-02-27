@@ -26,6 +26,11 @@ Instructions can be found in the following files:
 * [ZED Installation](airo_camera_toolkit/cameras/zed_installation.md)
 * [RealSense Installation](airo_camera_toolkit/cameras/realsense_installation.md)
 
+Additionally, to ensure you have `airo-robots` installed for the hand-eye calibration, install the extra dependencies:
+```
+pip install .[hand-eye-calibration]
+```
+
 ## Getting started with cameras
 Camera can be accessed by instantiating the corresponding class:, e.g. for a ZED camera:
 ```python
