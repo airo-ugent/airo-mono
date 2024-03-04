@@ -68,6 +68,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         rerun_application_id: str = "rerun",
         image_transform: Optional[ImageTransform] = None,
         entity_path: Optional[str] = None,
+        entity_path_depth: Optional[str] = None,
     ):
         super().__init__(
             shared_memory_namespace,
@@ -75,6 +76,8 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
             image_transform,
             entity_path,
         )
+
+        self._entity_path_depth = entity_path_depth if entity_path_depth is not None else f"{self._entity_path}_depth"
 
     def _log_depth_image(self) -> None:
         import rerun as rr
@@ -84,7 +87,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         depth_image = self._receiver.get_depth_image()
         if self._image_transform is not None:
             depth_image = self._image_transform.transform_image(depth_image)
-        rr.log(f"{self._entity_path}_depth", rr.Image(depth_image).compress(jpeg_quality=90))
+        rr.log(self._entity_path_depth, rr.Image(depth_image).compress(jpeg_quality=90))
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
