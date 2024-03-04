@@ -211,6 +211,10 @@ For convenient access to specific functions, we provide command-line interfaces 
   - **Example:** [`airo_dataset_tools/cli.py`](airo-dataset-tools/airo_dataset_tools/cli.py) and [`airo-dataset-tools/setup.py`](airo-dataset-tools/setup.py).
   - **Developer Focus:** Scripts' `__main__()` functions can still house developer-centric CLIs. Consider moving user-friendly ones to the package CLI.
 
+### Versioning & Releasing 🏷️
+
+As a first step towards PyPI releases of the `airo-mono` packages, we have already started versioning them.
+Read more about it in [docs/versioning.md](docs/versioning.md).
 
 ### Design choices ✏️
 - **Minimalism:** Before coding, explore existing libraries. Less code means easier maintenance.
