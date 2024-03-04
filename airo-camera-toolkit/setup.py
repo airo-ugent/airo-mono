@@ -20,9 +20,9 @@ setuptools.setup(
         "loguru",
         "airo-typing",
         "airo-spatial-algebra",
-        "airo-robots",
         "airo-dataset-tools",
     ],
+    extras_require={"hand-eye-calibration": ["airo-robots"]},
     packages=setuptools.find_packages(exclude=["test"]),
     entry_points={
         "console_scripts": [
