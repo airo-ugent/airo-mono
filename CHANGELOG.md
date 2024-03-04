@@ -22,7 +22,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `BoundingBox3DType`
 - `Zed2i.ULTRA_DEPTH_MODE` to enable the ultra depth setting for the Zed2i cameras
 - `OpenCVVideoCapture` implementation of `RGBCamera` for working with arbitrary cameras
-
+- `MultiprocessRGBRerunLogger` and `MultiprocessRGBDRerunLogger` now allow you to pass an `entity_path` value which determines where the RGB and depth images will be logged
 
 ### Changed
 - Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
