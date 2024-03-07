@@ -1,7 +1,8 @@
 from typing import Any
 
 import numpy as np
-from airo_typing import BoundingBox3DType, PointCloud
+from airo_spatial_algebra.operations import transform_points
+from airo_typing import BoundingBox3DType, HomogeneousMatrixType, PointCloud
 
 
 def filter_point_cloud(point_cloud: PointCloud, mask: Any) -> PointCloud:
@@ -61,3 +62,17 @@ def crop_point_cloud(
     """
     crop_mask = generate_point_cloud_crop_mask(point_cloud, bounding_box)
     return filter_point_cloud(point_cloud, crop_mask.nonzero())
+
+
+def transform_point_cloud(point_cloud: PointCloud, frame_transformation: HomogeneousMatrixType) -> PointCloud:
+    """Creates a new point cloud for which the points are transformed to the desired frame.
+    Will keep colors and attributes if they are present.
+
+    Args:
+        point_cloud: The point cloud to transform.
+        frame_transformation: The transformation matrix from the current point cloud frame to the new desired frame.
+
+    Returns:
+        The new transformed point cloud."""
+    new_points = transform_points(frame_transformation, point_cloud.points)
+    return PointCloud(new_points, point_cloud.colors, point_cloud.attributes)
