@@ -17,7 +17,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 - `PointCloud` dataclass as the main data structure for point clouds in airo-mono
 - Notebooks to get started with point clouds, checking performance and logging to rerun
-- Functions to crop point clouds and filter points with a mask (e.g. low-confidence points)
+- Functions to crop point clouds, filter points with a mask (e.g. low-confidence points), and transform point clouds
 - Functions to convert from our numpy-based dataclass to and from open3d point clouds
 - `BoundingBox3DType`
 - `Zed2i.ULTRA_DEPTH_MODE` to enable the ultra depth setting for the Zed2i cameras
