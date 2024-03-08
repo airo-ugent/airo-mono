@@ -68,6 +68,12 @@ def transform_point_cloud(point_cloud: PointCloud, frame_transformation: Homogen
     """Creates a new point cloud for which the points are transformed to the desired frame.
     Will keep colors and attributes if they are present.
 
+    The `frame_transformation` is a homogeneous matrix expressing the current point cloud frame in the target point cloud frame.
+    For example, if you capture a point cloud from a camera with the extrinsics matrix `X_W_C`, expressing the camera's pose in
+    the world frame, then you can express the point cloud in the world frame with:
+
+    `point_cloud_in_world = transform_point_cloud(point_cloud, X_W_C)`
+
     Args:
         point_cloud: The point cloud to transform.
         frame_transformation: The transformation matrix from the current point cloud frame to the new desired frame.
