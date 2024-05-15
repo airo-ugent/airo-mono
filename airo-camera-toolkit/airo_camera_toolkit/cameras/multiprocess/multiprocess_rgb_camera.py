@@ -9,6 +9,7 @@ import numpy as np
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
+from loguru import logger
 
 _RGB_SHM_NAME = "rgb"
 _RGB_SHAPE_SHM_NAME = "rgb_shape"
@@ -28,7 +29,10 @@ def shared_memory_block_like(array: np.ndarray, name: str) -> Tuple[shared_memor
     Returns:
         The created shared memory block and a new array that is backed by the shared memory block.
     """
-    shm = shared_memory.SharedMemory(create=True, size=array.nbytes, name=name)
+    try:
+        shm = shared_memory.SharedMemory(create=True, size=array.nbytes, name=name)
+    except FileExistsError:
+        logger.warning(f"Shared memory file {name} exists. Will try to re-use")
     shm_array: np.ndarray = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
     shm_array[:] = array[:]
     return shm, shm_array
