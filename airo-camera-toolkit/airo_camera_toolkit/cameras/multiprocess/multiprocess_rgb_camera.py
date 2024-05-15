@@ -32,7 +32,13 @@ def shared_memory_block_like(array: np.ndarray, name: str) -> Tuple[shared_memor
     try:
         shm = shared_memory.SharedMemory(create=True, size=array.nbytes, name=name)
     except FileExistsError:
-        logger.warning(f"Shared memory file {name} exists. Will try to re-use")
+        logger.warning(f"Shared memory file {name} exists. Will unlink and re-create it.")
+
+        shm_old = shared_memory.SharedMemory(create=False, size=array.nbytes, name=name)
+        shm_old.unlink()
+
+        shm = shared_memory.SharedMemory(create=True, size=array.nbytes, name=name)
+
     shm_array: np.ndarray = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
     shm_array[:] = array[:]
     return shm, shm_array

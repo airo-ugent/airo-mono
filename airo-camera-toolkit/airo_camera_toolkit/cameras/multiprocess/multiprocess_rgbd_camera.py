@@ -159,6 +159,8 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
 
     def _close_shared_memory(self) -> None:
         """Closing shared memory signal that"""
+        super()._close_shared_memory()
+
         self.depth_shm.close()
         self.depth_image_shm.close()
 
