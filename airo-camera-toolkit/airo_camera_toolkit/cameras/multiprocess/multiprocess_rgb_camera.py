@@ -214,9 +214,9 @@ class MultiprocessRGBReceiver(RGBCamera):
                 break
             except FileNotFoundError:
                 print(
-                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" not found yet, retrying in 5 seconds.'
+                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" not found yet, retrying in .5 seconds.'
                 )
-                time.sleep(5)
+                time.sleep(0.5)
 
         if not is_shm_found:
             raise FileNotFoundError("Shared memory not found.")
