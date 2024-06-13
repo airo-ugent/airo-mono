@@ -15,6 +15,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 
 ### Added
+- add method `as_single_polygon` to combine disconnected parts of a binary mask into a single polygon to the `Mask` class, useful for data formats that only allow for a single polygon such as YOLO.
 - `PointCloud` dataclass as the main data structure for point clouds in airo-mono
 - Notebooks to get started with point clouds, checking performance and logging to rerun
 - Functions to crop point clouds, filter points with a mask (e.g. low-confidence points), and transform point clouds
@@ -25,6 +26,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `MultiprocessRGBRerunLogger` and `MultiprocessRGBDRerunLogger` now allow you to pass an `entity_path` value which determines where the RGB and depth images will be logged
 
 ### Changed
+- `coco-to-yolo` conversion now creates a single polygon of all disconnected parts of the mask instead of simply taking the first polygon of the list. 
 - Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
 - Set python version to 3.10 because of an issue with the `ur_rtde` wheels [#121](https://github.com/airo-ugent/airo-mono/issues/121). Updated README.md to reflect this change.
 
