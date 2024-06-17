@@ -6,4 +6,6 @@
 
 3. find the ID for schunk: python ./bkstools/scripts/bks_scan.py
 
-4. change the defualt ID in ./bkstools/bks_lib/bks_base.py (slave_id to the scaned id)
+4. change the defualt ID in ./bkstools/bks_lib/bks_base.py (change slave_id to the scan_id)
+
+testing demo: python ./bkstools/demo/demo_bks_grip_outside_inside.py
