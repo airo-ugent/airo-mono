@@ -15,7 +15,7 @@ The airo-mono repository employs a monorepo structure, offering multiple Python 
 
 | Package                                          | Description                                               | Owner          |
 | ------------------------------------------------ | --------------------------------------------------------- | -------------- |
-| 📷 [`airo-camera-toolkit`](airo-camera-toolkit)   | RGB(D) camera, image, and point cloud processing          | @tlpss         |
+| 📷 [`airo-camera-toolkit`](airo-camera-toolkit)   | RGB(D) camera, image, and point cloud processing          | @m-decoster    |
 | 🏗️ [`airo-dataset-tools`](airo-dataset-tools)     | Creating, loading, and manipulating datasets              | @victorlouisdg |
 | 🤖 [`airo-robots`](airo-robots)                   | Simple interfaces for controlling robot arms and grippers | @tlpss         |
 | 📐 [`airo-spatial-algebra`](airo-spatial-algebra) | Transforms and SE3 pose conversions                       | @tlpss         |
