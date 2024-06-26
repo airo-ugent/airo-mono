@@ -35,6 +35,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Added `__init__.py` to `realsense` and `utils` in `airo_camera_toolkit.cameras`, fixing installs with pip and issue #113.
 - Fixed bug that returned a transposed resolution in `MultiprocessRGBReceiver`.
 - Using `Zed2i.PERFORMANCE_DEPTH_MODE` will now correctly use the performance mode instead of the quality mode.
+- Shared memory files that were not properly cleaned up are now unlinked and then recreated.
+- The wait interval for shared memory files has been reduced to .5 seconds (from 5), to speed up application start times.
 
 ### Removed
 - `ColoredPointCloudType`
