@@ -60,10 +60,10 @@ class Realsense(RGBDCamera):
             config.enable_stream(rs.stream.depth, depth_resolution[0], depth_resolution[1], rs.format.z16, fps)
 
         # Avoid having to reconnect the USB cable, see https://github.com/IntelRealSense/librealsense/issues/6628#issuecomment-646558144
-        # ctx = rs.context()
-        # devices = ctx.query_devices()
-        # for dev in devices:
-        #     dev.hardware_reset()
+        ctx = rs.context()
+        devices = ctx.query_devices()
+        for dev in devices:
+            dev.hardware_reset()
 
         self.pipeline = rs.pipeline()
 
