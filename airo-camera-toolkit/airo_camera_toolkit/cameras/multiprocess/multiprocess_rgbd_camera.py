@@ -121,10 +121,10 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
                 is_shm_found = True
                 break
             except FileNotFoundError:
-                print(
-                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" (RGBD) not found yet, retrying in 5 seconds.'
+                logger.debug(
+                    f'SharedMemory namespace "{self._shared_memory_namespace}" not found yet, retrying in .5 seconds.'
                 )
-                time.sleep(5)
+                time.sleep(0.5)
 
         if not is_shm_found:
             raise FileNotFoundError("Shared memory not found.")
@@ -159,6 +159,8 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
 
     def _close_shared_memory(self) -> None:
         """Closing shared memory signal that"""
+        super()._close_shared_memory()
+
         self.depth_shm.close()
         self.depth_image_shm.close()
 
