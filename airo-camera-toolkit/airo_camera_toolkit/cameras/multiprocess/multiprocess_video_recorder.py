@@ -67,6 +67,7 @@ class MultiprocessVideoRecorder(Process):
             timestamp_receiver = receiver.get_current_timestamp()
 
             if timestamp_receiver <= timestamp_prev_frame:
+                time.sleep(0.00001) # Prevent busy waiting
                 continue
 
             # New frame arrived
@@ -95,19 +96,29 @@ class MultiprocessVideoRecorder(Process):
 
             video_writer.write(image)
 
+        logger.info(f"Video recorder has detected shutdown event. Releasing video_writer.")
         video_writer.release()
         logger.info(f"Video saved to {self._video_path}")
         self.recording_finished_event.set()
 
     def stop(self) -> None:
         self.shutdown_event.set()
-        logger.info("Set video recording shutdown event.")
-        self.recording_finished_event.wait()
+        wait_time = 10
+        logger.info("Set video recording shutdown event, waiting...")
+        for i in range(1):
+            successfully_stopped = self.recording_finished_event.wait(timeout=wait_time)
+            if successfully_stopped:
+                logger.success("Video recording stopped successfully.")
+                return
+            else:
+                self.shutdown_event.set()
+                logger.warning(f"Video recording did not within {(i + 1) * wait_time:.2f} seconds.")
+        logger.error("Video recording did not stop, end of video might be lost/corrupted. This seems to happen when RAM is full.")
 
 
 if __name__ == "__main__":
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
     recorder = MultiprocessVideoRecorder("camera")
     recorder.start()
-    time.sleep(10)
+    time.sleep(15)
     recorder.stop()
