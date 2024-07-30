@@ -246,12 +246,12 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         resource_tracker.unregister(self.depth_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
         resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")  # type: ignore[attr-defined]
         resource_tracker.unregister(self.depth_image_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
-        resource_tracker.unregister(self.confidence_map_shm._name, "shared_memory")  # type: ignore[attr-defined)
-        resource_tracker.unregister(self.confidence_map_shape_shm._name, "shared_memory")  # type: ignore[attr-defined)
-        resource_tracker.unregister(self.point_cloud_positions_shm._name, "shared_memory")  # type: ignore[attr-defined)
-        resource_tracker.unregister(self.point_cloud_positions_shape_shm._name, "shared_memory")  # type: ignore[attr-defined)
-        resource_tracker.unregister(self.point_cloud_colors_shm._name, "shared_memory")  # type: ignore[attr-defined)
-        resource_tracker.unregister(self.point_cloud_colors_shape_shm._name, "shared_memory")  # type: ignore[attr-defined)
+        resource_tracker.unregister(self.confidence_map_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.confidence_map_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.point_cloud_positions_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.point_cloud_positions_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.point_cloud_colors_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.point_cloud_colors_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
 
         self.depth_shape_shm_array: np.ndarray = np.ndarray((2,), dtype=np.int64, buffer=self.depth_shape_shm.buf)
         self.depth_image_shape_shm_array: np.ndarray = np.ndarray(
@@ -292,11 +292,11 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
             point_cloud_colors_shape, dtype=np.uint8, buffer=self.point_cloud_colors_shm.buf
         )
 
-        self.depth_buffer_array = np.ndarray(depth_shape, dtype=np.float32)
-        self.depth_image_buffer_array = np.ndarray(depth_image_shape, dtype=np.uint8)
-        self.confidence_map_buffer_array = np.ndarray(confidence_map_shape, dtype=np.float32)
-        self.point_cloud_positions_buffer_array = np.ndarray(point_cloud_positions_shape, dtype=np.float32)
-        self.point_cloud_colors_buffer_array = np.ndarray(point_cloud_colors_shape, dtype=np.uint8)
+        self.depth_buffer_array: np.ndarray = np.ndarray(depth_shape, dtype=np.float32)
+        self.depth_image_buffer_array: np.ndarray = np.ndarray(depth_image_shape, dtype=np.uint8)
+        self.confidence_map_buffer_array: np.ndarray = np.ndarray(confidence_map_shape, dtype=np.float32)
+        self.point_cloud_positions_buffer_array: np.ndarray = np.ndarray(point_cloud_positions_shape, dtype=np.float32)
+        self.point_cloud_colors_buffer_array: np.ndarray = np.ndarray(point_cloud_colors_shape, dtype=np.uint8)
 
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
         while self.write_lock_shm_array[0]:
@@ -339,43 +339,43 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
 
         if self.depth_shm is not None:
             self.depth_shm.close()
-            self.depth_shm = None
+            self.depth_shm = None # type: ignore
 
         if self.depth_shape_shm is not None:
             self.depth_shape_shm.close()
-            self.depth_shape_shm = None
+            self.depth_shape_shm = None # type: ignore
 
         if self.depth_image_shm is not None:
             self.depth_image_shm.close()
-            self.depth_image_shm = None
+            self.depth_image_shm = None # type: ignore
 
         if self.depth_image_shape_shm is not None:
             self.depth_image_shape_shm.close()
-            self.depth_image_shape_shm = None
+            self.depth_image_shape_shm = None # type: ignore
 
         if self.confidence_map_shm is not None:
             self.confidence_map_shm.close()
-            self.confidence_map_shm = None
+            self.confidence_map_shm = None # type: ignore
 
         if self.confidence_map_shape_shm is not None:
             self.confidence_map_shape_shm.close()
-            self.confidence_map_shape_shm = None
+            self.confidence_map_shape_shm = None # type: ignore
 
         if self.point_cloud_positions_shm is not None:
             self.point_cloud_positions_shm.close()
-            self.point_cloud_positions_shm = None
+            self.point_cloud_positions_shm = None # type: ignore
 
         if self.point_cloud_positions_shape_shm is not None:
             self.point_cloud_positions_shape_shm.close()
-            self.point_cloud_positions_shape_shm = None
+            self.point_cloud_positions_shape_shm = None # type: ignore
 
         if self.point_cloud_colors_shm is not None:
             self.point_cloud_colors_shm.close()
-            self.point_cloud_colors_shm = None
+            self.point_cloud_colors_shm = None # type: ignore
 
         if self.point_cloud_colors_shape_shm is not None:
             self.point_cloud_colors_shape_shm.close()
-            self.point_cloud_colors_shape_shm = None
+            self.point_cloud_colors_shape_shm = None # type: ignore
 
     def __del__(self) -> None:
         super().__del__()

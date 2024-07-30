@@ -329,7 +329,7 @@ class MultiprocessRGBReceiver(RGBCamera):
         self.rgb_shm_array: np.ndarray = np.ndarray(rgb_shape, dtype=np.uint8, buffer=self.rgb_shm.buf)
 
         # Preallocate the buffer array to avoid reallocation at each retrieve.
-        self.rgb_buffer_array = np.ndarray(rgb_shape, dtype=np.uint8)
+        self.rgb_buffer_array: np.ndarray = np.ndarray(rgb_shape, dtype=np.uint8)
 
         self.previous_timestamp = time.time()
 
@@ -379,31 +379,31 @@ class MultiprocessRGBReceiver(RGBCamera):
 
         if self.rgb_shm is not None:
             self.rgb_shm.close()
-            self.rgb_shm = None
+            self.rgb_shm = None # type: ignore
 
         if self.rgb_shape_shm is not None:
             self.rgb_shape_shm.close()
-            self.rgb_shape_shm = None
+            self.rgb_shape_shm = None # type: ignore
 
         if self.timestamp_shm is not None:
             self.timestamp_shm.close()
-            self.timestamp_shm = None
+            self.timestamp_shm = None # type: ignore
 
         if self.intrinsics_shm is not None:
             self.intrinsics_shm.close()
-            self.intrinsics_shm = None
+            self.intrinsics_shm = None # type: ignore
 
         if self.fps_shm is not None:
             self.fps_shm.close()
-            self.fps_shm = None
+            self.fps_shm = None # type: ignore
 
         if self.write_lock_shm is not None:
             self.write_lock_shm.close()
-            self.write_lock_shm = None
+            self.write_lock_shm = None # type: ignore
 
         if self.read_lock_shm is not None:
             self.read_lock_shm.close()
-            self.read_lock_shm = None
+            self.read_lock_shm = None # type: ignore
 
     def __del__(self) -> None:
         self._close_shared_memory()

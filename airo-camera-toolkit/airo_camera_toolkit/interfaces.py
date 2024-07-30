@@ -177,6 +177,10 @@ class StereoRGBDCamera(RGBDCamera):
     @abc.abstractmethod
     def _retrieve_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
         raise NotImplementedError
+    
+    @abc.abstractmethod
+    def _retrieve_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
+        raise NotImplementedError
 
     # TODO: check view argument value?
     @abc.abstractmethod

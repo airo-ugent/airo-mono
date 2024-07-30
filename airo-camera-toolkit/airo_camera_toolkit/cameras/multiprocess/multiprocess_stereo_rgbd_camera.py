@@ -191,10 +191,10 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
 
         logger.info("Found stereo shared memory blocks.")
 
-        resource_tracker.unregister(self.rgb_right_shm._name, "shared_memory")
-        resource_tracker.unregister(self.rgb_right_shape_shm._name, "shared_memory")
-        resource_tracker.unregister(self.pose_right_in_left_shm._name, "shared_memory")
-        resource_tracker.unregister(self.intrinsics_right_shm._name, "shared_memory")
+        resource_tracker.unregister(self.rgb_right_shm._name, "shared_memory") # type: ignore[attr-defined]
+        resource_tracker.unregister(self.rgb_right_shape_shm._name, "shared_memory") # type: ignore[attr-defined]
+        resource_tracker.unregister(self.pose_right_in_left_shm._name, "shared_memory") # type: ignore[attr-defined]
+        resource_tracker.unregister(self.intrinsics_right_shm._name, "shared_memory") # type: ignore[attr-defined]
 
         self.rgb_right_shape_shm_array: np.ndarray = np.ndarray(
             (3,), dtype=np.int64, buffer=self.rgb_right_shape_shm.buf
@@ -212,7 +212,7 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
             rgb_right_shape, dtype=np.uint8, buffer=self.rgb_right_shm.buf
         )
 
-        self.rgb_right_buffer_array = np.ndarray(rgb_right_shape, dtype=np.uint8)
+        self.rgb_right_buffer_array: np.ndarray = np.ndarray(rgb_right_shape, dtype=np.uint8)
 
     def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         image = self._retrieve_rgb_image_as_int(view)
@@ -255,19 +255,19 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
 
         if self.rgb_right_shm is not None:
             self.rgb_right_shm.close()
-            self.rgb_right_shm = None
+            self.rgb_right_shm = None # type: ignore
 
         if self.rgb_right_shape_shm is not None:
             self.rgb_right_shape_shm.close()
-            self.rgb_right_shape_shm = None
+            self.rgb_right_shape_shm = None # type: ignore
 
         if self.pose_right_in_left_shm is not None:
             self.pose_right_in_left_shm.close()
-            self.pose_right_in_left_shm = None
+            self.pose_right_in_left_shm = None # type: ignore
 
         if self.intrinsics_right_shm is not None:
             self.intrinsics_right_shm.close()
-            self.intrinsics_right_shm = None
+            self.intrinsics_right_shm = None # type: ignore
 
     def __del__(self) -> None:
         super().__del__()
