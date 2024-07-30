@@ -1,75 +1,131 @@
 # airo-mono
-This repository contains ready-to-use python packages to accelerate the development of robotic manipulation systems.
-Instead of reimplementing the same functionalities over and over, this repo provides ready-to-use implementations and aims to leverage experience by updating the implementations with best practices along the way.
+Welcome to `airo-mono`! This repository provides ready-to-use Python packages to accelerate the development of robotic manipulation systems.
 
-You can read more about the scope and motivation of this repo [here](docs/about_this_repo.md).
+**Key Motivation:**
+  * 🚀 **Accelerate Experimentation:** Reduce the time spent on repetitive coding tasks, enabling faster iteration from research idea to demo on the robots.
+  * 😊 **Collaboration:** Promote a shared foundation of well-tested code across the lab, boosting reliability and efficiency and promoting best practices along the way.
+
+
+Want to learn more about our vision? Check out the in-depth explanation [here](docs/about_this_repo.md)
+
 ## Overview
-The repository is structured as a monorepo (hence the name) with multiple python packages.
-Below is a short overview of the packages:
 
-| Package | Description| owner |
-|-------|-------|--------|
-| `airo-camera-toolkit`|code for working with RGB(D) cameras, images and point clouds |@tlpss|
-|`airo-dataset-tools`| code for creating, loading and working with datasets| @Victorlouisdg|
-| `airo-robots`| minimal interfaces for interacting with the controllers of robot arms and grippers| @tlpss|
-| `airo-spatial-algebra`|code for working with SE3 poses |@tlpss|
-|`airo-teleop`| code for teleoperating robot arms |@tlpss|
-| `airo-typing`  |common type definitions and conventions (e.g. extrinsics matrix = camera IN world) | @tlpss       |
+### Packages 📦
+The airo-mono repository employs a monorepo structure, offering multiple Python packages, each with a distinct focus:
 
-Each package has a dedicated readme file that contains
-- a more detailed overview of the functionality provided by the package
-- additional installation instructions (if required)
-- additional information on design decisision etc (if applicable).
+| Package                                          | Description                                               | Owner          |
+| ------------------------------------------------ | --------------------------------------------------------- | -------------- |
+| 📷 [`airo-camera-toolkit`](airo-camera-toolkit)   | RGB(D) camera, image, and point cloud processing          | @m-decoster    |
+| 🏗️ [`airo-dataset-tools`](airo-dataset-tools)     | Creating, loading, and manipulating datasets              | @victorlouisdg |
+| 🤖 [`airo-robots`](airo-robots)                   | Simple interfaces for controlling robot arms and grippers | @tlpss         |
+| 📐 [`airo-spatial-algebra`](airo-spatial-algebra) | Transforms and SE3 pose conversions                       | @tlpss         |
+| 🎮 [`airo-teleop`](airo-teleop)                   | Intuitive teleoperation of robot arms                     | @tlpss         |
+| 🛡️ [`airo-typing`](airo-typing)                   | Type definitions and conventions                          | @tlpss         |
 
-Furthermore, each package has a 'code owner'. This is the go-to person if you:
-- have questions about what is supported or about the code in general
-- want to know more about why something is implemented in a particular way
-- want to add new functionality to the package
-
-Some packages also have a command line interface. Simply run `$package-name --help` in your terminal to learn more. E.g.`$airo-dataset-tools --help`.
+**Detailed Information:** Each package contains its own dedicated README outlining:
+  - A comprehensive overview of the provided functionality
+  - Package-specific installation instructions (if needed)
+  - Rationale behind design choices (if applicable)
 
 
-# Installation
-There are a number of ways to install packages from this repo. As this repo is still in development and has breaking changes every now and then, we recommend locking on specific commits or releases if you need stability.
-
-## regular install
-Installs the packages from PyPI.
+**Code Ownership:** The designated code owner for each package is your go-to resource for:
+  - Understanding features, codebase, and design decisions. 🤔
+  - Proposing and contributing new package features. 🌟
 
 
-not available yet
-`pip install airo-camera-toolkit ....`
+**Command Line Functionality:** Some packages offer command-line interfaces (CLI).
+Run `package-name --help` for details. Example: `airo-dataset-tools --help`
 
-## installing from dev builds
-Installs from dev builds, which are created for each commit on the main.
+### Sister repositories 🌱
+Repositories that follow the same style as `airo-mono` packages, but are not part of the monorepo (for various reasons):
 
-not availble yet.
+| Repository                                                     | Description                                     |
+| -------------------------------------------------------------- | ----------------------------------------------- |
+| 🎥 [`airo-blender`](https://github.com/airo-ugent/airo-blender) | Synthetic data generation with Blender          |
+| 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
+| 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                          |
+| 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
 
+### Usage & Philosophy 📖
+We believe in *keep simple things simple*. Starting a new project should\* be as simple as:
+```bash
+pip install airo-camera-toolkit airo-robots
+```
+And writing a simple script:
+```python
+from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
+from airo_robots.manipulators.hardware.ur_rtde import URrtde
+from airo_robots.grippers.hardware.robotiq_2f85_urcap import Robotiq2F85
 
+robot_ip_address = "10.40.0.162"
 
-## from github source
+camera = Zed2i()
+robot = URrtde(ip_address=robot_ip_address)
+gripper = Robotiq2F85(ip_address=robot_ip_address)
 
-DEPRECATED.
+image = camera.get_rgb_image()
+grasp_pose = select_grasp_pose(image)  # example: user provides grasp pose
+robot.move_linear_to_tcp_pose(grasp_pose).wait()
+gripper.close().wait()
+```
 
-We discourage the use of this installation method!
+> \* we are still simplifying the installation process and the long imports
 
-| Package | command |
-|-------|-------|
-|`airo-typing`  |`python -m pip install 'airo-typing @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-typing'`|
-|`airo-dataset-tools`|`python -m pip install 'airo-dataset-tools @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools'`|
-|`airo-robots`|`python -m pip install 'airo-robots @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-robots'`|
-|`airo-spatial-algebra`|`python -m pip install 'airo-spatial-algebra @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-spatial-algebra' `|
-|`airo-teleop`|`python -m pip install 'airo-teleop @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-teleop'`|
-|`airo-camera-toolkit`|`python -m pip install 'airo-camera-toolkit @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit'`|
+### Projects using `airo-mono` 🎉
+Probably the best way to learn what `airo-mono` has to offer, is to look at the projects it powers:
 
-Make sure you install the packages according to their dependency tree. If you have not installed the airo-mono packages on which a package depends first, you will get a missing import error (or it will install the package from PyPI..)
+| Project                                                                     | Description                                                                                                 |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 👕 [`cloth-competition`](https://github.com/Victorlouisdg/cloth-competition) | airo-mono is the backbone of the [ICRA 2024 Cloth Competition](https://airo.ugent.be/cloth_competition/) 🏆! |
 
-## local installation
-**git submodule**
+## Installation 🔧
 
+### Option 1: Local clone 📥
+
+#### 1.1 Conda method
+Make sure you have a version of conda e.g. [miniconda](https://docs.anaconda.com/free/miniconda/) installed.
+To make the conda environment creation faster, we recommend configuring the [libmamba solver](https://www.anaconda.com/blog/a-faster-conda-for-a-growing-community) first.
+
+Then run the following commands:
+```bash
+git clone https://github.com/airo-ugent/airo-mono.git
+cd airo-mono
+conda env create -f environment.yaml
+```
+This will create a conda environment called `airo-mono` with all packages installed. You can activate the environment with `conda activate airo-mono`.
+
+#### 1.2 Pip method
+While we prefer using conda, you can also install the packages simply with pip:
+
+```bash
+git clone https://github.com/airo-ugent/airo-mono.git
+cd airo-mono
+pip install -e airo-robots -e airo-dataset-tools -e airo-camera-toolkit
+```
+
+### Option 2: Installation from Github 🌐
+> ℹ️ This method will be deprecated in the future, as we are moving to PyPI for package distribution. [Direct references](https://peps.python.org/pep-0440/#direct-references) are not allowed in projects that are to be published on PyPI.
+
+You can also install the packages from this repository directly with pip. This is mainly useful if you want to put `airo-mono` packages as dependencies in your `environment.yaml` file:
+```yaml
+name: my-airo-project
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - "airo-typing @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-typing"
+      - "airo-spatial-algebra @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-spatial-algebra"
+      - "airo-camera-toolkit @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit"
+      - "airo-dataset-tools @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools"
+```
+
+### Option 3: Git submodule 🚇
 You can add this repo as a submodule and install the relevant packages afterwards with regular pip commands. This allows to seamlessly make contributions to this repo whilst working on your own project or if you want to pin on a specific version.
 
 In your repo, run:
-```
+```bash
 git submodule init
 git submodule add https://github.com/airo-ugent/airo-mono@<commit>
 cd airo-mono
@@ -77,42 +133,97 @@ cd airo-mono
 You can now add the packages you need to your requirements or environment file, either in development mode or through a regular pip install.
 More about submodules can be found [here](https://git-scm.com/book/en/v2/Git-Tools-Submodules). Make sure to install the packages in one pip command such that pip can install them in the appropriate order to deal with internal dependencies.
 
+### Option 4: Installation from PyPI 📦
+> 🚧 Not available yet, but coming soon.
 
-# Developer guide
-### setting up local environment
-To set up your development environment after cloning this repo, run:
+Install the packages from PyPI.
 ```
-conda env create -f environment.yaml
-conda activate airo-mono
+pip install airo-camera-toolkit airo-dataset-tools airo-robots
+```
+
+## Developer guide 🛠️
+### Setup
+Create and activate the conda environment, then run:
+```
 pip install -r dev-requirements.txt
 pre-commit install
 ```
 
-### Coding style
-Formatting is done with black (code style), isort (sort imports) and autoflake (remove unused imports and variables). Flake8 is used as linter. These are bundled with [pre-commit](https://pre-commit.com/) as configured in the `.pre-commit-config.yaml` file. You can manually run pre-commit with `pre-commit run -a`.
+### Coding style 👮
+We use [pre-commit](https://pre-commit.com/) to automatically enforce coding standards before every commit.
 
-Packages can be typed (optional, but strongly recommended). For this, mypy is used. To run mypy on a package: `mypy <package-outer-dir>`.
+Our [.pre-commit-config.yaml](.pre-commit-config.yaml) file defines the tools and checks we want to run:
+  - **Formatting**: Black, isort, and autoflake
+  - **Linting**: Flake8
 
-Docstrings should be formatted in the [google docstring format](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
+**Typing:** Packages can be typed (optional, but strongly recommended). For this, mypy is used. Note that pre-commit curretnly does not run mypy, so you should run it manually with `mypy <package-dir>`, e.g. `mypy airo-camera-toolkit`.
 
-### Testing
-Testing is done with pytest (as this is more flexible than unittest). Tests should be grouped per package, as the CI pipeline will run them for each package in isolation. Also note that there should always be at least one test, since pytest will otherwise [throw an error](https://github.com/pytest-dev/pytest/issues/2393).
+**Docstrings:** Should be in the [google docstring format](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
 
-You can manually run the tests for a package with `make pytest <airo-package-dir>`. This will also provide a coverage report.
+### Testing 🧪
+  - **Framework:** Pytest for its flexibility.
+  - **Organization:** Tests are grouped by package, the CI pipeline runs them in isolation
+  - **Minimum:** Always include [at least one test per package](https://github.com/pytest-dev/pytest/issues/2393).
+  - **Running Tests:** `make pytest <airo-package-dir>` (includes coverage report).
+  - **Hardware Testing:** Cameras and robots have scripts available for manual testing. These scripts provide simple sanity checks to verify connections and functionality.
 
-Testing hardware interfaces etc with unittests is rather hard, but we expect all other code to have tests. Testing not only formalises the ad-hoc playing that you usually do whilst developing, it also enables anyone to later on refactor the code and quickly check if this did not break anything.
 
-For hardware-related code, we expect 'user tests' to be avaiable. By this we mean a script that clearly states what should happen with the hardware, so that someone can connect to the hardware and quickly see if everything is working as expected.
-### CI
-we use github actions to do the following checks on each PR, push to master (and push to a branch called CI for doing development on the CI pipeline itself)
+### Continuous Integration (CI) ⚙️
+We use GitHub Actions to run the following checks:
 
-- formatting check
-- mypy static type checking
-- pytest unittests.
+| Workflow                                        | Runs When                                      |
+| ----------------------------------------------- | ---------------------------------------------- |
+| [pre-commit](.github/workflows/pre-commit.yaml) | Every push                                     |
+| [mypy](.github/workflows/mypy.yaml)             | pushes to `main`, PRs and  the `ci-dev` branch |
+| [pytest](.github/workflows/pytest.yaml)         | pushes to `main`, PRs and  the `ci-dev` branch |
 
-The tests are executed for each package in isolation using [github actions Matrices](https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs), which means that only that package and its dependencies are installed in an environment to make sure each package correctly declares its dependencies. The downside is that this has some overhead in creating the environments, so we should probably look into caching them once the runtime becomes longer.
 
-### Management of (local) dependencies
+**Package Test Isolation:** We use [Github Actions matrices](https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs) to run tests for each package in its own environment. This ensures packages correctly declare their dependencies. However, creating these environments adds overhead, so we'll explore caching strategies to optimize runtime as complexity increases.
+
+
+### Creating a new package ✨
+
+To quickly setup up Python projects you can use this [cookiecutter template](https://github.com/tlpss/research-template). In the future we might create a similar one for `airo-mono` packages. For now here are the steps you have to take:
+
+1. **Create directory structure:**
+```
+airo-package/
+    ├─ airo_package/
+    │   └─ code.py
+    ├─ test/
+    │   └─ test_some_feature.py
+    ├─ README.md
+    └─ setup.py
+```
+2. **Integrate with CI:** update the CI workflow matrices to include your package.
+3. **Update Documentation:**  add your package to this README
+4. **Installation:** add package to the `environment.yaml`
+and `scripts/install-airo-mono.sh`.
+
+### Command Line Interfaces 💻
+For convenient access to specific functions, we provide command-line interfaces (CLIs). This lets you quickly perform tasks like visualizing COCO datasets or starting hand-eye calibration without the need to write Python scripts to change arguments (e.g., changing a data path or robot IP address).
+
+
+  - **Framework:** [Click](https://click.palletsprojects.com/en/8.1.x/) for composable CLIs.
+  - **Exposure:** We use Setuptools [`console_scripts`](https://setuptools.pypa.io/en/latest/userguide/entry_point.html) to make commands available.
+  - **Organization:** User-facing CLI commands belong in a top-level `cli.py` file.
+  - **Separation:** Keep CLI code distinct from core functionality for maximum flexibility.
+  - **Example:** [`airo_dataset_tools/cli.py`](airo-dataset-tools/airo_dataset_tools/cli.py) and [`airo-dataset-tools/setup.py`](airo-dataset-tools/setup.py).
+  - **Developer Focus:** Scripts' `__main__()` functions can still house developer-centric CLIs. Consider moving user-friendly ones to the package CLI.
+
+### Versioning & Releasing 🏷️
+
+As a first step towards PyPI releases of the `airo-mono` packages, we have already started versioning them.
+Read more about it in [docs/versioning.md](docs/versioning.md).
+
+### Design choices ✏️
+- **Minimalism:** Before coding, explore existing libraries. Less code means easier maintenance.
+- **Properties:** Employ Python properties ([@property](https://docs.python.org/3/howto/descriptor.html#properties)) for getters/setters. This enhances user interaction and unlocks powerful code patterns.
+- **Logging**: Use [loguru](https://loguru.readthedocs.io/en/stable/) for structured debugging instead of print statements.
+- **Output Data:** Favor native datatypes or NumPy arrays for easy compatibility. For more complex data, use dataclasses as in [airo-typing](airo-typing).
+
+#### Management of local dependencies in a Monorepo
+> **TODO:** simplify this explanation and move it to the setup or installation section.
 
 An issue with using a monorepo is that you want to have packages declare their local dependencies as well. But before you publish your packages or if you want to test unreleased code (as usually), this creates an issue: where should pip find these local package? Though there exist more advanced package managers such as Poetry, ([more background on package and dependency management in python](https://ealizadeh.com/blog/guide-to-python-env-pkg-dependency-using-conda-poetry/)
 ) that can handle this, we have opted to stick with pip to keep the barier for new developers lower.
@@ -124,42 +235,3 @@ This implies we simply add local dependencies in the setup file as regular depen
 
 
 Initially, we used a direct link to point to the path of the dependencies, but this created some issues and hence we now use this easier approach. see [#91](https://github.com/airo-ugent/airo-mono/issues/91) for more details.
-
-### Creating a new package
-Creating a new package is kind of a hassle atm, in the future we might add a coockiecutter template for it. For now here are the steps you have to take:
-- create the nested structure
-```
-<airo-package>/
-    <airo_package>/
-        code.py
-    test/
-        testx.py
-    README.md
-    setup.py
-```
-- create the minimal setup.py
-    - handle internal dependencies with extra_requires {'external'}
-- add package name to matrix of CI flows
-- add package to top-level readme [here](#overview)
-- add package to the `environment.yaml`
-- add package to the [install script](scripts/install-airo-mono.sh)
-
-### Command Line Interfaces
-It can become convenient to expose certain functionality as a command line interface (CLI).
-E.g. if you have a fucntion that visualizes a coco dataset, you might want to make it easy for the user to use this function on an arbitrary dataset (path), without requiring the user to create a python script that calls that function with the desired arguments.
-
-We use [click](https://click.palletsprojects.com/en/8.1.x/) to create CLIs and make use of the setuptools `console_scripts` to conveniently expose them to the user, which allows to do `$ package-name command --options/arguments`  in your terminal instead of having to manually point to the location of the python file when invoking the command.
-
-All CLI commands of a package that are meant to be used by end-users should be grouped in a top-level `cli.py` file. It is preferred to separate the CLI command implmmentation from the actual implementation of the functionality, so that the funcionality can still be used by other python code.
-
-For an example, you should take a look at the `airo_dataset_tools/cli.py` file and the `airo-dataset-tools/setup.py`. Make sure to read through the docs of the click package to understand what is happening.
-
-Also note that you can still have a `__main__` block in a python module with a CLI command, but those should be more for developers than for end users. If you expect it to be useful for end-users, you might want to consider moving it to the package CLI.
-
-### Design choices
-- class attributes that require getter/setter should use python [properties](https://realpython.com/python-property/). This is not only more pythonic (for end-user engagement with the attribute), but more importantly it enables a whole bunch of better code patterns as you can override a decorator, but not a plain attribute.
-- the easiest code to maintain is no code at all. So thorougly consider if the functionality you want does not already have a good implementation and could be imported with a reasonable dependency cost.
-- it is strongly encouraged to use [click](https://click.palletsprojects.com/en/8.1.x/) for all command line interfaces.
-- it is strongly advised to use logging instead of print statements. [loguru](https://loguru.readthedocs.io/en/stable/) is the recommended logging tool.
-- Use python dataclasses for configuration, instead of having a ton of argument in the build/init functions of your classes.
-- The output of operations should preferably be in a `common` format. E.g. if you have a method that creates a pointcloud, we prefer that method to return a numpy array instead of your own pointcloud class, that internally contains such an array. You can of course use such classes internally, but we prefer that the end user gets 'common formats', because he/she is most likely to immediately extract the numpy arrar out of your custom data class anyways.
