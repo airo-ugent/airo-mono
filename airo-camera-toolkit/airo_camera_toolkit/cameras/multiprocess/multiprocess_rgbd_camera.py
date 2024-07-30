@@ -339,43 +339,43 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
 
         if self.depth_shm is not None:
             self.depth_shm.close()
-            self.depth_shm = None # type: ignore
+            self.depth_shm = None  # type: ignore
 
         if self.depth_shape_shm is not None:
             self.depth_shape_shm.close()
-            self.depth_shape_shm = None # type: ignore
+            self.depth_shape_shm = None  # type: ignore
 
         if self.depth_image_shm is not None:
             self.depth_image_shm.close()
-            self.depth_image_shm = None # type: ignore
+            self.depth_image_shm = None  # type: ignore
 
         if self.depth_image_shape_shm is not None:
             self.depth_image_shape_shm.close()
-            self.depth_image_shape_shm = None # type: ignore
+            self.depth_image_shape_shm = None  # type: ignore
 
         if self.confidence_map_shm is not None:
             self.confidence_map_shm.close()
-            self.confidence_map_shm = None # type: ignore
+            self.confidence_map_shm = None  # type: ignore
 
         if self.confidence_map_shape_shm is not None:
             self.confidence_map_shape_shm.close()
-            self.confidence_map_shape_shm = None # type: ignore
+            self.confidence_map_shape_shm = None  # type: ignore
 
         if self.point_cloud_positions_shm is not None:
             self.point_cloud_positions_shm.close()
-            self.point_cloud_positions_shm = None # type: ignore
+            self.point_cloud_positions_shm = None  # type: ignore
 
         if self.point_cloud_positions_shape_shm is not None:
             self.point_cloud_positions_shape_shm.close()
-            self.point_cloud_positions_shape_shm = None # type: ignore
+            self.point_cloud_positions_shape_shm = None  # type: ignore
 
         if self.point_cloud_colors_shm is not None:
             self.point_cloud_colors_shm.close()
-            self.point_cloud_colors_shm = None # type: ignore
+            self.point_cloud_colors_shm = None  # type: ignore
 
         if self.point_cloud_colors_shape_shm is not None:
             self.point_cloud_colors_shape_shm.close()
-            self.point_cloud_colors_shape_shm = None # type: ignore
+            self.point_cloud_colors_shape_shm = None  # type: ignore
 
     def __del__(self) -> None:
         super().__del__()

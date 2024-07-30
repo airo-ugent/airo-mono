@@ -379,31 +379,31 @@ class MultiprocessRGBReceiver(RGBCamera):
 
         if self.rgb_shm is not None:
             self.rgb_shm.close()
-            self.rgb_shm = None # type: ignore
+            self.rgb_shm = None  # type: ignore
 
         if self.rgb_shape_shm is not None:
             self.rgb_shape_shm.close()
-            self.rgb_shape_shm = None # type: ignore
+            self.rgb_shape_shm = None  # type: ignore
 
         if self.timestamp_shm is not None:
             self.timestamp_shm.close()
-            self.timestamp_shm = None # type: ignore
+            self.timestamp_shm = None  # type: ignore
 
         if self.intrinsics_shm is not None:
             self.intrinsics_shm.close()
-            self.intrinsics_shm = None # type: ignore
+            self.intrinsics_shm = None  # type: ignore
 
         if self.fps_shm is not None:
             self.fps_shm.close()
-            self.fps_shm = None # type: ignore
+            self.fps_shm = None  # type: ignore
 
         if self.write_lock_shm is not None:
             self.write_lock_shm.close()
-            self.write_lock_shm = None # type: ignore
+            self.write_lock_shm = None  # type: ignore
 
         if self.read_lock_shm is not None:
             self.read_lock_shm.close()
-            self.read_lock_shm = None # type: ignore
+            self.read_lock_shm = None  # type: ignore
 
     def __del__(self) -> None:
         self._close_shared_memory()

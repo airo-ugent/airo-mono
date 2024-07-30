@@ -191,10 +191,10 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
 
         logger.info("Found stereo shared memory blocks.")
 
-        resource_tracker.unregister(self.rgb_right_shm._name, "shared_memory") # type: ignore[attr-defined]
-        resource_tracker.unregister(self.rgb_right_shape_shm._name, "shared_memory") # type: ignore[attr-defined]
-        resource_tracker.unregister(self.pose_right_in_left_shm._name, "shared_memory") # type: ignore[attr-defined]
-        resource_tracker.unregister(self.intrinsics_right_shm._name, "shared_memory") # type: ignore[attr-defined]
+        resource_tracker.unregister(self.rgb_right_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.rgb_right_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.pose_right_in_left_shm._name, "shared_memory")  # type: ignore[attr-defined]
+        resource_tracker.unregister(self.intrinsics_right_shm._name, "shared_memory")  # type: ignore[attr-defined]
 
         self.rgb_right_shape_shm_array: np.ndarray = np.ndarray(
             (3,), dtype=np.int64, buffer=self.rgb_right_shape_shm.buf
@@ -255,19 +255,19 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
 
         if self.rgb_right_shm is not None:
             self.rgb_right_shm.close()
-            self.rgb_right_shm = None # type: ignore
+            self.rgb_right_shm = None  # type: ignore
 
         if self.rgb_right_shape_shm is not None:
             self.rgb_right_shape_shm.close()
-            self.rgb_right_shape_shm = None # type: ignore
+            self.rgb_right_shape_shm = None  # type: ignore
 
         if self.pose_right_in_left_shm is not None:
             self.pose_right_in_left_shm.close()
-            self.pose_right_in_left_shm = None # type: ignore
+            self.pose_right_in_left_shm = None  # type: ignore
 
         if self.intrinsics_right_shm is not None:
             self.intrinsics_right_shm.close()
-            self.intrinsics_right_shm = None # type: ignore
+            self.intrinsics_right_shm = None  # type: ignore
 
     def __del__(self) -> None:
         super().__del__()
