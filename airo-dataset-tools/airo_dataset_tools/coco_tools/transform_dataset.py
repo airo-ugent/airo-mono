@@ -91,12 +91,13 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
 
             if transform_bbox:
                 bbox = annotation.bbox
+                assert bbox is not None  # for mypy
                 # set bbox width, height to at least 1
                 if bbox[3] < 1 or bbox[2] < 1:
                     # x_min must be < x_max for albumentations check
-                    bbox = [0, 0, 1, 1]
+                    bbox = (0.0, 0.0, 1.0, 1.0)
                     print(
-                        f"Invalid bbox for image {coco_image.file_name} and annotation {annotation.id}. Setting to [0,0,1,1]"
+                        f"Invalid bbox for image {coco_image.file_name} and annotation {annotation.id}. Setting to [0.0, 0.0, 1.0, 1.0]"
                     )
                 all_bboxes.append(bbox)
 

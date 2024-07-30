@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -8,7 +8,7 @@ from airo_dataset_tools.data_parsers.coco import Polygon, RLEDict, Segmentation
 from pycocotools import mask
 
 
-def merge_multi_segment(segments):
+def merge_multi_segment(segments: List[List[Any]]) -> List[np.ndarray]:
     """
 
     code taken from: https://github.com/ultralytics/JSON2YOLO/blob/main/general_json2yolo.py#L330
@@ -28,7 +28,7 @@ def merge_multi_segment(segments):
         List(List): merged segments.
     """
 
-    def min_index(arr1, arr2):
+    def min_index(arr1: np.ndarray, arr2: np.ndarray) -> Tuple[Any, ...]:
         """
         Find a pair of indexes with the shortest distance.
 
@@ -42,12 +42,12 @@ def merge_multi_segment(segments):
         return np.unravel_index(np.argmin(dis, axis=None), dis.shape)
 
     s = []
-    segments = [np.array(i).reshape(-1, 2) for i in segments]
-    idx_list = [[] for _ in range(len(segments))]
+    segments_arrays = [np.array(i).reshape(-1, 2) for i in segments]
+    idx_list: List[List[int]] = [[] for _ in range(len(segments_arrays))]
 
     # record the indexes with min distance between each segment
-    for i in range(1, len(segments)):
-        idx1, idx2 = min_index(segments[i - 1], segments[i])
+    for i in range(1, len(segments_arrays)):
+        idx1, idx2 = min_index(segments_arrays[i - 1], segments_arrays[i])
         idx_list[i - 1].append(idx1)
         idx_list[i].append(idx2)
 
@@ -60,23 +60,23 @@ def merge_multi_segment(segments):
                 # reverse the index of middle segments
                 if len(idx) == 2 and idx[0] > idx[1]:
                     idx = idx[::-1]
-                    segments[i] = segments[i][::-1, :]
+                    segments_arrays[i] = segments_arrays[i][::-1, :]
 
-                segments[i] = np.roll(segments[i], -idx[0], axis=0)
-                segments[i] = np.concatenate([segments[i], segments[i][:1]])
+                segments_arrays[i] = np.roll(segments_arrays[i], -idx[0], axis=0)
+                segments_arrays[i] = np.concatenate([segments_arrays[i], segments_arrays[i][:1]])
                 # deal with the first segment and the last one
                 if i in [0, len(idx_list) - 1]:
-                    s.append(segments[i])
+                    s.append(segments_arrays[i])
                 else:
                     idx = [0, idx[1] - idx[0]]
-                    s.append(segments[i][idx[0] : idx[1] + 1])
+                    s.append(segments_arrays[i][idx[0] : idx[1] + 1])
 
         else:
             for i in range(len(idx_list) - 1, -1, -1):
                 if i not in [0, len(idx_list) - 1]:
                     idx = idx_list[i]
                     nidx = abs(idx[1] - idx[0])
-                    s.append(segments[i][nidx:])
+                    s.append(segments_arrays[i][nidx:])
 
     s = np.concatenate(s, axis=0).reshape(-1).tolist()
     return s
@@ -147,7 +147,7 @@ class BinarySegmentationMask:
         return segmentation
 
     @property
-    def as_single_polygon(self) -> Optional[List[Polygon]]:
+    def as_single_polygon(self) -> Optional[Polygon | List[np.ndarray]]:
         """Convert a bitmap to a single polygon. If the bitmap contains multiple segments, they will be merged into one polygon."""
         poly = self.as_polygon
         if poly is None:
@@ -155,8 +155,9 @@ class BinarySegmentationMask:
 
         if len(poly) == 1:
             return poly[0]
-        poly = merge_multi_segment(poly)
-        return poly
+
+        poly_merged = merge_multi_segment(poly)
+        return poly_merged
 
     @property
     def as_uncompressed_rle(self) -> RLEDict:
@@ -181,5 +182,5 @@ if __name__ == "__main__":
     poly = BinarySegmentationMask(m).as_single_polygon
     # poly = merge_multi_segment(poly)
     print(poly)
-    mask2 = BinarySegmentationMask.from_coco_segmentation_mask(poly, 10, 10)
+    mask2 = BinarySegmentationMask.from_coco_segmentation_mask(poly, 10, 10)  # type: ignore # TODO fix this
     print(mask2.bitmap)
