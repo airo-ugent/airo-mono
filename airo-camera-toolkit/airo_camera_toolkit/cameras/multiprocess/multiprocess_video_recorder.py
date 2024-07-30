@@ -96,7 +96,7 @@ class MultiprocessVideoRecorder(Process):
 
             video_writer.write(image)
 
-        logger.info(f"Video recorder has detected shutdown event. Releasing video_writer.")
+        logger.info("Video recorder has detected shutdown event. Releasing video_writer.")
         video_writer.release()
         logger.info(f"Video saved to {self._video_path}")
         self.recording_finished_event.set()
