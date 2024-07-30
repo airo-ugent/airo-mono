@@ -67,7 +67,7 @@ class MultiprocessVideoRecorder(Process):
             timestamp_receiver = receiver.get_current_timestamp()
 
             if timestamp_receiver <= timestamp_prev_frame:
-                time.sleep(0.00001) # Prevent busy waiting
+                time.sleep(0.00001)  # Prevent busy waiting
                 continue
 
             # New frame arrived
@@ -113,7 +113,9 @@ class MultiprocessVideoRecorder(Process):
             else:
                 self.shutdown_event.set()
                 logger.warning(f"Video recording did not within {(i + 1) * wait_time:.2f} seconds.")
-        logger.error("Video recording did not stop, end of video might be lost/corrupted. This seems to happen when RAM is full.")
+        logger.error(
+            "Video recording did not stop, end of video might be lost/corrupted. This seems to happen when RAM is full."
+        )
 
 
 if __name__ == "__main__":
