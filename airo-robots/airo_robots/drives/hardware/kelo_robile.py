@@ -1,8 +1,10 @@
 import time
 
+from airo_tulip.platform_driver import PlatformDriverType
+from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient
+
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.drives.mobile_robot import MobileRobot
-from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient
 
 
 class KELORobile(MobileRobot):
@@ -22,11 +24,22 @@ class KELORobile(MobileRobot):
             robot_port: Port to connect on."""
         self._kelo_robile = KELORobileClient(robot_ip, robot_port)
 
-    def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
-        self._kelo_robile.set_platform_velocity_target(x, y, a, timeout)
+    def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float,
+                                     align_drives_first: bool = False) -> AwaitableAction:
+        if align_drives_first:
+            self._kelo_robile.set_platform_velocity_target(x, y, a, timeout=1.0, instantaneous=False,
+                                                           only_align_drives=True)
+
+        self._kelo_robile.set_platform_velocity_target(x, y, a, timeout=timeout, instantaneous=True)
 
         def timeout_awaitable() -> bool:
             time.sleep(timeout)
             return True
 
         return AwaitableAction(timeout_awaitable)
+
+    def enable_compliant_mode(self, enabled: bool):
+        if enabled:
+            self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT)
+        else:
+            self._kelo_robile.set_driver_type(PlatformDriverType.VELOCITY)

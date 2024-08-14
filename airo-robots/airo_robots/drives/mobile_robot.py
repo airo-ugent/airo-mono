@@ -16,7 +16,8 @@ class MobileRobot(ABC):
     """
 
     @abstractmethod
-    def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
+    def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float,
+                                     align_drives_first: bool = False) -> AwaitableAction:
         """Set the desired platform velocity.
 
         Args:
@@ -24,6 +25,14 @@ class MobileRobot(ABC):
             y: Linear velocity along the Y axis.
             a: Angular velocity.
             timeout: After this time, the platform will automatically stop.
+            align_drives_first: Align drives before moving (default: False, will start driving instantly).
 
         Returns:
             An awaitable action."""
+
+    @abstractmethod
+    def enable_compliant_mode(self, enabled: bool):
+        """Enable compliant mode on the robot.
+
+        Args:
+            enabled: If true, will enable compliant mode. Else, will disable compliant mode."""
