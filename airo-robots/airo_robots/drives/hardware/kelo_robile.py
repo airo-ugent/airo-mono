@@ -38,8 +38,13 @@ class KELORobile(MobileRobot):
 
         return AwaitableAction(timeout_awaitable)
 
-    def enable_compliant_mode(self, enabled: bool):
+    def enable_compliant_mode(self, enabled: bool, compliant_level: int = 1):  # TODO: Use enum variants, document.
         if enabled:
-            self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT)
+            if compliant_level == 1:
+                self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT_WEAK)
+            elif compliant_level == 2:
+                self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT_MODERATE)
+            else:
+                self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT_STRONG)
         else:
             self._kelo_robile.set_driver_type(PlatformDriverType.VELOCITY)
