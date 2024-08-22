@@ -47,7 +47,7 @@ class KELORobile(MobileRobot):
         return AwaitableAction(partial(aligned_awaitable, time.time()))
 
     def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
-        self._kelo_robile.set_platform_velocity_target(x, y, a, timeout=timeout, instantaneous=True)
+        self._kelo_robile.set_platform_velocity_target(x, y, a, timeout=timeout)
 
         def timeout_awaitable() -> bool:
             time.sleep(timeout)
