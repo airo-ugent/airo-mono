@@ -1,4 +1,5 @@
 import time
+from functools import partial
 
 from airo_tulip.platform_driver import PlatformDriverType
 from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient
@@ -24,12 +25,28 @@ class KELORobile(MobileRobot):
             robot_port: Port to connect on."""
         self._kelo_robile = KELORobileClient(robot_ip, robot_port)
 
-    def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float,
-                                     align_drives_first: bool = False) -> AwaitableAction:
-        if align_drives_first:
-            self._kelo_robile.set_platform_velocity_target(x, y, a, timeout=1.0, instantaneous=False,
-                                                           only_align_drives=True)
+    def align_drives(self, x: float, y: float, a: float, timeout: float = 1.0) -> AwaitableAction:
+        """Align all drives for driving in a direction given by the linear and angular velocities.
 
+        Beware that sending any other velocity commands before the awaitable is done may cause unexpected behaviour,
+        as this affects the "aligned" condition.
+
+        Args:
+            x: The x velocity (linear, m/s).
+            y: The y velocity (linear, m/s)
+            a: The angular velocity (rad/s).
+            timeout: The awaitable will finish after this time at the latest.
+
+        Returns:
+            An AwaitableAction which will check if the drives are aligned, or if the timeout has expired."""
+        self._kelo_robile.align_drives(x, y, a, timeout=timeout)
+
+        def aligned_awaitable(start_time: float) -> bool:
+            return self._kelo_robile.are_drives_aligned() or time.time() > start_time + timeout
+
+        return AwaitableAction(partial(aligned_awaitable, time.time()))
+
+    def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
         self._kelo_robile.set_platform_velocity_target(x, y, a, timeout=timeout, instantaneous=True)
 
         def timeout_awaitable() -> bool:
