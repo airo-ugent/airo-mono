@@ -1,6 +1,16 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from airo_robots.awaitable_action import AwaitableAction
+
+class CompliantLevel(Enum):
+    """The level of compliance expected from the mobile robot.
+
+    Values may not correspond to identical behaviour on different mobile platforms, but are merely an indication.
+    A value of weak means a very compliant robot, whereas a value of strong means a slightly compliant robot."""
+    COMPLIANT_WEAK = 1
+    COMPLIANT_MODERATE = 2
+    COMPLIANT_STRONG = 3
 
 
 class MobileRobot(ABC):
@@ -31,8 +41,9 @@ class MobileRobot(ABC):
             An awaitable action."""
 
     @abstractmethod
-    def enable_compliant_mode(self, enabled: bool):
+    def enable_compliant_mode(self, enabled: bool, compliant_level: CompliantLevel):
         """Enable compliant mode on the robot.
 
         Args:
-            enabled: If true, will enable compliant mode. Else, will disable compliant mode."""
+            enabled: If true, will enable compliant mode. Else, will disable compliant mode.
+            compliant_level: The level of compliance to be expected from the robot. Ignored if `enabled` is `False`."""

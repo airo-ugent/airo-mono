@@ -5,7 +5,7 @@ from airo_tulip.platform_driver import PlatformDriverType
 from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient
 
 from airo_robots.awaitable_action import AwaitableAction
-from airo_robots.drives.mobile_robot import MobileRobot
+from airo_robots.drives.mobile_robot import MobileRobot, CompliantLevel
 
 
 class KELORobile(MobileRobot):
@@ -55,11 +55,11 @@ class KELORobile(MobileRobot):
 
         return AwaitableAction(timeout_awaitable)
 
-    def enable_compliant_mode(self, enabled: bool, compliant_level: int = 1):  # TODO: Use enum variants, document.
+    def enable_compliant_mode(self, enabled: bool, compliant_level: CompliantLevel = CompliantLevel.COMPLIANT_WEAK):
         if enabled:
-            if compliant_level == 1:
+            if compliant_level == CompliantLevel.COMPLIANT_WEAK:
                 self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT_WEAK)
-            elif compliant_level == 2:
+            elif compliant_level == CompliantLevel.COMPLIANT_MODERATE:
                 self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT_MODERATE)
             else:
                 self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT_STRONG)
