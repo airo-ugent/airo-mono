@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 
 from airo_robots.awaitable_action import AwaitableAction
+from airo_typing import Vector3DType
 
 class CompliantLevel(Enum):
     """The level of compliance expected from the mobile robot.
@@ -26,8 +27,7 @@ class MobileRobot(ABC):
     """
 
     @abstractmethod
-    def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float,
-                                     align_drives_first: bool = False) -> AwaitableAction:
+    def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
         """Set the desired platform velocity.
 
         Args:
@@ -35,7 +35,6 @@ class MobileRobot(ABC):
             y: Linear velocity along the Y axis.
             a: Angular velocity.
             timeout: After this time, the platform will automatically stop.
-            align_drives_first: Align drives before moving (default: False, will start driving instantly).
 
         Returns:
             An awaitable action."""
@@ -47,3 +46,10 @@ class MobileRobot(ABC):
         Args:
             enabled: If true, will enable compliant mode. Else, will disable compliant mode.
             compliant_level: The level of compliance to be expected from the robot. Ignored if `enabled` is `False`."""
+
+    @abstractmethod
+    def get_odometry(self) -> Vector3DType:
+        """Get the estimated robot pose as a 3D vector comprising the `x`, `y`, and `theta` values relative to the
+        robot's starting pose.
+
+        Returns: A 3D vector with a value for the `x` position, `y` position, and `theta` angle of the robot."""

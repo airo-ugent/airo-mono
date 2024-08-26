@@ -1,11 +1,11 @@
 import time
 from functools import partial
 
-from airo_tulip.platform_driver import PlatformDriverType
-from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient
-
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.drives.mobile_robot import MobileRobot, CompliantLevel
+from airo_tulip.platform_driver import PlatformDriverType
+from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient
+from airo_typing import Vector3DType
 
 
 class KELORobile(MobileRobot):
@@ -65,3 +65,6 @@ class KELORobile(MobileRobot):
                 self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT_STRONG)
         else:
             self._kelo_robile.set_driver_type(PlatformDriverType.VELOCITY)
+
+    def get_odometry(self) -> Vector3DType:
+        return self._kelo_robile.get_odometry()
