@@ -108,6 +108,7 @@ class Zed2i(StereoRGBDCamera):
         # https://www.stereolabs.com/docs/depth-sensing/depth-settings/
         self.camera_params.depth_mode = depth_mode
         self.camera_params.coordinate_units = sl.UNIT.METER
+        self.camera_params.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Z_UP_X_FWD
         # objects closerby will have artifacts so they are filtered out (querying them will give a - Infinty)
         self.camera_params.depth_minimum_distance = 0.3
         self.camera_params.depth_maximum_distance = 10.0  # filter out far away objects
