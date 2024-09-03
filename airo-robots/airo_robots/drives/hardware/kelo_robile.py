@@ -15,14 +15,16 @@ class KELORobile(MobileRobot):
     be controlled individually. The airo-tulip API, which is used here, provides a higher level interface which
     controls the entire platform."""
 
-    def __init__(self, robot_ip: str, robot_port: int):
+    def __init__(self, robot_ip: str, robot_port: int = 49789):
         """Connect to the KELO robot.
 
-        The KELO robot should already be running the airo-tulip server.
+        The KELO robot should already be running the airo-tulip server. If this is not the case, any messages
+        sent from the client may be queued and executed once the server is started, resulting in unexpected
+        and/or sudden movements.
 
         Args:
             robot_ip: IP address of the KELO CPU brick.
-            robot_port: Port to connect on."""
+            robot_port: Port to connect on (default: 49789)."""
         self._kelo_robile = KELORobileClient(robot_ip, robot_port)
 
     def align_drives(self, x: float, y: float, a: float, timeout: float = 1.0) -> AwaitableAction:
