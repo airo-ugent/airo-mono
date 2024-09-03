@@ -2,7 +2,7 @@ import time
 from functools import partial
 
 from airo_robots.awaitable_action import AwaitableAction
-from airo_robots.drives.mobile_robot import MobileRobot, CompliantLevel
+from airo_robots.drives.mobile_robot import CompliantLevel, MobileRobot
 from airo_tulip.platform_driver import PlatformDriverType
 from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient
 from airo_typing import Vector3DType

@@ -4,11 +4,13 @@ from enum import Enum
 from airo_robots.awaitable_action import AwaitableAction
 from airo_typing import Vector3DType
 
+
 class CompliantLevel(Enum):
     """The level of compliance expected from the mobile robot.
 
     Values may not correspond to identical behaviour on different mobile platforms, but are merely an indication.
     A value of weak means a very compliant robot, whereas a value of strong means a slightly compliant robot."""
+
     COMPLIANT_WEAK = 1
     COMPLIANT_MODERATE = 2
     COMPLIANT_STRONG = 3

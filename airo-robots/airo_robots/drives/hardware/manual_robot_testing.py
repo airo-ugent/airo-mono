@@ -1,7 +1,7 @@
 """code for manual testing of mobile robot base class implementations.
 """
-from airo_robots.drives.mobile_robot import MobileRobot
 from airo_robots.drives.hardware.kelo_robile import KELORobile
+from airo_robots.drives.mobile_robot import MobileRobot
 
 
 def manually_test_robot_implementation(robot: MobileRobot) -> None:
