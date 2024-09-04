@@ -1,5 +1,4 @@
 import time
-from functools import partial
 
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.drives.mobile_robot import CompliantLevel, MobileRobot
@@ -43,19 +42,22 @@ class KELORobile(MobileRobot):
             An AwaitableAction which will check if the drives are aligned, or if the timeout has expired."""
         self._kelo_robile.align_drives(x, y, a, timeout=timeout)
 
-        def aligned_awaitable(start_time: float) -> bool:
-            return self._kelo_robile.are_drives_aligned() or time.time() > start_time + timeout
-
-        return AwaitableAction(partial(aligned_awaitable, time.time()))
+        action_sent_time = time.time_ns()
+        return AwaitableAction(
+            lambda: self._kelo_robile.are_drives_aligned() or time.time_ns() - action_sent_time > timeout * 1e9,
+            default_timeout=2 * timeout,
+            default_sleep_resolution=0.002,
+        )
 
     def set_platform_velocity_target(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
         self._kelo_robile.set_platform_velocity_target(x, y, a, timeout=timeout)
 
-        def timeout_awaitable() -> bool:
-            time.sleep(timeout)
-            return True
-
-        return AwaitableAction(timeout_awaitable)
+        action_sent_time = time.time_ns()
+        return AwaitableAction(
+            lambda: time.time_ns() - action_sent_time > timeout * 1e9,
+            default_timeout=2 * timeout,
+            default_sleep_resolution=0.002,
+        )
 
     def enable_compliant_mode(self, enabled: bool, compliant_level: CompliantLevel = CompliantLevel.COMPLIANT_WEAK):
         if enabled:
