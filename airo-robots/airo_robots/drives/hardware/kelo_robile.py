@@ -64,22 +64,30 @@ class KELORobile(MobileRobot):
     def move_platform_to_pose(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
         target_pose = np.array([x, y, a])
         action_start_time = time.time_ns()
+        action_timeout_time = action_start_time + timeout * 1e9
 
         def control_loop():
             current_pose = self._kelo_robile.get_odometry()
             delta_pose = target_pose - current_pose
 
-            vel_vec_angle = np.atan2(delta_pose[1], delta_pose[0]) - current_pose[2]
-            vel_vec_norm = min(np.linalg.norm(delta_pose[:1]), 0.5)
+            vel_vec_angle = np.arctan2(delta_pose[1], delta_pose[0]) - current_pose[2]
+            vel_vec_norm = min(np.linalg.norm(delta_pose[:2]), 0.5)
             vel_x = vel_vec_norm * np.cos(vel_vec_angle)
             vel_y = vel_vec_norm * np.sin(vel_vec_angle)
 
-            delta_angle = np.atan2(np.sin(delta_pose[2]), np.cos(delta_pose[2]))
-            vel_a = max(min(delta_angle, math.pi / 8), -math.pi / 8)
+            delta_angle = np.arctan2(np.sin(delta_pose[2]), np.cos(delta_pose[2]))
+            vel_a = max(min(delta_angle, math.pi / 4), -math.pi / 4)
 
-            self._kelo_robile.set_platform_velocity_target(vel_x, vel_y, vel_a, timeout=timeout)
+            command_timeout = (action_timeout_time - time.time_ns()) * 1e-9
+            self._kelo_robile.set_platform_velocity_target(vel_x, vel_y, vel_a, timeout=command_timeout)
 
-            return time.time_ns() - action_start_time > timeout * 1e9
+            at_target_pose = np.linalg.norm(delta_pose) < 0.01
+            stop = at_target_pose or time.time_ns() - action_start_time > timeout * 1e9
+
+            if stop:
+                self._kelo_robile.set_platform_velocity_target(0.0, 0.0, 0.0)
+
+            return stop
 
         return AwaitableAction(
             control_loop,
