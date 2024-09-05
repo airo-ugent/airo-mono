@@ -42,6 +42,19 @@ class MobileRobot(ABC):
             An awaitable action."""
 
     @abstractmethod
+    def move_platform_to_pose(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
+        """Move the platform to the given pose, without guarantees about the followed path.
+
+        Args:
+            x: Position along the startup pose's X axis.
+            y: Position along the startup pose's Y axis.
+            a: Orientation around the startup pose's Z axis..
+            timeout: After this time, the platform will automatically stop.
+
+        Returns:
+            An awaitable action."""
+
+    @abstractmethod
     def enable_compliant_mode(self, enabled: bool, compliant_level: CompliantLevel):
         """Enable compliant mode on the robot.
 
