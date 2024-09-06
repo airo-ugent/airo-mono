@@ -48,7 +48,7 @@ class MobileRobot(ABC):
         Args:
             x: Position along the startup pose's X axis.
             y: Position along the startup pose's Y axis.
-            a: Orientation around the startup pose's Z axis..
+            a: Orientation around the startup pose's Z axis.
             timeout: After this time, the platform will automatically stop.
 
         Returns:
