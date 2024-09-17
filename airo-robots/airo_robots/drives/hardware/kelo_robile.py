@@ -79,7 +79,8 @@ class KELORobile(MobileRobot):
             vel_a = max(min(delta_angle, math.pi / 4), -math.pi / 4)
 
             command_timeout = (action_timeout_time - time.time_ns()) * 1e-9
-            self._kelo_robile.set_platform_velocity_target(vel_x, vel_y, vel_a, timeout=command_timeout)
+            if command_timeout >= 0.0:
+                self._kelo_robile.set_platform_velocity_target(vel_x, vel_y, vel_a, timeout=command_timeout)
 
             at_target_pose = np.linalg.norm(delta_pose) < 0.01
             stop = at_target_pose or time.time_ns() - action_start_time > timeout * 1e9
