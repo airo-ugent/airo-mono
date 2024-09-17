@@ -109,3 +109,6 @@ class KELORobile(MobileRobot):
 
     def get_odometry(self) -> Vector3DType:
         return self._kelo_robile.get_odometry()
+
+    def reset_odometry(self):
+        self._kelo_robile.reset_odometry()

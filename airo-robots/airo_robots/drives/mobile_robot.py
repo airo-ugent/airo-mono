@@ -68,3 +68,7 @@ class MobileRobot(ABC):
         robot's starting pose.
 
         Returns: A 3D vector with a value for the `x` position, `y` position, and `theta` angle of the robot."""
+
+    @abstractmethod
+    def reset_odometry(self):
+        """Reset the robot's odometry to `(0, 0, 0)`."""
