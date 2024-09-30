@@ -72,3 +72,11 @@ class MobileRobot(ABC):
     @abstractmethod
     def reset_odometry(self):
         """Reset the robot's odometry to `(0, 0, 0)`."""
+
+    @abstractmethod
+    def get_velocity(self) -> Vector3DType:
+        """Get the estimated robot's velocity as a 3D vector comprising the `x`, `y` and `theta` values relative to the
+        robot's starting pose.
+
+        Returns:
+            A 3D vector with a value for the `x` velocity, `y` velocity, and `theta` angular velocity of the robot."""

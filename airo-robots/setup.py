@@ -15,7 +15,7 @@ setuptools.setup(
         "click",
         "airo-typing",
         "airo-spatial-algebra",
-        "airo-tulip==0.0.8",
+        "airo-tulip==0.0.9",
     ],
     packages=setuptools.find_packages(),
     package_data={"airo_robots": ["py.typed"]},
