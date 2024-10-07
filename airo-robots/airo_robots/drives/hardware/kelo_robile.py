@@ -66,7 +66,7 @@ class KELORobile(MobileRobot):
         action_start_time = time.time_ns()
         action_timeout_time = action_start_time + timeout * 1e9
 
-        def control_loop() -> None:
+        def control_loop() -> bool:
             current_pose = self._kelo_robile.get_odometry()
             delta_pose = target_pose - current_pose
 
