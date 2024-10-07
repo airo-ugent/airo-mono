@@ -45,6 +45,7 @@ Repositories that follow the same style as `airo-mono` packages, but are not par
 | 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
 | 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                          |
 | 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
+| 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip) | Driver for the KELO mobile robot platform |
 
 ### Usage & Philosophy 📖
 We believe in *keep simple things simple*. Starting a new project should\* be as simple as:
