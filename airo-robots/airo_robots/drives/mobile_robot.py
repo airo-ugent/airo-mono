@@ -55,7 +55,7 @@ class MobileRobot(ABC):
             An awaitable action."""
 
     @abstractmethod
-    def enable_compliant_mode(self, enabled: bool, compliant_level: CompliantLevel):
+    def enable_compliant_mode(self, enabled: bool, compliant_level: CompliantLevel) -> None:
         """Enable compliant mode on the robot.
 
         Args:
@@ -70,7 +70,7 @@ class MobileRobot(ABC):
         Returns: A 3D vector with a value for the `x` position, `y` position, and `theta` angle of the robot."""
 
     @abstractmethod
-    def reset_odometry(self):
+    def reset_odometry(self) -> None:
         """Reset the robot's odometry to `(0, 0, 0)`."""
 
     @abstractmethod

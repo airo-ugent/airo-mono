@@ -4,8 +4,8 @@ import time
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.drives.mobile_robot import CompliantLevel, MobileRobot
-from airo_tulip.platform_driver import PlatformDriverType
-from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient
+from airo_tulip.platform_driver import PlatformDriverType  # type: ignore
+from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient  # type: ignore
 from airo_typing import Vector3DType
 
 
@@ -66,7 +66,7 @@ class KELORobile(MobileRobot):
         action_start_time = time.time_ns()
         action_timeout_time = action_start_time + timeout * 1e9
 
-        def control_loop():
+        def control_loop() -> None:
             current_pose = self._kelo_robile.get_odometry()
             delta_pose = target_pose - current_pose
 
@@ -96,7 +96,9 @@ class KELORobile(MobileRobot):
             default_sleep_resolution=0.002,
         )
 
-    def enable_compliant_mode(self, enabled: bool, compliant_level: CompliantLevel = CompliantLevel.COMPLIANT_WEAK):
+    def enable_compliant_mode(
+        self, enabled: bool, compliant_level: CompliantLevel = CompliantLevel.COMPLIANT_WEAK
+    ) -> None:
         if enabled:
             if compliant_level == CompliantLevel.COMPLIANT_WEAK:
                 self._kelo_robile.set_driver_type(PlatformDriverType.COMPLIANT_WEAK)
@@ -113,5 +115,5 @@ class KELORobile(MobileRobot):
     def get_velocity(self) -> Vector3DType:
         return self._kelo_robile.get_velocity()
 
-    def reset_odometry(self):
+    def reset_odometry(self) -> None:
         self._kelo_robile.reset_odometry()
