@@ -7,6 +7,7 @@ from airo_robots.grippers import ParallelPositionGripper
 from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType, JointConfigurationType
+from loguru import logger
 from rtde_control import RTDEControlInterface
 from rtde_receive import RTDEReceiveInterface
 
@@ -44,14 +45,20 @@ class URrtde(PositionManipulator):
     ) -> None:
         super().__init__(manipulator_specs, gripper)
         self.ip_address = ip_address
-        try:
-            self.rtde_control = RTDEControlInterface(self.ip_address)
-            self.rtde_receive = RTDEReceiveInterface(self.ip_address)
 
-        except RuntimeError:
-            raise RuntimeError(
-                "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
-            )
+        max_connection_attempts = 3
+        for connection_attempt in range(max_connection_attempts):
+            try:
+                self.rtde_control = RTDEControlInterface(self.ip_address)
+                self.rtde_receive = RTDEReceiveInterface(self.ip_address)
+            except RuntimeError as e:
+                logger.warning(
+                    f"Failed to connect to RTDE. Retrying... (Attempt {connection_attempt + 1}/{max_connection_attempts}). Error:\n{e}"
+                )
+                if connection_attempt == max_connection_attempts - 1:
+                    raise RuntimeError(
+                        "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
+                    )
 
         self.default_linear_acceleration = 1.2  # m/s^2
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2

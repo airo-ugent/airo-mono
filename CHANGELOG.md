@@ -29,6 +29,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `coco-to-yolo` conversion now creates a single polygon of all disconnected parts of the mask instead of simply taking the first polygon of the list.
 - Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
 - Set python version to 3.10 because of an issue with the `ur_rtde` wheels [#121](https://github.com/airo-ugent/airo-mono/issues/121). Updated README.md to reflect this change.
+- `URrtde` will now try connecting to do control interface up to 3 times before raising a `RuntimeError`.
 
 ### Fixed
 - Fixed bug in `get_colored_point_cloud()` that removed some points see issue #25.
