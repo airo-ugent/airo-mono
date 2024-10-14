@@ -4,8 +4,8 @@ import time
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.drives.mobile_robot import CompliantLevel, MobileRobot
-from airo_tulip.platform_driver import PlatformDriverType  # type: ignore
-from airo_tulip.server.kelo_robile import KELORobile as KELORobileClient  # type: ignore
+from airo_tulip.api.client import KELORobile as KELORobileClient  # type: ignore
+from airo_tulip.hardware.platform_driver import PlatformDriverType  # type: ignore
 from airo_typing import Vector3DType
 
 
