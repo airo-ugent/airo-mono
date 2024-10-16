@@ -68,7 +68,7 @@ class KELORobile(MobileRobot):
 
     def _move_platform_to_pose_control_loop(
         self, target_pose: Vector3DType, action_start_time: float, action_timeout_time: float, timeout: float
-    ):
+    ) -> None:
         stop = False
         while not stop:
             current_pose = self._kelo_robile.get_odometry()
