@@ -1,5 +1,6 @@
 import math
 import time
+from threading import Thread
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -26,7 +27,11 @@ class KELORobile(MobileRobot):
         Args:
             robot_ip: IP address of the KELO CPU brick.
             robot_port: Port to connect on (default: 49789)."""
+
         self._kelo_robile = KELORobileClient(robot_ip, robot_port)
+
+        # Position control.
+        self._control_loop_done = True
 
     def align_drives(self, x: float, y: float, a: float, timeout: float = 1.0) -> AwaitableAction:
         """Align all drives for driving in a direction given by the linear and angular velocities.
@@ -61,12 +66,11 @@ class KELORobile(MobileRobot):
             default_sleep_resolution=0.002,
         )
 
-    def move_platform_to_pose(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
-        target_pose = np.array([x, y, a])
-        action_start_time = time.time_ns()
-        action_timeout_time = action_start_time + timeout * 1e9
-
-        def control_loop() -> bool:
+    def _move_platform_to_pose_control_loop(
+        self, target_pose: Vector3DType, action_start_time: float, action_timeout_time: float, timeout: float
+    ):
+        stop = False
+        while not stop:
             current_pose = self._kelo_robile.get_odometry()
             delta_pose = target_pose - current_pose
 
@@ -85,13 +89,23 @@ class KELORobile(MobileRobot):
             at_target_pose = bool(np.linalg.norm(delta_pose) < 0.01)
             stop = at_target_pose or time.time_ns() - action_start_time > timeout * 1e9
 
-            if stop:
-                self._kelo_robile.set_platform_velocity_target(0.0, 0.0, 0.0)
+        self._kelo_robile.set_platform_velocity_target(0.0, 0.0, 0.0)
+        self._control_loop_done = True
 
-            return stop
+    def move_platform_to_pose(self, x: float, y: float, a: float, timeout: float) -> AwaitableAction:
+        target_pose = np.array([x, y, a])
+        action_start_time = time.time_ns()
+        action_timeout_time = action_start_time + timeout * 1e9
+
+        self._control_loop_done = False  # Will be set to True by the below thread once it's finished.
+        thread = Thread(
+            target=self._move_platform_to_pose_control_loop,
+            args=(target_pose, action_start_time, action_timeout_time, timeout),
+        )
+        thread.start()
 
         return AwaitableAction(
-            control_loop,
+            lambda: self._control_loop_done,
             default_timeout=2 * timeout,
             default_sleep_resolution=0.002,
         )
