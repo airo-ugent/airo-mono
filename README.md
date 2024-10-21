@@ -230,7 +230,7 @@ An issue with using a monorepo is that you want to have packages declare their l
 ) that can handle this, we have opted to stick with pip to keep the barier for new developers lower.
 
 
-This implies we simply add local dependencies in the setup file as regular dependencies, but we have to make sure pip can find the dependencies when installing the pacakges.There are two options to do so:
+This implies we simply add local dependencies in the setup file as regular dependencies, but we have to make sure pip can find the dependencies when installing the packages. There are two options to do so:
 1. You make sure that the local dependencies are installed before installing the package, either by running the pip install commands along the dependency tree, or by running all installs in a single pip commamd: `pip install <pkg1>  <pkg2> <pkg3>`
 2. you create distributions for the packages upfront and then tell pip where to find them (because they won't be on PyPI, which is where pip searches by default): `pip install --find-link https:// or /path/to/distributions/dir`
 
