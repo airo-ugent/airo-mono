@@ -35,7 +35,9 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 from pydantic import BaseModel, field_validator, model_validator
 
 # Used by CocoInfo and CocoImage
-Datetime = str  # COCO uses both YYYY-MM-DD and YYYY-MM-DD HH:MM:SS for datetime
+Datetime = Union[
+    str, int
+]  # COCO uses both YYYY-MM-DD and YYYY-MM-DD HH:MM:SS for datetime, CVAT places 0 for missing values
 Url = str
 
 # Used by CocoImage and CocoLicenses
