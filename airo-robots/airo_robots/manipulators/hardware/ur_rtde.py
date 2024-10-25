@@ -51,6 +51,7 @@ class URrtde(PositionManipulator):
             try:
                 self.rtde_control = RTDEControlInterface(self.ip_address)
                 self.rtde_receive = RTDEReceiveInterface(self.ip_address)
+                break
             except RuntimeError as e:
                 logger.warning(
                     f"Failed to connect to RTDE. Retrying... (Attempt {connection_attempt + 1}/{max_connection_attempts}). Error:\n{e}"
@@ -59,6 +60,8 @@ class URrtde(PositionManipulator):
                     raise RuntimeError(
                         "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
                     )
+                else:
+                    time.sleep(1.0)
 
         self.default_linear_acceleration = 1.2  # m/s^2
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
