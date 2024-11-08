@@ -120,7 +120,13 @@ def _validate_coco_categories_are_in_cvat(
     # gather the annotation from CVAT
     cvat_categories_dict = defaultdict(list)
 
-    for annotation_category in cvat_parsed.annotations.meta.get_job_or_task().labels.label:
+    labels = cvat_parsed.annotations.meta.get_job_or_task().labels.label
+
+    # Handle both single LabelItem and list of LabelItems
+    if isinstance(labels, LabelItem):
+        labels = [labels]
+
+    for annotation_category in labels:
         assert isinstance(annotation_category, LabelItem)
         category_str, annotation_name = annotation_category.name.split(".")
         cvat_categories_dict[category_str].append(annotation_name)

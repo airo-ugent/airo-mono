@@ -15,7 +15,7 @@ The airo-mono repository employs a monorepo structure, offering multiple Python 
 
 | Package                                          | Description                                               | Owner          |
 | ------------------------------------------------ | --------------------------------------------------------- | -------------- |
-| 📷 [`airo-camera-toolkit`](airo-camera-toolkit)   | RGB(D) camera, image, and point cloud processing          | @tlpss         |
+| 📷 [`airo-camera-toolkit`](airo-camera-toolkit)   | RGB(D) camera, image, and point cloud processing          | @m-decoster    |
 | 🏗️ [`airo-dataset-tools`](airo-dataset-tools)     | Creating, loading, and manipulating datasets              | @victorlouisdg |
 | 🤖 [`airo-robots`](airo-robots)                   | Simple interfaces for controlling robot arms and grippers | @tlpss         |
 | 📐 [`airo-spatial-algebra`](airo-spatial-algebra) | Transforms and SE3 pose conversions                       | @tlpss         |
@@ -44,7 +44,8 @@ Repositories that follow the same style as `airo-mono` packages, but are not par
 | 🎥 [`airo-blender`](https://github.com/airo-ugent/airo-blender) | Synthetic data generation with Blender          |
 | 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
 | 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                          |
-| 🧭 `airo-planner`                                               | Motion planning interfaces (coming soon)        |
+| 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
+| 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip) | Driver for the KELO mobile robot platform |
 
 ### Usage & Philosophy 📖
 We believe in *keep simple things simple*. Starting a new project should\* be as simple as:
@@ -229,7 +230,7 @@ An issue with using a monorepo is that you want to have packages declare their l
 ) that can handle this, we have opted to stick with pip to keep the barier for new developers lower.
 
 
-This implies we simply add local dependencies in the setup file as regular dependencies, but we have to make sure pip can find the dependencies when installing the pacakges.There are two options to do so:
+This implies we simply add local dependencies in the setup file as regular dependencies, but we have to make sure pip can find the dependencies when installing the packages. There are two options to do so:
 1. You make sure that the local dependencies are installed before installing the package, either by running the pip install commands along the dependency tree, or by running all installs in a single pip commamd: `pip install <pkg1>  <pkg2> <pkg3>`
 2. you create distributions for the packages upfront and then tell pip where to find them (because they won't be on PyPI, which is where pip searches by default): `pip install --find-link https:// or /path/to/distributions/dir`
 

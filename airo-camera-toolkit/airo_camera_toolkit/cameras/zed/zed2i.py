@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, List, Optional
 
+from loguru import logger
+
 try:
     import pyzed.sl as sl
 
@@ -121,12 +123,12 @@ class Zed2i(StereoRGBDCamera):
             status = self.camera.open(self.camera_params)
             if status == sl.ERROR_CODE.SUCCESS:
                 break
-            print(f"Opening Zed2i camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
+            logger.info(f"Opening Zed2i camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
             if self.serial_number:
-                print(f"Rebooting {self.serial_number}")
+                logger.info(f"Rebooting {self.serial_number}")
                 sl.Camera.reboot(self.serial_number)
             time.sleep(2)
-            print(sl.Camera.get_device_list())
+            logger.info(f"Available ZED cameras: {sl.Camera.get_device_list()}")
             self.camera = sl.Camera()
 
         if status != sl.ERROR_CODE.SUCCESS:
@@ -149,6 +151,7 @@ class Zed2i(StereoRGBDCamera):
         # create reusable memory blocks for the measures
         # these will be allocated the first time they are used
         self.image_matrix = sl.Mat()
+        self.image_matrix_right = sl.Mat()
         self.depth_image_matrix = sl.Mat()
         self.depth_matrix = sl.Mat()
         self.point_cloud_matrix = sl.Mat()
@@ -218,14 +221,14 @@ class Zed2i(StereoRGBDCamera):
 
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         assert view in StereoRGBDCamera._VIEWS
+        image_bgra: OpenCVIntImageType
         if view == StereoRGBDCamera.RIGHT_RGB:
-            view = sl.VIEW.RIGHT
+            self.camera.retrieve_image(self.image_matrix_right, sl.VIEW.RIGHT)
+            image_bgra = self.image_matrix_right.get_data()
         else:
-            view = sl.VIEW.LEFT
-        self.camera.retrieve_image(self.image_matrix, view)
-        image_bgra: OpenCVIntImageType = self.image_matrix.get_data()
-        # image = image[..., :3]  # remove alpha channel
-        # image = image[..., ::-1]  # convert from BGR to RGB
+            self.camera.retrieve_image(self.image_matrix, sl.VIEW.LEFT)
+            image_bgra = self.image_matrix.get_data()
+
         image = cv2.cvtColor(image_bgra, cv2.COLOR_BGRA2RGB)
         return image
 
@@ -240,8 +243,9 @@ class Zed2i(StereoRGBDCamera):
         assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
         assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
         self.camera.retrieve_image(self.depth_image_matrix, sl.VIEW.DEPTH)
-        image = self.depth_image_matrix.get_data()
-        image = image[..., :3]
+        image_bgra = self.depth_image_matrix.get_data()
+        # image = image[..., :3]
+        image = cv2.cvtColor(image_bgra, cv2.COLOR_BGRA2RGB)
         return image
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
@@ -253,11 +257,12 @@ class Zed2i(StereoRGBDCamera):
         # or x,y,z, nan (no color information on this pixel??)
         # or x,y,z, value (color information on this pixel)
 
-        point_cloud = self.point_cloud_matrix.get_data()
-        points = point_cloud[:, :, :3].reshape(-1, 3)
+        point_cloud_XYZ_ = self.point_cloud_matrix.get_data()
+
+        positions = cv2.cvtColor(point_cloud_XYZ_, cv2.COLOR_BGRA2BGR).reshape(-1, 3)
         colors = self._retrieve_rgb_image_as_int().reshape(-1, 3)
 
-        return PointCloud(points, colors)
+        return PointCloud(positions, colors)
 
     def _retrieve_confidence_map(self) -> NumpyFloatImageType:
         self.camera.retrieve_measure(self.confidence_matrix, sl.MEASURE.CONFIDENCE)

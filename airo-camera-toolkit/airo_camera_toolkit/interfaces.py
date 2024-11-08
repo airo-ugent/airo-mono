@@ -1,5 +1,6 @@
 import abc
 
+from airo_camera_toolkit.point_clouds.conversions import open3d_to_point_cloud
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,
@@ -103,17 +104,6 @@ class DepthCamera(Camera, abc.ABC):
         self._grab_images()
         return self._retrieve_depth_image()
 
-    def get_colored_point_cloud(self) -> PointCloud:
-        """Get the latest point cloud of the camera.
-        The point cloud contains the estimated position in the camera frame of points on the image plane (pixels).
-        Each point also has a color associated with it, which is the color of the corresponding pixel in the RGB image.
-
-        Returns:
-            PointCloud: the points (= positions) and colors
-        """
-        # TODO: offer a base implementation that uses the depth map and the rgb image to construct this pointcloud?
-        raise NotImplementedError
-
     @abc.abstractmethod
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
         """Returns the current depth map in the memory buffer."""
@@ -128,6 +118,46 @@ class DepthCamera(Camera, abc.ABC):
 class RGBDCamera(RGBCamera, DepthCamera):
     """Base class for all RGBD cameras"""
 
+    def get_colored_point_cloud(self) -> PointCloud:
+        """Get the latest point cloud of the camera.
+        The point cloud contains the estimated position in the camera frame of points on the image plane (pixels).
+        Each point also has a color associated with it, which is the color of the corresponding pixel in the RGB image.
+
+        Returns:
+            PointCloud: the points (= positions) and colors
+        """
+
+        self._grab_images()
+        return self._retrieve_colored_point_cloud()
+
+    def _retrieve_colored_point_cloud(self) -> PointCloud:
+        """Returns the current point cloud in the memory buffer.
+
+        Default implementation uses the depth map and RGB with open3d's create_from_rgbd_image() function.
+        See: https://www.open3d.org/docs/release/python_api/open3d.t.geometry.PointCloud.html#open3d.t.geometry.PointCloud.create_from_rgbd_image
+        """
+        import open3d as o3d
+
+        image_rgb_uint8 = self._retrieve_rgb_image_as_int()
+        depth_map = self._retrieve_depth_map()
+        intrinsics = self.intrinsics_matrix()
+
+        # Convert airo-mono data types to open3d data types
+        image_o3d = o3d.t.geometry.Image(image_rgb_uint8)
+        depth_map_o3d = o3d.t.geometry.Image(depth_map)
+        rgbd_o3d = o3d.t.geometry.RGBDImage(image_o3d, depth_map_o3d)
+
+        # Note this is quite slow, > 100ms for a 2K image
+        pcd = o3d.t.geometry.PointCloud.create_from_rgbd_image(
+            rgbd_o3d,
+            intrinsics,
+            depth_scale=1.0,
+            depth_max=1000.0,
+        )
+
+        point_cloud = open3d_to_point_cloud(pcd)
+        return point_cloud
+
 
 class StereoRGBDCamera(RGBDCamera):
     """Base class for all stereo RGBD cameras"""
@@ -140,8 +170,16 @@ class StereoRGBDCamera(RGBDCamera):
         self._grab_images()
         return self._retrieve_rgb_image(view)
 
+    def get_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
+        self._grab_images()
+        return self._retrieve_rgb_image_as_int(view)
+
     @abc.abstractmethod
     def _retrieve_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _retrieve_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
         raise NotImplementedError
 
     # TODO: check view argument value?

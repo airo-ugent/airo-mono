@@ -15,18 +15,22 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 
 ### Added
+- add method `as_single_polygon` to combine disconnected parts of a binary mask into a single polygon to the `Mask` class, useful for data formats that only allow for a single polygon such as YOLO.
 - `PointCloud` dataclass as the main data structure for point clouds in airo-mono
 - Notebooks to get started with point clouds, checking performance and logging to rerun
-- Functions to crop point clouds and filter points with a mask (e.g. low-confidence points)
+- Functions to crop point clouds, filter points with a mask (e.g. low-confidence points), and transform point clouds
 - Functions to convert from our numpy-based dataclass to and from open3d point clouds
 - `BoundingBox3DType`
 - `Zed2i.ULTRA_DEPTH_MODE` to enable the ultra depth setting for the Zed2i cameras
 - `OpenCVVideoCapture` implementation of `RGBCamera` for working with arbitrary cameras
 - `MultiprocessRGBRerunLogger` and `MultiprocessRGBDRerunLogger` now allow you to pass an `entity_path` value which determines where the RGB and depth images will be logged
+- `MobileRobot` and `KELORobile` interface and subclass added, to control mobile robots via the `airo-tulip` package
 
 ### Changed
+- `coco-to-yolo` conversion now creates a single polygon of all disconnected parts of the mask instead of simply taking the first polygon of the list.
 - Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
 - Set python version to 3.10 because of an issue with the `ur_rtde` wheels [#121](https://github.com/airo-ugent/airo-mono/issues/121). Updated README.md to reflect this change.
+- `URrtde` will now try connecting to do control interface up to 3 times before raising a `RuntimeError`.
 
 ### Fixed
 - Fixed bug in `get_colored_point_cloud()` that removed some points see issue #25.
@@ -35,6 +39,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Added `__init__.py` to `realsense` and `utils` in `airo_camera_toolkit.cameras`, fixing installs with pip and issue #113.
 - Fixed bug that returned a transposed resolution in `MultiprocessRGBReceiver`.
 - Using `Zed2i.PERFORMANCE_DEPTH_MODE` will now correctly use the performance mode instead of the quality mode.
+- Shared memory files that were not properly cleaned up are now unlinked and then recreated.
+- The wait interval for shared memory files has been reduced to .5 seconds (from 5), to speed up application start times.
 
 ### Removed
 - `ColoredPointCloudType`

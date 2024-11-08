@@ -23,8 +23,8 @@ pip install .
 This will already allow you to use the hardare-independent functionality of this package, e.g. image conversion and projection.
 Depending on the hardware you are using, you might need to complete additional installation.
 Instructions can be found in the following files:
-* [ZED Installation](airo_camera_toolkit/cameras/zed_installation.md)
-* [RealSense Installation](airo_camera_toolkit/cameras/realsense_installation.md)
+* [ZED Installation](airo_camera_toolkit/cameras/zed/installation.md)
+* [RealSense Installation](airo_camera_toolkit/cameras/realsense/realsense_installation.md)
 
 Additionally, to ensure you have `airo-robots` installed for the hand-eye calibration, install the extra dependencies:
 ```
@@ -93,11 +93,11 @@ See [annotation_tool.md](./airo_camera_toolkit/annotation_tool.md) for usage ins
 See the [README](./airo_camera_toolkit/image_transforms/README.md) in the `image_transforms` folder for more details.
 
 ## Real-time visualisation
-For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](notebooks/rerun-zed-tutorial.ipynb).
+For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](notebooks/rerun_tutorial.ipynb).
 See this [README](./docs/rerun.md) for more details.
 
 ## Point clouds
-See the tutorial notebook [here](notebooks/point_clouds_tutorial.ipynb) for an introduction.
+See the tutorial notebook [here](notebooks/point_cloud_tutorial.ipynb) for an introduction.
 
 ## Multiprocessing
 Camera processing can be computationally expensive.
