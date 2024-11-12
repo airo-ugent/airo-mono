@@ -12,8 +12,8 @@ testing demo: python ./bkstools/demo/demo_bks_grip_outside_inside.py
 
 ## Debugging
 
-sudo apt-get install build-essential linux-source
-if 
-`sudo dmesg | grep brltty` shows `usbfs: interface 0 claimed by ch341 while 'brltty' sets config #1`
-run `sudo apt remove brltty`
+If the Schunk doesn't show up as /dev/ttyUSB*, but `lsusb` lists `QinHeng Electronics CH340 serial converter`, and
+`sudo dmesg | grep brltty` shows `usbfs: interface 0 claimed by ch341 while 'brltty' sets config #1`, then:
+`sudo apt remove brltty`, replug the usb cable, the Schunk should now show up as /dev/ttyUSB*.
 
+Maybe necessary but unconfirmed: `sudo apt-get install build-essential linux-source`
