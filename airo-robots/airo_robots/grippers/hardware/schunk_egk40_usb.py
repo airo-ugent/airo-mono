@@ -39,9 +39,10 @@ class SchunkEGK40_USB(ParallelPositionGripper):
             self.calibrate_width()
         self.width_loss_due_to_fingers = self.SCHUNK_DEFAULT_SPECS.max_width - self.gripper_specs.max_width
 
-        # The BKSBase object supports communication with the Schunk EGK40
+        # The BKSBase object supports communication with Schunk grippers
         self.bksb = BKSBase(usb_interface)  # , debug=args.debug, repeater_timeout=args.repeat_timeout,
         # repeater_nb_tries=args.repeat_nb_tries)
+        
         # Prepare gripper: Acknowledge any pending error:
         self.bksb.command_code = eCmdCode.CMD_ACK
         time.sleep(0.1)
@@ -107,9 +108,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         self.bksb.set_pos = (self.gripper_specs.max_width - _width) * 1000
         self.bksb.command_code = eCmdCode.MOVE_POS
 
-        def move_done_condition() -> bool:
-            return self.current_speed == 0
-        return AwaitableAction(move_done_condition)
+        return AwaitableAction(self._move_done_condition)
 
     def move_relative(self, width_difference: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
              force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force) -> AwaitableAction:
@@ -124,9 +123,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         self.bksb.set_pos = -width_difference*1000
         self.bksb.command_code = eCmdCode.MOVE_POS_REL
 
-        def move_done_condition() -> bool:
-            return self.current_speed == 0
-        return AwaitableAction(move_done_condition)
+        return AwaitableAction(self._move_done_condition)
 
     def grip(self) -> AwaitableAction:
         """
@@ -141,9 +138,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         self.bksb.command_code = eCmdCode.MOVE_FORCE  # (for historic reasons the actual grip command for simple gripping is called MOVE_FORCE...)
         WaitGrippedOrError(self.bksb)
 
-        def move_done_condition() -> bool:
-            return self.current_speed == 0
-        return AwaitableAction(move_done_condition)
+        return AwaitableAction(self._move_done_condition)
 
     def stop(self) -> None:
         """
@@ -174,3 +169,6 @@ class SchunkEGK40_USB(ParallelPositionGripper):
 
     def sleep(self, duration) -> None:
         return keep_communication_alive_sleep(self.bksb, duration)
+    
+    def _move_done_condition(self) -> bool:
+        return self.current_speed == 0
