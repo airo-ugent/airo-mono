@@ -1,7 +1,8 @@
 import time
 
 import numpy as np
-from bkstools.bks_lib.bks_base import BKSBase, keep_communication_alive_input, keep_communication_alive_sleep
+from bkstools.bks_lib.bks_base import BKSBase, keep_communication_alive_input, keep_communication_alive_sleep, keep_communication_alive
+from bkstools.bks_lib.bks_module import BKSModule
 from bkstools.scripts.bks_grip import WaitGrippedOrError
 from filelock import AsyncWindowsFileLock
 from pyschunk.generated.generated_enums import eCmdCode
@@ -39,33 +40,31 @@ class SchunkEGK40_USB(ParallelPositionGripper):
             self.calibrate_width()
         self.width_loss_due_to_fingers = self.SCHUNK_DEFAULT_SPECS.max_width - self.gripper_specs.max_width
 
-        # The BKSBase object supports communication with Schunk grippers
-        self.bksb = BKSBase(usb_interface)  # , debug=args.debug, repeater_timeout=args.repeat_timeout,
-        # repeater_nb_tries=args.repeat_nb_tries)
+        self.bks = BKSModule(usb_interface, sleep_time=None, debug=False)
         
         # Prepare gripper: Acknowledge any pending error:
-        self.bksb.command_code = eCmdCode.CMD_ACK
+        self.bks.command_code = eCmdCode.CMD_ACK
         time.sleep(0.1)
 
     @property
     def speed(self) -> float:
         """returns speed setting [m/s]."""
-        return self.bksb.set_vel / 1000
+        return self.bks.set_vel / 1000
 
     @speed.setter
     def speed(self, new_speed: float) -> None:
         """sets the max speed [m/s]."""
         _new_speed = np.clip(new_speed, self.gripper_specs.min_speed, self.gripper_specs.max_speed)
-        self.bksb.set_vel = float(_new_speed * 1000)  # value must be set in mm/s for bkstools
+        self.bks.set_vel = float(_new_speed * 1000)  # value must be set in mm/s for bkstools
 
     @property
     def current_speed(self) -> float:
         """returns current speed [m/s]."""
-        return self.bksb.actual_vel / 1000
+        return self.bks.actual_vel / 1000
 
     @property
     def max_grasp_force(self) -> float:
-        _force = rescale_range(self.bksb.set_force, 0, 100,
+        _force = rescale_range(self.bks.set_force, 0, 100,
                                self.gripper_specs.min_force, self.gripper_specs.max_force)
         return _force
 
@@ -75,53 +74,57 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         _new_force = np.clip(new_force, self.gripper_specs.min_force, self.gripper_specs.max_force)
         _new_force = rescale_range(_new_force, self.gripper_specs.min_force, self.gripper_specs.max_force,
                                    0, 100)
-        self.bksb.set_force = _new_force
+        self.bks.set_force = _new_force
 
     @property
     def current_motor_current(self) -> float:
         """returns current motor current usage [unit?], this is a proxy for force."""
-        return self.bksb.actual_cur
+        return self.bks.actual_cur
 
     def get_current_width(self) -> float:
         """the current opening of the fingers in meters"""
         # Reasoning:
-        # width_without_fingers = self.SCHUNK_DEFAULT_SPECS.max_width - self.bksb.actual_pos / 1000
+        # width_without_fingers = self.SCHUNK_DEFAULT_SPECS.max_width - self.bks.actual_pos / 1000
         # return width_without_fingers - self.width_loss_due_to_fingers
         # The above equates to:
-        return self.gripper_specs.max_width - (self.bksb.actual_pos / 1000)
+        return self.gripper_specs.max_width - (self.bks.actual_pos / 1000)
 
     def move(self, width: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-             force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force) -> AwaitableAction:
+             force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force, set_speed_and_force=True) -> AwaitableAction:
         """
         Moves the gripper to a certain position at a certain speed with a certain force
         :param width: in m
         :param speed: in m/s
         :param force: in N
+        :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen with the gripper
         """
-        self.speed = speed
-        self.max_grasp_force = force
+        if set_speed_and_force:
+            self.speed = speed
+            self.max_grasp_force = force
         _width = np.clip(width, self.gripper_specs.min_width, self.gripper_specs.max_width)
         # Reasoning:
         # width_without_fingers = _width + self.width_loss_due_to_fingers
-        # self.bksb.set_pos = (self.SCHUNK_DEFAULT_SPECS.max_width - width_without_fingers) * 1000
+        # self.bks.set_pos = (self.SCHUNK_DEFAULT_SPECS.max_width - width_without_fingers) * 1000
         # The above equates to:
-        self.bksb.set_pos = (self.gripper_specs.max_width - _width) * 1000
-        self.bksb.command_code = eCmdCode.MOVE_POS
+        self.bks.set_pos = (self.gripper_specs.max_width - _width) * 1000
+        self.bks.command_code = eCmdCode.MOVE_POS
 
         return AwaitableAction(self._move_done_condition)
 
     def move_relative(self, width_difference: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-             force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force) -> AwaitableAction:
+             force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force, set_speed_and_force=True) -> AwaitableAction:
         """
         Moves the gripper to a certain position at a certain speed with a certain force
         :param width_difference: in m,  a positive difference will make the gripper open, a negative difference makes it close
         :param speed: in m/s
         :param force: in N
+        :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen with the gripper
         """
-        self.speed = speed
-        self.max_grasp_force = force
-        self.bksb.set_pos = -width_difference*1000
-        self.bksb.command_code = eCmdCode.MOVE_POS_REL
+        if set_speed_and_force:
+            self.speed = speed
+            self.max_grasp_force = force
+        self.bks.set_pos = -width_difference*1000
+        self.bks.command_code = eCmdCode.MOVE_POS_REL
 
         return AwaitableAction(self._move_done_condition)
 
@@ -132,11 +135,11 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         :param speed: in m/s
         :param force: in N
         """
-        self.bksb.set_force = 50  # target force to 50 % => BasicGrip
-        self.bksb.set_vel = 0.0  # target velocity 0 => BasicGrip
-        self.bksb.grp_dir = True  # grip from outside
-        self.bksb.command_code = eCmdCode.MOVE_FORCE  # (for historic reasons the actual grip command for simple gripping is called MOVE_FORCE...)
-        WaitGrippedOrError(self.bksb)
+        self.bks.set_force = 50  # target force to 50 % => BasicGrip
+        self.bks.set_vel = 0.0  # target velocity 0 => BasicGrip
+        self.bks.grp_dir = True  # grip from outside
+        self.bks.command_code = eCmdCode.MOVE_FORCE  # (for historic reasons the actual grip command for simple gripping is called MOVE_FORCE...)
+        WaitGrippedOrError(self.bks)
 
         return AwaitableAction(self._move_done_condition)
 
@@ -144,13 +147,13 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         """
         TODO: figure out difference with fast_stop()
         """
-        self.bksb.command_code = eCmdCode.CMD_STOP
+        self.bks.command_code = eCmdCode.CMD_STOP
 
     def fast_stop(self) -> None:
         """
         TODO: figure out difference with stop()
         """
-        self.bksb.command_code = eCmdCode.CMD_FAST_STOP
+        self.bks.command_code = eCmdCode.CMD_FAST_STOP
 
     def calibrate_width(self) -> None:
         """
@@ -164,11 +167,5 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         self._gripper_specs.max_width = self.SCHUNK_DEFAULT_SPECS.max_width - self.get_current_width()
         self.move(width=self.gripper_specs.max_width, speed=self.gripper_specs.max_speed, force=self.gripper_specs.min_force).wait()
 
-    def input(self, prompt) -> None:
-        return keep_communication_alive_input(self.bksb, prompt)
-
-    def sleep(self, duration) -> None:
-        return keep_communication_alive_sleep(self.bksb, duration)
-    
     def _move_done_condition(self) -> bool:
         return self.current_speed == 0
