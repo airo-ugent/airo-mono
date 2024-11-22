@@ -44,6 +44,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         
         # Prepare gripper: Acknowledge any pending error:
         self.bks.command_code = eCmdCode.CMD_ACK
+        self.bks.MakeReady()
         time.sleep(0.1)
 
     @property
