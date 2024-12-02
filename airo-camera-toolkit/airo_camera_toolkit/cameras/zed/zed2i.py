@@ -84,7 +84,7 @@ class Zed2i(StereoRGBDCamera):
         resolution: CameraResolutionType = RESOLUTION_2K,
         fps: int = 15,
         depth_mode: sl.DEPTH_MODE = NONE_DEPTH_MODE,
-        serial_number: Optional[str] = None,
+        serial_number: Optional[int] = None,
         svo_filepath: Optional[str] = None,
     ) -> None:
         self._resolution = resolution
