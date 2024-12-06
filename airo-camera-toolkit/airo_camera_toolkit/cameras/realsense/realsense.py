@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any, Optional
 
 import numpy as np
@@ -13,6 +14,7 @@ from airo_typing import (
     NumpyFloatImageType,
     NumpyIntImageType,
 )
+from loguru import logger
 
 
 class Realsense(RGBDCamera):
@@ -115,7 +117,17 @@ class Realsense(RGBDCamera):
         if not self._depth_enabled:
             return
 
-        aligned_frames = self.align_transform.process(self._composite_frame)
+        try:
+            aligned_frames = self.align_transform.process(self._composite_frame)
+        except RuntimeError as e:
+            # Sometimes, the realsense SDK throws an error withn aligning RGB and depth.
+            # This can happen if the CPU is busy: https://github.com/IntelRealSense/librealsense/issues/6628#issuecomment-647379900
+            # A solution is to try again. Here, we only try again once; if the error occurs again, we raise it
+            # and let the user deal with it.
+            logger.error(f"Error while grabbing images:\n{e}.\nWill retry in 1 second.")
+            time.sleep(1)
+            aligned_frames = self.align_transform.process(self._composite_frame)
+
         self._depth_frame = aligned_frames.get_depth_frame()
 
         if self.hole_filling_enabled:
