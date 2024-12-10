@@ -46,7 +46,7 @@ Now We will test whether our `airo_camera_toolkit can access the ZED cameras.
 In this directory run:
 ```
 conda activate airo-mono
-python zed2i.py
+python zed.py
 ```
 Complete the prompts. If everything looks normal, congrats, you successfully completed the installation! :tada:
 

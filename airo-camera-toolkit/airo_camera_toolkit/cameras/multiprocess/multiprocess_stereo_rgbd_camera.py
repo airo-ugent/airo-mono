@@ -281,22 +281,22 @@ if __name__ == "__main__":
 
     import multiprocessing
 
-    from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
+    from airo_camera_toolkit.cameras.zed.zed import Zed
 
     multiprocessing.set_start_method("spawn")
 
-    resolution = Zed2i.RESOLUTION_2K
+    resolution = Zed.RESOLUTION_2K
     camera_fps = 15
 
     # import os
     # os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
     publisher = MultiprocessStereoRGBDPublisher(
-        Zed2i,
+        Zed,
         camera_kwargs={
             "resolution": resolution,
             "fps": camera_fps,
-            "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
+            "depth_mode": Zed.NEURAL_DEPTH_MODE,
         },
         log_debug=True,
     )

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, List, Optional
 
 from loguru import logger
-from typing_extensions import deprecated
 
 try:
     import pyzed.sl as sl
@@ -90,22 +89,22 @@ class Zed(StereoRGBDCamera):
         self._resolution = resolution
         self.fps = fps
         self.depth_mode = depth_mode
-        self.serial_number = serial_number
+        self.serial_number = int(serial_number) if serial_number else None
 
         self.camera = sl.Camera()
 
         # TODO: create a configuration class for the camera parameters
         self.camera_params = sl.InitParameters()
 
-        if serial_number:
-            self.camera_params.set_from_serial_number(int(serial_number))
+        if self.serial_number:
+            self.camera_params.set_from_serial_number(self.serial_number)
 
         if svo_filepath:
             input_type = sl.InputType()
             input_type.set_from_svo_file(svo_filepath)
             self.camera_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=False)
 
-        self.camera_params.camera_resolution = Zed2i.resolution_to_identifier_dict[resolution]
+        self.camera_params.camera_resolution = Zed.resolution_to_identifier_dict[resolution]
         self.camera_params.camera_fps = fps
         # https://www.stereolabs.com/docs/depth-sensing/depth-settings/
         self.camera_params.depth_mode = depth_mode
@@ -123,7 +122,7 @@ class Zed(StereoRGBDCamera):
             status = self.camera.open(self.camera_params)
             if status == sl.ERROR_CODE.SUCCESS:
                 break
-            logger.info(f"Opening Zed2i camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
+            logger.info(f"Opening Zed camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
             if self.serial_number:
                 logger.info(f"Rebooting {self.serial_number}")
                 sl.Camera.reboot(self.serial_number)
@@ -132,7 +131,7 @@ class Zed(StereoRGBDCamera):
             self.camera = sl.Camera()
 
         if status != sl.ERROR_CODE.SUCCESS:
-            raise IndexError(f"Could not open Zed2i camera, error = {status}")
+            raise IndexError(f"Could not open Zed camera, error = {status}")
 
         # TODO: create a configuration class for the runtime parameters
         self.runtime_params = sl.RuntimeParameters()
@@ -293,11 +292,6 @@ class Zed(StereoRGBDCamera):
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         self.camera.close()
-
-
-@deprecated("Use Zed instead.")
-class Zed2i(Zed):
-    """Present for backwards compatibility, use Zed instead."""
 
 
 def _test_zed_implementation() -> None:
