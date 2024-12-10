@@ -67,7 +67,7 @@ class MultiprocessRGBPublisher(multiprocessing.context.SpawnProcess):
         """Instantiates the publisher. Note that the publisher (and its process) will not start until start() is called.
 
         Args:
-            camera_cls (type): The class e.g. Zed2i that this publisher will instantiate.
+            camera_cls (type): The class e.g. Zed that this publisher will instantiate.
             camera_kwargs (dict, optional): The kwargs that will be passed to the camera_cls constructor.
             shared_memory_namespace (str, optional): The string that will be used to prefix the shared memory blocks that this class will create.
         """
@@ -413,21 +413,21 @@ if __name__ == "__main__":
     """example of how to use the MultiprocessRGBPublisher and MultiprocessRGBReceiver.
     You can also use the MultiprocessRGBReceiver in a different process (e.g. in a different python script)
     """
-    from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
+    from airo_camera_toolkit.cameras.zed.zed import Zed
 
     multiprocessing.set_start_method("spawn")
 
-    resolution = Zed2i.RESOLUTION_2K
+    resolution = Zed.RESOLUTION_2K
     camera_fps = 15
     namespace = "camera"
 
     # Creating and starting the publisher
     publisher = MultiprocessRGBPublisher(
-        Zed2i,
+        Zed,
         camera_kwargs={
             "resolution": resolution,
             "fps": camera_fps,
-            "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
+            "depth_mode": Zed.NEURAL_DEPTH_MODE,
         },
         shared_memory_namespace=namespace,
     )

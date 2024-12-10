@@ -54,13 +54,13 @@ pip install airo-camera-toolkit airo-robots
 ```
 And writing a simple script:
 ```python
-from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
+from airo_camera_toolkit.cameras.zed.zed import Zed
 from airo_robots.manipulators.hardware.ur_rtde import URrtde
 from airo_robots.grippers.hardware.robotiq_2f85_urcap import Robotiq2F85
 
 robot_ip_address = "10.40.0.162"
 
-camera = Zed2i()
+camera = Zed()
 robot = URrtde(ip_address=robot_ip_address)
 gripper = Robotiq2F85(ip_address=robot_ip_address)
 
