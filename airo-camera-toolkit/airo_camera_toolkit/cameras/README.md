@@ -2,7 +2,7 @@
 # Cameras
 This subpackage contains implementations of the camera interface for the cameras we have at AIRO.
 
-- ZED 2i
+- ZED 2 series
 - Realsense D400 series
 
 It also contains code to enable multiprocessed use of the camera streams: [multiprocessed camera](./multiprocess/)
@@ -24,5 +24,5 @@ Each camera implementation can be run as a script and will execute the relevant 
 For example, to test your ZED installation:
 ```
 conda activate airo-mono
-python3 zed2i.py
+python3 zed.py
 ```
