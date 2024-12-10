@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, List, Optional
 
 from loguru import logger
+from typing_extensions import deprecated
 
 try:
     import pyzed.sl as sl
@@ -294,6 +295,7 @@ class Zed(StereoRGBDCamera):
         self.camera.close()
 
 
+@deprecated("Use Zed instead.")
 class Zed2i(Zed):
     """Present for backwards compatibility, use Zed instead."""
 
