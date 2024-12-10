@@ -300,7 +300,7 @@ class Zed2i(Zed):
     """Present for backwards compatibility, use Zed instead."""
 
 
-def _test_zed_implementation():
+def _test_zed_implementation() -> None:
     """this script serves as a 'test' for the zed implementation."""
     from airo_camera_toolkit.cameras.manual_test_hw import manual_test_stereo_rgbd_camera, profile_rgb_throughput
 
