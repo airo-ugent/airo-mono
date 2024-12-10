@@ -31,6 +31,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
 - Set python version to 3.10 because of an issue with the `ur_rtde` wheels [#121](https://github.com/airo-ugent/airo-mono/issues/121). Updated README.md to reflect this change.
 - `URrtde` will now try connecting to do control interface up to 3 times before raising a `RuntimeError`.
+- Renamed `Zed2i` to `Zed` and `zed2i.py` to `zed.py`, but kept the old names as aliases for backwards compatibility
 
 ### Fixed
 - Fixed bug in `get_colored_point_cloud()` that removed some points see issue #25.
