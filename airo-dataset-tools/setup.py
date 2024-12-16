@@ -21,6 +21,7 @@ setuptools.setup(
         "Pillow",
         "types-Pillow",
         "albumentations",
+        "click",
         "airo-typing",
         "airo-spatial-algebra",
     ],
