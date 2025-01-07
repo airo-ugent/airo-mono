@@ -9,10 +9,16 @@ from pyschunk.generated.generated_enums import eCmdCode
 from typing import Optional
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
+from enum import Enum
 
 
 def rescale_range(x: float, from_min: float, from_max: float, to_min: float, to_max: float) -> float:
     return to_min + (x - from_min) / (from_max - from_min) * (to_max - to_min)
+
+
+class SCHUNK_STROKE_OPTIONS(Enum):
+    DEFAULT = 0
+    CALIBRATE = 1
 
 
 class SchunkEGK40_USB(ParallelPositionGripper):
@@ -20,7 +26,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
     SCHUNK_DEFAULT_SPECS = ParallelPositionGripperSpecs(0.083, 0.0, 150, 55, 0.0575, 0.0055)
 
     def __init__(self, usb_interface="/dev/ttyUSB0",
-                 fingers_max_stroke: Optional[float] = None) -> None:
+                 max_stroke_setting: Optional[SCHUNK_STROKE_OPTIONS, float] = None) -> None:
         """
         usb_interface: the USB interface to which the gripper is connected.
 
@@ -31,13 +37,20 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         the Schunk's maximum width of 83mm. Such fingertips would not touch when the Schunk is "closed".
         """
         super().__init__(self.SCHUNK_DEFAULT_SPECS)
-        if fingers_max_stroke == -1:
-            # keep default width settings
-            pass
-        elif fingers_max_stroke:
-            self._gripper_specs.max_width = fingers_max_stroke
-        elif fingers_max_stroke is None:
-            self.calibrate_width()
+        if isinstance(max_stroke_setting, SCHUNK_STROKE_OPTIONS):
+            if max_stroke_setting == SCHUNK_STROKE_OPTIONS.DEFAULT:
+                # keep default width setting
+                pass
+            elif max_stroke_setting == SCHUNK_STROKE_OPTIONS.CALIBRATE:
+                self.calibrate_width()
+            else:
+                raise ValueError("Incorrect stroke setting.")
+        else:
+            if not isinstance(max_stroke_setting, float):
+                raise ValueError("Incorrect stroke setting.")
+            else:
+                # overwrite width setting
+                self._gripper_specs.max_width = fingers_max_stroke
         self.width_loss_due_to_fingers = self.SCHUNK_DEFAULT_SPECS.max_width - self.gripper_specs.max_width
 
         self.bks = BKSModule(usb_interface, sleep_time=None, debug=False)
