@@ -1,11 +1,8 @@
-import logging
-import argparse
-import sys
-import time
-import socket
 import re
-import socketserver
+import socket
+import sys
 import threading
+import time
 
 # class TCPHandler(socketserver.BaseRequestHandler):
 #     def handle(self):
@@ -18,14 +15,17 @@ import threading
 #                 break
 #             # print(self.data)
 
+
 class SchunkGripper:
     # num of commands after which clear_interpreter() command will be invoked.
     # If interpreted statements are not cleared periodically then "runtime too much behind" error may
     # be shown when leaving interpreter mode
-    CLEARBUFFER_LIMIT = 20  # DONOT USE IT NOW --- clear the buffer for interpreter mode (the number of command you want to perform)
+    CLEARBUFFER_LIMIT = (
+        20  # DONOT USE IT NOW --- clear the buffer for interpreter mode (the number of command you want to perform)
+    )
     # EGUEGK_rpc_ip = "127.0.0.1"
     EGUEGK_rpc_ip = "10.42.0.162"
-    local_ip = '10.42.0.1'
+    local_ip = "10.42.0.1"
     local_port = 47000
     rpc_port = 55050
     UR_INTERPRETER_SOCKET = 30020
@@ -33,7 +33,7 @@ class SchunkGripper:
     STATE_REPLY_PATTERN = re.compile(r"(\w+):\W+(\d+)?")  # DONOT USE IT NOW
     schunk_socket_name = "socket_grasp_sensor"
     gripper_index = 0
-    ENCODING = 'UTF-8'
+    ENCODING = "UTF-8"
     EGUEGK_socket_uid = 0
     uid_th = 500
     timeout = 1000
@@ -59,10 +59,10 @@ class SchunkGripper:
         while True:
             try:
                 self.schunk_client, addr = rcv_socket.accept()
-                print('socket accepted for recv_shcunk')
+                print("socket accepted for recv_shcunk")
                 # connect = False
             except:
-                print('socket timeout for recv_schunk')
+                print("socket timeout for recv_schunk")
                 continue
         # while True:
         #     # print('recieve data')
@@ -75,7 +75,7 @@ class SchunkGripper:
         # connect to the gripper's address
         # hostname: robot's ip
         # port: the local free port created for Schunk (not 30003 and 30020)
-        print('connect interpreter mode and schunk')
+        print("connect interpreter mode and schunk")
         # self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.enable_interpreter_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -106,25 +106,35 @@ class SchunkGripper:
         # print('connecting over.')
         # Send all schunk functions
         # self._send_funtions() # TODO:USELESS NOW
+
     def _send_funtions(self):
-        EGUEGK_rpcCall = f'def EGUEGK_rpcCall(socket_name, socket_address, socket_port, command, timeout = 2): socket_open(socket_address, socket_port, socket_name) socket_send_line(command, socket_name) sync() response = socket_read_line(socket_name, timeout) socket_close(socket_name) return response end'
-        EGUEGK_executeCommand = f'def EGUEGK_executeCommand(socket_name, command, timeout = 1000): response = EGUEGK_rpcCall(socket_name, {self.EGUEGK_rpc_ip}, {self.rpc_port}, command, timeout) return response end'
+        EGUEGK_rpcCall = f"def EGUEGK_rpcCall(socket_name, socket_address, socket_port, command, timeout = 2): socket_open(socket_address, socket_port, socket_name) socket_send_line(command, socket_name) sync() response = socket_read_line(socket_name, timeout) socket_close(socket_name) return response end"
+        EGUEGK_executeCommand = f"def EGUEGK_executeCommand(socket_name, command, timeout = 1000): response = EGUEGK_rpcCall(socket_name, {self.EGUEGK_rpc_ip}, {self.rpc_port}, command, timeout) return response end"
         EGUEGK_moveAbsolute = f'def EGUEGK_moveAbsolute(socket_name, gripperIndex, position, speed): command = "absolute(" + to_str(gripperIndex) + ", " + to_str(position) + ", " + to_str(speed) + ")" EGUEGK_executeCommand(socket_name, command) end'
         EGUEGK_moveRelative = f'def EGUEGK_moveRelative(socket_name, gripperIndex, position, speed): command = "relative(" + to_str(gripperIndex) + ", " + to_str(position) + ", " + to_str(speed) + ")" EGUEGK_executeCommand(socket_name, command) end'
         EGUEGK_simpleGrip = f'def EGUEGK_simpleGrip(socket_name, gripperIndex, isDirectionOuter, force, speed): command = "simpleGrip(" + to_str(gripperIndex) + ", " + to_str(isDirectionOuter) + ", " + to_str(force) + ", " + to_str(speed) + ")" EGUEGK_executeCommand(socket_name, command) end'
         EGUEGK_acknowledge = f'def EGUEGK_acknowledge(socket_name, gripperIndex): command = "acknowledge(" + to_str(gripperIndex) + ")" EGUEGK_executeCommand(socket_name, command) end'
         EGUEGK_getPosition = f'def EGUEGK_getPosition(gripperNumber = 1): gripperIndex = gripperNumber - 1  command = "getPosition(" + to_str(gripperIndex) + ")" response = EGUEGK_executeCommand(to_str("socket_status_position_")), command) socket_send_line(response, "{self.schunk_socket_name}") return response end'
-        all_list = [EGUEGK_rpcCall, EGUEGK_executeCommand, EGUEGK_moveAbsolute, EGUEGK_moveRelative, EGUEGK_simpleGrip ,EGUEGK_acknowledge, EGUEGK_getPosition]
+        all_list = [
+            EGUEGK_rpcCall,
+            EGUEGK_executeCommand,
+            EGUEGK_moveAbsolute,
+            EGUEGK_moveRelative,
+            EGUEGK_simpleGrip,
+            EGUEGK_acknowledge,
+            EGUEGK_getPosition,
+        ]
         for i in range(len(all_list)):
             self.execute_command(all_list[i])
 
-    def _getPosition(self): # FOR testing _send_funtions
-        self.execute_command(f'EGUEGK_acknowledge({self.rpc_socket_name}, 0)')
-        print('done')
-        self.execute_command(f'socket_open({self.EGUEGK_rpc_ip}, {self.rpc_port}, {self.rpc_socket_name})')
-        self.execute_command(f'socket_send_line(acknowledge(0), {self.rpc_socket_name})')
+    def _getPosition(self):  # FOR testing _send_funtions
+        self.execute_command(f"EGUEGK_acknowledge({self.rpc_socket_name}, 0)")
+        print("done")
+        self.execute_command(f"socket_open({self.EGUEGK_rpc_ip}, {self.rpc_port}, {self.rpc_socket_name})")
+        self.execute_command(f"socket_send_line(acknowledge(0), {self.rpc_socket_name})")
         # self.execute_command(f'EGUEGK_moveAbsolute({self.rpc_socket_name}, 50, 50)')
         # self.execute_command(f'EGUEGK_getPosition(1)')
+
     def disconnect(self) -> None:
         time.sleep(1)  # waiting all of the command complete
         self.scriptport_command("end_interpreter()")
@@ -149,6 +159,7 @@ class SchunkGripper:
         self.t_schunk = threading.Thread(target=self._socket_server)
         self.t_schunk.setDaemon(True)
         self.t_schunk.start()
+
     def _socket_server(self):
         rcv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         rcv_socket.bind((self.localhost, self.localport))
@@ -157,13 +168,13 @@ class SchunkGripper:
         self.execute_command(command)
         try:
             schunk_listener, schunk_addr = rcv_socket.accept()
-            print('get schunk listener:', schunk_listener)
+            print("get schunk listener:", schunk_listener)
         except:
-            print('accept the listener failed')
+            print("accept the listener failed")
             sys.exit(0)
         while True:
             self.data = schunk_listener.recv(1024)
-            print('recv data:', self.data)
+            print("recv data:", self.data)
 
     def schunk_rpcCall(self, socket_name, command):
         # open another socket name for Schunk rpc_ip and port
@@ -227,13 +238,13 @@ class SchunkGripper:
         # the port 30020 for interpreter mode to communicate with the binding port for Schunk
         if not command.endswith("\n"):
             command += "\n"
-        print('sending command:', command.encode(self.ENCODING))
+        print("sending command:", command.encode(self.ENCODING))
         self.socket.sendall(command.encode(self.ENCODING))
         # data = self.socket.recv(1024)
         # return data
 
     def get_reply(self):
-        collected = b''
+        collected = b""
         while True:
             part = self.socket.recv(1)
             if part != b"\n":
@@ -257,13 +268,33 @@ class SchunkGripper:
         self.schunkHelperFunc(self.schunk_socket_name, command)
 
     def grip(self, gripperIndex, isDirectionOuter, position, force, speed):
-        command = "grip(" + str(gripperIndex) + ", " + str(isDirectionOuter) + ", " + str(
-            position) + ", " + str(force) + ", " + str(speed) + ")"
+        command = (
+            "grip("
+            + str(gripperIndex)
+            + ", "
+            + str(isDirectionOuter)
+            + ", "
+            + str(position)
+            + ", "
+            + str(force)
+            + ", "
+            + str(speed)
+            + ")"
+        )
         self.schunkHelperFunc(self.schunk_socket_name, command)
 
     def simpleGrip(self, gripperIndex, isDirectionOuter, force, speed):
-        command = "simpleGrip(" + str(gripperIndex) + ", " + str(isDirectionOuter) + ", " + str(
-            force) + ", " + str(speed) + ")"
+        command = (
+            "simpleGrip("
+            + str(gripperIndex)
+            + ", "
+            + str(isDirectionOuter)
+            + ", "
+            + str(force)
+            + ", "
+            + str(speed)
+            + ")"
+        )
         self.schunkHelperFunc(self.schunk_socket_name, command)
 
     def release(self, gripperIndex):
@@ -373,4 +404,3 @@ class SchunkGripper:
         response = self.schunk_rpcCallRe(socket_name, command)
         # self.execute_command(f'socket_send_line("{command}", "{self.schunk_socket_name}")\n')
         return response
-

@@ -43,13 +43,13 @@ class Schunk40MB(ParallelPositionGripper):
     # min_speed: float
     SCHUNK_40_MB_DEFAULT_SPECS = ParallelPositionGripperSpecs(80.0, 0.0, 50.0, 1.0, 50.0, 1.0)
     # hardcode for connecting schunk by interpreter mode
-    rpc_port = 55050 # rpc port in UR
-    UR_INTERPRETER_SOCKET = 30020 # interpreter port in UR
-    Enable_Interpreter_Socket = 30003 # common socket port in UR
-    schunk_socket_name = "socket_grasp_sensor" # schunk sensor in UR sending line to laptop
-    ENCODING = 'UTF-8' # socket coding
-    gripper_index = 0 # schunk gripper command required
-    EGUEGK_socket_uid = 0 # schunk gripper command required
+    rpc_port = 55050  # rpc port in UR
+    UR_INTERPRETER_SOCKET = 30020  # interpreter port in UR
+    Enable_Interpreter_Socket = 30003  # common socket port in UR
+    schunk_socket_name = "socket_grasp_sensor"  # schunk sensor in UR sending line to laptop
+    ENCODING = "UTF-8"  # socket coding
+    gripper_index = 0  # schunk gripper command required
+    EGUEGK_socket_uid = 0  # schunk gripper command required
     rpc_socket_name = "rpc_socket"
 
     def __init__(self, host_ip: str, port: int = 48777, fingers_max_stroke: Optional[float] = None) -> None:
@@ -75,7 +75,7 @@ class Schunk40MB(ParallelPositionGripper):
         super().__init__(self.gripper_specs)
 
     def connect(self, socket_timeout: float = 2.0) -> None:
-        print('connect schunk by interpreter mode')
+        print("connect schunk by interpreter mode")
 
         self.interpreter_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.enable_interpreter_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -106,7 +106,7 @@ class Schunk40MB(ParallelPositionGripper):
         # the port 30020 for interpreter mode to communicate with the binding port for Schunk
         if not command.endswith("\n"):
             command += "\n"
-        print('sending command:', command.encode(self.ENCODING))
+        print("sending command:", command.encode(self.ENCODING))
         self.socket.sendall(command.encode(self.ENCODING))
 
     def common_socket_port_command(self, command) -> None:

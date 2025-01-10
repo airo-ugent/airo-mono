@@ -1,8 +1,10 @@
-from schunk_gripper_v2 import SchunkGripper # integrate more functions
 # from schunk_gripper import SchunkGripper
 import time
+
 import rtde_control
 import rtde_receive
+from schunk_gripper_v2 import SchunkGripper  # integrate more functions
+
 robot_ip = "10.42.0.162"
 rtde_r = rtde_receive.RTDEReceiveInterface(robot_ip)
 rtde_c = rtde_control.RTDEControlInterface(robot_ip)
@@ -32,7 +34,7 @@ while True:
 # print(response)
 gripper.disconnect()
 
-'''
+"""
 b'interpreter_mode()\n'
 b'socket_open("10.42.0.162", 55050, "rpc_socket")\n'
 b'socket_send_line("acknowledge(0)", "rpc_socket")\nsync()\n'
@@ -45,4 +47,4 @@ b'socket_send_line("getPosition(0)", "rpc_socket")\n'
 b'response=socket_read_line("rpc_socket", 2)\n'
 b'popup(response)\n'
 b'socket_send_line(response, "socket_grasp_sensor")\n
-'''
+"""

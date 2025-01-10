@@ -1,8 +1,8 @@
-from schunk_gripper_v3 import SchunkGripper # integrate more functions
 # from schunk_gripper import SchunkGripper
-import time
 import rtde_control
 import rtde_receive
+from schunk_gripper_v3 import SchunkGripper  # integrate more functions
+
 robot_ip = "10.42.0.162"
 rtde_r = rtde_receive.RTDEReceiveInterface(robot_ip)
 rtde_c = rtde_control.RTDEControlInterface(robot_ip)
@@ -13,11 +13,11 @@ gripper_index = 0
 position1 = 10
 position = 50
 speed = 50
-schunk_name = 'socket_grasp_sensor'
+schunk_name = "socket_grasp_sensor"
 gripper.execute_command(f'EGUEGK_acknowledge("{schunk_name}", 0)')
 gripper.connect_server_socket()
 gripper.execute_command(f'EGUEGK_moveAbsolute("{schunk_name}", 0, {position}, {speed})')
-gripper.execute_command(f'EGUEGK_getPosition(1)')
+gripper.execute_command(f"EGUEGK_getPosition(1)")
 # # gripper._getPosition()
 # gripper.acknowledge(gripper_index)
 # gripper.connect_server_socket()
@@ -37,7 +37,7 @@ gripper.execute_command(f'EGUEGK_getPosition(1)')
 # # print(response)
 gripper.disconnect()
 
-'''
+"""
 b'interpreter_mode()\n'
 b'socket_open("10.42.0.162", 55050, "rpc_socket")\n'
 b'socket_send_line("acknowledge(0)", "rpc_socket")\nsync()\n'
@@ -50,4 +50,4 @@ b'socket_send_line("getPosition(0)", "rpc_socket")\n'
 b'response=socket_read_line("rpc_socket", 2)\n'
 b'popup(response)\n'
 b'socket_send_line(response, "socket_grasp_sensor")\n
-'''
+"""
