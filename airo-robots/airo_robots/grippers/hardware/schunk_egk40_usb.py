@@ -130,7 +130,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen with the gripper
         """
         self.bks.MakeReady()
-        return servo(self, width=width, speed=speed, force=force, set_speed_and_force=set_speed_and_force)
+        return self.servo(width=width, speed=speed, force=force, set_speed_and_force=set_speed_and_force)
 
     def move_relative(self, width_difference: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
              force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force, set_speed_and_force=True) -> AwaitableAction:
@@ -144,7 +144,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen with the gripper
         """
         self.bks.MakeReady()
-        return servo_relative(self, width=width, speed=speed, force=force, set_speed_and_force=set_speed_and_force)
+        return self.servo_relative(width=width, speed=speed, force=force, set_speed_and_force=set_speed_and_force)
 
     def servo_start(self):
         """
