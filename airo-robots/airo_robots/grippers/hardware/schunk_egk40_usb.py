@@ -1,7 +1,6 @@
 import time
 
 import numpy as np
-from bkstools.bks_lib.bks_base import BKSBase, keep_communication_alive_input, keep_communication_alive_sleep, keep_communication_alive
 from bkstools.bks_lib.bks_module import BKSModule
 from bkstools.scripts.bks_grip import WaitGrippedOrError
 from filelock import AsyncWindowsFileLock
@@ -22,17 +21,33 @@ class SCHUNK_STROKE_OPTIONS(Enum):
 
 
 class SchunkEGK40_USB(ParallelPositionGripper):
+    """
+    README: The Schunk gripper differs from the Robotiq in a couple ways.
+    (1) It does not have an automatic width calibration to account for custom fingertips. A custom
+    calibrate_width() routine is provided in this class, but given the Schunk's high minimal gripping force, it is
+    recommended to manually set the max_stroke_setting in the constructor appropriately (refer to docstring in
+    constructor for further explanation).
+    (2) The connection to the Schunk gripper requires constant synchronisation, meaning that the connection is lost if
+    your main code executes any other code for more than a couple seconds. For example, time.sleep() would lose the
+    connection. To account for this,
+    bkstools.bks_lib.bks_base provides functions such as keep_communication_alive_sleep, as a wrapper around time.sleep.
+    This class handles it differently, making use of the BKSModule.MakeReady() cmd. This command will "refresh" the
+    connection to the Schunk. It is hence executed before every move() command. However, it takes about 30ms to complete,
+    so we additionally proved servo() commands: first call servo_start(), which will execute MakeReady(), then use
+    servo() in a loop. MakeReady() doesn't have to be executed in the loop, since the movement commands themselves
+    keep the communication alive.
+    """
     # values obtained from https://schunk.com/be/nl/grijpsystemen/parallelgrijper/egk/egk-40-mb-m-b/p/000000000001491762
     SCHUNK_DEFAULT_SPECS = ParallelPositionGripperSpecs(0.083, 0.0, 150, 55, 0.0575, 0.0055)
 
     def __init__(self, usb_interface="/dev/ttyUSB0",
-                 max_stroke_setting: Optional[SCHUNK_STROKE_OPTIONS, float] = None) -> None:
+                 max_stroke_setting: Optional[SCHUNK_STROKE_OPTIONS | float] = None) -> None:
         """
-        usb_interface: the USB interface to which the gripper is connected.
-
-        fingers_max_stroke:
-        allow for custom max stroke width (if you have fingertips that are closer together). If None, the Schunk will
-        calibrate itself. If -1, the default values are kept.
+        :param usb_interface: the USB interface to which the gripper is connected.
+        :param fingers_max_stroke: custom max stroke width; this is twice the distance traveled by each finger when
+        moving from fully closed to fully opened, which is relevant for custom fingertips.
+        If fingers_max_stroke is set to SCHUNK_STROKE_OPTIONS.CALIBRATE, the Schunk will calibrate itself.
+        If SCHUNK_STROKE_OPTIONS.DEFAULT, the default values are kept.
         TODO: this class currently doesn't support fingertips that, when fully opened, would have a larger width than
         the Schunk's maximum width of 83mm. Such fingertips would not touch when the Schunk is "closed".
         """
@@ -47,10 +62,10 @@ class SchunkEGK40_USB(ParallelPositionGripper):
                 raise ValueError("Incorrect stroke setting.")
         else:
             if not isinstance(max_stroke_setting, float):
-                raise ValueError("Incorrect stroke setting.")
+                raise ValueError("Incorrect stroke setting: must be float if not in SCHUNK_STROKE_OPTIONS.")
             else:
                 # overwrite width setting
-                self._gripper_specs.max_width = fingers_max_stroke
+                self._gripper_specs.max_width = max_stroke_setting
         self.width_loss_due_to_fingers = self.SCHUNK_DEFAULT_SPECS.max_width - self.gripper_specs.max_width
 
         self.bks = BKSModule(usb_interface, sleep_time=None, debug=False)
@@ -62,18 +77,18 @@ class SchunkEGK40_USB(ParallelPositionGripper):
 
     @property
     def speed(self) -> float:
-        """returns speed setting [m/s]."""
+        """return speed setting [m/s]."""
         return self.bks.set_vel / 1000
 
     @speed.setter
     def speed(self, new_speed: float) -> None:
-        """sets the max speed [m/s]."""
+        """set the max speed [m/s]."""
         _new_speed = np.clip(new_speed, self.gripper_specs.min_speed, self.gripper_specs.max_speed)
         self.bks.set_vel = float(_new_speed * 1000)  # value must be set in mm/s for bkstools
 
     @property
     def current_speed(self) -> float:
-        """returns current speed [m/s]."""
+        """return current speed [m/s]."""
         return self.bks.actual_vel / 1000
 
     @property
@@ -84,7 +99,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
 
     @max_grasp_force.setter
     def max_grasp_force(self, new_force: float) -> None:
-        """sets the max grasping force [N]."""
+        """set the max grasping force [N]."""
         _new_force = np.clip(new_force, self.gripper_specs.min_force, self.gripper_specs.max_force)
         _new_force = rescale_range(_new_force, self.gripper_specs.min_force, self.gripper_specs.max_force,
                                    0, 100)
@@ -92,11 +107,11 @@ class SchunkEGK40_USB(ParallelPositionGripper):
 
     @property
     def current_motor_current(self) -> float:
-        """returns current motor current usage [unit?], this is a proxy for force."""
+        """return current motor current usage [unit?], this is a proxy for force."""
         return self.bks.actual_cur
 
     def get_current_width(self) -> float:
-        """the current opening of the fingers in meters"""
+        """get the current opening of the fingers in meters"""
         # Reasoning:
         # width_without_fingers = self.SCHUNK_DEFAULT_SPECS.max_width - self.bks.actual_pos / 1000
         # return width_without_fingers - self.width_loss_due_to_fingers
@@ -106,7 +121,44 @@ class SchunkEGK40_USB(ParallelPositionGripper):
     def move(self, width: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
              force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force, set_speed_and_force=True) -> AwaitableAction:
         """
-        Moves the gripper to a certain position at a certain speed with a certain force
+        Move the gripper to a certain position at a certain speed with a certain force. This function is assumed to run
+        when some time has passed since the last communication with the Schunk gripper, meaning self.bks.MakeReady()
+        must be called.
+        :param width: in m
+        :param speed: in m/s
+        :param force: in N
+        :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen with the gripper
+        """
+        self.bks.MakeReady()
+        return servo(self, width=width, speed=speed, force=force, set_speed_and_force=set_speed_and_force)
+
+    def move_relative(self, width_difference: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
+             force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force, set_speed_and_force=True) -> AwaitableAction:
+        """
+        Move the gripper to a certain position at a certain speed with a certain force. This function is assumed to run
+        when some time has passed since the last communication with the Schunk gripper, meaning self.bks.MakeReady()
+        must be called.
+        :param width_difference: in m,  a positive difference will make the gripper open, a negative difference makes it close
+        :param speed: in m/s
+        :param force: in N
+        :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen with the gripper
+        """
+        self.bks.MakeReady()
+        return servo_relative(self, width=width, speed=speed, force=force, set_speed_and_force=set_speed_and_force)
+
+    def servo_start(self):
+        """
+        Necessary to run before entering a servo loop using the SchunkEGK40_USB.servo() or SchunkEGK40_USB.servo_relative()
+        command. No servo_stop() is required.
+        :return:
+        """
+        self.bks.MakeReady()
+
+    def servo(self, width: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
+             force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force, set_speed_and_force=True) -> AwaitableAction:
+        """
+        Move the gripper to a certain position at a certain speed with a certain force. This function is assumed to run
+        in a loop, meaning repeated calls of self.bks.MakeReady() (taking 31 ms each) are not necessary.
         :param width: in m
         :param speed: in m/s
         :param force: in N
@@ -125,10 +177,11 @@ class SchunkEGK40_USB(ParallelPositionGripper):
 
         return AwaitableAction(self._move_done_condition)
 
-    def move_relative(self, width_difference: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
+    def servo_relative(self, width_difference: float, speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
              force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force, set_speed_and_force=True) -> AwaitableAction:
         """
-        Moves the gripper to a certain position at a certain speed with a certain force
+        Move the gripper to a certain position at a certain speed with a certain force. This function is assumed to run
+        in a loop, meaning repeated calls of self.bks.MakeReady() (taking 31 ms each) are not necessary.
         :param width_difference: in m,  a positive difference will make the gripper open, a negative difference makes it close
         :param speed: in m/s
         :param force: in N
@@ -144,10 +197,8 @@ class SchunkEGK40_USB(ParallelPositionGripper):
 
     def grip(self) -> AwaitableAction:
         """
-        Moves the gripper until object contact. When using MOVE_FORCE as below, it seems that the force and speed must
+        Move the gripper until object contact. When using MOVE_FORCE as below, it seems that the force and speed must
         be set to 50% and 0 mm/s respectively.
-        :param speed: in m/s
-        :param force: in N
         """
         self.bks.set_force = 50  # target force to 50 % => BasicGrip
         self.bks.set_vel = 0.0  # target velocity 0 => BasicGrip
