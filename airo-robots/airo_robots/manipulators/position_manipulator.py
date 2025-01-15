@@ -1,10 +1,12 @@
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional
 
+import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
-from airo_typing import HomogeneousMatrixType, JointConfigurationType
+from airo_typing import HomogeneousMatrixType, JointConfigurationType, SingleArmTrajectory
 
 
 @dataclass
@@ -205,6 +207,58 @@ class PositionManipulator(ABC):
             return False
         return self._is_joint_configuration_reachable(joint_configuration)
 
+    def execute_trajectory(self, joint_trajectory: SingleArmTrajectory) -> None:
+        """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
+
+        Args:
+            joint_trajectory: the joint trajectory to execute."""
+        self._assert_joint_trajectory_is_executable(joint_trajectory)
+
+        period = 0.005  # Time per servo, approximately. This may be slightly changed because of rounding errors.
+        # The period determines the times at which we sample the trajectory that was time-parameterized.
+        duration = (joint_trajectory.times[-1] - joint_trajectory.times[0]).item()
+
+        n_servos = int(np.ceil(duration / period))
+        period_adjusted = duration / n_servos  # can be slightly different from period due to rounding
+
+        for t in np.linspace(0, duration, n_servos):
+            # Find the two joint configurations that are closest to time t.
+            i0, i1 = 0, 0
+            for i, trajectory_time in enumerate(joint_trajectory.times):
+                if trajectory_time >= t:
+                    i0 = i - 1
+                    i1 = i
+                    break
+
+            # Interpolate between the two joint configurations.
+            q0 = joint_trajectory.path.positions[i0]
+            q1 = joint_trajectory.path.positions[i1]
+            q_interp = q0 + (q1 - q0) * (t - joint_trajectory.times[i0]) / (
+                joint_trajectory.times[i1] - joint_trajectory.times[i0]
+            )
+            self.servo_to_joint_configuration(q_interp, period_adjusted)
+            # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
+
+            if joint_trajectory.gripper_path is not None:
+                gripper_q0 = joint_trajectory.gripper_path.positions[i0]
+                gripper_q1 = joint_trajectory.gripper_path.positions[i1]
+                gripper_q_interp = gripper_q0 + (gripper_q1 - gripper_q0) * (t - joint_trajectory.times[i0]) / (
+                    joint_trajectory.times[i1] - joint_trajectory.times[i0]
+                )
+                self.gripper.move(gripper_q_interp)
+
+            time.sleep(period_adjusted)
+
+        # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
+        # However, I believe these functions are blocking, so right only stops after left has stopped.
+        self.rtde_control.servoStop(2.0)
+
+        # Servo can overshoot. Do a final move to the last configuration.
+        self._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])
+        self.move_to_joint_configuration(joint_trajectory.path.positions[-1]).wait()
+
+        # TODO: BimanualPositionManipulator: how can we assert code reuse?
+
     ###################################
     # util functions to validate inputs
     ###################################
@@ -231,3 +285,40 @@ class PositionManipulator(ABC):
             raise ValueError(
                 f"joint configuration {joint_configuration} is not reachable, could be because of kinematic constraints or safety constraints"
             )
+
+    def _assert_joint_configuration_nearby(
+        self, joint_configuration: JointConfigurationType, absolute_angle_tolerance=np.radians(1.0)
+    ) -> None:
+        """Assert that a joint configuration is nearby the current configuration.
+
+        Args:
+            joint_configuration: the configuration that should be nearby the current configuration.
+            absolute_angle_tolerance: the absolute tolerance for the comparison.
+
+        Raises:
+            ValueError: If the joint configuration is not nearby the current configuration."""
+        current_configuration = self.get_joint_configuration()
+        if (
+            not np.isclose(joint_configuration, current_configuration, atol=absolute_angle_tolerance, rtol=0.0)
+            .all()
+            .item()
+        ):
+            raise ValueError(
+                f"joint configuration {joint_configuration} is not nearby the current configuration {current_configuration}"
+            )
+
+    def _assert_joint_trajectory_start_time_is_zero(self, joint_trajectory: SingleArmTrajectory) -> None:
+        if joint_trajectory.times[0] != 0.0:
+            raise ValueError("joint trajectory should start at time 0.0")
+
+    def _assert_joint_trajectory_is_executable(self, joint_trajectory: SingleArmTrajectory) -> None:
+        self._assert_joint_trajectory_start_time_is_zero(joint_trajectory)
+
+        if joint_trajectory.path.positions is None:
+            raise ValueError("joint trajectory should contain joint positions")
+
+        self._assert_joint_configuration_nearby(joint_trajectory.path.positions[0])
+
+        if joint_trajectory.path.velocities is not None:
+            for velocity in joint_trajectory.path.velocities:
+                self._assert_joint_speed_is_valid(velocity)
