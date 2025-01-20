@@ -6,7 +6,7 @@ from typing import List, Optional
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
-from airo_typing import HomogeneousMatrixType, JointConfigurationType, SingleArmTrajectory
+from airo_typing import HomogeneousMatrixType, JointConfigurationType, JointPathType, SingleArmTrajectory, TimesType
 from loguru import logger
 
 
@@ -211,6 +211,9 @@ class PositionManipulator(ABC):
     def execute_trajectory(self, joint_trajectory: SingleArmTrajectory) -> None:
         """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
 
+        This function is implemented according to the notes of https://github.com/airo-ugent/airo-mono/issues/150.
+        Please refer to this issue for design decisions.
+
         Args:
             joint_trajectory: the joint trajectory to execute."""
         self._assert_joint_trajectory_is_executable(joint_trajectory)
@@ -241,35 +244,29 @@ class PositionManipulator(ABC):
                 break
 
             # Interpolate between the two joint configurations.
-            q0 = joint_trajectory.path.positions[i0]
-            q1 = joint_trajectory.path.positions[i1]
-            q_interp = q0 + (q1 - q0) * (t - joint_trajectory.times[i0]) / (
-                joint_trajectory.times[i1] - joint_trajectory.times[i0]
-            )
+            q_interp = lerp_positions(i0, i1, joint_trajectory.path.positions, joint_trajectory.times, t)
             self.servo_to_joint_configuration(q_interp, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
 
             if joint_trajectory.gripper_path is not None:
-                gripper_q0 = joint_trajectory.gripper_path.positions[i0]
-                gripper_q1 = joint_trajectory.gripper_path.positions[i1]
-                gripper_q_interp = gripper_q0 + (gripper_q1 - gripper_q0) * (t - joint_trajectory.times[i0]) / (
-                    joint_trajectory.times[i1] - joint_trajectory.times[i0]
-                )
-                self.gripper.move(gripper_q_interp)
+                if self.gripper is None:
+                    raise ValueError("Gripper trajectory provided, but no gripper is attached to the manipulator.")
 
-            time.sleep(
-                period_adjusted
-            )  # TODO: Do we want to sleep, with the risk of lagging, or run this as fast as possible?
+                gripper_pos_interp = lerp_positions(
+                    i0, i1, joint_trajectory.gripper_path.positions, joint_trajectory.times, t
+                )
+                self.gripper.move(gripper_pos_interp)
+
+            # time.sleep(
+            #     period_adjusted
+            # )
 
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
-        # However, I believe these functions are blocking, so right only stops after left has stopped.
         self.rtde_control.servoStop(2.0)
 
         # Servo can overshoot. Do a final move to the last configuration.
         # manipulator._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])
         self.move_to_joint_configuration(joint_trajectory.path.positions[-1]).wait()
-
-        # TODO: BimanualPositionManipulator: how can we assert code reuse?
 
     ###################################
     # util functions to validate inputs
@@ -334,3 +331,21 @@ class PositionManipulator(ABC):
         if joint_trajectory.path.velocities is not None:
             for velocity in joint_trajectory.path.velocities:
                 self._assert_joint_speed_is_valid(velocity)
+
+
+def lerp_positions(i0: int, i1: int, positions: JointPathType, times: TimesType, t: float) -> np.ndarray:
+    """Linearly interpolate between two values in a list of positions based on a time t.
+
+    Args:
+        i0: The index of the first value to interpolate between.
+        i1: The index of the second value to interpolate between.
+        positions: The list of values to interpolate between.
+        times: The list of times corresponding to the values.
+        t: The time to interpolate at.
+
+    Returns:
+        The interpolated position."""
+    q0 = positions[i0]
+    q1 = positions[i1]
+    q_interp = q0 + (q1 - q0) * (t - times[i0]) / (times[i1] - times[i0])
+    return q_interp

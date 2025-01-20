@@ -1,11 +1,11 @@
 import time
 from abc import ABC
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
-from airo_robots.manipulators.position_manipulator import PositionManipulator
-from airo_typing import HomogeneousMatrixType
+from airo_robots.manipulators.position_manipulator import PositionManipulator, lerp_positions
+from airo_typing import DualArmTrajectory, HomogeneousMatrixType, JointConfigurationType
 
 
 class BimanualPositionManipulator(ABC):
@@ -175,6 +175,121 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
             awaitables[0]._default_sleep_resolution,
         )
 
+    def servo_to_joint_configuration(
+        self,
+        left_joint_configuration: JointConfigurationType,
+        right_joint_configuration: JointConfigurationType,
+        time: float,
+    ) -> AwaitableAction:
+        """Servo to the desired joint configuration for the specified time (the function blocks for this time). Servoing implies 'best-effort' movements towards the target pose instead of
+        open-loop trajectories with a velocity profile that brings the robot to zero. So this function can be used for 'closed-loop'/higher-frequency control.
+
+        See PositionManipulator.servo_to_joint_configuration for more information.
+
+        Args:
+            left_joint_configuration (JointConfigurationType): desired joint configuration for the left manipulator
+            right_joint_configuration (JointConfigurationType): desired joint configuration for the right manipulator
+            time (float): time to reach the desired joint configuration
+
+        Returns:
+            AwaitableAction: with termination condition that the time has passed. Waiting on this action has limited accuracy on non real-time OS, cf the airo-robots Readme.
+        """
+        left_awaitable = self._left_manipulator.servo_to_joint_configuration(left_joint_configuration, time)
+        right_awaitable = self._right_manipulator.servo_to_joint_configuration(right_joint_configuration, time)
+        awaitables: Tuple[AwaitableAction, AwaitableAction] = (left_awaitable, right_awaitable)
+
+        # compose the awaitable actions
+        def done_condition() -> bool:
+            return all([awaitable.is_action_done() for awaitable in awaitables])
+
+        return AwaitableAction(
+            done_condition,
+            awaitables[0]._default_timeout,
+            awaitables[0]._default_sleep_resolution,
+        )
+
+    def execute_trajectory(self, joint_trajectory: DualArmTrajectory) -> None:
+        """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
+
+        This function is implemented according to the notes of https://github.com/airo-ugent/airo-mono/issues/150.
+        Please refer to this issue for design decisions.
+
+        Args:
+            joint_trajectory: the joint trajectory to execute."""
+        self._assert_joint_trajectory_is_executable(joint_trajectory)
+
+        period = 0.005  # Time per servo, approximately. This may be slightly changed because of rounding errors.
+        # The period determines the times at which we sample the trajectory that was time-parameterized.
+        duration = (joint_trajectory.times[-1] - joint_trajectory.times[0]).item()
+
+        n_servos = int(np.ceil(duration / period))
+        period_adjusted = duration / n_servos  # can be slightly different from period due to rounding
+
+        start_time_ns = time.time_ns()
+        for servo_index in range(n_servos):
+            current_time_ns = time.time_ns()
+            t_ns = current_time_ns - start_time_ns
+            t = t_ns / 1e9
+            if t > duration:
+                logger.warning(
+                    f"Time exceeded trajectory duration at servo index {servo_index} / {n_servos}. This means we are lagging, but we should have reached the final configuration. Stopping trajectory execution."
+                )
+                break
+
+            # Find the two joint configurations that are closest to time t.
+            i0 = np.searchsorted(joint_trajectory.times, t, side="left") - 1  # - 1: i0 is always >= 1 otherwise.
+            i1 = i0 + 1
+
+            if i1 == len(joint_trajectory.times):
+                break
+
+            # Interpolate between the two joint configurations.
+            q_interp_left = lerp_positions(i0, i1, joint_trajectory.path_left.positions, joint_trajectory.times, t)
+            q_interp_right = lerp_positions(i0, i1, joint_trajectory.path_right.positions, joint_trajectory.times, t)
+            self.servo_to_joint_configuration(q_interp_left, q_interp_right, period_adjusted)
+            # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
+
+            # Gripper trajectories.
+            for side in ["left", "right"]:
+                gripper_path = getattr(joint_trajectory, f"gripper_path_{side}")
+                manipulator = getattr(self, f"_{side}_manipulator")
+                if gripper_path is not None:
+                    if manipulator.gripper is None:
+                        raise ValueError(
+                            f"Gripper trajectory provided for the {side} manipulator, but no gripper is attached to the manipulator."
+                        )
+                    gripper_pos_interp = lerp_positions(
+                        i0, i1, gripper_path.positions, joint_trajectory.times, t
+                    ).item()
+                    manipulator.gripper.move(gripper_pos_interp)
+
+            # time.sleep(
+            #     period_adjusted
+            # )
+
+        # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
+        # However, I believe these functions are blocking, so right only stops after left has stopped.
+        self._left_manipulator.rtde_control.servoStop(2.0)
+        self._right_manipulator.rtde_control.servoStop(2.0)
+
+        # Servo can overshoot. Do a final move to the last configuration.
+        if joint_trajectory.path_left is not None:
+            left_finished = dual_arm.left_manipulator.move_to_joint_configuration(
+                joint_trajectory.path_left.positions[-1]
+            )
+        else:
+            left_finished = AwaitableAction(lambda: True, 0.0, 0.0)
+
+        if joint_trajectory.path_right is not None:
+            right_finished = dual_arm.right_manipulator.move_to_joint_configuration(
+                joint_trajectory.path_right.positions[-1]
+            )
+        else:
+            right_finished = AwaitableAction(lambda: True, 0.0, 0.0)
+
+        left_finished.wait()
+        right_finished.wait()
+
     def transform_pose_to_left_arm_base(self, pose_in_base: HomogeneousMatrixType) -> HomogeneousMatrixType:
         """Transform a pose in the base frame to the left arm base frame"""
         return np.linalg.inv(self._left_manipulator_pose_in_base) @ pose_in_base
@@ -199,6 +314,27 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         left_reachable = self.is_tcp_pose_reachable_for_left(left_tcp_pose_in_base)
         right_reachable = self.is_tcp_pose_reachable_for_right(right_tcp_pose_in_base)
         return left_reachable and right_reachable
+
+    def _assert_joint_trajectory_is_executable(self, joint_trajectory: DualArmTrajectory) -> None:
+        if joint_trajectory.times[0] != 0.0:
+            raise ValueError("joint trajectory should start at time 0.0")
+
+        if joint_trajectory.path_left.positions is None:
+            raise ValueError("left joint trajectory should contain joint positions")
+
+        if joint_trajectory.path_right.positions is None:
+            raise ValueError("right joint trajectory should contain joint positions")
+
+        self._left_manipulator._assert_joint_configuration_nearby(joint_trajectory.path_left.positions[0])
+        self._right_manipulator._assert_joint_configuration_nearby(joint_trajectory.path_right.positions[0])
+
+        if joint_trajectory.path_left.velocities is not None:
+            for velocity in joint_trajectory.path_left.velocities:
+                self._left_manipulator._assert_joint_speed_is_valid(velocity)
+
+        if joint_trajectory.path_right.velocities is not None:
+            for velocity in joint_trajectory.path_right.velocities:
+                self._right_manipulator._assert_joint_speed_is_valid(velocity)
 
 
 if __name__ == "__main__":
