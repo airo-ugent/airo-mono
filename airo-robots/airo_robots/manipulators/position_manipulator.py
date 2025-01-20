@@ -254,7 +254,7 @@ class PositionManipulator(ABC):
 
                 gripper_pos_interp = lerp_positions(
                     i0, i1, joint_trajectory.gripper_path.positions, joint_trajectory.times, t
-                )
+                ).item()
                 self.gripper.move(gripper_pos_interp)
 
             # time.sleep(
@@ -262,6 +262,7 @@ class PositionManipulator(ABC):
             # )
 
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
+        # TODO: This is not an attribute of PositionManipulator, but is specific to URrtde. How do we implement this correctly?
         self.rtde_control.servoStop(2.0)
 
         # Servo can overshoot. Do a final move to the last configuration.

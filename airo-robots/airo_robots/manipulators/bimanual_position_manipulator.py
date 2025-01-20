@@ -269,6 +269,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
         # However, I believe these functions are blocking, so right only stops after left has stopped.
+        # TODO: This is not an attribute of PositionManipulator, but is specific to URrtde. How do we implement this correctly?
         self._left_manipulator.rtde_control.servoStop(2.0)
         self._right_manipulator.rtde_control.servoStop(2.0)
 
