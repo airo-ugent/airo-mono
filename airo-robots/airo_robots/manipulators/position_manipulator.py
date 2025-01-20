@@ -7,6 +7,7 @@ import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
 from airo_typing import HomogeneousMatrixType, JointConfigurationType, SingleArmTrajectory
+from loguru import logger
 
 
 @dataclass
@@ -221,14 +222,23 @@ class PositionManipulator(ABC):
         n_servos = int(np.ceil(duration / period))
         period_adjusted = duration / n_servos  # can be slightly different from period due to rounding
 
-        for t in np.linspace(0, duration, n_servos):
+        start_time_ns = time.time_ns()
+        for servo_index in range(n_servos):
+            current_time_ns = time.time_ns()
+            t_ns = current_time_ns - start_time_ns
+            t = t_ns / 1e9
+            if t > duration:
+                logger.warning(
+                    f"Time exceeded trajectory duration at servo index {servo_index} / {n_servos}. This means we are lagging, but we should have reached the final configuration. Stopping trajectory execution."
+                )
+                break
+
             # Find the two joint configurations that are closest to time t.
-            i0, i1 = 0, 0
-            for i, trajectory_time in enumerate(joint_trajectory.times):
-                if trajectory_time >= t:
-                    i0 = i - 1
-                    i1 = i
-                    break
+            i0 = np.searchsorted(joint_trajectory.times, t, side="left") - 1  # - 1: i0 is always >= 1 otherwise.
+            i1 = i0 + 1
+
+            if i1 == len(joint_trajectory.times):
+                break
 
             # Interpolate between the two joint configurations.
             q0 = joint_trajectory.path.positions[i0]
@@ -247,14 +257,16 @@ class PositionManipulator(ABC):
                 )
                 self.gripper.move(gripper_q_interp)
 
-            time.sleep(period_adjusted)
+            time.sleep(
+                period_adjusted
+            )  # TODO: Do we want to sleep, with the risk of lagging, or run this as fast as possible?
 
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
         # However, I believe these functions are blocking, so right only stops after left has stopped.
         self.rtde_control.servoStop(2.0)
 
         # Servo can overshoot. Do a final move to the last configuration.
-        self._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])
+        # manipulator._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])
         self.move_to_joint_configuration(joint_trajectory.path.positions[-1]).wait()
 
         # TODO: BimanualPositionManipulator: how can we assert code reuse?
