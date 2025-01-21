@@ -2,7 +2,7 @@
 
 1. `git clone https://github.com/SCHUNK-SE-Co-KG/bkstools.git`
 
-2. Follow the bkstools' installing step (get .whl source as bkstools)
+2. In your project environment, run `pip install -e <path-to-bkstools-clone>`. In later steps we need to adjust one of the project files, so the regular `pip install bkstools` from PyPI is not applicable.
 
 3. Find the name of the USB interface where your Schunk is connected. Run `sudo dmesg | grep tty` and you should see a line like `ch341-uart converter now attached to ttyUSB0`. In this case, the USB interface is ttyUSB0.
 
