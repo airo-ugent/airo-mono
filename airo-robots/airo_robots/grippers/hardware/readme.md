@@ -19,6 +19,8 @@ Find the long grey interface cable with a 5-pin round DIN connector on one end a
 <img align="left" height="300" src="https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/assets/schunk_installation1.jpeg">
 <img align="left" height="300" src="https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/assets/schunk_installation2.jpeg">
 
+<BR CLEAR="all">
+
 ## Software installation
 
 1. `git clone https://github.com/SCHUNK-SE-Co-KG/bkstools.git`
