@@ -12,7 +12,11 @@ so in addition servo() commands are provided: first call servo_start(), which wi
 servo() in a loop. MakeReady() doesn't have to be executed in the loop, since the movement commands themselves
 keep the communication alive.
 
-## Installation
+## Hardware installation
+
+
+
+## Software installation
 
 1. `git clone https://github.com/SCHUNK-SE-Co-KG/bkstools.git`
 
