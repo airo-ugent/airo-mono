@@ -16,8 +16,8 @@ keep the communication alive.
 
 Find the long grey interface cable with a 5-pin round DIN connector on one end and four wires (blue, brown, black, white) on the other end. Connect the DIN to the Schunk itself. The blue wire must go to the UR control box' GND, the brown to its PWR input. The black wire goes to the B- input of a USB-to-RS485 converter, the white to its A+ input. Use a USB extender cable to plug the USB-to-RS485 into your laptop or workstation.
 
-<img align="center" height="400" src="https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/assets/schunk_installation1.jpeg">
-<img align="center" height="400" src="https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/assets/schunk_installation2.jpeg">
+<img align="center" height="300" src="https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/assets/schunk_installation1.jpeg">
+<img align="center" height="300" src="https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/assets/schunk_installation2.jpeg">
 
 ## Software installation
 
