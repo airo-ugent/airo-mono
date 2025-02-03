@@ -35,6 +35,9 @@ class SchunkEGK40_USB(ParallelPositionGripper):
     so in addition servo() commands are provided: first call servo_start(), which will execute MakeReady(), then use
     servo() in a loop. MakeReady() doesn't have to be executed in the loop, since the movement commands themselves
     keep the communication alive.
+    (3) bks_modbus OVERWRITES Python's serial.Serial.read() function which is absolutely ludicrous, a first issue that
+    was discovered is that when you do serial.Serial.read(size=num_bytes), i.e. passing size as a keyword argument,
+    this is not handled properly. serial.Serial.read(num_bytes), i.e. no keyword argument, works.
     """
 
     # values obtained from https://schunk.com/be/nl/grijpsystemen/parallelgrijper/egk/egk-40-mb-m-b/p/000000000001491762
@@ -209,7 +212,9 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         :param width_difference: in m,  a positive difference will make the gripper open, a negative difference makes it close
         :param speed: in m/s
         :param force: in N
-        :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen with the gripper
+        :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen 
+        with the gripper. The reason to do this with an extra argument is so that the speed and force settings are 
+        minimal by default, which is desirable for the strong Schunk gripper.
         """
         if set_speed_and_force:
             self.speed = speed
