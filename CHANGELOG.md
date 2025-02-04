@@ -25,6 +25,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `OpenCVVideoCapture` implementation of `RGBCamera` for working with arbitrary cameras
 - `MultiprocessRGBRerunLogger` and `MultiprocessRGBDRerunLogger` now allow you to pass an `entity_path` value which determines where the RGB and depth images will be logged
 - `MobileRobot` and `KELORobile` interface and subclass added, to control mobile robots via the `airo-tulip` package
+- `execute_trajectory` methods for executing time-parameterized trajectories on single and dual arm set-ups [#150](https://github.com/airo-ugent/airo-mono/issues/150)
 
 ### Changed
 - `coco-to-yolo` conversion now creates a single polygon of all disconnected parts of the mask instead of simply taking the first polygon of the list.

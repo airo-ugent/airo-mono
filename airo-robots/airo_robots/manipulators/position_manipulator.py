@@ -1,10 +1,13 @@
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional
 
+import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
-from airo_typing import HomogeneousMatrixType, JointConfigurationType
+from airo_typing import HomogeneousMatrixType, JointConfigurationType, JointPathType, SingleArmTrajectory, TimesType
+from loguru import logger
 
 
 @dataclass
@@ -205,6 +208,67 @@ class PositionManipulator(ABC):
             return False
         return self._is_joint_configuration_reachable(joint_configuration)
 
+    def execute_trajectory(self, joint_trajectory: SingleArmTrajectory) -> None:
+        """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
+
+        This function is implemented according to the notes of https://github.com/airo-ugent/airo-mono/issues/150.
+        Please refer to this issue for design decisions.
+
+        Args:
+            joint_trajectory: the joint trajectory to execute."""
+        self._assert_joint_trajectory_is_executable(joint_trajectory)
+
+        period = 0.005  # Time per servo, approximately. This may be slightly changed because of rounding errors.
+        # The period determines the times at which we sample the trajectory that was time-parameterized.
+        duration = (joint_trajectory.times[-1] - joint_trajectory.times[0]).item()
+
+        n_servos = int(np.ceil(duration / period))
+        period_adjusted = duration / n_servos  # can be slightly different from period due to rounding
+
+        start_time_ns = time.time_ns()
+        for servo_index in range(n_servos):
+            current_time_ns = time.time_ns()
+            t_ns = current_time_ns - start_time_ns
+            t = t_ns / 1e9
+            if t > duration:
+                logger.warning(
+                    f"Time exceeded trajectory duration at servo index {servo_index} / {n_servos}. This means we are lagging, but we should have reached the final configuration. Stopping trajectory execution."
+                )
+                break
+
+            # Find the two joint configurations that are closest to time t.
+            i0 = np.searchsorted(joint_trajectory.times, t, side="left") - 1  # - 1: i0 is always >= 1 otherwise.
+            i1 = i0 + 1
+
+            if i1 == len(joint_trajectory.times):
+                break
+
+            # Interpolate between the two joint configurations.
+            q_interp = lerp_positions(i0, i1, joint_trajectory.path.positions, joint_trajectory.times, t)
+            self.servo_to_joint_configuration(q_interp, period_adjusted)
+            # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
+
+            if joint_trajectory.gripper_path is not None:
+                if self.gripper is None:
+                    raise ValueError("Gripper trajectory provided, but no gripper is attached to the manipulator.")
+
+                gripper_pos_interp = lerp_positions(
+                    i0, i1, joint_trajectory.gripper_path.positions, joint_trajectory.times, t
+                ).item()
+                self.gripper.move(gripper_pos_interp)
+
+            # time.sleep(
+            #     period_adjusted
+            # )
+
+        # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
+        # TODO: This is not an attribute of PositionManipulator, but is specific to URrtde. How do we implement this correctly?
+        self.rtde_control.servoStop(2.0)
+
+        # Servo can overshoot. Do a final move to the last configuration.
+        # manipulator._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])
+        self.move_to_joint_configuration(joint_trajectory.path.positions[-1]).wait()
+
     ###################################
     # util functions to validate inputs
     ###################################
@@ -231,3 +295,58 @@ class PositionManipulator(ABC):
             raise ValueError(
                 f"joint configuration {joint_configuration} is not reachable, could be because of kinematic constraints or safety constraints"
             )
+
+    def _assert_joint_configuration_nearby(
+        self, joint_configuration: JointConfigurationType, absolute_angle_tolerance=np.radians(1.0)
+    ) -> None:
+        """Assert that a joint configuration is nearby the current configuration.
+
+        Args:
+            joint_configuration: the configuration that should be nearby the current configuration.
+            absolute_angle_tolerance: the absolute tolerance for the comparison.
+
+        Raises:
+            ValueError: If the joint configuration is not nearby the current configuration."""
+        current_configuration = self.get_joint_configuration()
+        if (
+            not np.isclose(joint_configuration, current_configuration, atol=absolute_angle_tolerance, rtol=0.0)
+            .all()
+            .item()
+        ):
+            raise ValueError(
+                f"joint configuration {joint_configuration} is not nearby the current configuration {current_configuration}"
+            )
+
+    def _assert_joint_trajectory_start_time_is_zero(self, joint_trajectory: SingleArmTrajectory) -> None:
+        if joint_trajectory.times[0] != 0.0:
+            raise ValueError("joint trajectory should start at time 0.0")
+
+    def _assert_joint_trajectory_is_executable(self, joint_trajectory: SingleArmTrajectory) -> None:
+        self._assert_joint_trajectory_start_time_is_zero(joint_trajectory)
+
+        if joint_trajectory.path.positions is None:
+            raise ValueError("joint trajectory should contain joint positions")
+
+        self._assert_joint_configuration_nearby(joint_trajectory.path.positions[0])
+
+        if joint_trajectory.path.velocities is not None:
+            for velocity in joint_trajectory.path.velocities:
+                self._assert_joint_speed_is_valid(velocity)
+
+
+def lerp_positions(i0: int, i1: int, positions: JointPathType, times: TimesType, t: float) -> np.ndarray:
+    """Linearly interpolate between two values in a list of positions based on a time t.
+
+    Args:
+        i0: The index of the first value to interpolate between.
+        i1: The index of the second value to interpolate between.
+        positions: The list of values to interpolate between.
+        times: The list of times corresponding to the values.
+        t: The time to interpolate at.
+
+    Returns:
+        The interpolated position."""
+    q0 = positions[i0]
+    q1 = positions[i1]
+    q_interp = q0 + (q1 - q0) * (t - times[i0]) / (times[i1] - times[i0])
+    return q_interp
