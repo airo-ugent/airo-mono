@@ -10,7 +10,7 @@ setuptools.setup(
     author_email="victorlouisdg@gmail.com",
     description="TODO",
     install_requires=[
-        "numpy",
+        "numpy<2.0",
         "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
         "opencv-contrib-python==4.8.1.78",  # See airo-camera-toolkit setup.py for explanation
         "opencv-python-headless==4.8.1.78",  # See airo-camera-toolkit setup.py for explanation
