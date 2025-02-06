@@ -10,7 +10,7 @@ setuptools.setup(
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
     install_requires=[
-        "numpy",
+        "numpy<2.0",
         "ur-rtde>=1.5.7",  # cf https://github.com/airo-ugent/airo-mono/issues/52
         "click",
         "airo-typing",

@@ -44,8 +44,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
     SCHUNK_DEFAULT_SPECS = ParallelPositionGripperSpecs(0.083, 0.0, 150, 55, 0.0575, 0.0055)
 
     def __init__(
-            self, usb_interface: str = "/dev/ttyUSB0",
-            max_stroke_setting: Optional[SCHUNK_STROKE_OPTIONS | float] = None
+        self, usb_interface: str = "/dev/ttyUSB0", max_stroke_setting: Optional[SCHUNK_STROKE_OPTIONS | float] = None
     ) -> None:
         """
         :param usb_interface: the USB interface to which the gripper is connected.
@@ -122,11 +121,11 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         return self.gripper_specs.max_width - (self.bks.actual_pos / 1000)
 
     def move(
-            self,
-            width: float,
-            speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-            force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
-            set_speed_and_force: bool = True,
+        self,
+        width: float,
+        speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
+        force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
+        set_speed_and_force: bool = True,
     ) -> AwaitableAction:
         """
         Move the gripper to a certain position at a certain speed with a certain force. This function is assumed to run
@@ -141,11 +140,11 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         return self.servo(width=width, speed=speed, force=force, set_speed_and_force=set_speed_and_force)
 
     def move_relative(
-            self,
-            width_difference: float,
-            speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-            force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
-            set_speed_and_force: bool = True,
+        self,
+        width_difference: float,
+        speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
+        force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
+        set_speed_and_force: bool = True,
     ) -> AwaitableAction:
         """
         Move the gripper to a certain position at a certain speed with a certain force. This function is assumed to run
@@ -170,11 +169,11 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         self.bks.MakeReady()
 
     def servo(
-            self,
-            width: float,
-            speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-            force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
-            set_speed_and_force: bool = True,
+        self,
+        width: float,
+        speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
+        force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
+        set_speed_and_force: bool = True,
     ) -> AwaitableAction:
         """
         Move the gripper to a certain position at a certain speed with a certain force. This function is assumed to run
@@ -199,11 +198,11 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         return AwaitableAction(self._move_done_condition)
 
     def servo_relative(
-            self,
-            width_difference: float,
-            speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-            force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
-            set_speed_and_force: bool = True,
+        self,
+        width_difference: float,
+        speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
+        force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
+        set_speed_and_force: bool = True,
     ) -> AwaitableAction:
         """
         Move the gripper to a certain position at a certain speed with a certain force. This function is assumed to run
@@ -212,8 +211,8 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         :param width_difference: in m,  a positive difference will make the gripper open, a negative difference makes it close
         :param speed: in m/s
         :param force: in N
-        :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen 
-        with the gripper. The reason to do this with an extra argument is so that the speed and force settings are 
+        :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen
+        with the gripper. The reason to do this with an extra argument is so that the speed and force settings are
         minimal by default, which is desirable for the strong Schunk gripper.
         """
         if set_speed_and_force:
