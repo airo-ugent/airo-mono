@@ -9,8 +9,12 @@ import cv2
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 from loguru import logger
+from typing_extensions import deprecated
 
 
+@deprecated(
+    "This class uses the old shared memory implementation and will not work currently. It will be updated in the future."
+)
 class MultiprocessVideoRecorder(Process):
     def __init__(
         self,

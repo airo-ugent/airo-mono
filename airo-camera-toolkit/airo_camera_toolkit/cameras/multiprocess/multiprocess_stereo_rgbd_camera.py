@@ -13,6 +13,7 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import (
     MultiprocessRGBDReceiver,
 )
 from airo_camera_toolkit.utils.image_converter import ImageConverter
+from typing_extensions import deprecated
 
 logger = loguru.logger
 from airo_camera_toolkit.interfaces import RGBDCamera, StereoRGBDCamera
@@ -24,6 +25,9 @@ _POSE_RIGHT_IN_LEFT_SHM_NAME = "pose_right_in_left"
 _INTRINSICS_RIGHT_SHM_NAME = "intrinsics_right"
 
 
+@deprecated(
+    "This class uses the old shared memory implementation and will not work currently. It will be updated in the future."
+)
 class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
     """publishes the data of a camera that implements the RGBDCamera interface to shared memory blocks.
     Shared memory blocks can then be accessed in other processes using their names,

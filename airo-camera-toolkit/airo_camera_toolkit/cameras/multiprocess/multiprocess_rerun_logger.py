@@ -8,10 +8,14 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import Mul
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import MultiprocessRGBDReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 from airo_camera_toolkit.utils.image_converter import ImageConverter
+from typing_extensions import deprecated
 
 logger = loguru.logger
 
 
+@deprecated(
+    "This class uses the old shared memory implementation and will not work currently. It will be updated in the future."
+)
 class MultiprocessRGBRerunLogger(Process):
     def __init__(
         self,
