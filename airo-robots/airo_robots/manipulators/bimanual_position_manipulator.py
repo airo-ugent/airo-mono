@@ -231,8 +231,8 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
         Args:
             joint_trajectory: the joint trajectory to execute.
-            trajectory_constraint: An optional constraint that the trajectory should satisfy. This is a function that takes a joint configuration and returns a float. The trajectory constraint should evaluate to 0 when the constraint is satisfied.
-            trajectory_constraint_eps: An optional threshold for the trajectory constraint: If the constraint evaluates to a value smaller than this threshold, the trajectory is considered to be satisfied.
+            trajectory_constraints: An optional constraint that the trajectory should satisfy. This is a function that takes a joint configuration and returns a float. The trajectory constraint should evaluate to 0 when the constraint is satisfied.
+            trajectory_constraints_eps: An optional threshold for the trajectory constraint: If the constraint evaluates to a value smaller than this threshold, the trajectory is considered to be satisfied.
             sampling_frequency: The frequency at which the trajectory is sampled and commands are sent to the robot. This is a best-effort parameter, and the actual frequency may be lower due to the time it takes to send the commands to the robot or other computations. The default is 100 Hz."""
         self._assert_joint_trajectory_is_executable(
             joint_trajectory, trajectory_constraints, trajectory_constraints_eps, sampling_frequency
