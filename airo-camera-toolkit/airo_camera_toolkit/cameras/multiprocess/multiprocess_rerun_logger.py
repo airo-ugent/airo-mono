@@ -1,6 +1,6 @@
 import multiprocessing
 import time
-from multiprocessing import Process
+from multiprocessing.context import SpawnProcess
 from typing import Optional
 
 import loguru
@@ -8,15 +8,11 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import Mul
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import MultiprocessRGBDReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from typing_extensions import deprecated
 
 logger = loguru.logger
 
 
-@deprecated(
-    "This class uses the old shared memory implementation and will not work currently. It will be updated in the future."
-)
-class MultiprocessRGBRerunLogger(Process):
+class MultiprocessRGBRerunLogger(SpawnProcess):
     def __init__(
         self,
         shared_memory_namespace: str,
@@ -53,7 +49,7 @@ class MultiprocessRGBRerunLogger(Process):
         """main loop of the process, runs until the process is terminated"""
         import rerun as rr
 
-        rr.init(self._rerun_application_id)
+        rr.init(self._rerun_application_id, spawn=True)
         rr.connect()
 
         self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
@@ -97,7 +93,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         """main loop of the process, runs until the process is terminated"""
         import rerun
 
-        rerun.init(self._rerun_application_id)
+        rerun.init(self._rerun_application_id, spawn=True)
         rerun.connect()
 
         self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace)
