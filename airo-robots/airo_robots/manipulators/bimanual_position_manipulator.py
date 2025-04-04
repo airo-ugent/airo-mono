@@ -1,6 +1,6 @@
 import time
 from abc import ABC
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -208,7 +208,17 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
             awaitables[0]._default_sleep_resolution,
         )
 
-    def execute_trajectory(self, joint_trajectory: DualArmTrajectory) -> None:
+    def execute_trajectory(
+        self,
+        joint_trajectory: DualArmTrajectory,
+        trajectory_constraints: Optional[
+            Tuple[
+                Optional[Callable[[JointConfigurationType], float]],
+                Optional[Callable[[JointConfigurationType], float]],
+            ]
+        ] = None,
+        trajectory_constraints_eps: Optional[Tuple[Optional[float], Optional[float]]] = None,
+    ) -> None:
         """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
 
         This function is implemented according to the notes of https://github.com/airo-ugent/airo-mono/issues/150.
@@ -216,7 +226,9 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
         Args:
             joint_trajectory: the joint trajectory to execute."""
-        self._assert_joint_trajectory_is_executable(joint_trajectory)
+        self._assert_joint_trajectory_is_executable(
+            joint_trajectory, trajectory_constraints, trajectory_constraints_eps
+        )
 
         period = 0.005  # Time per servo, approximately. This may be slightly changed because of rounding errors.
         # The period determines the times at which we sample the trajectory that was time-parameterized.
@@ -316,7 +328,17 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         right_reachable = self.is_tcp_pose_reachable_for_right(right_tcp_pose_in_base)
         return left_reachable and right_reachable
 
-    def _assert_joint_trajectory_is_executable(self, joint_trajectory: DualArmTrajectory) -> None:
+    def _assert_joint_trajectory_is_executable(
+        self,
+        joint_trajectory: DualArmTrajectory,
+        trajectory_constraints: Optional[
+            Tuple[
+                Optional[Callable[[JointConfigurationType], float]],
+                Optional[Callable[[JointConfigurationType], float]],
+            ]
+        ] = None,
+        trajectory_constraints_eps: Optional[Tuple[Optional[float], Optional[float]]] = None,
+    ) -> None:
         if joint_trajectory.times[0] != 0.0:
             raise ValueError("joint trajectory should start at time 0.0")
 
@@ -329,6 +351,10 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         self._left_manipulator._assert_joint_configuration_nearby(joint_trajectory.path_left.positions[0])
         self._right_manipulator._assert_joint_configuration_nearby(joint_trajectory.path_right.positions[0])
 
+        self._assert_trajectory_constraints_satisfied(
+            joint_trajectory, trajectory_constraints, trajectory_constraints_eps
+        )
+
         if joint_trajectory.path_left.velocities is not None:
             for velocity in joint_trajectory.path_left.velocities:
                 self._left_manipulator._assert_joint_speed_is_valid(velocity)
@@ -336,6 +362,33 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         if joint_trajectory.path_right.velocities is not None:
             for velocity in joint_trajectory.path_right.velocities:
                 self._right_manipulator._assert_joint_speed_is_valid(velocity)
+
+    def _assert_trajectory_constraints_satisfied(
+        self, joint_trajectory, trajectory_constraints, trajectory_constraints_eps
+    ):
+        if trajectory_constraints is not None:
+            if trajectory_constraints[0] is not None:
+                trajectory_constraint = trajectory_constraints[0]
+                trajectory_constraints_eps = (
+                    trajectory_constraints_eps[0] if trajectory_constraints_eps[0] is not None else 0.0
+                )
+
+                for joint_configuration in joint_trajectory.path_left.positions:
+                    if trajectory_constraint(joint_configuration) > trajectory_constraints_eps[0]:
+                        raise ValueError(
+                            f"joint configuration {joint_configuration} does not satisfy the trajectory constraint"
+                        )
+            if trajectory_constraints[1] is not None:
+                trajectory_constraint = trajectory_constraints[1]
+                trajectory_constraints_eps = (
+                    trajectory_constraints_eps[1] if trajectory_constraints_eps[1] is not None else 0.0
+                )
+
+                for joint_configuration in joint_trajectory.path_right.positions:
+                    if trajectory_constraint(joint_configuration) > trajectory_constraints_eps[1]:
+                        raise ValueError(
+                            f"joint configuration {joint_configuration} does not satisfy the trajectory constraint"
+                        )
 
 
 if __name__ == "__main__":

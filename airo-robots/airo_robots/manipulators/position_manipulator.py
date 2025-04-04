@@ -1,7 +1,7 @@
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -208,15 +208,23 @@ class PositionManipulator(ABC):
             return False
         return self._is_joint_configuration_reachable(joint_configuration)
 
-    def execute_trajectory(self, joint_trajectory: SingleArmTrajectory) -> None:
+    def execute_trajectory(
+        self,
+        joint_trajectory: SingleArmTrajectory,
+        trajectory_constraint: Optional[Callable[[JointConfigurationType], float]] = None,
+        trajectory_constraint_eps: Optional[float] = None,
+    ) -> None:
         """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
 
         This function is implemented according to the notes of https://github.com/airo-ugent/airo-mono/issues/150.
         Please refer to this issue for design decisions.
 
         Args:
-            joint_trajectory: the joint trajectory to execute."""
-        self._assert_joint_trajectory_is_executable(joint_trajectory)
+            joint_trajectory: the joint trajectory to execute.
+            trajectory_constraint: An optional constraint that the trajectory should satisfy. This is a function that takes a joint configuration and returns a float. The trajectory constraint should evaluate to 0 when the constraint is satisfied.
+            trajectory_constraint_eps: An optional threshold for the trajectory constraint: If the constraint evaluates to a value smaller than this threshold, the trajectory is considered to be satisfied.
+        """
+        self._assert_joint_trajectory_is_executable(joint_trajectory, trajectory_constraint, trajectory_constraint_eps)
 
         period = 0.005  # Time per servo, approximately. This may be slightly changed because of rounding errors.
         # The period determines the times at which we sample the trajectory that was time-parameterized.
@@ -321,13 +329,27 @@ class PositionManipulator(ABC):
         if joint_trajectory.times[0] != 0.0:
             raise ValueError("joint trajectory should start at time 0.0")
 
-    def _assert_joint_trajectory_is_executable(self, joint_trajectory: SingleArmTrajectory) -> None:
+    def _assert_joint_trajectory_is_executable(
+        self,
+        joint_trajectory: SingleArmTrajectory,
+        trajectory_constraint: Optional[Callable[[JointConfigurationType], float]],
+        trajectory_constraint_eps: Optional[float],
+    ) -> None:
         self._assert_joint_trajectory_start_time_is_zero(joint_trajectory)
 
         if joint_trajectory.path.positions is None:
             raise ValueError("joint trajectory should contain joint positions")
 
         self._assert_joint_configuration_nearby(joint_trajectory.path.positions[0])
+
+        if trajectory_constraint is not None:
+            if trajectory_constraint_eps is None:
+                trajectory_constraint_eps = 0.0
+            for joint_configuration in joint_trajectory.path.positions:
+                if trajectory_constraint(joint_configuration) > trajectory_constraint_eps:
+                    raise ValueError(
+                        f"joint configuration {joint_configuration} does not satisfy the trajectory constraint"
+                    )
 
         if joint_trajectory.path.velocities is not None:
             for velocity in joint_trajectory.path.velocities:
