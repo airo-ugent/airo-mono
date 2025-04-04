@@ -8,7 +8,6 @@ from typing import Optional
 import cv2
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
-from airo_ipc.framework.framework import initialize_ipc
 from loguru import logger
 
 
@@ -112,7 +111,6 @@ class MultiprocessVideoRecorder(SpawnProcess):
 
 
 if __name__ == "__main__":
-    initialize_ipc()
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
     recorder = MultiprocessVideoRecorder("camera")
     recorder.start()

@@ -8,7 +8,6 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import Mul
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import MultiprocessRGBDReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.framework.framework import initialize_ipc
 
 logger = loguru.logger
 
@@ -108,8 +107,6 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
 
 
 if __name__ == "__main__":
-    initialize_ipc()
-
     rerun_logger = MultiprocessRGBDRerunLogger("camera")
     rerun_logger.start()
     time.sleep(10)

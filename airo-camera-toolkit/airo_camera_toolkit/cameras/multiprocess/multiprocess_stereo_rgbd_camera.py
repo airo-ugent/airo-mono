@@ -15,7 +15,6 @@ from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIDL
 from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
 from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
-from airo_ipc.framework.framework import initialize_ipc
 
 logger = loguru.logger
 from airo_camera_toolkit.interfaces import RGBDCamera, StereoRGBDCamera
@@ -173,8 +172,6 @@ if __name__ == "__main__":
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
     from airo_camera_toolkit.cameras.zed.zed import Zed
-
-    initialize_ipc()
 
     resolution = Zed.RESOLUTION_720
     camera_fps = 15
