@@ -368,11 +368,13 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         )
 
         if joint_trajectory.path_left.velocities is not None:
-            for velocity in joint_trajectory.path_left.velocities:
+            leading_axis_velocity = np.max(np.abs(joint_trajectory.path_left.velocities), axis=1)
+            for velocity in leading_axis_velocity:
                 self._left_manipulator._assert_joint_speed_is_valid(velocity)
 
         if joint_trajectory.path_right.velocities is not None:
-            for velocity in joint_trajectory.path_right.velocities:
+            leading_axis_velocity = np.max(np.abs(joint_trajectory.path_right.velocities), axis=1)
+            for velocity in leading_axis_velocity:
                 self._right_manipulator._assert_joint_speed_is_valid(velocity)
 
     def _assert_trajectory_constraints_satisfied(

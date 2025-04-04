@@ -358,7 +358,12 @@ class PositionManipulator(ABC):
             )
 
         if joint_trajectory.path.velocities is not None:
-            for velocity in joint_trajectory.path.velocities:
+            # Calculate the leading axis velocity.
+            # This is the maximum velocity of the robot, and should be used to check if the trajectory is valid.
+            # The leading axis velocity is the maximum of the absolute values of the joint velocities.
+            leading_axis_velocity = np.max(np.abs(joint_trajectory.path.velocities), axis=1)
+
+            for velocity in leading_axis_velocity:
                 self._assert_joint_speed_is_valid(velocity)
 
 
