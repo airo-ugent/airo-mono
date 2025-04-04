@@ -4,7 +4,7 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
-from airo_robots.manipulators.position_manipulator import PositionManipulator, lerp_positions
+from airo_robots.manipulators.position_manipulator import PositionManipulator, evaluate_constraint, lerp_positions
 from airo_typing import DualArmTrajectory, HomogeneousMatrixType, JointConfigurationType
 
 
@@ -218,6 +218,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
             ]
         ] = None,
         trajectory_constraints_eps: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        sampling_frequency: float = 100.0,
     ) -> None:
         """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
 
@@ -229,12 +230,17 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         but is its own implementation with some code duplication.
 
         Args:
-            joint_trajectory: the joint trajectory to execute."""
+            joint_trajectory: the joint trajectory to execute.
+            trajectory_constraint: An optional constraint that the trajectory should satisfy. This is a function that takes a joint configuration and returns a float. The trajectory constraint should evaluate to 0 when the constraint is satisfied.
+            trajectory_constraint_eps: An optional threshold for the trajectory constraint: If the constraint evaluates to a value smaller than this threshold, the trajectory is considered to be satisfied.
+            sampling_frequency: The frequency at which the trajectory is sampled and commands are sent to the robot. This is a best-effort parameter, and the actual frequency may be lower due to the time it takes to send the commands to the robot or other computations. The default is 100 Hz."""
         self._assert_joint_trajectory_is_executable(
-            joint_trajectory, trajectory_constraints, trajectory_constraints_eps
+            joint_trajectory, trajectory_constraints, trajectory_constraints_eps, sampling_frequency
         )
 
-        period = 0.005  # Time per servo, approximately. This may be slightly changed because of rounding errors.
+        period = (
+            1 / sampling_frequency
+        )  # Time per servo, approximately. This may be slightly changed because of rounding errors.
         # The period determines the times at which we sample the trajectory that was time-parameterized.
         duration = (joint_trajectory.times[-1] - joint_trajectory.times[0]).item()
 
@@ -342,6 +348,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
             ]
         ] = None,
         trajectory_constraints_eps: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        sampling_frequency: float = 100.0,
     ) -> None:
         if joint_trajectory.times[0] != 0.0:
             raise ValueError("joint trajectory should start at time 0.0")
@@ -356,7 +363,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         self._right_manipulator._assert_joint_configuration_nearby(joint_trajectory.path_right.positions[0])
 
         self._assert_trajectory_constraints_satisfied(
-            joint_trajectory, trajectory_constraints, trajectory_constraints_eps
+            joint_trajectory, sampling_frequency, trajectory_constraints, trajectory_constraints_eps
         )
 
         if joint_trajectory.path_left.velocities is not None:
@@ -368,31 +375,37 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
                 self._right_manipulator._assert_joint_speed_is_valid(velocity)
 
     def _assert_trajectory_constraints_satisfied(
-        self, joint_trajectory, trajectory_constraints, trajectory_constraints_eps
+        self,
+        joint_trajectory: DualArmTrajectory,
+        sampling_frequency: float,
+        trajectory_constraints: Optional[
+            Tuple[
+                Optional[Callable[[JointConfigurationType], float]],
+                Optional[Callable[[JointConfigurationType], float]],
+            ]
+        ],
+        trajectory_constraints_eps: Optional[Tuple[Optional[float], Optional[float]]],
     ):
         if trajectory_constraints is not None:
             if trajectory_constraints[0] is not None:
-                trajectory_constraint = trajectory_constraints[0]
-                trajectory_constraints_eps = (
-                    trajectory_constraints_eps[0] if trajectory_constraints_eps[0] is not None else 0.0
+                eps = trajectory_constraints_eps[0] if trajectory_constraints_eps[0] is not None else 0.0
+                evaluate_constraint(
+                    joint_trajectory.path_left.positions,
+                    joint_trajectory.times,
+                    trajectory_constraints[0],
+                    eps,
+                    sampling_frequency,
                 )
 
-                for joint_configuration in joint_trajectory.path_left.positions:
-                    if trajectory_constraint(joint_configuration) > trajectory_constraints_eps[0]:
-                        raise ValueError(
-                            f"joint configuration {joint_configuration} does not satisfy the trajectory constraint"
-                        )
             if trajectory_constraints[1] is not None:
-                trajectory_constraint = trajectory_constraints[1]
-                trajectory_constraints_eps = (
-                    trajectory_constraints_eps[1] if trajectory_constraints_eps[1] is not None else 0.0
+                eps = trajectory_constraints_eps[1] if trajectory_constraints_eps[1] is not None else 0.0
+                evaluate_constraint(
+                    joint_trajectory.path_right.positions,
+                    joint_trajectory.times,
+                    trajectory_constraints[1],
+                    eps,
+                    sampling_frequency,
                 )
-
-                for joint_configuration in joint_trajectory.path_right.positions:
-                    if trajectory_constraint(joint_configuration) > trajectory_constraints_eps[1]:
-                        raise ValueError(
-                            f"joint configuration {joint_configuration} does not satisfy the trajectory constraint"
-                        )
 
 
 if __name__ == "__main__":

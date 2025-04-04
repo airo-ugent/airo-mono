@@ -213,6 +213,7 @@ class PositionManipulator(ABC):
         joint_trajectory: SingleArmTrajectory,
         trajectory_constraint: Optional[Callable[[JointConfigurationType], float]] = None,
         trajectory_constraint_eps: Optional[float] = None,
+        sampling_frequency: float = 100,
     ) -> None:
         """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
 
@@ -223,10 +224,15 @@ class PositionManipulator(ABC):
             joint_trajectory: the joint trajectory to execute.
             trajectory_constraint: An optional constraint that the trajectory should satisfy. This is a function that takes a joint configuration and returns a float. The trajectory constraint should evaluate to 0 when the constraint is satisfied.
             trajectory_constraint_eps: An optional threshold for the trajectory constraint: If the constraint evaluates to a value smaller than this threshold, the trajectory is considered to be satisfied.
+            sampling_frequency: The frequency at which the trajectory is sampled and commands are sent to the robot. This is a best-effort parameter, and the actual frequency may be lower due to the time it takes to send the commands to the robot or other computations. The default is 100 Hz.
         """
-        self._assert_joint_trajectory_is_executable(joint_trajectory, trajectory_constraint, trajectory_constraint_eps)
+        self._assert_joint_trajectory_is_executable(
+            joint_trajectory, trajectory_constraint, trajectory_constraint_eps, sampling_frequency
+        )
 
-        period = 0.005  # Time per servo, approximately. This may be slightly changed because of rounding errors.
+        period = (
+            1 / sampling_frequency
+        )  # Time per servo, approximately. This may be slightly changed because of rounding errors.
         # The period determines the times at which we sample the trajectory that was time-parameterized.
         duration = (joint_trajectory.times[-1] - joint_trajectory.times[0]).item()
 
@@ -334,6 +340,7 @@ class PositionManipulator(ABC):
         joint_trajectory: SingleArmTrajectory,
         trajectory_constraint: Optional[Callable[[JointConfigurationType], float]],
         trajectory_constraint_eps: Optional[float],
+        sampling_frequency: float,
     ) -> None:
         self._assert_joint_trajectory_start_time_is_zero(joint_trajectory)
 
@@ -345,15 +352,58 @@ class PositionManipulator(ABC):
         if trajectory_constraint is not None:
             if trajectory_constraint_eps is None:
                 trajectory_constraint_eps = 0.0
-            for joint_configuration in joint_trajectory.path.positions:
-                if trajectory_constraint(joint_configuration) > trajectory_constraint_eps:
-                    raise ValueError(
-                        f"joint configuration {joint_configuration} does not satisfy the trajectory constraint"
-                    )
+            evaluate_constraint(
+                joint_trajectory.path.positions,
+                joint_trajectory.times,
+                trajectory_constraint,
+                trajectory_constraint_eps,
+                sampling_frequency,
+            )
 
         if joint_trajectory.path.velocities is not None:
             for velocity in joint_trajectory.path.velocities:
                 self._assert_joint_speed_is_valid(velocity)
+
+
+def evaluate_constraint(
+    joint_path: JointPathType,
+    times: TimesType,
+    trajectory_constraint: Callable[[JointConfigurationType], float],
+    trajectory_constraint_eps: float,
+    frequency: float = 500,
+) -> bool:
+    """Evaluate whether a constraint is satisfied for a given (decomposed) trajectory.
+    It does this by sampling the trajectory at a fixed rate, and checking the constraint at each sample.
+    If the trajectory is sampled at a higher rate than its time parameterization, the constraint is checked at linearly interpolated positions.
+
+    Args:
+        joint_path: The joint path to evaluate.
+        times: The time parameterization of the joint path.
+        trajectory_constraint: The constraint to evaluate.
+        trajectory_constraint_eps: The threshold for the constraint.
+
+    Returns:
+        True: if the constraint is satisfied for all joint configurations in the trajectory.
+    """
+
+    period = 1 / frequency
+    duration = (times[-1] - times[0]).item()
+    n_servos = int(np.ceil(duration / period))
+    start_time_ns = time.time_ns()
+    for servo_index in range(n_servos):
+        t = (time.time_ns() - start_time_ns) / 1e9
+        # Find the two joint configurations that are closest to time t.
+        i0 = np.searchsorted(times, t, side="left") - 1  # - 1: i0 is always >= 1 otherwise.
+        i1 = i0 + 1
+        if i1 == len(times):
+            break
+        q_interp = lerp_positions(i0, i1, joint_path, times, t)
+        if trajectory_constraint(q_interp) > trajectory_constraint_eps:
+            logger.error(
+                f"joint configuration {q_interp} does not satisfy the trajectory constraint at time {t} (servo index: {servo_index} / {n_servos}). "
+            )
+            return False
+    return True
 
 
 def lerp_positions(i0: int, i1: int, positions: JointPathType, times: TimesType, t: float) -> np.ndarray:
