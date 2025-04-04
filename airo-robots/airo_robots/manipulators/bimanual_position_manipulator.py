@@ -224,6 +224,10 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         This function is implemented according to the notes of https://github.com/airo-ugent/airo-mono/issues/150.
         Please refer to this issue for design decisions.
 
+        To ensure that the trajectories of both manipulators in the DualArmPositionManipulator are executed in a synchronized manner,
+        the implementation of execute_trajectory in this class does not delegate to the _left_manipulator (resp. _right)'s implementation,
+        but is its own implementation with some code duplication.
+
         Args:
             joint_trajectory: the joint trajectory to execute."""
         self._assert_joint_trajectory_is_executable(
