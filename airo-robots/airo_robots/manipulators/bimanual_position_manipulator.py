@@ -285,15 +285,10 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
                     ).item()
                     manipulator.gripper.move(gripper_pos_interp)
 
-            # time.sleep(
-            #     period_adjusted
-            # )
-
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
         # However, I believe these functions are blocking, so right only stops after left has stopped.
-        # TODO: This is not an attribute of PositionManipulator, but is specific to URrtde. How do we implement this correctly?
-        self._left_manipulator.rtde_control.servoStop(2.0)
-        self._right_manipulator.rtde_control.servoStop(2.0)
+        # Specifically for UR robots.
+        self.servo_stop()
 
         # Servo can overshoot. Do a final move to the last configuration.
         if joint_trajectory.path_left is not None:
@@ -312,6 +307,12 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
         left_finished.wait()
         right_finished.wait()
+
+    def servo_stop(self):
+        if hasattr(self._left_manipulator, "rtde_control"):
+            self._left_manipulator.rtde_control.servoStop(2.0)
+        if hasattr(self._right_manipulator, "rtde_control"):
+            self._right_manipulator.rtde_control.servoStop(2.0)
 
     def transform_pose_to_left_arm_base(self, pose_in_base: HomogeneousMatrixType) -> HomogeneousMatrixType:
         """Transform a pose in the base frame to the left arm base frame"""

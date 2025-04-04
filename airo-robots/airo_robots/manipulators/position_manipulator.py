@@ -271,13 +271,10 @@ class PositionManipulator(ABC):
                 ).item()
                 self.gripper.move(gripper_pos_interp)
 
-            # time.sleep(
-            #     period_adjusted
-            # )
-
-        # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
-        # TODO: This is not an attribute of PositionManipulator, but is specific to URrtde. How do we implement this correctly?
-        self.rtde_control.servoStop(2.0)
+        # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity.
+        # Specifically for UR robots.
+        if hasattr(self, "rtde_control"):
+            self.rtde_control.servoStop(2.0)
 
         # Servo can overshoot. Do a final move to the last configuration.
         # manipulator._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])
