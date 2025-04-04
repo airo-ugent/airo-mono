@@ -8,6 +8,7 @@ from typing import Optional
 import cv2
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
+from airo_ipc.framework.framework import initialize_ipc
 from loguru import logger
 
 
@@ -23,7 +24,6 @@ class MultiprocessVideoRecorder(SpawnProcess):
 
         self._shared_memory_namespace = shared_memory_namespace
         self._image_transform = image_transform
-        self.recording_started_event = multiprocessing.Event()
         self.recording_finished_event = multiprocessing.Event()
         self.shutdown_event = multiprocessing.Event()
         self.fill_missing_frames = fill_missing_frames
@@ -38,11 +38,6 @@ class MultiprocessVideoRecorder(SpawnProcess):
             video_path = os.path.abspath(video_path)
 
         self._video_path = video_path
-
-    def start(self) -> None:
-        super().start()
-        # Block until the recording has started
-        self.recording_started_event.wait()
 
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
@@ -59,8 +54,6 @@ class MultiprocessVideoRecorder(SpawnProcess):
 
         image_previous = receiver.get_rgb_image_as_int()
         timestamp_prev_frame = receiver.get_current_timestamp()
-        video_writer.write(cv2.cvtColor(image_previous, cv2.COLOR_RGB2BGR))
-        self.recording_started_event.set()
         n_consecutive_frames_dropped = 0
 
         while not self.shutdown_event.is_set():
@@ -119,8 +112,9 @@ class MultiprocessVideoRecorder(SpawnProcess):
 
 
 if __name__ == "__main__":
+    initialize_ipc()
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
     recorder = MultiprocessVideoRecorder("camera")
     recorder.start()
-    time.sleep(15)
+    time.sleep(10)
     recorder.stop()

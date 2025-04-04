@@ -14,6 +14,7 @@ from airo_ipc.cyclone_shm.patterns.ddsreader import DDSReader
 from airo_ipc.cyclone_shm.patterns.ddswriter import DDSWriter
 from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
 from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
+from airo_ipc.framework.framework import initialize_ipc
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.idl import IdlStruct
@@ -220,7 +221,7 @@ if __name__ == "__main__":
     """example of how to use the MultiprocessRGBPublisher and MultiprocessRGBReceiver.
     You can also use the MultiprocessRGBReceiver in a different process (e.g. in a different python script)
     """
-    multiprocessing.set_start_method("spawn")
+    initialize_ipc()
 
     camera_fps = 15
     namespace = "camera"

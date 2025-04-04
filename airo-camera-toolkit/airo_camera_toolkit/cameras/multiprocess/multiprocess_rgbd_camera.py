@@ -16,6 +16,7 @@ from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIDL
 from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
 from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
+from airo_ipc.framework.framework import initialize_ipc
 from airo_typing import NumpyDepthMapType, NumpyIntImageType, PointCloud
 from loguru import logger
 
@@ -148,10 +149,7 @@ if __name__ == "__main__":
     """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
-
-    import multiprocessing
-
-    multiprocessing.set_start_method("spawn")
+    initialize_ipc()
 
     camera_fps = 15
 
