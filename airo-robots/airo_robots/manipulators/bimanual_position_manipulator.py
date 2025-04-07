@@ -285,6 +285,8 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
                     ).item()
                     manipulator.gripper.move(gripper_pos_interp)
 
+            time.sleep(period_adjusted)
+
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
         # However, I believe these functions are blocking, so right only stops after left has stopped.
         # Specifically for UR robots.

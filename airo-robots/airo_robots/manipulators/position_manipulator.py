@@ -271,6 +271,8 @@ class PositionManipulator(ABC):
                 ).item()
                 self.gripper.move(gripper_pos_interp)
 
+            time.sleep(period_adjusted)
+
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity.
         # Specifically for UR robots.
         if hasattr(self, "rtde_control"):
