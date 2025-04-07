@@ -221,6 +221,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         sampling_frequency: float = 100.0,
     ) -> None:
         """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
+        The gripper trajectory (if any) will be ignored.
 
         This function is implemented according to the notes of https://github.com/airo-ugent/airo-mono/issues/150.
         Please refer to this issue for design decisions.
@@ -270,22 +271,6 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
             q_interp_right = lerp_positions(i0, i1, joint_trajectory.path_right.positions, joint_trajectory.times, t)
             self.servo_to_joint_configuration(q_interp_left, q_interp_right, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
-
-            # TODO: gripper trajectory execution slows down iteration drastically, causing huge jumps if the robotic arm also has a trajectory.
-            #       How should we approach this?
-            # Gripper trajectories.
-            # for side in ["left", "right"]:
-            #     gripper_path = getattr(joint_trajectory, f"gripper_path_{side}")
-            #     manipulator = getattr(self, f"_{side}_manipulator")
-            #     if gripper_path is not None:
-            #         if manipulator.gripper is None:
-            #             raise ValueError(
-            #                 f"Gripper trajectory provided for the {side} manipulator, but no gripper is attached to the manipulator."
-            #             )
-            #         gripper_pos_interp = lerp_positions(
-            #             i0, i1, gripper_path.positions, joint_trajectory.times, t
-            #         ).item()
-            #         manipulator.gripper.move(gripper_pos_interp)
 
             iter_duration = 1e-9 * (time.time_ns() - current_time_ns)
             time.sleep(period_adjusted - iter_duration if iter_duration < period_adjusted else 0.0)

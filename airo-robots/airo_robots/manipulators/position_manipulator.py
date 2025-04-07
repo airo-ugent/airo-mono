@@ -216,6 +216,7 @@ class PositionManipulator(ABC):
         sampling_frequency: float = 100,
     ) -> None:
         """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
+        The gripper trajectory (if any) will be ignored.
 
         This function is implemented according to the notes of https://github.com/airo-ugent/airo-mono/issues/150.
         Please refer to this issue for design decisions.
@@ -261,17 +262,6 @@ class PositionManipulator(ABC):
             q_interp = lerp_positions(i0, i1, joint_trajectory.path.positions, joint_trajectory.times, t)
             self.servo_to_joint_configuration(q_interp, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
-
-            # TODO: gripper trajectory execution slows down iteration drastically, causing huge jumps if the robotic arm also has a trajectory.
-            #       How should we approach this?
-            # if joint_trajectory.gripper_path is not None:
-            #     if self.gripper is None:
-            #         raise ValueError("Gripper trajectory provided, but no gripper is attached to the manipulator.")
-            #
-            #     gripper_pos_interp = lerp_positions(
-            #         i0, i1, joint_trajectory.gripper_path.positions, joint_trajectory.times, t
-            #     ).item()
-            #     self.gripper.move(gripper_pos_interp)
 
             iter_duration = 1e-9 * (time.time_ns() - current_time_ns)
             time.sleep(period_adjusted - iter_duration if iter_duration < period_adjusted else 0.0)
