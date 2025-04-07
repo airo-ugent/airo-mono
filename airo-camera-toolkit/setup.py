@@ -21,7 +21,7 @@ setuptools.setup(
         "airo-typing",
         "airo-spatial-algebra",
         "airo-dataset-tools",
-        "airo-ipc @ git+https://github.com/airo-ugent/airo-ipc@26e8c87310e94b1fbb267875266e752594acdd56",
+        "airo-ipc",
     ],
     extras_require={"hand-eye-calibration": ["airo-robots"]},
     packages=setuptools.find_packages(exclude=["test"]),
