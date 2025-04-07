@@ -240,10 +240,11 @@ class PositionManipulator(ABC):
         n_servos = int(np.ceil(duration / period))
         period_adjusted = duration / n_servos  # can be slightly different from period due to rounding
 
-        start_time_ns = time.time_ns()
+        logged_lag_warning = False
+        loop_start_time_ns = time.time_ns()
         for servo_index in range(n_servos):
-            current_time_ns = time.time_ns()
-            t_ns = current_time_ns - start_time_ns
+            iteration_start_time_ns = time.time_ns()
+            t_ns = iteration_start_time_ns - loop_start_time_ns
             t = t_ns / 1e9
             if t > duration:
                 logger.warning(
@@ -263,8 +264,19 @@ class PositionManipulator(ABC):
             self.servo_to_joint_configuration(q_interp, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
 
-            iter_duration = 1e-9 * (time.time_ns() - current_time_ns)
-            time.sleep(period_adjusted - iter_duration if iter_duration < period_adjusted else 0.0)
+            iter_duration_ns = time.time_ns() - iteration_start_time_ns
+            # We want to wait for the period, but we also want to avoid waiting too long if the iteration took too long.
+            # Sleeping is not very accurate (see airo_robots/scripts/measure_sleep_accuracy.py), so we busy-wait for the period.
+            if iter_duration_ns < period_adjusted:
+                current_time = time.time_ns()
+                while time.time_ns() < current_time + (period_adjusted - iter_duration_ns):
+                    pass
+            else:
+                if not logged_lag_warning:
+                    logger.warning(
+                        "Trajectory execution is lagging behind! This can cause large jumps with ServoJ, and should be avoided."
+                    )
+                    logged_lag_warning = True
 
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity.
         # Specifically for UR robots.
