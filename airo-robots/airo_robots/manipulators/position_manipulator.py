@@ -262,16 +262,19 @@ class PositionManipulator(ABC):
             self.servo_to_joint_configuration(q_interp, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
 
-            if joint_trajectory.gripper_path is not None:
-                if self.gripper is None:
-                    raise ValueError("Gripper trajectory provided, but no gripper is attached to the manipulator.")
+            # TODO: gripper trajectory execution slows down iteration drastically, causing huge jumps if the robotic arm also has a trajectory.
+            #       How should we approach this?
+            # if joint_trajectory.gripper_path is not None:
+            #     if self.gripper is None:
+            #         raise ValueError("Gripper trajectory provided, but no gripper is attached to the manipulator.")
+            #
+            #     gripper_pos_interp = lerp_positions(
+            #         i0, i1, joint_trajectory.gripper_path.positions, joint_trajectory.times, t
+            #     ).item()
+            #     self.gripper.move(gripper_pos_interp)
 
-                gripper_pos_interp = lerp_positions(
-                    i0, i1, joint_trajectory.gripper_path.positions, joint_trajectory.times, t
-                ).item()
-                self.gripper.move(gripper_pos_interp)
-
-            time.sleep(period_adjusted)
+            iter_duration = 1e-9 * (time.time_ns() - current_time_ns)
+            time.sleep(period_adjusted - iter_duration if iter_duration < period_adjusted else 0.0)
 
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity.
         # Specifically for UR robots.

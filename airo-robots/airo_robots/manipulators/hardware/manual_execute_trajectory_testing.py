@@ -113,9 +113,11 @@ if __name__ == "__main__":
 
     @click.command()
     @click.option("--ip_address", help="IP address of the UR robot")
-    def test_ur_rtde(ip_address: str) -> None:
+    def test_ur_trajectory(ip_address: str) -> None:
         print(f"{ip_address=}")
         gripper = Robotiq2F85(ip_address)
         robot = URrtde(ip_address, URrtde.UR3E_CONFIG, gripper)
         manual_test_trajectory(robot)
         manual_test_gripper_trajectory(robot)
+
+    test_ur_trajectory()
