@@ -295,14 +295,14 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
         # Servo can overshoot. Do a final move to the last configuration.
         if joint_trajectory.path_left is not None:
-            left_finished = dual_arm.left_manipulator.move_to_joint_configuration(
+            left_finished = self._left_manipulator.move_to_joint_configuration(
                 joint_trajectory.path_left.positions[-1]
             )
         else:
             left_finished = AwaitableAction(lambda: True, 0.0, 0.0)
 
         if joint_trajectory.path_right is not None:
-            right_finished = dual_arm.right_manipulator.move_to_joint_configuration(
+            right_finished = self._right_manipulator.move_to_joint_configuration(
                 joint_trajectory.path_right.positions[-1]
             )
         else:
@@ -393,6 +393,8 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         trajectory_constraints_eps: Optional[Tuple[Optional[float], Optional[float]]],
     ):
         if trajectory_constraints is not None:
+            if trajectory_constraints_eps is None:
+                trajectory_constraints_eps = (None, None)
             if trajectory_constraints[0] is not None:
                 eps = trajectory_constraints_eps[0] if trajectory_constraints_eps[0] is not None else 0.0
                 constraint_satisfied = evaluate_constraint(
