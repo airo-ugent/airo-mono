@@ -12,7 +12,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
  see [issue #91](https://github.com/airo-ugent/airo-mono/issues/91) and
  [PR](https://github.com/airo-ugent/airo-mono/pull/108) for more details.
  - `PointCloud` dataclass replaces the `ColoredPointCloudType` to support point cloud attritubes
-
+- `ValueError`s have been replaced with semantically meaningful exceptions in `airo_robots.manipulators`. Code that was using `except ValueError` will need to be updated to catch the new exceptions.
 
 ### Added
 - add method `as_single_polygon` to combine disconnected parts of a binary mask into a single polygon to the `Mask` class, useful for data formats that only allow for a single polygon such as YOLO.
@@ -26,6 +26,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `MultiprocessRGBRerunLogger` and `MultiprocessRGBDRerunLogger` now allow you to pass an `entity_path` value which determines where the RGB and depth images will be logged
 - `MobileRobot` and `KELORobile` interface and subclass added, to control mobile robots via the `airo-tulip` package
 - `execute_trajectory` methods for executing time-parameterized trajectories on single and dual arm set-ups [#150](https://github.com/airo-ugent/airo-mono/issues/150)
+- Unit tests for `execute_trajectory` methods
 
 ### Changed
 - `coco-to-yolo` conversion now creates a single polygon of all disconnected parts of the mask instead of simply taking the first polygon of the list.

@@ -5,6 +5,12 @@ from typing import Callable, List, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
+from airo_robots.exceptions import (
+    InvalidTrajectoryException,
+    RobotConfigurationException,
+    RobotSafetyViolationException,
+    TrajectoryConstraintViolationException,
+)
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
 from airo_typing import HomogeneousMatrixType, JointConfigurationType, JointPathType, SingleArmTrajectory, TimesType
 from loguru import logger
@@ -293,52 +299,48 @@ class PositionManipulator(ABC):
     ###################################
     def _assert_linear_speed_is_valid(self, linear_speed: float) -> None:
         if not linear_speed <= self.manipulator_specs.max_linear_speed:
-            raise ValueError(
+            raise RobotSafetyViolationException(
                 f"linear speed {linear_speed} is too high. Max linear speed is {self.manipulator_specs.max_linear_speed}"
             )
 
     def _assert_joint_speed_is_valid(self, joint_speed: float) -> None:
         if not joint_speed <= min(self.manipulator_specs.max_joint_speeds):
-            raise ValueError(
+            raise RobotSafetyViolationException(
                 f"joint speed {joint_speed} is too high. Max joint speeds are {self.manipulator_specs.max_joint_speeds}"
             )
 
     def _assert_pose_is_valid(self, pose: HomogeneousMatrixType) -> None:
         if not self.is_tcp_pose_reachable(pose):
-            raise ValueError(
+            raise RobotConfigurationException(
                 f"pose {pose} is not reachable, could be because of kinematic constraints or safety constraints"
             )
 
     def _assert_joint_configuration_is_valid(self, joint_configuration: JointConfigurationType) -> None:
         if not self._is_joint_configuration_reachable(joint_configuration):
-            raise ValueError(
+            raise RobotConfigurationException(
                 f"joint configuration {joint_configuration} is not reachable, could be because of kinematic constraints or safety constraints"
             )
 
-    def _assert_joint_configuration_nearby(
+    def _is_joint_configuration_nearby(
         self, joint_configuration: JointConfigurationType, absolute_angle_tolerance=np.radians(1.0)
-    ) -> None:
-        """Assert that a joint configuration is nearby the current configuration.
+    ) -> bool:
+        """Check that a joint configuration is nearby the current configuration.
 
         Args:
             joint_configuration: the configuration that should be nearby the current configuration.
             absolute_angle_tolerance: the absolute tolerance for the comparison.
 
-        Raises:
-            ValueError: If the joint configuration is not nearby the current configuration."""
+        Returns: True if the joint configuration is not nearby the current configuration."""
         current_configuration = self.get_joint_configuration()
-        if (
-            not np.isclose(joint_configuration, current_configuration, atol=absolute_angle_tolerance, rtol=0.0)
+        return (
+            np.isclose(joint_configuration, current_configuration, atol=absolute_angle_tolerance, rtol=0.0)
             .all()
             .item()
-        ):
-            raise ValueError(
-                f"joint configuration {joint_configuration} is not nearby the current configuration {current_configuration}"
-            )
+        )
 
     def _assert_joint_trajectory_start_time_is_zero(self, joint_trajectory: SingleArmTrajectory) -> None:
         if joint_trajectory.times[0] != 0.0:
-            raise ValueError("joint trajectory should start at time 0.0")
+            raise InvalidTrajectoryException("joint trajectory should start at time 0.0")
 
     def _assert_joint_trajectory_is_executable(
         self,
@@ -350,9 +352,13 @@ class PositionManipulator(ABC):
         self._assert_joint_trajectory_start_time_is_zero(joint_trajectory)
 
         if joint_trajectory.path.positions is None:
-            raise ValueError("joint trajectory should contain joint positions")
+            raise InvalidTrajectoryException("joint trajectory should contain joint positions")
 
-        self._assert_joint_configuration_nearby(joint_trajectory.path.positions[0])
+        if not self._is_joint_configuration_nearby(joint_trajectory.path.positions[0]):
+            raise InvalidTrajectoryException(
+                f"joint trajectory should start at the current configuration {self.get_joint_configuration()}, "
+                f"but starts at {joint_trajectory.path.positions[0]}"
+            )
 
         if trajectory_constraint is not None:
             if trajectory_constraint_eps is None:
@@ -365,7 +371,9 @@ class PositionManipulator(ABC):
                 sampling_frequency,
             )
             if not constraint_satisfied:
-                raise ValueError("joint trajectory does not satisfy the trajectory constraint.")
+                raise TrajectoryConstraintViolationException(
+                    "joint trajectory does not satisfy the trajectory constraint."
+                )
 
         if joint_trajectory.path.velocities is not None:
             # Calculate the leading axis velocity.
@@ -393,6 +401,7 @@ def evaluate_constraint(
         times: The time parameterization of the joint path.
         trajectory_constraint: The constraint to evaluate.
         trajectory_constraint_eps: The threshold for the constraint.
+        frequency: The frequency at which to sample the trajectory.
 
     Returns:
         True: if the constraint is satisfied for all joint configurations in the trajectory.

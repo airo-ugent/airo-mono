@@ -4,6 +4,11 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
+from airo_robots.exceptions import (
+    InvalidTrajectoryException,
+    RobotConfigurationException,
+    TrajectoryConstraintViolationException,
+)
 from airo_robots.manipulators.position_manipulator import PositionManipulator, evaluate_constraint, lerp_positions
 from airo_typing import DualArmTrajectory, HomogeneousMatrixType, JointConfigurationType
 
@@ -151,9 +156,8 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         Returns:
             awaitable with termination condition that the time has passed. Waiting on this action has limited accuracy on non real-time OS, cf the airo-robots Readme.
         """
-        assert (
-            left_tcp_pose_in_base is not None or right_tcp_pose_in_base is not None
-        ), "At least one of the TCP poses should be specified"
+        if left_tcp_pose_in_base is None and right_tcp_pose_in_base is None:
+            raise RobotConfigurationException("At least one of the TCP poses should be specified")
 
         awaitables: List[AwaitableAction] = []
         if left_tcp_pose_in_base is not None:
@@ -355,16 +359,24 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         sampling_frequency: float = 100.0,
     ) -> None:
         if joint_trajectory.times[0] != 0.0:
-            raise ValueError("joint trajectory should start at time 0.0")
+            raise InvalidTrajectoryException("joint trajectory should start at time 0.0")
 
         if joint_trajectory.path_left.positions is None:
-            raise ValueError("left joint trajectory should contain joint positions")
+            raise InvalidTrajectoryException("left joint trajectory should contain joint positions")
 
         if joint_trajectory.path_right.positions is None:
-            raise ValueError("right joint trajectory should contain joint positions")
+            raise InvalidTrajectoryException("right joint trajectory should contain joint positions")
 
-        self._left_manipulator._assert_joint_configuration_nearby(joint_trajectory.path_left.positions[0])
-        self._right_manipulator._assert_joint_configuration_nearby(joint_trajectory.path_right.positions[0])
+        if not self._left_manipulator._is_joint_configuration_nearby(joint_trajectory.path_left.positions[0]):
+            raise InvalidTrajectoryException(
+                f"joint trajectory should start at the current configuration {self._left_manipulator.get_joint_configuration()}, "
+                f"but starts at {joint_trajectory.path_left.positions[0]}"
+            )
+        if not self._right_manipulator._is_joint_configuration_nearby(joint_trajectory.path_right.positions[0]):
+            raise InvalidTrajectoryException(
+                f"joint trajectory should start at the current configuration {self._right_manipulator.get_joint_configuration()}, "
+                f"but starts at {joint_trajectory.path_right.positions[0]}"
+            )
 
         self._assert_trajectory_constraints_satisfied(
             joint_trajectory, sampling_frequency, trajectory_constraints, trajectory_constraints_eps
@@ -405,7 +417,9 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
                     sampling_frequency,
                 )
                 if not constraint_satisfied:
-                    raise ValueError("joint trajectory does not satisfy the trajectory constraint.")
+                    raise TrajectoryConstraintViolationException(
+                        "joint trajectory does not satisfy the trajectory constraint."
+                    )
 
             if trajectory_constraints[1] is not None:
                 eps = trajectory_constraints_eps[1] if trajectory_constraints_eps[1] is not None else 0.0
@@ -417,7 +431,9 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
                     sampling_frequency,
                 )
                 if not constraint_satisfied:
-                    raise ValueError("joint trajectory does not satisfy the trajectory constraint.")
+                    raise TrajectoryConstraintViolationException(
+                        "joint trajectory does not satisfy the trajectory constraint."
+                    )
 
 
 if __name__ == "__main__":
