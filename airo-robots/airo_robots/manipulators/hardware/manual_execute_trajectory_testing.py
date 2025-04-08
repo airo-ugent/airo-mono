@@ -1,7 +1,6 @@
 import numpy as np
 from airo_robots.grippers import Robotiq2F85
 from airo_robots.manipulators.position_manipulator import PositionManipulator
-from airo_typing import JointPathContainer, SingleArmTrajectory
 
 # make numpy prints more readable
 np.set_printoptions(precision=3)
@@ -68,38 +67,6 @@ def manual_test_trajectory(robot: PositionManipulator) -> None:
     robot.execute_trajectory(trajectory)
 
 
-def manual_test_gripper_trajectory(robot: PositionManipulator) -> None:
-    """Test the gripper trajectory execution of the robot by moving to a start pose and then executing a simple trajectory."""
-    print("The robot will now open and close the gripper.")
-    input("Press any key to continue.")
-    robot.gripper.open().wait()
-    robot.gripper.close().wait()
-
-    print(
-        "Now, we will execute a gripper trajectory that opens the gripper. Make sure the gripper is clear of any obstacles!"
-    )
-    q_current = robot.get_joint_configuration().copy()
-    q_path = np.array([q_current, q_current, q_current])
-    positions = np.array([0.05, 0.5, 1.0])
-    times = np.array([0, 0.5, 1.0])
-    trajectory = SingleArmTrajectory(times, JointPathContainer(q_path), JointPathContainer(positions))
-
-    input("Press any key to continue.")
-    robot.execute_trajectory(trajectory)
-
-    print(
-        "Now, we will execute a gripper trajectory that opens and closes the gripper. Make sure the gripper is clear of any obstacles!"
-    )
-    q_current = robot.get_joint_configuration().copy()
-    q_path = np.array([q_current, q_current, q_current, q_current, q_current, q_current])
-    positions = np.array([0.05, 0.5, 0.25, 0.75, 0.5, 1.0])
-    times = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5])
-    trajectory = SingleArmTrajectory(times, JointPathContainer(q_path), JointPathContainer(positions))
-
-    input("Press any key to continue.")
-    robot.execute_trajectory(trajectory)
-
-
 if __name__ == "__main__":
     print(
         "This script will execute some trajectories on the robot arm. Please make sure you have a safe working environment. "
@@ -118,6 +85,5 @@ if __name__ == "__main__":
         gripper = Robotiq2F85(ip_address)
         robot = URrtde(ip_address, URrtde.UR3E_CONFIG, gripper)
         manual_test_trajectory(robot)
-        manual_test_gripper_trajectory(robot)
 
     test_ur_trajectory()

@@ -265,11 +265,12 @@ class PositionManipulator(ABC):
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
 
             iter_duration_ns = time.time_ns() - iteration_start_time_ns
+            period_adjusted_ns = int(period_adjusted * 1e9)
             # We want to wait for the period, but we also want to avoid waiting too long if the iteration took too long.
             # Sleeping is not very accurate (see airo_robots/scripts/measure_sleep_accuracy.py), so we busy-wait for the period.
-            if iter_duration_ns < period_adjusted:
+            if iter_duration_ns < period_adjusted_ns:
                 current_time = time.time_ns()
-                while time.time_ns() < current_time + (period_adjusted - iter_duration_ns):
+                while time.time_ns() < current_time + (period_adjusted_ns - iter_duration_ns):
                     pass
             else:
                 if not logged_lag_warning:
