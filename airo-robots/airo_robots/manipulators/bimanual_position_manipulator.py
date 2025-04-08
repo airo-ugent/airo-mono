@@ -395,23 +395,27 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         if trajectory_constraints is not None:
             if trajectory_constraints[0] is not None:
                 eps = trajectory_constraints_eps[0] if trajectory_constraints_eps[0] is not None else 0.0
-                evaluate_constraint(
+                constraint_satisfied = evaluate_constraint(
                     joint_trajectory.path_left.positions,
                     joint_trajectory.times,
                     trajectory_constraints[0],
                     eps,
                     sampling_frequency,
                 )
+                if not constraint_satisfied:
+                    raise ValueError("joint trajectory does not satisfy the trajectory constraint.")
 
             if trajectory_constraints[1] is not None:
                 eps = trajectory_constraints_eps[1] if trajectory_constraints_eps[1] is not None else 0.0
-                evaluate_constraint(
+                constraint_satisfied = evaluate_constraint(
                     joint_trajectory.path_right.positions,
                     joint_trajectory.times,
                     trajectory_constraints[1],
                     eps,
                     sampling_frequency,
                 )
+                if not constraint_satisfied:
+                    raise ValueError("joint trajectory does not satisfy the trajectory constraint.")
 
 
 if __name__ == "__main__":

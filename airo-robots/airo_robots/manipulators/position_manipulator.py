@@ -357,13 +357,15 @@ class PositionManipulator(ABC):
         if trajectory_constraint is not None:
             if trajectory_constraint_eps is None:
                 trajectory_constraint_eps = 0.0
-            evaluate_constraint(
+            constraint_satisfied = evaluate_constraint(
                 joint_trajectory.path.positions,
                 joint_trajectory.times,
                 trajectory_constraint,
                 trajectory_constraint_eps,
                 sampling_frequency,
             )
+            if not constraint_satisfied:
+                raise ValueError("joint trajectory does not satisfy the trajectory constraint.")
 
         if joint_trajectory.path.velocities is not None:
             # Calculate the leading axis velocity.
@@ -395,7 +397,6 @@ def evaluate_constraint(
     Returns:
         True: if the constraint is satisfied for all joint configurations in the trajectory.
     """
-
     period = 1 / frequency
     duration = (times[-1] - times[0]).item()
     n_servos = int(np.ceil(duration / period))
@@ -408,7 +409,7 @@ def evaluate_constraint(
         if i1 == len(times):
             break
         q_interp = lerp_positions(i0, i1, joint_path, times, t)
-        if trajectory_constraint(q_interp) > trajectory_constraint_eps:
+        if abs(trajectory_constraint(q_interp)) > trajectory_constraint_eps:
             logger.error(
                 f"joint configuration {q_interp} does not satisfy the trajectory constraint at time {t} (servo index: {servo_index} / {n_servos}). "
             )
