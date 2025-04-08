@@ -39,13 +39,14 @@ Run `package-name --help` for details. Example: `airo-dataset-tools --help`
 ### Sister repositories 🌱
 Repositories that follow the same style as `airo-mono` packages, but are not part of the monorepo (for various reasons):
 
-| Repository                                                     | Description                                     |
-| -------------------------------------------------------------- | ----------------------------------------------- |
-| 🎥 [`airo-blender`](https://github.com/airo-ugent/airo-blender) | Synthetic data generation with Blender          |
+| Repository                                                      | Description                            |
+|-----------------------------------------------------------------| -------------------------------------- |
+| 🎥 [`airo-blender`](https://github.com/airo-ugent/airo-blender) | Synthetic data generation with Blender |
 | 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
-| 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                          |
+| 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                 |
 | 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
-| 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip) | Driver for the KELO mobile robot platform |
+| 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip)     | Driver for the KELO mobile robot platform |
+| 🔛 [`airo-ipc`](https://github.com/airo-ugent/airo-ipc)         | Inter-process communication library |
 
 ### Usage & Philosophy 📖
 We believe in *keep simple things simple*. Starting a new project should\* be as simple as:
@@ -157,7 +158,7 @@ Our [.pre-commit-config.yaml](.pre-commit-config.yaml) file defines the tools an
   - **Formatting**: Black, isort, and autoflake
   - **Linting**: Flake8
 
-**Typing:** Packages can be typed (optional, but strongly recommended). For this, mypy is used. Note that pre-commit curretnly does not run mypy, so you should run it manually with `mypy <package-dir>`, e.g. `mypy airo-camera-toolkit`.
+**Typing:** Packages can be typed (optional, but strongly recommended). For this, mypy is used. Note that pre-commit currently does not run mypy, so you should run it manually with `mypy <package-dir>`, e.g. `mypy airo-camera-toolkit`.
 
 **Docstrings:** Should be in the [google docstring format](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
 
