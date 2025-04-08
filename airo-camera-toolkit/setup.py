@@ -21,7 +21,7 @@ setuptools.setup(
         "airo-typing",
         "airo-spatial-algebra",
         "airo-dataset-tools",
-        "airo-ipc",
+        "airo-ipc>=0.0.2",
     ],
     extras_require={"hand-eye-calibration": ["airo-robots"]},
     packages=setuptools.find_packages(exclude=["test"]),
