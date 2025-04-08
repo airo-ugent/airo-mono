@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 import cv2
 import numpy as np
-from airo_camera_toolkit.cameras.zed.zed import Zed
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIDL
@@ -222,6 +221,8 @@ if __name__ == "__main__":
     """
     camera_fps = 15
     namespace = "camera"
+
+    from airo_camera_toolkit.cameras.zed.zed import Zed
 
     publisher = MultiprocessRGBPublisher(
         Zed,

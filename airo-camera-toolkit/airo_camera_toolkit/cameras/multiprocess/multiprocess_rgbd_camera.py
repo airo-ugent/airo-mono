@@ -3,14 +3,12 @@
 import time
 from dataclasses import dataclass
 
-import cv2
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
     MultiprocessRGBPublisher,
     MultiprocessRGBReceiver,
     ResolutionIdl,
 )
-from airo_camera_toolkit.cameras.zed.zed import Zed
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIDL
@@ -149,6 +147,9 @@ if __name__ == "__main__":
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
     camera_fps = 15
+
+    import cv2
+    from airo_camera_toolkit.cameras.zed.zed import Zed
 
     publisher = MultiprocessRGBDPublisher(
         Zed,

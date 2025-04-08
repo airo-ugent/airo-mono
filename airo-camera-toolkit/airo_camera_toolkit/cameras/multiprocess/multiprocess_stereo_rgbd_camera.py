@@ -3,7 +3,6 @@
 import time
 from dataclasses import dataclass
 
-import cv2
 import loguru
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import ResolutionIdl
@@ -171,6 +170,7 @@ if __name__ == "__main__":
     """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
+    import cv2
     from airo_camera_toolkit.cameras.zed.zed import Zed
 
     resolution = Zed.RESOLUTION_720
