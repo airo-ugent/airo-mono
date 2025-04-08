@@ -63,7 +63,7 @@ class MultiprocessRGBPublisher(multiprocessing.context.Process):
         self,
         camera_cls: type,
         camera_kwargs: dict = {},
-        shared_memory_namespace: str = "camera.frame",
+        shared_memory_namespace: str = "camera",
     ):
         """Instantiates the publisher. Note that the publisher (and its process) will not start until start() is called.
 
