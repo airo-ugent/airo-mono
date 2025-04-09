@@ -5,7 +5,7 @@ import setuptools
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo-dataset-tools",
-    version="2024.1.0",
+    version="2025.4.0",
     author="Victor-Louis De Gusseme",
     author_email="victorlouisdg@gmail.com",
     description="Scripts for loading and converting datasets for the Ghent University AI and Robotics Lab",

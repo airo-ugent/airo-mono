@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="airo_typing",
-    version="2024.1.0",
+    version="2025.4.0",
     description="Python type definitions for use in the python packages at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
