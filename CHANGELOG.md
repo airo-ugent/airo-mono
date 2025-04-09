@@ -8,6 +8,18 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## 2025.4.0
+
+### Breaking changes
  - internal dependencies are now listed as regular dependencies in the `setup.py` file to overcome issues and make the installation process less complicated. This implies you need to install packages according to their dependencies and can no longer use the `external` tag as in `pip install airo-typing[external]`.
  see [issue #91](https://github.com/airo-ugent/airo-mono/issues/91) and
  [PR](https://github.com/airo-ugent/airo-mono/pull/108) for more details.
@@ -25,6 +37,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `MultiprocessRGBRerunLogger` and `MultiprocessRGBDRerunLogger` now allow you to pass an `entity_path` value which determines where the RGB and depth images will be logged
 - `MobileRobot` and `KELORobile` interface and subclass added, to control mobile robots via the `airo-tulip` package
 - drivers for a Schunk Gripper using a USB connection, might require additional work to make them more stable. Remko is the go-to person.
+- airo-mono packages are now on PyPI 🎉
 
 ### Changed
 - `coco-to-yolo` conversion now creates a single polygon of all disconnected parts of the mask instead of simply taking the first polygon of the list.

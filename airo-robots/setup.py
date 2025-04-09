@@ -13,8 +13,8 @@ setuptools.setup(
         "numpy<2.0",
         "ur-rtde>=1.5.7",  # cf https://github.com/airo-ugent/airo-mono/issues/52
         "click",
-        "airo-typing",
-        "airo-spatial-algebra",
+        "airo-typing==2025.4.0",
+        "airo-spatial-algebra==2025.4.0",
         "airo-tulip==0.2.2",
     ],
     packages=setuptools.find_packages(),
