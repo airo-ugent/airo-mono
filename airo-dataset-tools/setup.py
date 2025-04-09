@@ -8,7 +8,7 @@ setuptools.setup(
     version="2024.1.0",
     author="Victor-Louis De Gusseme",
     author_email="victorlouisdg@gmail.com",
-    description="TODO",
+    description="Scripts for loading and converting datasets for the Ghent University AI and Robotics Lab",
     install_requires=[
         "numpy<2.0",
         "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
