@@ -39,7 +39,7 @@ class ResolutionIdl(IdlStruct):
 class RGBFrameBuffer(BaseIDL):
     """This struct, sent over shared memory, contains a timestamp, an RGB image, and the camera intrinsics."""
 
-    # Timestamp of the frame
+    # Timestamp of the frame (seconds)
     timestamp: np.ndarray
     # Color image data (height x width x channels)
     rgb: np.ndarray
