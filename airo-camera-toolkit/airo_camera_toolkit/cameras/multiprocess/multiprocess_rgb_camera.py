@@ -194,7 +194,7 @@ class MultiprocessRGBReceiver(RGBCamera):
         return self._resolution.width, self._resolution.height
 
     def get_current_timestamp(self):
-        return self._last_frame.timestamp
+        return self._last_frame.timestamp.item()
 
     def _grab_images(self) -> None:
         self._last_frame = self._reader()
