@@ -12,6 +12,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 
 ### Changed
+- Update airo-tulip to version 0.3.0 for better orientation estimation.
 
 ### Fixed
 - Fixed a bug when the KELO Robile platform was moving around multiples of 360 degrees, where the target angle would switch.
