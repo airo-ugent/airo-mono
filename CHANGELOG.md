@@ -14,6 +14,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Changed
 
 ### Fixed
+- Fixed a bug when the KELO Robile platform was moving around multiples of 360 degrees, where the target angle would switch.
 
 ### Removed
 
