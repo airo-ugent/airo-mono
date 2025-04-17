@@ -2,7 +2,7 @@ import datetime
 import multiprocessing
 import os
 import time
-from multiprocessing import Process
+from multiprocessing.context import SpawnProcess
 from typing import Optional
 
 import cv2
@@ -11,7 +11,7 @@ from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 from loguru import logger
 
 
-class MultiprocessVideoRecorder(Process):
+class MultiprocessVideoRecorder(SpawnProcess):
     def __init__(
         self,
         shared_memory_namespace: str,
@@ -20,9 +20,9 @@ class MultiprocessVideoRecorder(Process):
         fill_missing_frames: bool = True,
     ):
         super().__init__(daemon=True)
+
         self._shared_memory_namespace = shared_memory_namespace
         self._image_transform = image_transform
-        self.recording_started_event = multiprocessing.Event()
         self.recording_finished_event = multiprocessing.Event()
         self.shutdown_event = multiprocessing.Event()
         self.fill_missing_frames = fill_missing_frames
@@ -38,29 +38,21 @@ class MultiprocessVideoRecorder(Process):
 
         self._video_path = video_path
 
-    def start(self) -> None:
-        super().start()
-        # Block until the recording has started
-        self.recording_started_event.wait()
-
     def run(self) -> None:
         """main loop of the process, runs until the process is terminated"""
         import ffmpegcv  # type: ignore
 
         receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
-        camera_fps = receiver.fps_shm_array[0]
+        camera_fps = receiver.fps
         camera_period = 1 / camera_fps
 
-        height, width, _ = receiver.rgb_shm_array.shape
+        width, height = receiver.resolution
         video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", camera_fps, (width, height))
 
         logger.info(f"Recording video to {self._video_path}")
 
-        timestamp_prev_frame = None
         image_previous = receiver.get_rgb_image_as_int()
         timestamp_prev_frame = receiver.get_current_timestamp()
-        video_writer.write(cv2.cvtColor(image_previous, cv2.COLOR_RGB2BGR))
-        self.recording_started_event.set()
         n_consecutive_frames_dropped = 0
 
         while not self.shutdown_event.is_set():
@@ -112,7 +104,7 @@ class MultiprocessVideoRecorder(Process):
                 return
             else:
                 self.shutdown_event.set()
-                logger.warning(f"Video recording did not within {(i + 1) * wait_time:.2f} seconds.")
+                logger.warning(f"Video recording did not stop within {(i + 1) * wait_time:.2f} seconds.")
         logger.error(
             "Video recording did not stop, end of video might be lost/corrupted. This seems to happen when RAM is full."
         )
@@ -122,5 +114,5 @@ if __name__ == "__main__":
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
     recorder = MultiprocessVideoRecorder("camera")
     recorder.start()
-    time.sleep(15)
+    time.sleep(10)
     recorder.stop()
