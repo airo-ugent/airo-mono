@@ -16,6 +16,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Fixed
 - Fixed a bug when the KELO Robile platform was moving around multiples of 360 degrees, where the target angle would switch.
+- Fixed a bug where the KELO Robile platform would refuse to move to a pose if delta angle was close to 0.
 
 ### Removed
 
