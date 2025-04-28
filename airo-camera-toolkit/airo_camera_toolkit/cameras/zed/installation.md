@@ -1,4 +1,4 @@
-# ZED Installation
+# ZED Installation (Zed SDK 4 with Cuda 11)
 This file will get you started with the ZED2i cameras.
 
 ## 1. ZED SDK
