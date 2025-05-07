@@ -138,6 +138,10 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
     def _retrieve_colored_point_cloud(self) -> PointCloud:
         positions = self._last_frame.point_cloud[0]
         colors = self._last_frame.point_cloud[1]
+        # Remove NaN values from the point cloud, if any. This can happen if the camera returns a sparse point cloud, like Realsense.
+        mask = np.isfinite(positions).all(axis=1)
+        positions = positions[mask]
+        colors = colors[mask]
         point_cloud = PointCloud(positions, colors)
         return point_cloud
 
