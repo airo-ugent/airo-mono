@@ -86,7 +86,7 @@ class DummyPositionManipulator(PositionManipulator):
 
 
 def create_trajectory(
-    qs: List[JointConfigurationType], constraint: JointPathConstraintType | None
+    qs: List[JointConfigurationType], constraint: None[JointPathConstraintType]
 ) -> SingleArmTrajectory:
     """Creates a trajectory from a list of joint configurations."""
     times = np.arange(0, len(qs), 1.0)
@@ -96,8 +96,8 @@ def create_trajectory(
 def create_dual_arm_trajectory(
     qs_left: List[JointConfigurationType],
     qs_right: List[JointConfigurationType],
-    constraint_left: JointPathConstraintType | None = None,
-    constraint_right: JointPathConstraintType | None = None,
+    constraint_left: Optional[JointPathConstraintType] = None,
+    constraint_right: Optional[JointPathConstraintType] = None,
 ) -> DualArmTrajectory:
     """Creates a trajectory from a list of joint configurations."""
     times = np.arange(0, len(qs_left), 1.0)
