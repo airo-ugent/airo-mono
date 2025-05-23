@@ -307,8 +307,12 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
     def servo_stop(self):
         if hasattr(self._left_manipulator, "rtde_control"):
             self._left_manipulator.rtde_control.servoStop(2.0)
+        else:
+            logger.warning("Left manipulator does not support servo stop.")
         if hasattr(self._right_manipulator, "rtde_control"):
             self._right_manipulator.rtde_control.servoStop(2.0)
+        else:
+            logger.warning("Right manipulator does not support servo stop.")
 
     def transform_pose_to_left_arm_base(self, pose_in_base: HomogeneousMatrixType) -> HomogeneousMatrixType:
         """Transform a pose in the base frame to the left arm base frame"""

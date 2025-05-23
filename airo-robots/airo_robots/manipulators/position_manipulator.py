@@ -292,6 +292,8 @@ class PositionManipulator(ABC):
         # Specifically for UR robots.
         if hasattr(self, "rtde_control"):
             self.rtde_control.servoStop(2.0)
+        else:
+            logger.warning("Manipulator does not support servo stop.")
 
         # Servo can overshoot. Do a final move to the last configuration.
         # manipulator._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])
