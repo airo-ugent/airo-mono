@@ -22,7 +22,7 @@ from loguru import logger
 class RGBDFrameBuffer(BaseIDL):
     """This struct, sent over shared memory, contains a timestamp, an RGB image, the camera intrinsics, a depth image, a depth map, and a point cloud."""
 
-    # Timestamp of the frame
+    # Timestamp of the frame (seconds)
     timestamp: np.ndarray
     # Color image data (height x width x channels)
     rgb: np.ndarray
@@ -34,6 +34,8 @@ class RGBDFrameBuffer(BaseIDL):
     depth: np.ndarray
     # Point cloud (colors, positions x height * width x 3)
     point_cloud: np.ndarray
+    # Valid point cloud points (scalar), for sparse point clouds
+    point_cloud_valid: np.ndarray
 
     @staticmethod
     def template(width: int, height: int):
@@ -44,6 +46,7 @@ class RGBDFrameBuffer(BaseIDL):
             depth_image=np.empty((height, width, 3), dtype=np.uint8),
             depth=np.empty((height, width), dtype=np.float32),
             point_cloud=np.empty((2, height * width, 3), dtype=np.float32),
+            point_cloud_valid=np.empty((1,), dtype=np.uint32),
         )
 
 
@@ -61,7 +64,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
     def _setup(self) -> None:
         super()._setup()
 
-        # Some camera's, such as the Realsense D435i, return a sparse point cloud. This is not supported by the
+        # Some cameras, such as the Realsense D435i, can return a sparse point cloud. This is not supported by the
         # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
         # for every pixel in the RBG image.
         self._pcd_buf = np.zeros((2, self._camera.resolution[0] * self._camera.resolution[1], 3), dtype=np.float32)
@@ -108,6 +111,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
                     depth=depth_map,
                     depth_image=depth_image,
                     point_cloud=self._pcd_buf,
+                    point_cloud_valid=np.array([point_cloud.points.shape[0]], dtype=np.uint32),
                 )
             )
 
@@ -136,12 +140,10 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         return self._last_frame.depth_image
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
-        positions = self._last_frame.point_cloud[0]
-        colors = self._last_frame.point_cloud[1]
-        # Remove NaN values from the point cloud, if any. This can happen if the camera returns a sparse point cloud, like Realsense.
-        mask = np.isfinite(positions).all(axis=1)
-        positions = positions[mask]
-        colors = colors[mask]
+        num_points = self._last_frame.point_cloud_valid.item()
+        positions = self._last_frame.point_cloud[0, :num_points]
+        colors = self._last_frame.point_cloud[1, :num_points]
+        colors = (colors * 255.0).astype(np.uint8)
         point_cloud = PointCloud(positions, colors)
         return point_cloud
 
