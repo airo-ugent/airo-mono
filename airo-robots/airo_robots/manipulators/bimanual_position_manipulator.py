@@ -255,15 +255,19 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
                 break
 
             # Find the two joint configurations that are closest to time t.
-            i0 = np.searchsorted(joint_trajectory.times, t, side="left") - 1  # - 1: i0 is always >= 1 otherwise.
+            i0 = int(np.searchsorted(joint_trajectory.times, t, side="left") - 1)  # - 1: i0 is always >= 1 otherwise.
             i1 = i0 + 1
 
             if i1 == len(joint_trajectory.times):
                 break
 
             # Interpolate between the two joint configurations.
-            q_interp_left = lerp_positions(i0, i1, joint_trajectory.path_left.positions, joint_trajectory.times, t)
-            q_interp_right = lerp_positions(i0, i1, joint_trajectory.path_right.positions, joint_trajectory.times, t)
+            q_interp_left = lerp_positions(
+                i0, i1, np.asarray(joint_trajectory.path_left.positions), joint_trajectory.times, t
+            )
+            q_interp_right = lerp_positions(
+                i0, i1, np.asarray(joint_trajectory.path_right.positions), joint_trajectory.times, t
+            )
             self.servo_to_joint_configuration(q_interp_left, q_interp_right, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
 
@@ -290,14 +294,14 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         # Servo can overshoot. Do a final move to the last configuration.
         if joint_trajectory.path_left is not None:
             left_finished = self._left_manipulator.move_to_joint_configuration(
-                joint_trajectory.path_left.positions[-1]
+                np.asarray(joint_trajectory.path_left.positions)[-1]
             )
         else:
             left_finished = AwaitableAction(lambda: True, 0.0, 0.0)
 
         if joint_trajectory.path_right is not None:
             right_finished = self._right_manipulator.move_to_joint_configuration(
-                joint_trajectory.path_right.positions[-1]
+                np.asarray(joint_trajectory.path_right.positions)[-1]
             )
         else:
             right_finished = AwaitableAction(lambda: True, 0.0, 0.0)
@@ -305,7 +309,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         left_finished.wait()
         right_finished.wait()
 
-    def servo_stop(self):
+    def servo_stop(self) -> None:
         if hasattr(self._left_manipulator, "rtde_control"):
             self._left_manipulator.rtde_control.servoStop(2.0)
         else:
@@ -377,10 +381,12 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
             for velocity in leading_axis_velocity:
                 self._right_manipulator._assert_joint_speed_is_valid(velocity)
 
-    def _assert_trajectory_constraints_satisfied(self, joint_trajectory: DualArmTrajectory, sampling_frequency: float):
+    def _assert_trajectory_constraints_satisfied(
+        self, joint_trajectory: DualArmTrajectory, sampling_frequency: float
+    ) -> None:
         if joint_trajectory.path_left.constraint is not None:
             constraint_satisfied = evaluate_constraint(
-                joint_trajectory.path_left.positions,
+                np.asarray(joint_trajectory.path_left.positions),
                 joint_trajectory.times,
                 joint_trajectory.path_left.constraint,
                 sampling_frequency,
@@ -391,7 +397,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
                 )
         if joint_trajectory.path_right.constraint is not None:
             constraint_satisfied = evaluate_constraint(
-                joint_trajectory.path_right.positions,
+                np.asarray(joint_trajectory.path_right.positions),
                 joint_trajectory.times,
                 joint_trajectory.path_right.constraint,
                 sampling_frequency,

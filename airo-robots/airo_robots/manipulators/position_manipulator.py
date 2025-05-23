@@ -262,14 +262,14 @@ class PositionManipulator(ABC):
                 break
 
             # Find the two joint configurations that are closest to time t.
-            i0 = np.searchsorted(joint_trajectory.times, t, side="left") - 1  # - 1: i0 is always >= 1 otherwise.
+            i0 = int(np.searchsorted(joint_trajectory.times, t, side="left") - 1)  # - 1: i0 is always >= 1 otherwise.
             i1 = i0 + 1
 
             if i1 == len(joint_trajectory.times):
                 break
 
             # Interpolate between the two joint configurations.
-            q_interp = lerp_positions(i0, i1, joint_trajectory.path.positions, joint_trajectory.times, t)
+            q_interp = lerp_positions(i0, i1, np.asarray(joint_trajectory.path.positions), joint_trajectory.times, t)
             self.servo_to_joint_configuration(q_interp, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
 
@@ -297,7 +297,7 @@ class PositionManipulator(ABC):
 
         # Servo can overshoot. Do a final move to the last configuration.
         # manipulator._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])
-        self.move_to_joint_configuration(joint_trajectory.path.positions[-1]).wait()
+        self.move_to_joint_configuration(np.asarray(joint_trajectory.path.positions)[-1]).wait()
 
     ###################################
     # util functions to validate inputs
@@ -327,7 +327,7 @@ class PositionManipulator(ABC):
             )
 
     def _is_joint_configuration_nearby(
-        self, joint_configuration: JointConfigurationType, absolute_angle_tolerance=np.radians(1.0)
+        self, joint_configuration: JointConfigurationType, absolute_angle_tolerance: float = np.radians(1.0)
     ) -> bool:
         """Check that a joint configuration is nearby the current configuration.
 
@@ -413,7 +413,7 @@ def evaluate_constraint(
     for servo_index in range(n_servos):
         t = (time.time_ns() - start_time_ns) / 1e9
         # Find the two joint configurations that are closest to time t.
-        i0 = np.searchsorted(times, t, side="left") - 1  # - 1: i0 is always >= 1 otherwise.
+        i0 = int(np.searchsorted(times, t, side="left") - 1)  # - 1: i0 is always >= 1 otherwise.
         i1 = i0 + 1
         if i1 == len(times):
             break

@@ -1,13 +1,19 @@
+from typing import Tuple
+
 import numpy as np
 from airo_robots.grippers import Robotiq2F85
 from airo_robots.manipulators.position_manipulator import PositionManipulator
+from pydrake.geometry import Meshcat
+from pydrake.multibody.tree import ModelInstanceIndex
+from pydrake.planning import RobotDiagram
+from pydrake.systems.framework import Context
 
 # make numpy prints more readable
 np.set_printoptions(precision=3)
 
 
-def _create_scene():
-    from airo_drake import add_floor, add_manipulator, add_meshcat, finish_build
+def _create_scene() -> Tuple[RobotDiagram, Context, Meshcat, ModelInstanceIndex]:
+    from airo_drake import add_floor, add_manipulator, add_meshcat, finish_build  # type: ignore
     from pydrake.planning import RobotDiagramBuilder
 
     robot_diagram_builder = RobotDiagramBuilder()
