@@ -15,6 +15,7 @@ from airo_typing import (
     DualArmTrajectory,
     HomogeneousMatrixType,
     JointConfigurationType,
+    JointPathConstraintType,
     JointPathContainer,
     SingleArmTrajectory,
 )
@@ -84,18 +85,27 @@ class DummyPositionManipulator(PositionManipulator):
         pass
 
 
-def create_trajectory(qs: List[JointConfigurationType]) -> SingleArmTrajectory:
+def create_trajectory(
+    qs: List[JointConfigurationType], constraint: JointPathConstraintType | None
+) -> SingleArmTrajectory:
     """Creates a trajectory from a list of joint configurations."""
     times = np.arange(0, len(qs), 1.0)
-    return SingleArmTrajectory(times, JointPathContainer(np.stack(qs)))
+    return SingleArmTrajectory(times, JointPathContainer(np.stack(qs), constraint=constraint))
 
 
 def create_dual_arm_trajectory(
-    qs_left: List[JointConfigurationType], qs_right: List[JointConfigurationType]
+    qs_left: List[JointConfigurationType],
+    qs_right: List[JointConfigurationType],
+    constraint_left: JointPathConstraintType | None = None,
+    constraint_right: JointPathConstraintType | None = None,
 ) -> DualArmTrajectory:
     """Creates a trajectory from a list of joint configurations."""
     times = np.arange(0, len(qs_left), 1.0)
-    return DualArmTrajectory(times, JointPathContainer(np.stack(qs_left)), JointPathContainer(np.stack(qs_right)))
+    return DualArmTrajectory(
+        times,
+        JointPathContainer(np.stack(qs_left), constraint=constraint_left),
+        JointPathContainer(np.stack(qs_right), constraint=constraint_right),
+    )
 
 
 class TestTrajectoryValidationSingleArm(unittest.TestCase):
@@ -109,7 +119,7 @@ class TestTrajectoryValidationSingleArm(unittest.TestCase):
         q_start = np.array([10.0, 10.0, 10.0, 10.0, 10.0, 10.0])
 
         with self.assertRaises(InvalidTrajectoryException):
-            dummy_robot.execute_trajectory(create_trajectory([q_start]))
+            dummy_robot.execute_trajectory(create_trajectory([q_start], None))
 
     def test_execution_fails_without_trajectory_positions(self):
         dummy_robot = self._get_manipulator()
@@ -125,7 +135,7 @@ class TestTrajectoryValidationSingleArm(unittest.TestCase):
 
         # Define a trajectory with a start time that is not zero
         q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        trajectory = create_trajectory([q_start])
+        trajectory = create_trajectory([q_start], None)
         trajectory.times[0] = 1.0
 
         with self.assertRaises(InvalidTrajectoryException):
@@ -137,7 +147,7 @@ class TestTrajectoryValidationSingleArm(unittest.TestCase):
         # Define a trajectory with a leading axis velocity that is too high
         q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         q_end = np.array([1.0, 1.0, 1.0, 5.0, 1.0, 1.0])
-        trajectory = create_trajectory([q_start, q_end])
+        trajectory = create_trajectory([q_start, q_end], None)
         trajectory.path.velocities = np.stack([q_start - q_start, q_end - q_start])
 
         with self.assertRaises(RobotSafetyViolationException):
@@ -149,7 +159,7 @@ class TestTrajectoryValidationSingleArm(unittest.TestCase):
         # Define a trajectory with a valid start configuration
         q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         q_end = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-        trajectory = create_trajectory([q_start, q_end])
+        trajectory = create_trajectory([q_start, q_end], None)
 
         # Execute the trajectory. If no exceptions are raised, the test will pass.
         dummy_robot.execute_trajectory(trajectory)
@@ -157,33 +167,34 @@ class TestTrajectoryValidationSingleArm(unittest.TestCase):
     def test_execution_succeeds_with_constraint(self):
         dummy_robot = self._get_manipulator()
 
-        # Define a trajectory with a valid start configuration
-        q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        q_end = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-        trajectory = create_trajectory([q_start, q_end])
-
         # Add a constraint that checks that joints remain within the [0,1] range.
         class MyConstraint:
             def __call__(self, joint_configuration: JointConfigurationType) -> float:
                 return np.sum(np.maximum(joint_configuration - 1.0, 0)) + np.sum(np.maximum(-joint_configuration, 0))
 
-        # Execute the trajectory with a constraint
-        dummy_robot.execute_trajectory(trajectory, MyConstraint())
-
-    def test_invalid_constraint_causes_error(self):
-        dummy_robot = self._get_manipulator()
-
         # Define a trajectory with a valid start configuration
         q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         q_end = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-        trajectory = create_trajectory([q_start, q_end])
+        trajectory = create_trajectory([q_start, q_end], (MyConstraint(), 0.0))
+
+        # Execute the trajectory with a constraint
+        dummy_robot.execute_trajectory(trajectory)
+
+    def test_invalid_constraint_causes_error(self):
+        dummy_robot = self._get_manipulator()
 
         class InvalidConstraint:
             def __call__(self, joint_configuration: JointConfigurationType) -> float:
                 return 1.0
 
+        # Define a trajectory with a valid start configuration
+        q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        q_end = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+
+        trajectory = create_trajectory([q_start, q_end], (InvalidConstraint(), 0.0))
+
         with self.assertRaises(TrajectoryConstraintViolationException):
-            dummy_robot.execute_trajectory(trajectory, InvalidConstraint())
+            dummy_robot.execute_trajectory(trajectory)
 
 
 class TestTrajectoryValidationDualArm(unittest.TestCase):
@@ -270,38 +281,57 @@ class TestTrajectoryValidationDualArm(unittest.TestCase):
     def test_execution_succeeds_with_constraint(self):
         dummy_robot = self._get_manipulator()
 
-        # Define a trajectory with a valid start configuration
-        q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        q_end = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-        trajectory = create_dual_arm_trajectory([q_start, q_end], [q_start, q_end])
-
         # Add a constraint that checks that joints remain within the [0,1] range.
         class MyConstraint:
             def __call__(self, joint_configuration: JointConfigurationType) -> float:
                 return np.sum(np.maximum(joint_configuration - 1.0, 0)) + np.sum(np.maximum(-joint_configuration, 0))
 
-        # Execute the trajectory with a constraint
-        dummy_robot.execute_trajectory(trajectory, (MyConstraint(), MyConstraint()))
-
-    def test_invalid_constraint_causes_error(self):
-        dummy_robot = self._get_manipulator()
-
         # Define a trajectory with a valid start configuration
         q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         q_end = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-        trajectory = create_dual_arm_trajectory([q_start, q_end], [q_start, q_end])
+        trajectory = create_dual_arm_trajectory(
+            [q_start, q_end],
+            [q_start, q_end],
+            constraint_left=(MyConstraint(), 0.0),
+            constraint_right=(MyConstraint(), 0.0),
+        )
+
+        # Execute the trajectory with a constraint
+        dummy_robot.execute_trajectory(trajectory)
+
+    def test_invalid_constraint_causes_error(self):
+        dummy_robot = self._get_manipulator()
 
         class InvalidConstraint:
             def __call__(self, joint_configuration: JointConfigurationType) -> float:
                 return 1.0
 
+        # Define a trajectory with a valid start configuration
+        q_start = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        q_end = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+
+        trajectory = create_dual_arm_trajectory(
+            [q_start, q_end], [q_start, q_end], constraint_left=(InvalidConstraint(), 0.0)
+        )
+
         with self.assertRaises(TrajectoryConstraintViolationException):
-            dummy_robot.execute_trajectory(trajectory, (InvalidConstraint(), None))
+            dummy_robot.execute_trajectory(trajectory)
+
+        trajectory = create_dual_arm_trajectory(
+            [q_start, q_end], [q_start, q_end], constraint_right=(InvalidConstraint(), 0.0)
+        )
 
         # Now do the same with the right arm.
         with self.assertRaises(TrajectoryConstraintViolationException):
-            dummy_robot.execute_trajectory(trajectory, (None, InvalidConstraint()))
+            dummy_robot.execute_trajectory(trajectory)
+
+        trajectory = create_dual_arm_trajectory(
+            [q_start, q_end],
+            [q_start, q_end],
+            constraint_left=(InvalidConstraint(), 0.0),
+            constraint_right=(InvalidConstraint(), 0.0),
+        )
 
         # Now with both arms.
         with self.assertRaises(TrajectoryConstraintViolationException):
-            dummy_robot.execute_trajectory(trajectory, (InvalidConstraint(), InvalidConstraint()))
+            dummy_robot.execute_trajectory(trajectory)

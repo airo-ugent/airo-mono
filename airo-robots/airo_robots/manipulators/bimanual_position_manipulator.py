@@ -11,6 +11,7 @@ from airo_robots.exceptions import (
 )
 from airo_robots.manipulators.position_manipulator import PositionManipulator, evaluate_constraint, lerp_positions
 from airo_typing import DualArmTrajectory, HomogeneousMatrixType, JointConfigurationType
+from loguru import logger
 
 
 class BimanualPositionManipulator(ABC):
@@ -388,6 +389,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
                 raise TrajectoryConstraintViolationException(
                     "left joint trajectory does not satisfy the trajectory constraint."
                 )
+        if joint_trajectory.path_right.constraint is not None:
             constraint_satisfied = evaluate_constraint(
                 joint_trajectory.path_right.positions,
                 joint_trajectory.times,
@@ -406,7 +408,6 @@ if __name__ == "__main__":
     # or properly document what is expected of the robot setup before running this script.
     from airo_robots.manipulators.hardware.ur_rtde import URrtde
     from airo_spatial_algebra import SE3Container
-    from loguru import logger
 
     logger.info("DualArmPositionManipulator test started.")
 
