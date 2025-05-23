@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 
 class AsyncExecutor:
-    """Helper class to create asynchronous hardware interfaces.
+    """Helper class to mock async hardware interfaces, used for testing.
 
     Note that using this class, even though it has only one worker in the executor pool, is not necessarily thread safe if you do not
     ensure that all methods of the class you are using it on, make use of the threadpool or if you create multiple instances of that class.
