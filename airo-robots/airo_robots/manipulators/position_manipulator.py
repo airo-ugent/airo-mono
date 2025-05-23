@@ -1,7 +1,7 @@
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -12,7 +12,14 @@ from airo_robots.exceptions import (
     TrajectoryConstraintViolationException,
 )
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
-from airo_typing import HomogeneousMatrixType, JointConfigurationType, JointPathType, SingleArmTrajectory, TimesType
+from airo_typing import (
+    HomogeneousMatrixType,
+    JointConfigurationType,
+    JointPathConstraintType,
+    JointPathType,
+    SingleArmTrajectory,
+    TimesType,
+)
 from loguru import logger
 
 
@@ -217,8 +224,6 @@ class PositionManipulator(ABC):
     def execute_trajectory(
         self,
         joint_trajectory: SingleArmTrajectory,
-        trajectory_constraint: Optional[Callable[[JointConfigurationType], float]] = None,
-        trajectory_constraint_eps: Optional[float] = None,
         sampling_frequency: float = 100,
     ) -> None:
         """Execute a joint trajectory. This function will interpolate the trajectory and send the commands to the robot.
@@ -233,9 +238,7 @@ class PositionManipulator(ABC):
             trajectory_constraint_eps: An optional threshold for the trajectory constraint: If the constraint evaluates to a value smaller than this threshold, the trajectory is considered to be satisfied.
             sampling_frequency: The frequency at which the trajectory is sampled and commands are sent to the robot. This is a best-effort parameter, and the actual frequency may be lower due to the time it takes to send the commands to the robot or other computations. The default is 100 Hz.
         """
-        self._assert_joint_trajectory_is_executable(
-            joint_trajectory, trajectory_constraint, trajectory_constraint_eps, sampling_frequency
-        )
+        self._assert_joint_trajectory_is_executable(joint_trajectory, sampling_frequency)
 
         period = (
             1 / sampling_frequency
@@ -345,8 +348,6 @@ class PositionManipulator(ABC):
     def _assert_joint_trajectory_is_executable(
         self,
         joint_trajectory: SingleArmTrajectory,
-        trajectory_constraint: Optional[Callable[[JointConfigurationType], float]],
-        trajectory_constraint_eps: Optional[float],
         sampling_frequency: float,
     ) -> None:
         self._assert_joint_trajectory_start_time_is_zero(joint_trajectory)
@@ -360,14 +361,11 @@ class PositionManipulator(ABC):
                 f"but starts at {joint_trajectory.path.positions[0]}"
             )
 
-        if trajectory_constraint is not None:
-            if trajectory_constraint_eps is None:
-                trajectory_constraint_eps = 0.0
+        if joint_trajectory.path.constraint is not None:
             constraint_satisfied = evaluate_constraint(
                 joint_trajectory.path.positions,
                 joint_trajectory.times,
-                trajectory_constraint,
-                trajectory_constraint_eps,
+                joint_trajectory.path.constraint,
                 sampling_frequency,
             )
             if not constraint_satisfied:
@@ -388,8 +386,7 @@ class PositionManipulator(ABC):
 def evaluate_constraint(
     joint_path: JointPathType,
     times: TimesType,
-    trajectory_constraint: Callable[[JointConfigurationType], float],
-    trajectory_constraint_eps: float,
+    trajectory_constraint_with_tolerance: JointPathConstraintType,
     frequency: float = 500,
 ) -> bool:
     """Evaluate whether a constraint is satisfied for a given (decomposed) trajectory.
@@ -399,13 +396,14 @@ def evaluate_constraint(
     Args:
         joint_path: The joint path to evaluate.
         times: The time parameterization of the joint path.
-        trajectory_constraint: The constraint to evaluate.
-        trajectory_constraint_eps: The threshold for the constraint.
+        trajectory_constraint_with_tolerance: The constraint to evaluate.
         frequency: The frequency at which to sample the trajectory.
 
     Returns:
         True: if the constraint is satisfied for all joint configurations in the trajectory.
     """
+    trajectory_constraint, trajectory_constraint_eps = trajectory_constraint_with_tolerance
+
     period = 1 / frequency
     duration = (times[-1] - times[0]).item()
     n_servos = int(np.ceil(duration / period))
