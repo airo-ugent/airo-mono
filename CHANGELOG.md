@@ -12,7 +12,9 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 
 ### Changed
-- Update airo-tulip to version 0.3.0 for better orientation estimation.
+- Update airo-tulip to version 0.4.0, which returns odometry to the standard drive encoder based method.
+- Add documentation on how to include custom sensors for odometry.
+- The `KELORobile` `move_platform_to_pose` method now calls the correct `get_odometry` method, allowing custom odometry implementations.
 
 ### Fixed
 - Fixed a bug when the KELO Robile platform was moving around multiples of 360 degrees, where the target angle would switch.
