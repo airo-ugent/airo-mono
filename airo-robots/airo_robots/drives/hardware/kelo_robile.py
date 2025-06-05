@@ -71,7 +71,7 @@ class KELORobile(MobileRobot):
     ) -> None:
         stop = False
         while not stop:
-            current_pose = self._kelo_robile.get_odometry()
+            current_pose = self.get_odometry()
             delta_pose = target_pose - current_pose
             # Fix issues around multiples of 2PI
             while delta_pose[2] > np.pi:
