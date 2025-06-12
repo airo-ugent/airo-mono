@@ -147,10 +147,17 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
 
     @model_validator(mode="after")
     def num_keypoints_matches_amount_of_labeled_keypoints(self) -> "CocoKeypointAnnotation":
+
+
         labeled_keypoints = 0
         for v in self.keypoints[2::3]:
             if v > 0:
                 labeled_keypoints += 1
+
+        # if num_keypoints is not set, set it to the number of labeled keypoints
+        if self.num_keypoints is None:
+            self.num_keypoints = labeled_keypoints
+
         assert (
             labeled_keypoints == self.num_keypoints
         ), f"num_keypoints {self.num_keypoints} does not match number of labeled of keypoints {labeled_keypoints} for annotation {self.id}"
