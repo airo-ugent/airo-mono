@@ -238,7 +238,7 @@ class URrtde(PositionManipulator):
 
 if __name__ == "__main__":
     """test script for UR rtde.
-    ex. python airo-robots/airo_robots/manipulators/ur3e.py --ip_address 10.42.0.162 for Victor
+    e.g. python airo-robots/airo_robots/manipulators/hardware/ur_rtde.py --ip_address 10.42.0.162
     """
     import click
     from airo_robots.manipulators.hardware.manual_manipulator_testing import manual_test_robot

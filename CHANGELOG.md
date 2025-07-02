@@ -8,8 +8,11 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- `ValueError`s have been replaced with semantically meaningful exceptions in `airo_robots.manipulators`. Code that was using `except ValueError` will need to be updated to catch the new exceptions.
 
 ### Added
+- `execute_trajectory` methods for executing time-parameterized trajectories on single and dual arm set-ups [#150](https://github.com/airo-ugent/airo-mono/issues/150)
+- Unit tests for `execute_trajectory` methods
 
 ### Changed
 
