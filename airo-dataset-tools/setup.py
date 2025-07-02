@@ -22,8 +22,8 @@ setuptools.setup(
         "types-Pillow",
         "albumentations",
         "click",
-        "airo-typing==2025.4.0",
-        "airo-spatial-algebra==2025.4.0",
+        "airo-typing>=2025.7.0",
+        "airo-spatial-algebra>=2025.7.0",
     ],
     packages=setuptools.find_packages(exclude=["test"]),
     entry_points={
