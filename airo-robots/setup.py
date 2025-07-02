@@ -14,7 +14,7 @@ setuptools.setup(
         "ur-rtde>=1.5.7",  # cf https://github.com/airo-ugent/airo-mono/issues/52
         "click",
         "airo-typing>=2025.7.0",
-        "airo-spatial-algebra==2025.4.0",
+        "airo-spatial-algebra>=2025.7.0",
         "airo-tulip>=0.3.1",
     ],
     packages=setuptools.find_packages(),
