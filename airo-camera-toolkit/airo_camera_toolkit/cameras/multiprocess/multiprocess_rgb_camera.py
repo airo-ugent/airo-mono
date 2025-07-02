@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIDL
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
 from airo_ipc.cyclone_shm.patterns.ddsreader import DDSReader
 from airo_ipc.cyclone_shm.patterns.ddswriter import DDSWriter
 from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
@@ -36,7 +36,7 @@ class ResolutionIdl(IdlStruct):
 
 
 @dataclass
-class RGBFrameBuffer(BaseIDL):
+class RGBFrameBuffer(BaseIdl):
     """This struct, sent over shared memory, contains a timestamp, an RGB image, and the camera intrinsics."""
 
     # Timestamp of the frame (seconds)

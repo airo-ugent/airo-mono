@@ -11,7 +11,7 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import (
     MultiprocessRGBDReceiver,
 )
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIDL
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
 from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
 from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
 
@@ -21,7 +21,7 @@ from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, Numpy
 
 
 @dataclass
-class StereoRGBDFrameBuffer(BaseIDL):
+class StereoRGBDFrameBuffer(BaseIdl):
     """This struct, sent over shared memory, contains a timestamp, two RGB images, the camera intrinsics, a depth image, a depth map, and a point cloud.
     It also contains the pose of the right camera in the left camera frame."""
 

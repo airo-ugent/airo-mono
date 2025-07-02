@@ -11,7 +11,7 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
 )
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIDL
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
 from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
 from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
 from airo_typing import NumpyDepthMapType, NumpyIntImageType, PointCloud
@@ -19,7 +19,7 @@ from loguru import logger
 
 
 @dataclass
-class RGBDFrameBuffer(BaseIDL):
+class RGBDFrameBuffer(BaseIdl):
     """This struct, sent over shared memory, contains a timestamp, an RGB image, the camera intrinsics, a depth image, a depth map, and a point cloud."""
 
     # Timestamp of the frame (seconds)
