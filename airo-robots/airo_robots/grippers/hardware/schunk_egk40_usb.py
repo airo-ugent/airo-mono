@@ -123,8 +123,8 @@ class SchunkEGK40_USB(ParallelPositionGripper):
     def move(
         self,
         width: float,
-        speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-        force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
+        speed: float = SCHUNK_DEFAULT_SPECS.min_speed,
+        force: float = SCHUNK_DEFAULT_SPECS.min_force,
         set_speed_and_force: bool = True,
     ) -> AwaitableAction:
         """
@@ -142,8 +142,8 @@ class SchunkEGK40_USB(ParallelPositionGripper):
     def move_relative(
         self,
         width_difference: float,
-        speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-        force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
+        speed: float = SCHUNK_DEFAULT_SPECS.min_speed,
+        force: float = SCHUNK_DEFAULT_SPECS.min_force,
         set_speed_and_force: bool = True,
     ) -> AwaitableAction:
         """
