@@ -2,6 +2,7 @@
 
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
@@ -11,15 +12,15 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
 )
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
-from airo_typing import NumpyDepthMapType, NumpyIntImageType, PointCloud
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter  # type: ignore
+from airo_typing import CameraResolutionType, NumpyDepthMapType, NumpyIntImageType, PointCloud
 from loguru import logger
 
 
 @dataclass
-class RGBDFrameBuffer(BaseIdl):
+class RGBDFrameBuffer(BaseIdl):  # type: ignore
     """This struct, sent over shared memory, contains a timestamp, an RGB image, the camera intrinsics, a depth image, a depth map, and a point cloud."""
 
     # Timestamp of the frame (seconds)
@@ -38,7 +39,7 @@ class RGBDFrameBuffer(BaseIdl):
     point_cloud_valid: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int):
+    def template(width: int, height: int) -> Any:
         return RGBDFrameBuffer(
             timestamp=np.empty((1,), dtype=np.float64),
             rgb=np.empty((height, width, 3), dtype=np.uint8),
@@ -69,7 +70,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         # for every pixel in the RBG image.
         self._pcd_buf = np.zeros((2, self._camera.resolution[0] * self._camera.resolution[1], 3), dtype=np.float32)
 
-    def _setup_sm_writer(self):
+    def _setup_sm_writer(self) -> None:
         # Create the shared memory writer
         self._writer = SMWriter(
             domain_participant=self._dp,
@@ -99,9 +100,12 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
             # for every pixel in the RBG image.
             self._pcd_buf.fill(np.nan)
             self._pcd_buf[0, : point_cloud.points.shape[0]] = point_cloud.points
-            self._pcd_buf[1, : point_cloud.colors.shape[0]] = (
-                point_cloud.colors / 255.0
-            )  # Colors are in [0, 255], but buffer is float.
+            if point_cloud.colors is not None:
+                self._pcd_buf[1, : point_cloud.colors.shape[0]] = (
+                    point_cloud.colors / 255.0
+                )  # Colors are in [0, 255], but buffer is float.
+            else:
+                self._pcd_buf[1, : point_cloud.points.shape[0]] = 0.0  # If no colors, use black.
 
             self._writer(
                 RGBDFrameBuffer(
@@ -122,7 +126,7 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
     def __init__(self, shared_memory_namespace: str) -> None:
         super().__init__(shared_memory_namespace)
 
-    def _setup_sm_reader(self, resolution):
+    def _setup_sm_reader(self, resolution: CameraResolutionType) -> None:
         # Create the shared memory reader
         self._reader = SMReader(
             domain_participant=self._dp,

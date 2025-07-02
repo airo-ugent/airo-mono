@@ -3,16 +3,17 @@
 import multiprocessing
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import cv2
 import numpy as np
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
-from airo_ipc.cyclone_shm.patterns.ddsreader import DDSReader
-from airo_ipc.cyclone_shm.patterns.ddswriter import DDSWriter
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl  # type: ignore
+from airo_ipc.cyclone_shm.patterns.ddsreader import DDSReader  # type: ignore
+from airo_ipc.cyclone_shm.patterns.ddswriter import DDSWriter  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter  # type: ignore
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
 from cyclonedds.domain import DomainParticipant
 from cyclonedds.idl import IdlStruct
@@ -36,7 +37,7 @@ class ResolutionIdl(IdlStruct):
 
 
 @dataclass
-class RGBFrameBuffer(BaseIdl):
+class RGBFrameBuffer(BaseIdl):  # type: ignore
     """This struct, sent over shared memory, contains a timestamp, an RGB image, and the camera intrinsics."""
 
     # Timestamp of the frame (seconds)
@@ -47,7 +48,7 @@ class RGBFrameBuffer(BaseIdl):
     intrinsics: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int):
+    def template(width: int, height: int) -> Any:
         """Construct a new RGBFrameBuffer with shared memory backed arrays initialized with the given width and height."""
         return RGBFrameBuffer(
             timestamp=np.empty((1,), dtype=np.float64),
@@ -97,7 +98,7 @@ class MultiprocessRGBPublisher(multiprocessing.context.Process):
 
         self._setup_sm_writer()  # Overwritten in base classes.
 
-    def _setup_sm_writer(self):
+    def _setup_sm_writer(self) -> None:
         # Create the shared memory writer.
         self._writer = SMWriter(
             domain_participant=self._dp,
@@ -156,20 +157,20 @@ class MultiprocessRGBReceiver(RGBCamera):
         # Overwritten in base class.
         self._setup_sm_reader(self._resolution)
 
-    def _setup_sm_reader(self, resolution):
+    def _setup_sm_reader(self, resolution: CameraResolutionType) -> None:
         # Create the shared memory reader.
         self._reader = SMReader(
             domain_participant=self._dp,
             topic_name=self._shared_memory_namespace,
-            idl_dataclass=RGBFrameBuffer.template(resolution.width, resolution.height),
+            idl_dataclass=RGBFrameBuffer.template(resolution[0], resolution[1]),
         )
 
         # Initialize an empty frame.
-        self._last_frame = RGBFrameBuffer.template(resolution.width, resolution.height)
+        self._last_frame = RGBFrameBuffer.template(resolution[0], resolution[1])
 
-        self._fps = self._read_fps(self._shared_memory_namespace).fps
+        self._fps = self._read_fps(self._shared_memory_namespace)
 
-    def _read_fps(self, shared_memory_namespace):
+    def _read_fps(self, shared_memory_namespace: str) -> int:
         logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
         fps_reader = DDSReader(self._dp, f"{shared_memory_namespace}_fps", FpsIdl)
         try:
@@ -177,9 +178,9 @@ class MultiprocessRGBReceiver(RGBCamera):
             logger.info(f"Camera FPS: {fps}")
         except StopIteration:
             raise TimeoutError("Timeout while waiting for the FPS message.")
-        return fps
+        return int(fps.fps)
 
-    def _read_resolution(self, shared_memory_namespace):
+    def _read_resolution(self, shared_memory_namespace: str) -> CameraResolutionType:
         logger.info(f"Reading resolution from {shared_memory_namespace}_resolution")
         resolution_reader = DDSReader(self._dp, f"{shared_memory_namespace}_resolution", ResolutionIdl)
         try:
@@ -187,13 +188,18 @@ class MultiprocessRGBReceiver(RGBCamera):
             logger.info(f"Camera resolution: {resolution}")
         except StopIteration:
             raise TimeoutError("Timeout while waiting for the resolution message.")
-        return resolution
+        return resolution.width, resolution.height
+
+    @property
+    def fps(self) -> int:
+        """The frames per second of the camera."""
+        return self._fps
 
     @property
     def resolution(self) -> CameraResolutionType:
-        return self._resolution.width, self._resolution.height
+        return self._resolution
 
-    def get_current_timestamp(self):
+    def get_current_timestamp(self) -> float:
         return self._last_frame.timestamp.item()
 
     def _grab_images(self) -> None:
@@ -209,10 +215,6 @@ class MultiprocessRGBReceiver(RGBCamera):
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         return self._last_frame.intrinsics
-
-    @property
-    def fps(self) -> float:
-        return self._fps
 
 
 if __name__ == "__main__":

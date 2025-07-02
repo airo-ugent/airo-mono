@@ -2,6 +2,7 @@
 
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import loguru
 import numpy as np
@@ -11,17 +12,23 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import (
     MultiprocessRGBDReceiver,
 )
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter  # type: ignore
 
 logger = loguru.logger
-from airo_camera_toolkit.interfaces import RGBDCamera, StereoRGBDCamera
-from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, NumpyFloatImageType, NumpyIntImageType
+from airo_camera_toolkit.interfaces import StereoRGBDCamera
+from airo_typing import (
+    CameraIntrinsicsMatrixType,
+    CameraResolutionType,
+    HomogeneousMatrixType,
+    NumpyFloatImageType,
+    NumpyIntImageType,
+)
 
 
 @dataclass
-class StereoRGBDFrameBuffer(BaseIdl):
+class StereoRGBDFrameBuffer(BaseIdl):  # type: ignore
     """This struct, sent over shared memory, contains a timestamp, two RGB images, the camera intrinsics, a depth image, a depth map, and a point cloud.
     It also contains the pose of the right camera in the left camera frame."""
 
@@ -43,7 +50,7 @@ class StereoRGBDFrameBuffer(BaseIdl):
     point_cloud: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int):
+    def template(width: int, height: int) -> Any:
         return StereoRGBDFrameBuffer(
             timestamp=np.empty((1,), dtype=np.float64),
             rgb_left=np.empty((height, width, 3), dtype=np.uint8),
@@ -76,7 +83,7 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
         # for every pixel in the RBG image.
         self._pcd_buf = np.zeros((2, self._camera.resolution[0] * self._camera.resolution[1], 3), dtype=np.float32)
 
-    def _setup_sm_writer(self):
+    def _setup_sm_writer(self) -> None:
         # Create the shared memory writer
         self._writer = SMWriter(
             domain_participant=self._dp,
@@ -91,7 +98,7 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
     def run(self) -> None:
         logger.info(f"{self.__class__.__name__} process started.")
         self._setup()
-        assert isinstance(self._camera, RGBDCamera)  # For mypy
+        assert isinstance(self._camera, StereoRGBDCamera)  # For mypy
         logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
 
         pose_right_in_left = self._camera.pose_of_right_view_in_left_view
@@ -112,9 +119,12 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
             # for every pixel in the RBG image.
             self._pcd_buf.fill(np.nan)
             self._pcd_buf[0, : point_cloud.points.shape[0]] = point_cloud.points
-            self._pcd_buf[1, : point_cloud.colors.shape[0]] = (
-                point_cloud.colors / 255.0
-            )  # Colors are in [0, 255], but buffer is float.
+            if point_cloud.colors is not None:
+                self._pcd_buf[1, : point_cloud.colors.shape[0]] = (
+                    point_cloud.colors / 255.0
+                )  # Colors are in [0, 255], but buffer is float.
+            else:
+                self._pcd_buf[1, : point_cloud.points.shape[0]] = 0.0  # If no colors, use black.
 
             self._writer(
                 StereoRGBDFrameBuffer(
@@ -135,7 +145,7 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
     def __init__(self, shared_memory_namespace: str) -> None:
         super().__init__(shared_memory_namespace)
 
-    def _setup_sm_reader(self, resolution):
+    def _setup_sm_reader(self, resolution: CameraResolutionType) -> None:
         # Create the shared memory reader
         self._reader = SMReader(
             domain_participant=self._dp,
@@ -156,6 +166,7 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
         else:
             return self._last_frame.rgb_right
 
+    @property
     def pose_of_right_view_in_left_view(self) -> HomogeneousMatrixType:
         return self._last_frame.pose_right_in_left
 
@@ -197,7 +208,7 @@ if __name__ == "__main__":
     with np.printoptions(precision=3, suppress=True):
         print("Intrinsics left:\n", receiver.intrinsics_matrix())
         print("Intrinsics right:\n", receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB))
-        print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view())
+        print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
 
     cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
     cv2.namedWindow("RGB Image Right", cv2.WINDOW_NORMAL)
@@ -236,7 +247,8 @@ if __name__ == "__main__":
 
         if log_point_cloud:
             point_cloud.points[np.isnan(point_cloud.points)] = 0
-            point_cloud.colors[np.isnan(point_cloud.colors)] = 0
+            if point_cloud.colors is not None:
+                point_cloud.colors[np.isnan(point_cloud.colors)] = 0
             rr.log("point_cloud", rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors))
 
         key = cv2.waitKey(10)
