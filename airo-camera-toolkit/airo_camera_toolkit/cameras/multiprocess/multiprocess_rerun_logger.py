@@ -1,6 +1,6 @@
 import multiprocessing
 import time
-from multiprocessing import Process
+from multiprocessing.context import SpawnProcess
 from typing import Optional
 
 import loguru
@@ -12,7 +12,7 @@ from airo_camera_toolkit.utils.image_converter import ImageConverter
 logger = loguru.logger
 
 
-class MultiprocessRGBRerunLogger(Process):
+class MultiprocessRGBRerunLogger(SpawnProcess):
     def __init__(
         self,
         shared_memory_namespace: str,
@@ -50,7 +50,7 @@ class MultiprocessRGBRerunLogger(Process):
         import rerun as rr
 
         rr.init(self._rerun_application_id)
-        rr.connect()
+        rr.connect_grpc()
 
         self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
 
@@ -94,7 +94,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         import rerun
 
         rerun.init(self._rerun_application_id)
-        rerun.connect()
+        rerun.connect_grpc()
 
         self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace)
 

@@ -46,11 +46,16 @@ class OpenCVVideoCapture(RGBCamera):
 
         self._intrinsics_matrix = intrinsics_matrix
 
-        self.fps = self.video_capture.get(cv2.CAP_PROP_FPS)
+        self._fps = int(self.video_capture.get(cv2.CAP_PROP_FPS))
         self._resolution = (
             math.floor(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
             math.floor(self.video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT)),
         )
+
+    @property
+    def fps(self) -> int:
+        """The frames per second of the camera."""
+        return self._fps
 
     @property
     def resolution(self) -> CameraResolutionType:

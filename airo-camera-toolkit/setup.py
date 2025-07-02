@@ -18,6 +18,7 @@ setuptools.setup(
         "click",
         "open3d",
         "loguru",
+        "airo-ipc>=0.1.0",
         "airo-typing==2025.4.0",
         "airo-spatial-algebra==2025.4.0",
         "airo-dataset-tools==2025.4.0",

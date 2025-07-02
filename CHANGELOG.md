@@ -49,6 +49,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `URrtde` will now try connecting to do control interface up to 3 times before raising a `RuntimeError`.
 - Renamed `Zed2i` to `Zed` and `zed2i.py` to `zed.py`, but kept the old names as aliases for backwards compatibility
 - Locked `numpy` to versions `<2.0` for compatibility with `opencv`, since we are using a locked version of `opencv` that is not compatible with newer versions of `numpy`.
+- Use [`airo-ipc`](https://github.com/airo-ugent/airo-ipc) for multiprocessing in `airo-camera-toolkit`.
 
 ### Fixed
 - Fixed bug in `get_colored_point_cloud()` that removed some points see issue [#25](https://github.com/airo-ugent/airo-mono/issues/25).
