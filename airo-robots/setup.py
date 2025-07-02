@@ -5,7 +5,7 @@ import setuptools
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo_robots",
-    version="2025.7.0",
+    version="2025.7.1",
     description="Interfaces, hardware implementations of those interfaces and other functionalities to control robot manipulators and grippers at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
