@@ -50,7 +50,7 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         import rerun as rr
 
         rr.init(self._rerun_application_id)
-        rr.connect()
+        rr.connect_grpc()
 
         self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
 
@@ -94,7 +94,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         import rerun
 
         rerun.init(self._rerun_application_id)
-        rerun.connect()
+        rerun.connect_grpc()
 
         self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace)
 
