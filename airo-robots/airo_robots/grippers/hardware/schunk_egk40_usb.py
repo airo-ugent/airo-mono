@@ -80,7 +80,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         time.sleep(0.1)
 
     @property
-    def speed(self) -> float | None:
+    def speed(self) -> float:
         """return speed setting [m/s]."""
         return self.bks.set_vel / 1000
 
@@ -96,7 +96,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         return self.bks.actual_vel / 1000
 
     @property
-    def max_grasp_force(self) -> float | None:
+    def max_grasp_force(self) -> float:
         _force = rescale_range(self.bks.set_force, 0, 100, self.gripper_specs.min_force, self.gripper_specs.max_force)
         return _force
 
@@ -171,8 +171,8 @@ class SchunkEGK40_USB(ParallelPositionGripper):
     def servo(
         self,
         width: float,
-        speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-        force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
+        speed: float = SCHUNK_DEFAULT_SPECS.min_speed,
+        force: float = SCHUNK_DEFAULT_SPECS.min_force,
         set_speed_and_force: bool = True,
     ) -> AwaitableAction:
         """
@@ -200,8 +200,8 @@ class SchunkEGK40_USB(ParallelPositionGripper):
     def servo_relative(
         self,
         width_difference: float,
-        speed: Optional[float] = SCHUNK_DEFAULT_SPECS.min_speed,
-        force: Optional[float] = SCHUNK_DEFAULT_SPECS.min_force,
+        speed: float = SCHUNK_DEFAULT_SPECS.min_speed,
+        force: float = SCHUNK_DEFAULT_SPECS.min_force,
         set_speed_and_force: bool = True,
     ) -> AwaitableAction:
         """
