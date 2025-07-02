@@ -141,8 +141,14 @@ def _validate_coco_categories_are_in_cvat(
         for coco_category in coco_categories:
             if coco_category.name == category_str:
                 break
-        for category_keypoint in coco_category.keypoints:
-            assert category_keypoint in semantic_types, f"semantic type {category_keypoint} not found"
+        if coco_category is not None:
+            for category_keypoint in coco_category.keypoints:
+                assert category_keypoint in semantic_types, f"semantic type {category_keypoint} not found"
+        else:
+            raise AssertionError(
+                f"category {category_str} not found in coco categories. "
+                f"Available categories: {[c.name for c in coco_categories]}"
+            )
 
 
 def _get_n_category_instances_in_image(cvat_image: ImageItem, category_name: str) -> int:
