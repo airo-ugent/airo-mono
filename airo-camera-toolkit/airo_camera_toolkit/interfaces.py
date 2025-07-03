@@ -59,6 +59,12 @@ class RGBCamera(Camera, abc.ABC):
         """The resolution of the camera, in pixels."""
         raise NotImplementedError
 
+    @property
+    @abc.abstractmethod
+    def fps(self) -> float:
+        """The frames per second of the camera."""
+        raise NotImplementedError
+
     def get_rgb_image(self) -> NumpyFloatImageType:
         """Get a new RGB image from the camera."""
         self._grab_images()
