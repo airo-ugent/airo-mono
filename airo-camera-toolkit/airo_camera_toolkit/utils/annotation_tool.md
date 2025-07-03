@@ -9,7 +9,7 @@ This tool is intented for creating small robot demos from clicked points.
 ## Usage
 
 Create a new annotation spec dictionary, mapping annotation names to annotation types.
-Calling the `get_manual_anntations()` function with it and an image will open an OpenCV window for clicking the necessary points.
+Calling the `get_manual_annotations()` function with it and an image will open an OpenCV window for clicking the necessary points.
 The available annotations are `Keypoint`, `LineSegment`, `Line`, `BoundingBox` and `Polygon`.
 
 ```python

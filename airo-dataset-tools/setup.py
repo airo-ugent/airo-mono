@@ -10,10 +10,10 @@ setuptools.setup(
     author_email="victorlouisdg@gmail.com",
     description="Scripts for loading and converting datasets for the Ghent University AI and Robotics Lab",
     install_requires=[
-        "numpy<2.0",
+        "numpy>=2.0",
         "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
-        "opencv-contrib-python==4.8.1.78",  # See airo-camera-toolkit setup.py for explanation
-        "opencv-python-headless==4.8.1.78",  # See airo-camera-toolkit setup.py for explanation
+        "opencv-contrib-python==4.10.0.84",  # See airo-camera-toolkit setup.py for explanation
+        "opencv-python-headless==4.10.0.84",  # See airo-camera-toolkit setup.py for explanation
         "pycocotools",
         "xmltodict",
         "tqdm",
