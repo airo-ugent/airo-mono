@@ -9,6 +9,11 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Breaking changes
 
+- Update NumPy to version > 2.0, which may break compatibility with some packages that depend on NumPy.
+  - This forces downstream code to be compatible with the latest NumPy version.
+  - With this change, we also update the OpenCV version to 4.10, which is compatible with NumPy 2.0.
+  - With this change, we also update the Rerun version to 0.23, which is compatible with NumPy 2.0.
+
 ### Added
 
 ### Changed
@@ -24,10 +29,12 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 
 ### Changed
+
 - Update airo-tulip to version 0.3.0 for better orientation estimation.
 - Use [`airo-ipc`](https://github.com/airo-ugent/airo-ipc) for multiprocessing in `airo-camera-toolkit`.
 
 ### Fixed
+
 - Fixed a bug when the KELO Robile platform was moving around multiples of 360 degrees, where the target angle would switch.
 - Fixed a bug where the KELO Robile platform would refuse to move to a pose if delta angle was close to 0.
 
@@ -36,12 +43,14 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## 2025.4.0
 
 ### Breaking changes
- - internal dependencies are now listed as regular dependencies in the `setup.py` file to overcome issues and make the installation process less complicated. This implies you need to install packages according to their dependencies and can no longer use the `external` tag as in `pip install airo-typing[external]`.
- see [issue #91](https://github.com/airo-ugent/airo-mono/issues/91) and
- [PR](https://github.com/airo-ugent/airo-mono/pull/108) for more details.
- - `PointCloud` dataclass replaces the `ColoredPointCloudType` to support point cloud attritubes
+
+- internal dependencies are now listed as regular dependencies in the `setup.py` file to overcome issues and make the installation process less complicated. This implies you need to install packages according to their dependencies and can no longer use the `external` tag as in `pip install airo-typing[external]`.
+  see [issue #91](https://github.com/airo-ugent/airo-mono/issues/91) and
+  [PR](https://github.com/airo-ugent/airo-mono/pull/108) for more details.
+- `PointCloud` dataclass replaces the `ColoredPointCloudType` to support point cloud attritubes
 
 ### Added
+
 - add method `as_single_polygon` to combine disconnected parts of a binary mask into a single polygon to the `Mask` class, useful for data formats that only allow for a single polygon such as YOLO.
 - `PointCloud` dataclass as the main data structure for point clouds in airo-mono
 - Notebooks to get started with point clouds, checking performance and logging to rerun
@@ -56,6 +65,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - airo-mono packages are now on PyPI 🎉
 
 ### Changed
+
 - `coco-to-yolo` conversion now creates a single polygon of all disconnected parts of the mask instead of simply taking the first polygon of the list.
 - Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
 - Set python version to 3.10 because of an issue with the `ur_rtde` wheels [#121](https://github.com/airo-ugent/airo-mono/issues/121). Updated README.md to reflect this change.
@@ -64,6 +74,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Locked `numpy` to versions `<2.0` for compatibility with `opencv`, since we are using a locked version of `opencv` that is not compatible with newer versions of `numpy`.
 
 ### Fixed
+
 - Fixed bug in `get_colored_point_cloud()` that removed some points see issue [#25](https://github.com/airo-ugent/airo-mono/issues/25).
 - Fixed bug requiring unplug-and-plug of USB cable for Realsense: see issue [#109](https://github.com/airo-ugent/airo-mono/issues/109).
 - Fixed bug with Realsense cameras raising `RuntimeErrors` in RGB-depth alignment when CPU is busy. The camera will now try again once after 1 second.
@@ -75,6 +86,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - The wait interval for shared memory files has been reduced to .5 seconds (from 5), to speed up application start times.
 
 ### Removed
+
 - `ColoredPointCloudType`
 
 ## 2024.1.0
@@ -82,6 +94,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 
 ### Added
+
 - Calendar-based versioning scheme and introduction of accompanying changelog.
 
 ### Changed
