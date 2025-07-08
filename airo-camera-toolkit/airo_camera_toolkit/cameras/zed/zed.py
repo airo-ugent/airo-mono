@@ -87,7 +87,7 @@ class Zed(StereoRGBDCamera):
         svo_filepath: Optional[str] = None,
     ) -> None:
         self._resolution = resolution
-        self.fps = fps
+        self._fps = fps
         self.depth_mode = depth_mode
         self.serial_number = int(serial_number) if serial_number else None
 
@@ -157,6 +157,11 @@ class Zed(StereoRGBDCamera):
 
         self.confidence_matrix = sl.Mat()
         self.confidence_map = None
+
+    @property
+    def fps(self) -> int:
+        """The frame rate of the camera, in frames per second."""
+        return self._fps
 
     @property
     def resolution(self) -> CameraResolutionType:

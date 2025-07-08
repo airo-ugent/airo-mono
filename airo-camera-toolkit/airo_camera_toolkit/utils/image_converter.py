@@ -51,8 +51,13 @@ class ImageConverter:
     """
     Utility class to convert between numpy arrays of different image formats.
 
-    Only supports cpu-located  images.
+    Only supports cpu-located images.
     Convert cuda images to cpu images (if you can afford it) or re-implement with torch.
+
+    **Note** that these conversions may not be optimal, because we use an intermediate numpy float format.
+    So, there may be a conversion from type A to type B that is faster if you do it directly,
+    but we don't implement that here to keep implementation complexity low.
+    See also https://github.com/airo-ugent/airo-mono/issues/132.
     """
 
     def __init__(self, image_in_numpy_float_format: NumpyFloatImageType) -> None:

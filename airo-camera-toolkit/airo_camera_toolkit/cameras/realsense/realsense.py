@@ -43,7 +43,7 @@ class Realsense(RGBDCamera):
         serial_number: Optional[str] = None,
     ) -> None:
         self._resolution = resolution
-        self.fps = fps
+        self._fps = fps
         self._depth_enabled = enable_depth
         self.hole_filling_enabled = enable_hole_filling
         self.serial_number = serial_number
@@ -106,6 +106,10 @@ class Realsense(RGBDCamera):
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         return self._intrinsics_matrix
+
+    @property
+    def fps(self) -> int:
+        return self._fps
 
     @property
     def resolution(self) -> CameraResolutionType:
