@@ -11,6 +11,7 @@ It is now expected of users of `airo-tulip`/`airo-robots` to perform sensor fusi
 ### Custom odometry with `KELORobile` in `airo-robots`
 If you want to implement your own odometry, you should create a subclass of `airo_robots.drives.hardware.kelo_robile.KELORobile`
 and override `get_odometry()`. The closed loop movement method will call this method (and use your odometry implementation) internally.
+You can find an example of this [here](https://github.com/m-decoster/tulip_user_peripherals).
 
 ### Adding external sensors
 Below is information on how `airo-tulip` used to manage external sensors, so that you can replicate this in your codebase.
