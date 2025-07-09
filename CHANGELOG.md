@@ -8,6 +8,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- Update airo-tulip to version 0.4.0, which returns odometry to the standard drive encoder based method.
 
 - Update NumPy to version > 2.0, which may break compatibility with some packages that depend on NumPy.
   - This forces downstream code to be compatible with the latest NumPy version.
@@ -15,10 +16,12 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
   - With this change, we also update the Rerun version to 0.23, which is compatible with NumPy 2.0.
 
 ### Added
+- Add documentation on how to include custom sensors for odometry.
 
 ### Changed
 
 ### Fixed
+- The `KELORobile` `move_platform_to_pose` method now calls the correct `get_odometry` method, allowing custom odometry implementations.
 
 ### Removed
 
