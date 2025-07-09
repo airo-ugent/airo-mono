@@ -10,11 +10,11 @@ setuptools.setup(
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
     install_requires=[
-        "numpy<2.0",
-        "opencv-contrib-python==4.8.1.78",  # We need opencv contrib for the aruco marker detection, but when some packages install (a different version of) opencv-python-headless, this breaks the contrib version. So we install both here to make sure they are the same version.
-        "opencv-python-headless==4.8.1.78",  # Lock to match contrib version.
+        "numpy>=2.0",
+        "opencv-contrib-python==4.10.0.84",  # We need opencv contrib for the aruco marker detection, but when some packages install (a different version of) opencv-python-headless, this breaks the contrib version. So we install both here to make sure they are the same version.
+        "opencv-python-headless==4.10.0.84",  # Lock to match contrib version.
         "matplotlib",
-        "rerun-sdk>=0.11.0",
+        "rerun-sdk>=0.23.4",
         "click",
         "open3d",
         "loguru",
