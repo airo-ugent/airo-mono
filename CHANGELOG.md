@@ -8,12 +8,15 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- Update airo-tulip to version 0.4.0, which returns odometry to the standard drive encoder based method.
 
 ### Added
+- Add documentation on how to include custom sensors for odometry.
 
 ### Changed
 
 ### Fixed
+- The `KELORobile` `move_platform_to_pose` method now calls the correct `get_odometry` method, allowing custom odometry implementations.
 
 ### Removed
 
