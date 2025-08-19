@@ -1,9 +1,9 @@
-# ZED Installation (Zed SDK 4.2+ with Cuda 12)
+# ZED Installation (Zed SDK 5.0+ with Cuda 12)
 This file will get you started with the ZED2i cameras.
 
 ## 1. ZED SDK
-The first step is to install the ZED SDK (version 4.2 or higher), before installing:
-* Ensure you have **nvidia-drivers** installed, check with `nvidia-smi`. The installer will automatically install a CUDA 11.X version is you do not have it.
+The first step is to install the ZED SDK (version 5.0 or higher), before installing:
+* Ensure you have **nvidia-drivers** installed, check with `nvidia-smi`. The installer will automatically install a CUDA 11.X+ version is you do not have it.
 * During the setup, you will be asked whether the **Python API** should be installed. Make sure to **activate** the venv of conda env you want to use with the ZED cameras. (You can also answer `no` and install the Python package later.)
 * You can say `no` to the AI-model stuff.
 
