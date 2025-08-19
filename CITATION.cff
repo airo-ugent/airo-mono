@@ -5,7 +5,9 @@ authors:
   given-names: "Thomas"
 - family-names: "De Gusseme"
   given-names: "Victor-Louis"
+- family-names: "De Coster"
+  given-names: "Mathieu"
 title: "airo-mono: ready-to-use python packages to accelerate the development of robotic manipulation systems"
 url: "https://github.com/airo-ugent/airo-mono"
-date-released: 2023-3-10
-version: 0.0.1
+date-released: 2025-7-2
+version: 2025.7.0
