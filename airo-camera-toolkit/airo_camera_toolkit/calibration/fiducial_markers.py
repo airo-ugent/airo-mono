@@ -123,16 +123,17 @@ def get_pose_of_charuco_board(
 ) -> Optional[HomogeneousMatrixType]:
     """Get the pose of the detected CharuCo board in `charuco_corners_detection_result`.
     The origin of the charuco frame is defined in the topleft corner of the board."""
-    valid, rvec, tvec = aruco.estimatePoseCharucoBoard(
-        charucoCorners=charuco_corners_detection_result.corners,
-        charucoIds=charuco_corners_detection_result.ids,
-        board=charuco_board,
-        cameraMatrix=camera_matrix,
-        distCoeffs=dist_coeffs,
-        rvec=None,
-        tvec=None,
-    )
-    if (rvec is None and tvec is None) or not valid:
+    charuco_corners = charuco_corners_detection_result.corners
+    charuco_ids = charuco_corners_detection_result.ids
+
+    # Use matchImagePoints to get the object and image points
+    obj_points, img_points = charuco_board.matchImagePoints(charuco_corners, charuco_ids)  # type: ignore  # mypy does not accept these types, but they are correct
+    if obj_points is None or img_points is None:
+        return None
+
+    # Use solvePnP for pose estimation
+    success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, dist_coeffs)  # type: ignore  # mypy does not accept these types, but they are correct
+    if not success or rvec is None or tvec is None:
         return None
     # combine the rvec and tvec into a single pose matrix
     charuco_pose_in_camera_frame = SE3Container.from_rotation_vector_and_translation(
@@ -185,7 +186,7 @@ def draw_frame_on_image(
     charuco_se3 = SE3Container.from_homogeneous_matrix(frame_pose_in_camera)
     rvec = charuco_se3.orientation_as_rotation_vector
     tvec = charuco_se3.translation
-    image = cv2.drawFrameAxes(image, camera_matrix, None, rvec, tvec, 0.2)
+    image = cv2.drawFrameAxes(image, camera_matrix, None, rvec, tvec, 0.2)  # type: ignore  # mypy does not accept these types, but they are correct
     return image
 
 

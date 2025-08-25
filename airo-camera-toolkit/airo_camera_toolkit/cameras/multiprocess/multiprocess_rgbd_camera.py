@@ -1,5 +1,5 @@
 """Publisher and receiver classes for multiprocess camera sharing."""
-
+import multiprocessing
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -160,6 +160,8 @@ if __name__ == "__main__":
 
     import cv2
     from airo_camera_toolkit.cameras.zed.zed import Zed
+
+    multiprocessing.set_start_method("spawn", force=True)
 
     publisher = MultiprocessRGBDPublisher(
         Zed,
