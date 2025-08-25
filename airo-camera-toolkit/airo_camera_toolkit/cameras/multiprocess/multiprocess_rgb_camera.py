@@ -226,6 +226,8 @@ if __name__ == "__main__":
 
     from airo_camera_toolkit.cameras.zed.zed import Zed
 
+    multiprocessing.set_start_method("spawn", force=True)
+
     publisher = MultiprocessRGBPublisher(
         Zed,
         camera_kwargs={"resolution": Zed.RESOLUTION_1080, "fps": camera_fps},

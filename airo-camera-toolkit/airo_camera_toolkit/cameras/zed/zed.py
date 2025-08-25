@@ -15,9 +15,9 @@ except ImportError:
 # check SDK version
 try:
     version = sl.Camera().get_sdk_version()
-    assert version.split(".")[0] == "4"
+    assert version.split(".")[0] == "5"
 except AssertionError:
-    raise ImportError("You should install version 4.X of the SDK!")
+    raise ImportError("You should install version 5.X of the SDK!")
 
 import time
 
@@ -49,19 +49,18 @@ class Zed(StereoRGBDCamera):
     """
 
     # for more info on the different depth modes, see:
-    # https://www.stereolabs.com/docs/api/group__Depth__group.html#ga391147e2eab8e101a7ff3a06cbed22da
+    # https://www.stereolabs.com/docs/depth-sensing/depth-modes
     # keep in mind though that the depth map is calculated during the `grab`operation, so the depth mode also influences the
     # fps of the rgb images, which is why the default depth mode is None
 
     NEURAL_DEPTH_MODE = sl.DEPTH_MODE.NEURAL
+    NEURAL_LIGHT_DEPTH_MODE = sl.DEPTH_MODE.NEURAL_LIGHT
+    NEURAL_PLUS_DEPTH_MODE = sl.DEPTH_MODE.NEURAL_PLUS
 
     # no depth mode, higher troughput of the RGB images as the GPU has to do less work
     # can also turn depth off in the runtime params, which is recommended as it allows for switching at runtime.
     NONE_DEPTH_MODE = sl.DEPTH_MODE.NONE
-    PERFORMANCE_DEPTH_MODE = sl.DEPTH_MODE.PERFORMANCE
-    QUALITY_DEPTH_MODE = sl.DEPTH_MODE.QUALITY
-    ULTRA_DEPTH_MODE = sl.DEPTH_MODE.ULTRA
-    DEPTH_MODES = (NEURAL_DEPTH_MODE, NONE_DEPTH_MODE, PERFORMANCE_DEPTH_MODE, QUALITY_DEPTH_MODE, ULTRA_DEPTH_MODE)
+    DEPTH_MODES = (NEURAL_DEPTH_MODE, NONE_DEPTH_MODE, NEURAL_LIGHT_DEPTH_MODE, NEURAL_PLUS_DEPTH_MODE)
 
     # for info on image resolution, pixel sizes, fov..., see:
     # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
@@ -311,7 +310,7 @@ def _test_zed_implementation() -> None:
 
     # test rgbd stereo camera
 
-    with Zed(Zed.RESOLUTION_2K, fps=15, depth_mode=Zed.PERFORMANCE_DEPTH_MODE) as zed:
+    with Zed(Zed.RESOLUTION_2K, fps=15, depth_mode=Zed.NEURAL_LIGHT_DEPTH_MODE) as zed:
         print(zed.get_colored_point_cloud().points)  # TODO: test the point_cloud more explicity?
         manual_test_stereo_rgbd_camera(zed)
 

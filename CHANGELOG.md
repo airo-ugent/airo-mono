@@ -9,11 +9,17 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Breaking changes
 - Update airo-tulip to version 0.4.0, which returns odometry to the standard drive encoder based method.
-
 - Update NumPy to version > 2.0, which may break compatibility with some packages that depend on NumPy.
   - This forces downstream code to be compatible with the latest NumPy version.
   - With this change, we also update the OpenCV version to 4.10, which is compatible with NumPy 2.0.
   - With this change, we also update the Rerun version to 0.23, which is compatible with NumPy 2.0.
+  - With this change, we also update the ZED SDK to version 5.0, which is compatible with NumPy 2.0.
+- Update ZED SDK to version 5.0, which changes the API for the ZED camera provided by `airo-camera-toolkit` in the `Zed` class.
+  - This requires CUDA 12.8 to be installed.
+  - Depth modes have been replaced: you can now choose between `Zed.NEURAL_LIGHT_DEPTH_MODE`, `Zed.NEURAL_DEPTH_MODE`, and `Zed.NEURAL_PLUS_DEPTH_MODE`.
+  - This improves depth quality, especially when using the neural plus model.
+  - This also improves depth performance, especially when using the neural light model.
+  - For more information, see the [ZED SDK 5.0 blog post](https://www.stereolabs.com/en-be/blog/introducing-zed-sdk-50).
 
 ### Added
 - Add documentation on how to include custom sensors for odometry.
