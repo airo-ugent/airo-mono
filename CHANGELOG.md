@@ -19,6 +19,11 @@ airo-mono is finally upgrading to NumPy 2.0! This is a major change that may bre
 In particular, the ZED SDK has been updated to version 5.0, which requires CUDA 12.8 to be installed.
 You will need to update your CUDA installation and upgrade your ZED SDK to version 5.0 to use the ZED camera with airo-mono.
 
+This has implications for downstream packages (or your own code). If you depend on certain software that requires an older version of NumPy, you may need to either:
+- update that software to a version that is compatible with NumPy 2.0, or
+- stick with airo-mon version 2025.7.0 or earlier until the software you depend on is updated.
+
+The following changes have been made to airo-mono to support NumPy 2.0:
 - Update NumPy to version > 2.0, which may break compatibility with some packages that depend on NumPy.
   - This forces downstream code to be compatible with the latest NumPy version.
   - With this change, we also update the OpenCV version to 4.10, which is compatible with NumPy 2.0.
