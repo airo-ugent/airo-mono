@@ -36,7 +36,7 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         # This randomly fails, just don't log an image if it does
         try:
             image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
-        except (TypeError, AssertionError) as e:
+        except (TypeError, IndexError) as e:
             print(e)
             return
         image_rgb = image_bgr[:, :, ::-1]
