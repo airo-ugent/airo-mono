@@ -142,7 +142,9 @@ def _validate_coco_categories_are_in_cvat(
         _validate_coco_category_is_present(category_str, coco_categories, semantic_types)
 
 
-def _validate_coco_category_is_present(category_str, coco_categories, semantic_types):
+def _validate_coco_category_is_present(
+    category_str: str, coco_categories: List[CocoKeypointCategory], semantic_types: List[str]
+) -> None:
     # find the matching COCO category
     coco_category = None
     for coco_category in coco_categories:
