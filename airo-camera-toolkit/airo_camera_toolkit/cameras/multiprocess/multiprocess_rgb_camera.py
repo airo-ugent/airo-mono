@@ -93,7 +93,8 @@ class MultiprocessRGBPublisher(multiprocessing.context.Process):
         # Instantiate the camera.
         logger.info(f"Instantiating a {self._camera_cls.__name__} camera.")
         self._camera = self._camera_cls(**self._camera_kwargs)
-        assert isinstance(self._camera, RGBCamera)  # Check whether user passed a valid camera class
+        if not isinstance(self._camera, RGBCamera):  # Check whether user passed a valid camera class
+            raise TypeError(f"camera_cls must be a subclass of RGBCamera, but is {self._camera_cls.__name__}")
         logger.info(f"Successfully instantiated a {self._camera_cls.__name__} camera.")
 
         self._setup_sm_writer()  # Overwritten in base classes.

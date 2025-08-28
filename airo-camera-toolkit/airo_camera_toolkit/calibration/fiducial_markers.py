@@ -267,12 +267,8 @@ if __name__ == "__main__":
         camera_serial_number: Optional[str] = None,
     ) -> None:
         aruco_dict = AIRO_DEFAULT_ARUCO_DICT
-        detect_charuco = charuco_x_count is not None and charuco_y_count is not None and charuco_tile_size is not None
-        if detect_charuco:
-            # Mypy doesn't infer these are not None from the line above, so we have to assert them
-            assert charuco_x_count is not None
-            assert charuco_y_count is not None
-            assert charuco_tile_size is not None
+        # Only create a charuco board if all charuco related parameters were provided.
+        if charuco_x_count is not None and charuco_y_count is not None and charuco_tile_size is not None:
             charuco_board = aruco.CharucoBoard(
                 (charuco_x_count, charuco_y_count), charuco_tile_size, aruco_marker_size, aruco_dict
             )

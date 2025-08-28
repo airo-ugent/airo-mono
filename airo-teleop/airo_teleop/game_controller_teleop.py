@@ -45,11 +45,14 @@ class GameControllerTeleop:
             robot (PositionManipulator): the robot to control. If you also want to control the gripper, make sure to link it to this robot instance.
             control_rate (int): The frequency for the controller to send servo commands.
             controller_layout (GameControllerLayout): The layout of the controller, used to map the physical control elements to their pygame indices.
-            joystick_id (int, optional): pygame ID of the joystick, onlyl relevant if multiple joystick are connected. Defaults to 0.
+            joystick_id (int, optional): pygame ID of the joystick, only relevant if multiple joystick are connected. Defaults to 0.
         """
         pygame.init()
         joystick.init()
-        assert joystick_id < joystick.get_count()
+        if joystick_id >= joystick.get_count():
+            raise ValueError(
+                f"joystick_id {joystick_id} is invalid, only {joystick.get_count()} joystick(s) connected."
+            )
         self.controller = joystick.Joystick(joystick_id)
         self.controller_layout = controller_layout
         self.robot = robot

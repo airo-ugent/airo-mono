@@ -57,7 +57,10 @@ class PositionManipulator(ABC):
 
     @default_linear_speed.setter
     def default_linear_speed(self, speed: float) -> None:
-        assert speed <= self._manipulator_specs.max_linear_speed
+        if speed > self._manipulator_specs.max_linear_speed:
+            raise ValueError(
+                f"linear speed {speed} is too high. Max linear speed is {self._manipulator_specs.max_linear_speed}"
+            )
         self._default_linear_speed = speed
 
     @property
@@ -67,7 +70,10 @@ class PositionManipulator(ABC):
 
     @default_joint_speed.setter
     def default_joint_speed(self, speed: float) -> None:
-        assert speed <= min(self._manipulator_specs.max_joint_speeds)
+        if speed > min(self._manipulator_specs.max_joint_speeds):
+            raise ValueError(
+                f"joint speed {speed} is too high. Max joint speeds are {self._manipulator_specs.max_joint_speeds}"
+            )
         self._default_joint_speed = speed
 
     @abstractmethod

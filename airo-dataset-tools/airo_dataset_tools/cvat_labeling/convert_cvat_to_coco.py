@@ -127,28 +127,41 @@ def _validate_coco_categories_are_in_cvat(
         labels = [labels]
 
     for annotation_category in labels:
-        assert isinstance(annotation_category, LabelItem)
+        if not isinstance(annotation_category, LabelItem):
+            raise TypeError("Expected LabelItem in labels")
         category_str, annotation_name = annotation_category.name.split(".")
         cvat_categories_dict[category_str].append(annotation_name)
 
     for category_str, semantic_types in cvat_categories_dict.items():
-        if add_bbox:
-            assert "bbox" in semantic_types, "bbox annotations are required"
-        if add_segmentation:
-            assert "mask" in semantic_types, "segmentation masks are required"
-        # find the matching COCO category
-        coco_category = None
-        for coco_category in coco_categories:
-            if coco_category.name == category_str:
-                break
-        if coco_category is not None:
-            for category_keypoint in coco_category.keypoints:
-                assert category_keypoint in semantic_types, f"semantic type {category_keypoint} not found"
-        else:
-            raise AssertionError(
-                f"category {category_str} not found in coco categories. "
-                f"Available categories: {[c.name for c in coco_categories]}"
+        if add_bbox and "bbox" not in semantic_types:
+            raise ValueError(f"bbox annotations are required for category {category_str} to add bbox to coco dataset")
+        if add_segmentation and "mask" not in semantic_types:
+            raise ValueError(
+                f"segmentation annotations are required for category {category_str} to add segmentation to coco dataset"
             )
+        _validate_coco_category_is_present(category_str, coco_categories, semantic_types)
+
+
+def _validate_coco_category_is_present(
+    category_str: str, coco_categories: List[CocoKeypointCategory], semantic_types: List[str]
+) -> None:
+    # find the matching COCO category
+    coco_category = None
+    for coco_category in coco_categories:
+        if coco_category.name == category_str:
+            break
+    if coco_category is not None:
+        for category_keypoint in coco_category.keypoints:
+            if category_keypoint not in semantic_types:
+                raise ValueError(
+                    f"semantic type {category_keypoint} for category {category_str} not found in cvat annotations. "
+                    f"Available semantic types: {semantic_types}"
+                )
+    else:
+        raise ValueError(
+            f"category {category_str} not found in coco categories. "
+            f"Available categories: {[c.name for c in coco_categories]}"
+        )
 
 
 def _get_n_category_instances_in_image(cvat_image: ImageItem, category_name: str) -> int:
@@ -162,14 +175,16 @@ def _get_n_category_instances_in_image(cvat_image: ImageItem, category_name: str
         return 0
     if not isinstance(cvat_image.points, list):
         if _get_category_from_cvat_label(cvat_image.points.label) == category_name:
-            assert cvat_image.points.group_id is not None, "group_id was None"
+            if cvat_image.points.group_id is None:
+                raise ValueError("group_id was None")
             return int(cvat_image.points.group_id)
         else:
             return 0
     max_group_id = 0
     for cvat_point in cvat_image.points:
         if _get_category_from_cvat_label(cvat_point.label) == category_name:
-            assert cvat_point.group_id is not None, "group_id was None"
+            if cvat_point.group_id is None:
+                raise ValueError("group_id was None")
             max_group_id = max(max_group_id, int(cvat_point.group_id))
     return max_group_id
 
@@ -179,7 +194,8 @@ def _get_category_from_cvat_label(label: str) -> str:
     this function returns the category
     """
     split = label.split(".")
-    assert len(split) == 2, " label was not formatted as category.semantic_type"
+    if len(split) != 2:
+        raise ValueError("label was not formatted as category.semantic_type")
     return label.split(".")[0]
 
 
@@ -188,7 +204,8 @@ def _get_semantic_type_from_cvat_label(label: str) -> str:
     this function returns the semantic type
     """
     split = label.split(".")
-    assert len(split) == 2, " label was not formatted as category.semantic_type"
+    if len(split) != 2:
+        raise ValueError("label was not formatted as category.semantic_type")
     return label.split(".")[1]
 
 
