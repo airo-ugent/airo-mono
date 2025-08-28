@@ -130,6 +130,10 @@ class Zed(StereoRGBDCamera):
             self.camera = sl.Camera()
 
         if status != sl.ERROR_CODE.SUCCESS:
+            logger.error(
+                "Could not open Zed camera. Sometimes, unplugging the camera and plugging it back in helps.\n"
+                "Alternatively, try to reboot the camera by running `ZED_Explorer --reboot` in a terminal."
+            )
             raise IndexError(f"Could not open Zed camera, error = {status}")
 
         # TODO: create a configuration class for the runtime parameters
