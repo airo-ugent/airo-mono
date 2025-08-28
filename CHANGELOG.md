@@ -9,6 +9,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Breaking changes
 
+- Assertions have been replaced with proper error handling and exceptions in several places to improve robustness and provide clearer error messages. This may affect existing code that relies on assertions for error checking.
+
 ### Added
 
 ### Changed
