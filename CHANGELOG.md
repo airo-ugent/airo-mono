@@ -9,6 +9,18 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Breaking changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## 2025.8.0
+
+### Breaking changes
+
 #### airo-tulip
 
 - Update airo-tulip to version 0.4.0, which returns odometry to the standard drive encoder based method.
@@ -21,7 +33,7 @@ You will need to update your CUDA installation and upgrade your ZED SDK to versi
 
 This has implications for downstream packages (or your own code). If you depend on certain software that requires an older version of NumPy, you may need to either:
 - update that software to a version that is compatible with NumPy 2.0, or
-- stick with airo-mon version 2025.7.0 or earlier until the software you depend on is updated.
+- stick with airo-mono version 2025.7.0 or earlier until the software you depend on is updated.
 
 The following changes have been made to airo-mono to support NumPy 2.0:
 - Update NumPy to version > 2.0, which may break compatibility with some packages that depend on NumPy.
