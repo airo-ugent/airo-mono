@@ -54,9 +54,10 @@ def unproject_onto_depth_values(
     Returns:
         numpy array of shape (N, 3) containing the 3D positions of the points in the camera frame
     """
-    assert (
-        image_coordinates.shape[0] == depth_values.shape[0]
-    ), "coordinates and depth values must have the same length"
+    if image_coordinates.shape[0] != depth_values.shape[0]:
+        raise IndexError(
+            f"coordinates and depth values must have the same length (but they are: {image_coordinates.shape[0]} and {depth_values.shape[0]})"
+        )
 
     homogeneous_coords = np.ones((image_coordinates.shape[0], 3))
     homogeneous_coords[:, :2] = image_coordinates
@@ -136,14 +137,20 @@ def extract_depth_from_depthmap_heuristic(
         (np.ndarray) a 1D array of the depth values for the specified coordinates
     """
 
-    assert mask_size % 2, "only odd sized markers allowed"
-    assert (
-        depth_percentile < 0.25
-    ), "For straight corners, about 75 percent of the region will be background.. Are your sure you want the percentile to be lower?"
+    if mask_size % 2 == 0:
+        raise ValueError("only odd sized markers allowed")
+    if depth_percentile >= 0.25:
+        # TODO: The question in this error message implies that we should not raise an error, but instead log a warning.
+        raise ValueError(
+            "For straight corners, about 75 percent of the region will be background. Are your sure you want the percentile to be lower?"
+        )
     # check all coordinates are within the size of the depth map to avoid unwanted wrapping of the array indices
-    assert np.max(image_coordinates[:, 1]) < depth_map.shape[0], "V coordinates out of bounds"
-    assert np.max(image_coordinates[:, 0]) < depth_map.shape[1], "U coordinates out of bounds"
-    assert np.min(image_coordinates) >= 0, "coordinates out of bounds"
+    if np.max(image_coordinates[:, 1]) >= depth_map.shape[0]:
+        raise IndexError("V coordinates out of bounds")
+    if np.max(image_coordinates[:, 0]) >= depth_map.shape[1]:
+        raise IndexError("U coordinates out of bounds")
+    if np.min(image_coordinates) < 0:
+        raise IndexError("coordinates out of bounds")
 
     # convert coordinates to integers
     image_coordinates = image_coordinates.astype(np.uint32)

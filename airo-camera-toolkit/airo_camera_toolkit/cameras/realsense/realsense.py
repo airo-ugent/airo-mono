@@ -142,7 +142,8 @@ class Realsense(RGBDCamera):
         return ImageConverter.from_numpy_int_format(image).image_in_numpy_format
 
     def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
-        assert isinstance(self._composite_frame, rs.composite_frame)
+        if not isinstance(self._composite_frame, rs.composite_frame):
+            raise RuntimeError("_grab_images must be called before retrieving images")
         color_frame = self._composite_frame.get_color_frame()
         image: NumpyIntImageType = np.asanyarray(color_frame.get_data())
         return image
