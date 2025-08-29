@@ -202,7 +202,7 @@ class Realsense(RGBDCamera):
             p2 = 864  # 96 * window_size ** 2
             pre_filter_cap = 63
 
-            self._stereo_sgbm = cv2.StereoSGBM_create(
+            self._stereo_sgbm = cv2.StereoSGBM.create(
                 minDisparity=0,
                 numDisparities=max_disp,
                 blockSize=window_size,

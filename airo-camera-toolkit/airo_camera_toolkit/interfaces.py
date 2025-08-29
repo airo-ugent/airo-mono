@@ -156,7 +156,8 @@ class DepthCamera(Camera, abc.ABC):
 
         # This is a very basic implementation, based on depth discontinuities using OpenCV's Canny edge detection.
         depth_map = self._retrieve_depth_map()
-        depth_map_uint8 = cv2.normalize(depth_map, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        depth_map_uint8 = np.empty_like(depth_map, dtype=np.uint8)
+        depth_map_uint8 = cv2.normalize(depth_map, depth_map_uint8, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         edges = cv2.Canny(depth_map_uint8, 100, 200)
         confidence_map = 1.0 - (edges / 255.0)  # edges are 255, so invert to get confidence
         return confidence_map
@@ -264,7 +265,7 @@ class StereoRGBDCamera(RGBDCamera):
         left = self._retrieve_rgb_image_as_int(self.LEFT_RGB)
         right = self._retrieve_rgb_image_as_int(self.RIGHT_RGB)
 
-        left_matcher = cv2.StereoSGBM_create(
+        left_matcher = cv2.StereoSGBM.create(
             minDisparity=0,
             numDisparities=max_disp,
             blockSize=window_size,
