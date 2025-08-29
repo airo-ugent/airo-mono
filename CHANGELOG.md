@@ -8,8 +8,14 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- The ZED confidence map now returns values between 0 and 1 instead of 100 to 0, to be consistent with the newly added confidence maps in airo-mono.
 
 ### Added
+- Add generic support for depth confidence maps in `airo-camera-toolkit`. Confidence maps are single-channel float32 images with values between 0 and 1, where 0 means no confidence and 1 means full confidence. A type has been added to `airo-typing`: `NumpyConfidenceMapType`.
+  - The `DepthCamera` class has the most basic implementation, which naively assumes that confidence is lower around edges in the depth image. It uses Canny edge detection to find edges in the depth image and creates a confidence map based on the distance to the nearest edge.
+  - The `StereoRGBDCamera` class has a more advanced implementation, which uses the left and right RGB images to compute a confidence map based on the disparity map. It uses the OpenCV `StereoSGBM` algorithm to compute the disparity map and then computes the confidence map based on the disparity values.
+  - The `Realsense` class has a similar implementation to `StereoRGBDCamera`, but it uses a disparity map computed from the infrared images instead of the RGB images (because the D435 does not have a stereo RGB setup).
+  - The `Zed` class has a built-in confidence map that is provided by the ZED SDK.
 
 ### Changed
 
