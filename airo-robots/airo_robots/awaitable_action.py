@@ -2,6 +2,7 @@ import enum
 import inspect
 import time
 import warnings
+from types import FrameType
 from typing import Callable, Optional
 
 
@@ -45,7 +46,7 @@ class AwaitableAction:
 
         # The below values are stored to give better warnings when a timeout occurs.
         # They store the file and line where this AwaitableAction was created.
-        frame = inspect.currentframe().f_back
+        frame = _get_previous_frame()
         self._created_file = frame.f_code.co_filename
         self._created_line = frame.f_lineno
 
@@ -85,8 +86,7 @@ class AwaitableAction:
                 self.status = ACTION_STATUS_ENUM.SUCCEEDED
                 return self.status
             if timeout < 0:
-                frame = inspect.currentframe()  # current frame
-                prev_frame = frame.f_back  # previous frame
+                prev_frame = _get_previous_frame()
                 warnings.warn(
                     f"""Action timed out. Make sure this was expected.
     This AwaitableAction was created at:
@@ -99,3 +99,12 @@ class AwaitableAction:
 
     def is_done(self) -> bool:
         return self.status == ACTION_STATUS_ENUM.SUCCEEDED
+
+
+def _get_previous_frame() -> FrameType:
+    """Returns the frame of the caller of the function that calls this function."""
+    frame = inspect.currentframe()
+    assert frame is not None  # for mypy
+    frame = frame.f_back
+    assert frame is not None  # for mypy
+    return frame
