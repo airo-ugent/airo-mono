@@ -129,19 +129,15 @@ class DepthCamera(Camera, abc.ABC):
         The confidence map is a 2D array of floats, that provide a measure of confidence in the depth estimate for each pixel.
         The values are between 0 and 1, where 1 indicates high confidence and 0 indicates low confidence.
 
-        The confidence map is a 2D array of floats, that provide a measure of confidence in the depth estimate for each pixel.
-        The values are between 0 and 1, where 1 indicates high confidence and 0 indicates low confidence.
-
-        Note that not all stereo depth cameras provide a confidence map. We provide a default implementation that is very basic.
+        Note that not all stereo depth cameras provide a confidence map. We provide a default (naive) implementation.
         It computes a confidence map based on depth discontinuities using OpenCV's Canny edge detection.
+        This is based on the assumption that depth estimates are less reliable at depth discontinuities.
 
         Child classes can override this method to provide a more accurate confidence map if available.
         For example:
         - StereoRGBDCamera provides a confidence map based on disparity between left and right RGB images using OpenCV's SGBM algorithm implementation.
         - Realsense provides a confidence map based on disparity between left and right infrared images using OpenCV's SGBM algorithm implementation.
         - ZED provides a confidence map based on the camera's internal confidence measure.
-
-        Not all implementations will be equally good.
 
         See also: https://github.com/opencv/opencv_contrib/blob/master/modules/ximgproc/samples/disparity_filtering.cpp
 
