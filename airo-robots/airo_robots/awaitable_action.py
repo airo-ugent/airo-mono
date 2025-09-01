@@ -1,4 +1,5 @@
 import enum
+import inspect
 import time
 import warnings
 from typing import Callable, Optional
@@ -42,6 +43,12 @@ class AwaitableAction:
         self._default_timeout = default_timeout
         self._default_sleep_resolution = default_sleep_resolution
 
+        # The below values are stored to give better warnings when a timeout occurs.
+        # They store the file and line where this AwaitableAction was created.
+        frame = inspect.currentframe().f_back
+        self._created_file = frame.f_code.co_filename
+        self._created_line = frame.f_lineno
+
     def wait(self, timeout: Optional[float] = None, sleep_resolution: Optional[float] = None) -> ACTION_STATUS_ENUM:
         """Busy waiting until the termination condition returns true, or until timeout.
 
@@ -78,7 +85,16 @@ class AwaitableAction:
                 self.status = ACTION_STATUS_ENUM.SUCCEEDED
                 return self.status
             if timeout < 0:
-                warnings.warn("Action timed out. Make sure this was expected.")
+                frame = inspect.currentframe()  # current frame
+                prev_frame = frame.f_back  # previous frame
+                warnings.warn(
+                    f"""Action timed out. Make sure this was expected.
+    This AwaitableAction was created at:
+        {self._created_file}:{self._created_line}.
+    `wait` was called from:
+        {prev_frame.f_code.co_filename}:{prev_frame.f_lineno}."""
+                )
+
                 return ACTION_STATUS_ENUM.TIMEOUT
 
     def is_done(self) -> bool:

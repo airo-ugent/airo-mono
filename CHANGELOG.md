@@ -12,6 +12,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 
 ### Changed
+- When an `AwaitableAction` timeouts, it will now print the file and line where it was created, as well as the file and line where `wait()` was called. This can help with debugging timeout issues.
 
 ### Fixed
 
@@ -32,28 +33,32 @@ In particular, the ZED SDK has been updated to version 5.0, which requires CUDA 
 You will need to update your CUDA installation and upgrade your ZED SDK to version 5.0 to use the ZED camera with airo-mono.
 
 This has implications for downstream packages (or your own code). If you depend on certain software that requires an older version of NumPy, you may need to either:
+
 - update that software to a version that is compatible with NumPy 2.0, or
 - stick with airo-mono version 2025.7.0 or earlier until the software you depend on is updated.
 
 The following changes have been made to airo-mono to support NumPy 2.0:
+
 - Update NumPy to version > 2.0, which may break compatibility with some packages that depend on NumPy.
-  - This forces downstream code to be compatible with the latest NumPy version.
-  - With this change, we also update the OpenCV version to 4.10, which is compatible with NumPy 2.0.
-  - With this change, we also update the Rerun version to 0.23, which is compatible with NumPy 2.0.
-  - With this change, we also update the ZED SDK to version 5.0, which is compatible with NumPy 2.0.
+    - This forces downstream code to be compatible with the latest NumPy version.
+    - With this change, we also update the OpenCV version to 4.10, which is compatible with NumPy 2.0.
+    - With this change, we also update the Rerun version to 0.23, which is compatible with NumPy 2.0.
+    - With this change, we also update the ZED SDK to version 5.0, which is compatible with NumPy 2.0.
 - Update ZED SDK to version 5.0, which changes the API for the ZED camera provided by `airo-camera-toolkit` in the `Zed` class.
-  - This requires CUDA 12.8 to be installed.
-  - Depth modes have been replaced: you can now choose between `Zed.NEURAL_LIGHT_DEPTH_MODE`, `Zed.NEURAL_DEPTH_MODE`, and `Zed.NEURAL_PLUS_DEPTH_MODE`.
-  - This improves depth quality, especially when using the neural plus model.
-  - This also improves depth performance, especially when using the neural light model.
-  - For more information, see the [ZED SDK 5.0 blog post](https://www.stereolabs.com/en-be/blog/introducing-zed-sdk-50).
+    - This requires CUDA 12.8 to be installed.
+    - Depth modes have been replaced: you can now choose between `Zed.NEURAL_LIGHT_DEPTH_MODE`, `Zed.NEURAL_DEPTH_MODE`, and `Zed.NEURAL_PLUS_DEPTH_MODE`.
+    - This improves depth quality, especially when using the neural plus model.
+    - This also improves depth performance, especially when using the neural light model.
+    - For more information, see the [ZED SDK 5.0 blog post](https://www.stereolabs.com/en-be/blog/introducing-zed-sdk-50).
 
 ### Added
+
 - Add documentation on how to include custom sensors for odometry.
 
 ### Changed
 
 ### Fixed
+
 - The `KELORobile` `move_platform_to_pose` method now calls the correct `get_odometry` method, allowing custom odometry implementations.
 
 ### Removed
