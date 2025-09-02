@@ -90,7 +90,8 @@ class BinarySegmentationMask:
     """
 
     def __init__(self, bitmap: np.ndarray):
-        assert np.array_equal((bitmap == 1.0) * 1.0, bitmap), "bitmap must be 1 or 0 numpy array"
+        if not np.array_equal((bitmap == 1.0) * 1.0, bitmap):
+            raise ValueError("bitmap must be 1 or 0 numpy array")
         bitmap = bitmap.astype(np.uint8)
         self.bitmap = bitmap
 
@@ -168,8 +169,10 @@ class BinarySegmentationMask:
         """Convert a bitmap to a compressed coco RLEDict"""
         b = np.asfortranarray(self.bitmap.astype(np.uint8))
         encoded_rle: RLEDict = mask.encode(b)
-        assert isinstance(encoded_rle["counts"], bytes)
-        encoded_rle["counts"] = encoded_rle["counts"].decode("utf-8")
+        if isinstance(encoded_rle["counts"], bytes):
+            encoded_rle["counts"] = encoded_rle["counts"].decode("utf-8")
+        else:
+            raise ValueError("encoded RLE 'counts' should be bytes")
         return encoded_rle
 
 

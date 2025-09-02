@@ -46,12 +46,16 @@ class Crop(ImageTransform):
 
     def transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
-        assert x >= self.x and x < self.x + self.w
-        assert y >= self.y and y < self.y + self.h
+        if not (x >= self.x and x < self.x + self.w):
+            raise ValueError(f"x-coordinate {x} is outside of the crop range [{self.x}, {self.x + self.w})")
+        if not (y >= self.y and y < self.y + self.h):
+            raise ValueError(f"y-coordinate {y} is outside of the crop range [{self.y}, {self.y + self.h})")
         return x - self.x, y - self.y
 
     def reverse_transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
-        assert x >= 0 and x < self.w
-        assert y >= 0 and y < self.h
+        if not (x >= 0 and x < self.w):
+            raise ValueError(f"x-coordinate {x} is outside of the crop range [0, {self.w})")
+        if not (y >= 0 and y < self.h):
+            raise ValueError(f"y-coordinate {y} is outside of the crop range [0, {self.h})")
         return x + self.x, y + self.y

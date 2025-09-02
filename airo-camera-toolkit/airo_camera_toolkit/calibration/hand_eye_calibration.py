@@ -66,7 +66,8 @@ def do_camera_robot_calibration(
 
     # For now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
     # TODO: make this more generic by providing a teach mode function in the PositionManipulator interface?
-    assert isinstance(robot, URrtde), "Only UR robots are supported for now."
+    if not isinstance(robot, URrtde):
+        raise NotImplementedError("Only UR robots are supported for now.")
     robot.rtde_control.teachMode()
 
     MIN_POSES = 3

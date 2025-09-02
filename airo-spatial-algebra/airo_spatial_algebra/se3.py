@@ -179,7 +179,8 @@ def normalize_so3_matrix(matrix: np.ndarray) -> np.ndarray:
     will construct new x vector as y cross z, then construct new y vector as z cross x, so that x,y,z are orthogonal
 
     """
-    assert matrix.shape == (3, 3), "matrix is not a 3x3 matrix"
+    if not matrix.shape == (3, 3):
+        raise IndexError("matrix is not a 3x3 matrix")
     return trnorm(matrix)
 
 
@@ -192,7 +193,7 @@ def _assert_is_so3_matrix(matrix: np.ndarray) -> None:
 
     """
     if matrix.shape != (3, 3):
-        raise ValueError("matrix is not a 3x3 matrix")
+        raise IndexError("matrix is not a 3x3 matrix")
     if not np.allclose(matrix @ matrix.T, np.eye(3)):
         raise ValueError(
             "matrix is not orthnormal, i.e. its base vectors are not perpendicular. If you are sure this is a numerical issue, use normalize_so3_matrix()"
@@ -208,7 +209,7 @@ def _assert_is_se3_matrix(matrix: np.ndarray) -> None:
     This function will raise a ValueError if the matrix is not valid
     """
     if matrix.shape != (4, 4):
-        raise ValueError("matrix is not a 4x4 matrix")
+        raise IndexError("matrix is not a 4x4 matrix")
     if not np.allclose(matrix[3, :], np.array([0, 0, 0, 1])):
         raise ValueError("last row of matrix is not [0,0,0,1]")
     _assert_is_so3_matrix(matrix[:3, :3])

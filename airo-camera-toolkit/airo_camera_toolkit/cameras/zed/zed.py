@@ -6,17 +6,14 @@ from loguru import logger
 
 try:
     import pyzed.sl as sl
-
 except ImportError:
     raise ImportError(
         "You should install the ZED SDK and pip install the python bindings in your environment first, see the installation README."
     )
 
 # check SDK version
-try:
-    version = sl.Camera().get_sdk_version()
-    assert version.split(".")[0] == "5"
-except AssertionError:
+_sdk_version = sl.Camera().get_sdk_version()
+if _sdk_version.split(".")[0] != "5":
     raise ImportError("You should install version 5.X of the SDK!")
 
 import time
@@ -227,7 +224,8 @@ class Zed(StereoRGBDCamera):
         return image
 
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
-        assert view in StereoRGBDCamera._VIEWS
+        if view not in StereoRGBDCamera._VIEWS:
+            raise ValueError(f"view must be one of {self._VIEWS}, but was {view}")
         image_bgra: OpenCVIntImageType
         if view == StereoRGBDCamera.RIGHT_RGB:
             self.camera.retrieve_image(self.image_matrix_right, sl.VIEW.RIGHT)
@@ -240,15 +238,19 @@ class Zed(StereoRGBDCamera):
         return image
 
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        if self.depth_mode == self.NONE_DEPTH_MODE:
+            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
+        if not self.depth_enabled:
+            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_measure(self.depth_matrix, sl.MEASURE.DEPTH)
         depth_map = self.depth_matrix.get_data()
         return depth_map
 
     def _retrieve_depth_image(self) -> NumpyIntImageType:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        if self.depth_mode == self.NONE_DEPTH_MODE:
+            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
+        if not self.depth_enabled:
+            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_image(self.depth_image_matrix, sl.VIEW.DEPTH)
         image_bgra = self.depth_image_matrix.get_data()
         # image = image[..., :3]
@@ -256,8 +258,10 @@ class Zed(StereoRGBDCamera):
         return image
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        if self.depth_mode == self.NONE_DEPTH_MODE:
+            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
+        if not self.depth_enabled:
+            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_measure(self.point_cloud_matrix, sl.MEASURE.XYZ)
         # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
         # can be nan,nan,nan, nan (no point in the point_cloud on this pixel)
@@ -276,8 +280,10 @@ class Zed(StereoRGBDCamera):
         return self.confidence_matrix.get_data()  # single channel float32 image
 
     def get_colored_point_cloud(self) -> PointCloud:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        if self.depth_mode == self.NONE_DEPTH_MODE:
+            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
+        if not self.depth_enabled:
+            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
 
         self._grab_images()
         return self._retrieve_colored_point_cloud()

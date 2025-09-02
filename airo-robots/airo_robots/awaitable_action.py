@@ -74,9 +74,10 @@ class AwaitableAction:
         # the result of some measurements.
         sleep_resolution = sleep_resolution or self._default_sleep_resolution
         timeout = timeout or self._default_timeout
-        assert (
-            sleep_resolution > 0.001
-        ), "sleep resolution must be at least 1 ms, otherwise the relative error of a sleep becomes too large to be meaningful"
+        if sleep_resolution <= 0.001:
+            raise ValueError(
+                "sleep resolution must be at least 1 ms, otherwise the relative error of a sleep becomes too large to be meaningful"
+            )
         if not self.status == ACTION_STATUS_ENUM.EXECUTING:
             return self.status
         while True:

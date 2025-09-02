@@ -40,8 +40,10 @@ class Resize(ImageTransform):
 
     def transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
-        assert x >= 0 and x < self._input_w
-        assert y >= 0 and y < self._input_h
+        if not (x >= 0 and x < self._input_w):
+            raise ValueError(f"x-coordinate {x} is outside of the input image range [0, {self._input_w})")
+        if not (y >= 0 and y < self._input_h):
+            raise ValueError(f"y-coordinate {y} is outside of the input image range [0, {self._input_h})")
 
         w_scale = self.w / self._input_w
         h_scale = self.h / self._input_h
@@ -56,8 +58,10 @@ class Resize(ImageTransform):
 
     def reverse_transform_point(self, point: ImagePointType) -> ImagePointType:
         x, y = point
-        assert x >= 0 and x < self.w
-        assert y >= 0 and y < self.h
+        if not (x >= 0 and x < self.w):
+            raise ValueError(f"x-coordinate {x} is outside of the resized image range [0, {self.w})")
+        if not (y >= 0 and y < self.h):
+            raise ValueError(f"y-coordinate {y} is outside of the resized image range [0, {self.h})")
         w_scale_inverse = self._input_w / self.w
         h_scale_inverse = self._input_h / self.h
 
