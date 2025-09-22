@@ -81,6 +81,9 @@ JointPathType = np.ndarray
 TimesType = np.ndarray
 """ a (T,) array of monotonically increasing times (float), corresponding to a path"""
 
+JointPathConstraintType = Tuple[Callable[[JointConfigurationType], float], float]
+"""a tuple of a constraint function and a tolerance value: when the constraint function's absolute output is smaller than the tolerance, the constraint is satisfied."""
+
 
 @dataclass
 class JointPathContainer:
@@ -88,6 +91,7 @@ class JointPathContainer:
     velocities: Optional[JointPathType] = None
     accelerations: Optional[JointPathType] = None
     efforts: Optional[JointPathType] = None
+    constraint: Optional[JointPathConstraintType] = None
 
 
 @dataclass

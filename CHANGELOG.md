@@ -9,8 +9,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Breaking changes
 - The ZED confidence map now returns values between 0 and 1 instead of 100 to 0, to be consistent with the newly added confidence maps in airo-mono.
-
 - Assertions have been replaced with proper error handling and exceptions in several places to improve robustness and provide clearer error messages. This may affect existing code that relies on assertions for error checking.
+
 
 ### Added
 - Add generic support for depth confidence maps in `airo-camera-toolkit`. Confidence maps are single-channel float32 images with values between 0 and 1, where 0 means no confidence and 1 means full confidence. A type has been added to `airo-typing`: `NumpyConfidenceMapType`.
@@ -18,6 +18,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
   - The `StereoRGBDCamera` class has a more advanced implementation, which uses the left and right RGB images to compute a confidence map based on the disparity map. It uses the OpenCV `StereoSGBM` algorithm to compute the disparity map and then computes the confidence map based on the disparity values.
   - The `Realsense` class has a similar implementation to `StereoRGBDCamera`, but it uses a disparity map computed from the infrared images instead of the RGB images (because the D435 does not have a stereo RGB setup).
   - The `Zed` class has a built-in confidence map that is provided by the ZED SDK.
+- `execute_trajectory` methods for executing time-parameterized trajectories on single and dual arm set-ups [#150](https://github.com/airo-ugent/airo-mono/issues/150)
+- Unit tests for `execute_trajectory` methods
 
 ### Changed
 - When an `AwaitableAction` timeouts, it will now print the file and line where it was created, as well as the file and line where `wait()` was called. This can help with debugging timeout issues.
@@ -78,12 +80,10 @@ The following changes have been made to airo-mono to support NumPy 2.0:
 ### Added
 
 ### Changed
-
 - Update airo-tulip to version 0.3.0 for better orientation estimation.
 - Use [`airo-ipc`](https://github.com/airo-ugent/airo-ipc) for multiprocessing in `airo-camera-toolkit`.
 
 ### Fixed
-
 - Fixed a bug when the KELO Robile platform was moving around multiples of 360 degrees, where the target angle would switch.
 - Fixed a bug where the KELO Robile platform would refuse to move to a pose if delta angle was close to 0.
 
@@ -92,14 +92,12 @@ The following changes have been made to airo-mono to support NumPy 2.0:
 ## 2025.4.0
 
 ### Breaking changes
-
-- internal dependencies are now listed as regular dependencies in the `setup.py` file to overcome issues and make the installation process less complicated. This implies you need to install packages according to their dependencies and can no longer use the `external` tag as in `pip install airo-typing[external]`.
-  see [issue #91](https://github.com/airo-ugent/airo-mono/issues/91) and
-  [PR](https://github.com/airo-ugent/airo-mono/pull/108) for more details.
-- `PointCloud` dataclass replaces the `ColoredPointCloudType` to support point cloud attritubes
+ - internal dependencies are now listed as regular dependencies in the `setup.py` file to overcome issues and make the installation process less complicated. This implies you need to install packages according to their dependencies and can no longer use the `external` tag as in `pip install airo-typing[external]`.
+ see [issue #91](https://github.com/airo-ugent/airo-mono/issues/91) and
+ [PR](https://github.com/airo-ugent/airo-mono/pull/108) for more details.
+ - `PointCloud` dataclass replaces the `ColoredPointCloudType` to support point cloud attritubes
 
 ### Added
-
 - add method `as_single_polygon` to combine disconnected parts of a binary mask into a single polygon to the `Mask` class, useful for data formats that only allow for a single polygon such as YOLO.
 - `PointCloud` dataclass as the main data structure for point clouds in airo-mono
 - Notebooks to get started with point clouds, checking performance and logging to rerun
@@ -114,7 +112,6 @@ The following changes have been made to airo-mono to support NumPy 2.0:
 - airo-mono packages are now on PyPI 🎉
 
 ### Changed
-
 - `coco-to-yolo` conversion now creates a single polygon of all disconnected parts of the mask instead of simply taking the first polygon of the list.
 - Dropped support for python 3.8 and added 3.11 to the testing matrix [#103](https://github.com/airo-ugent/airo-mono/issues/103).
 - Set python version to 3.10 because of an issue with the `ur_rtde` wheels [#121](https://github.com/airo-ugent/airo-mono/issues/121). Updated README.md to reflect this change.
@@ -123,7 +120,6 @@ The following changes have been made to airo-mono to support NumPy 2.0:
 - Locked `numpy` to versions `<2.0` for compatibility with `opencv`, since we are using a locked version of `opencv` that is not compatible with newer versions of `numpy`.
 
 ### Fixed
-
 - Fixed bug in `get_colored_point_cloud()` that removed some points see issue [#25](https://github.com/airo-ugent/airo-mono/issues/25).
 - Fixed bug requiring unplug-and-plug of USB cable for Realsense: see issue [#109](https://github.com/airo-ugent/airo-mono/issues/109).
 - Fixed bug with Realsense cameras raising `RuntimeErrors` in RGB-depth alignment when CPU is busy. The camera will now try again once after 1 second.
@@ -135,7 +131,6 @@ The following changes have been made to airo-mono to support NumPy 2.0:
 - The wait interval for shared memory files has been reduced to .5 seconds (from 5), to speed up application start times.
 
 ### Removed
-
 - `ColoredPointCloudType`
 
 ## 2024.1.0
@@ -143,7 +138,6 @@ The following changes have been made to airo-mono to support NumPy 2.0:
 ### Breaking changes
 
 ### Added
-
 - Calendar-based versioning scheme and introduction of accompanying changelog.
 
 ### Changed
