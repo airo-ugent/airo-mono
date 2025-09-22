@@ -1,10 +1,13 @@
 import abc
 
+import cv2
+import numpy as np
 from airo_camera_toolkit.point_clouds.conversions import open3d_to_point_cloud
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,
     HomogeneousMatrixType,
+    NumpyConfidenceMapType,
     NumpyDepthMapType,
     NumpyFloatImageType,
     NumpyIntImageType,
@@ -120,6 +123,41 @@ class DepthCamera(Camera, abc.ABC):
         """Returns the current depth image in the memory buffer."""
         raise NotImplementedError
 
+    def get_confidence_map(self) -> NumpyConfidenceMapType:
+        """Get a confidence map for the depth map.
+
+        The confidence map is a 2D array of floats, that provide a measure of confidence in the depth estimate for each pixel.
+        The values are between 0 and 1, where 1 indicates high confidence and 0 indicates low confidence.
+
+        Note that not all stereo depth cameras provide a confidence map. We provide a default (naive) implementation.
+        It computes a confidence map based on depth discontinuities using OpenCV's Canny edge detection.
+        This is based on the assumption that depth estimates are less reliable at depth discontinuities.
+
+        Child classes can override this method to provide a more accurate confidence map if available.
+        For example:
+        - StereoRGBDCamera provides a confidence map based on disparity between left and right RGB images using OpenCV's SGBM algorithm implementation.
+        - Realsense provides a confidence map based on disparity between left and right infrared images using OpenCV's SGBM algorithm implementation.
+        - ZED provides a confidence map based on the camera's internal confidence measure.
+
+        See also: https://github.com/opencv/opencv_contrib/blob/master/modules/ximgproc/samples/disparity_filtering.cpp
+
+        Returns:
+            np.ndarray: the confidence map, a single channel float image of the same resolution as the depth map, with values between 0 and 1
+        """
+        self._grab_images()
+        return self._retrieve_confidence_map()
+
+    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
+        """Returns a default confidence map for the depth map."""
+
+        # This is a very basic implementation, based on depth discontinuities using OpenCV's Canny edge detection.
+        depth_map = self._retrieve_depth_map()
+        depth_map_uint8 = np.empty_like(depth_map, dtype=np.uint8)
+        depth_map_uint8 = cv2.normalize(depth_map, depth_map_uint8, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        edges = cv2.Canny(depth_map_uint8, 100, 200)
+        confidence_map = 1.0 - (edges / 255.0)  # edges are 255, so invert to get confidence
+        return confidence_map
+
 
 class RGBDCamera(RGBCamera, DepthCamera):
     """Base class for all RGBD cameras"""
@@ -204,3 +242,41 @@ class StereoRGBDCamera(RGBDCamera):
         The left view is usually considered to be the 'camera frame', i.e. this is the frame that is used to define the camara extrinsics matrix
         """
         raise NotImplementedError
+
+    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
+        """Returns a confidence map for the depth map."""
+
+        # Based on disparity between left and right RGB images using OpenCV's SGBM algorithm implementation.
+
+        # default values for SGBM according to OpenCV docs
+        max_disp = 160  # must be divisible by 16
+        window_size = 3
+        p1 = 216  # 24 * window_size ** 2
+        p2 = 864  # 96 * window_size ** 2
+        pre_filter_cap = 63
+        wls_lambda = 8000.0
+        wls_sigma = 1.5
+
+        # get the left and right images
+        left = self._retrieve_rgb_image_as_int(self.LEFT_RGB)
+        right = self._retrieve_rgb_image_as_int(self.RIGHT_RGB)
+
+        left_matcher = cv2.StereoSGBM.create(
+            minDisparity=0,
+            numDisparities=max_disp,
+            blockSize=window_size,
+            P1=p1,
+            P2=p2,
+            preFilterCap=pre_filter_cap,
+            mode=cv2.StereoSGBM_MODE_SGBM_3WAY,
+        )
+        wls_filter = cv2.ximgproc.createDisparityWLSFilter(left_matcher)
+        right_matcher = cv2.ximgproc.createRightMatcher(left_matcher)
+        left_disp = left_matcher.compute(left, right).astype(np.float32) / 16.0
+        right_disp = right_matcher.compute(right, left).astype(np.float32) / 16.0
+        wls_filter.setLambda(wls_lambda)
+        wls_filter.setSigmaColor(wls_sigma)
+        wls_filter.filter(left_disp, left, disparity_map_right=right_disp)
+        confidence_map = wls_filter.getConfidenceMap()
+
+        return confidence_map / 255.0

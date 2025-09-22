@@ -26,6 +26,7 @@ from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,
     HomogeneousMatrixType,
+    NumpyConfidenceMapType,
     NumpyDepthMapType,
     NumpyFloatImageType,
     NumpyIntImageType,
@@ -275,9 +276,14 @@ class Zed(StereoRGBDCamera):
 
         return PointCloud(positions, colors)
 
-    def _retrieve_confidence_map(self) -> NumpyFloatImageType:
+    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
         self.camera.retrieve_measure(self.confidence_matrix, sl.MEASURE.CONFIDENCE)
-        return self.confidence_matrix.get_data()  # single channel float32 image
+        zed_confidence_map = self.confidence_matrix.get_data()  # single channel float32 image
+        # The ZED confidence map is in the range [0, 100], where 0 is the highest confidence and 100 the lowest.
+        # See: https://www.stereolabs.com/docs/depth-sensing/depth-settings#depth-confidence-filtering
+        # We convert it to a more standard range [0, 1], where 0 is the lowest confidence and 1 the highest.
+        confidence_map = 1 - zed_confidence_map / 100.0
+        return confidence_map
 
     def get_colored_point_cloud(self) -> PointCloud:
         if self.depth_mode == self.NONE_DEPTH_MODE:
