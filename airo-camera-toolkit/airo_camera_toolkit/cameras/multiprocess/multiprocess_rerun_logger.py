@@ -36,7 +36,7 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         # This randomly fails, just don't log an image if it does
         try:
             image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
-        except AssertionError as e:
+        except (TypeError, IndexError) as e:
             print(e)
             return
         image_rgb = image_bgr[:, :, ::-1]
@@ -82,7 +82,8 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
     def _log_depth_image(self) -> None:
         import rerun as rr
 
-        assert isinstance(self._receiver, MultiprocessRGBDReceiver)
+        if not isinstance(self._receiver, MultiprocessRGBDReceiver):
+            raise TypeError("Receiver is not a MultiprocessRGBDReceiver")
 
         depth_image = self._receiver.get_depth_image()
         if self._image_transform is not None:

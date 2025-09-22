@@ -2,33 +2,28 @@ from __future__ import annotations
 
 import numpy as np
 from airo_typing import NumpyFloatImageType, NumpyIntImageType, OpenCVIntImageType, TorchFloatImageType
+from typing_extensions import TypeGuard
 
 
-def is_image_array(image: object) -> bool:
+def is_image_array(image: object) -> TypeGuard[np.ndarray]:
     """checks if an object is a numpy array with 3 dimensions, which is the only thing all image formats have in common"""
-    if not isinstance(image, np.ndarray):
-        return False
-    valid = True
-    valid = valid and image.ndim == 3
-    return valid
+    return isinstance(image, np.ndarray) and image.ndim == 3
 
 
 def is_float_image_array(image: object) -> bool:
-    """checks if an object is a valid  int image array
+    """checks if an object is a valid float image array
     by checking
     - if it is a valid image array
     - if it contains floats
     - and if the first element is in the right range"""
-    valid = is_image_array(image)
-
-    # make mypy happy but this check is already performed..
-    assert isinstance(image, np.ndarray)
-
-    valid = valid and image.dtype in (np.float32, np.float64, np.float16)
-    # check first pixel instead of global max to reduce computational burden
-    # doing this for a 6M float image (1000x 2000 x3) takes a few ms
-    valid = valid and image[0, 0, 0] <= 1.0
-    valid = valid and image[0, 0, 0] >= 0.0
+    if is_image_array(image):
+        valid = image.dtype in (np.float32, np.float64, np.float16)
+        # check first pixel instead of global max to reduce computational burden
+        # doing this for a 6M float image (1000x 2000 x3) takes a few ms
+        valid = valid and image[0, 0, 0] <= 1.0
+        valid = valid and image[0, 0, 0] >= 0.0
+    else:
+        valid = False
     return valid
 
 
@@ -61,31 +56,39 @@ class ImageConverter:
     """
 
     def __init__(self, image_in_numpy_float_format: NumpyFloatImageType) -> None:
-        assert is_float_image_array(image_in_numpy_float_format)
-        assert image_in_numpy_float_format.shape[2] == 3
+        if not is_float_image_array(image_in_numpy_float_format):
+            raise TypeError("image_in_numpy_float_format must be a valid float image array")
+        if image_in_numpy_float_format.shape[2] != 3:
+            raise IndexError("image_in_numpy_float_format must have 3 channels in the last dimension")
 
         self._image_in_numpy_float_format = image_in_numpy_float_format
 
     @classmethod
     def from_numpy_format(cls, image: NumpyFloatImageType) -> ImageConverter:
-        assert is_float_image_array(image)
-        assert image.shape[2] == 3
+        if not is_float_image_array(image):
+            raise TypeError("image must be a valid float image array")
+        if image.shape[2] != 3:
+            raise IndexError("image must have 3 channels in the last dimension")
         # create copy to avoid altering the input image
         image = np.copy(image)
         return ImageConverter(image)
 
     @classmethod
     def from_numpy_int_format(cls, image: NumpyIntImageType) -> ImageConverter:
-        assert is_int_image_array(image)
-        assert image.shape[2] == 3
+        if not is_int_image_array(image):
+            raise TypeError("image must be a valid int image array")
+        if image.shape[2] != 3:
+            raise IndexError("image must have 3 channels in the last dimension")
         # convert to floats (creates a copy)
         image = image.astype(np.float32) / 255.0
         return ImageConverter(image)
 
     @classmethod
     def from_opencv_format(cls, image: OpenCVIntImageType) -> ImageConverter:
-        assert is_int_image_array(image)
-        assert image.shape[2] == 3
+        if not is_int_image_array(image):
+            raise TypeError("image must be a valid int image array")
+        if image.shape[2] != 3:
+            raise IndexError("image must have 3 channels in the last dimension")
 
         # convert to float (creates copy)
         # can take a few ms..
@@ -98,8 +101,10 @@ class ImageConverter:
 
     @classmethod
     def from_torch_format(cls, image: TorchFloatImageType) -> ImageConverter:
-        assert is_float_image_array(image)
-        assert image.shape[0] == 3
+        if not is_float_image_array(image):
+            raise TypeError("image must be a valid float image array")
+        if image.shape[0] != 3:
+            raise IndexError("image must have 3 channels in the first dimension")
 
         # create copy to avoid altering the input image
         image = np.copy(image)
@@ -114,7 +119,7 @@ class ImageConverter:
     @property
     def image_in_opencv_format(self) -> OpenCVIntImageType:
         image = self._image_in_numpy_float_format[:, :, ::-1]
-        # can take up to a few ms..
+        # can take up to a few ms.
         image *= 255.0
         return image.astype(np.uint8)
 

@@ -69,9 +69,8 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         speed: Optional[float] = None,
     ) -> AwaitableAction:
         """Shared implementation for move_to_tcp_pose and move_linear_to_tcp_pose. Do not call directly."""
-        assert (
-            left_tcp_pose_in_base is not None or right_tcp_pose_in_base is not None
-        ), "At least one of the TCP poses should be specified"
+        if left_tcp_pose_in_base is None and right_tcp_pose_in_base is None:
+            raise ValueError("At least one of the TCP poses should be specified")
         awaitables: List[AwaitableAction] = []
         if left_tcp_pose_in_base is not None:
             left_tcp_pose_left_base = self.transform_pose_to_left_arm_base(left_tcp_pose_in_base)
@@ -151,9 +150,8 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         Returns:
             awaitable with termination condition that the time has passed. Waiting on this action has limited accuracy on non real-time OS, cf the airo-robots Readme.
         """
-        assert (
-            left_tcp_pose_in_base is not None or right_tcp_pose_in_base is not None
-        ), "At least one of the TCP poses should be specified"
+        if left_tcp_pose_in_base is None and right_tcp_pose_in_base is None:
+            raise ValueError("At least one of the TCP poses should be specified")
 
         awaitables: List[AwaitableAction] = []
         if left_tcp_pose_in_base is not None:
