@@ -8,9 +8,20 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## 2025.9.0
+
+### Breaking changes
 - The ZED confidence map now returns values between 0 and 1 instead of 100 to 0, to be consistent with the newly added confidence maps in airo-mono.
 - Assertions have been replaced with proper error handling and exceptions in several places to improve robustness and provide clearer error messages. This may affect existing code that relies on assertions for error checking.
-
 
 ### Added
 - Add generic support for depth confidence maps in `airo-camera-toolkit`. Confidence maps are single-channel float32 images with values between 0 and 1, where 0 means no confidence and 1 means full confidence. A type has been added to `airo-typing`: `NumpyConfidenceMapType`.
