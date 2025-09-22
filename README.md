@@ -71,13 +71,17 @@ robot.move_linear_to_tcp_pose(grasp_pose).wait()
 gripper.close().wait()
 ```
 
+### Getting started 🚀
+To get started with `airo-mono`, check out our [getting started guide](docs/getting_started.md) which provides examples and explanations of the main functionalities provided by the packages.
 
 ### Projects using `airo-mono` 🎉
 Probably the best way to learn what `airo-mono` has to offer, is to look at the projects it powers:
 
 | Project                                                                     | Description                                                                                                 |
 | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 🍹 [ITF World 2025](https://airo.ugent.be/itfworld/) | airo-mono powered our demos at ITF World 2025 |
 | 👕 [`cloth-competition`](https://github.com/Victorlouisdg/cloth-competition) | airo-mono is the backbone of the [ICRA 2024 Cloth Competition](https://airo.ugent.be/cloth_competition/) 🏆! |
+| 🧪 [ITF World 2024](https://airo.ugent.be/news/itf2024/) | airo-mono powered our demo at ITF World 2024 |
 
 ## Installation 🔧
 

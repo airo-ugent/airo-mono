@@ -1,6 +1,6 @@
 import multiprocessing
 import time
-from multiprocessing import Process
+from multiprocessing.context import SpawnProcess
 from typing import Optional
 
 import loguru
@@ -12,7 +12,7 @@ from airo_camera_toolkit.utils.image_converter import ImageConverter
 logger = loguru.logger
 
 
-class MultiprocessRGBRerunLogger(Process):
+class MultiprocessRGBRerunLogger(SpawnProcess):
     def __init__(
         self,
         shared_memory_namespace: str,
@@ -36,7 +36,7 @@ class MultiprocessRGBRerunLogger(Process):
         # This randomly fails, just don't log an image if it does
         try:
             image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
-        except AssertionError as e:
+        except (TypeError, IndexError) as e:
             print(e)
             return
         image_rgb = image_bgr[:, :, ::-1]
@@ -50,7 +50,7 @@ class MultiprocessRGBRerunLogger(Process):
         import rerun as rr
 
         rr.init(self._rerun_application_id)
-        rr.connect()
+        rr.connect_grpc()
 
         self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
 
@@ -82,7 +82,8 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
     def _log_depth_image(self) -> None:
         import rerun as rr
 
-        assert isinstance(self._receiver, MultiprocessRGBDReceiver)
+        if not isinstance(self._receiver, MultiprocessRGBDReceiver):
+            raise TypeError("Receiver is not a MultiprocessRGBDReceiver")
 
         depth_image = self._receiver.get_depth_image()
         if self._image_transform is not None:
@@ -94,7 +95,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         import rerun
 
         rerun.init(self._rerun_application_id)
-        rerun.connect()
+        rerun.connect_grpc()
 
         self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace)
 

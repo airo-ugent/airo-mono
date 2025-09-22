@@ -6,18 +6,15 @@ from loguru import logger
 
 try:
     import pyzed.sl as sl
-
 except ImportError:
     raise ImportError(
         "You should install the ZED SDK and pip install the python bindings in your environment first, see the installation README."
     )
 
 # check SDK version
-try:
-    version = sl.Camera().get_sdk_version()
-    assert version.split(".")[0] == "4"
-except AssertionError:
-    raise ImportError("You should install version 4.X of the SDK!")
+_sdk_version = sl.Camera().get_sdk_version()
+if _sdk_version.split(".")[0] != "5":
+    raise ImportError("You should install version 5.X of the SDK!")
 
 import time
 
@@ -29,6 +26,7 @@ from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,
     HomogeneousMatrixType,
+    NumpyConfidenceMapType,
     NumpyDepthMapType,
     NumpyFloatImageType,
     NumpyIntImageType,
@@ -49,19 +47,18 @@ class Zed(StereoRGBDCamera):
     """
 
     # for more info on the different depth modes, see:
-    # https://www.stereolabs.com/docs/api/group__Depth__group.html#ga391147e2eab8e101a7ff3a06cbed22da
+    # https://www.stereolabs.com/docs/depth-sensing/depth-modes
     # keep in mind though that the depth map is calculated during the `grab`operation, so the depth mode also influences the
     # fps of the rgb images, which is why the default depth mode is None
 
     NEURAL_DEPTH_MODE = sl.DEPTH_MODE.NEURAL
+    NEURAL_LIGHT_DEPTH_MODE = sl.DEPTH_MODE.NEURAL_LIGHT
+    NEURAL_PLUS_DEPTH_MODE = sl.DEPTH_MODE.NEURAL_PLUS
 
     # no depth mode, higher troughput of the RGB images as the GPU has to do less work
     # can also turn depth off in the runtime params, which is recommended as it allows for switching at runtime.
     NONE_DEPTH_MODE = sl.DEPTH_MODE.NONE
-    PERFORMANCE_DEPTH_MODE = sl.DEPTH_MODE.PERFORMANCE
-    QUALITY_DEPTH_MODE = sl.DEPTH_MODE.QUALITY
-    ULTRA_DEPTH_MODE = sl.DEPTH_MODE.ULTRA
-    DEPTH_MODES = (NEURAL_DEPTH_MODE, NONE_DEPTH_MODE, PERFORMANCE_DEPTH_MODE, QUALITY_DEPTH_MODE, ULTRA_DEPTH_MODE)
+    DEPTH_MODES = (NEURAL_DEPTH_MODE, NONE_DEPTH_MODE, NEURAL_LIGHT_DEPTH_MODE, NEURAL_PLUS_DEPTH_MODE)
 
     # for info on image resolution, pixel sizes, fov..., see:
     # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
@@ -87,7 +84,7 @@ class Zed(StereoRGBDCamera):
         svo_filepath: Optional[str] = None,
     ) -> None:
         self._resolution = resolution
-        self.fps = fps
+        self._fps = fps
         self.depth_mode = depth_mode
         self.serial_number = int(serial_number) if serial_number else None
 
@@ -131,6 +128,10 @@ class Zed(StereoRGBDCamera):
             self.camera = sl.Camera()
 
         if status != sl.ERROR_CODE.SUCCESS:
+            logger.error(
+                "Could not open Zed camera. Sometimes, unplugging the camera and plugging it back in helps.\n"
+                "Alternatively, try to reboot the camera by running `ZED_Explorer --reboot` in a terminal."
+            )
             raise IndexError(f"Could not open Zed camera, error = {status}")
 
         # TODO: create a configuration class for the runtime parameters
@@ -157,6 +158,11 @@ class Zed(StereoRGBDCamera):
 
         self.confidence_matrix = sl.Mat()
         self.confidence_map = None
+
+    @property
+    def fps(self) -> int:
+        """The frame rate of the camera, in frames per second."""
+        return self._fps
 
     @property
     def resolution(self) -> CameraResolutionType:
@@ -219,7 +225,8 @@ class Zed(StereoRGBDCamera):
         return image
 
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
-        assert view in StereoRGBDCamera._VIEWS
+        if view not in StereoRGBDCamera._VIEWS:
+            raise ValueError(f"view must be one of {self._VIEWS}, but was {view}")
         image_bgra: OpenCVIntImageType
         if view == StereoRGBDCamera.RIGHT_RGB:
             self.camera.retrieve_image(self.image_matrix_right, sl.VIEW.RIGHT)
@@ -232,15 +239,19 @@ class Zed(StereoRGBDCamera):
         return image
 
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        if self.depth_mode == self.NONE_DEPTH_MODE:
+            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
+        if not self.depth_enabled:
+            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_measure(self.depth_matrix, sl.MEASURE.DEPTH)
         depth_map = self.depth_matrix.get_data()
         return depth_map
 
     def _retrieve_depth_image(self) -> NumpyIntImageType:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        if self.depth_mode == self.NONE_DEPTH_MODE:
+            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
+        if not self.depth_enabled:
+            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_image(self.depth_image_matrix, sl.VIEW.DEPTH)
         image_bgra = self.depth_image_matrix.get_data()
         # image = image[..., :3]
@@ -248,8 +259,10 @@ class Zed(StereoRGBDCamera):
         return image
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        if self.depth_mode == self.NONE_DEPTH_MODE:
+            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
+        if not self.depth_enabled:
+            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_measure(self.point_cloud_matrix, sl.MEASURE.XYZ)
         # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
         # can be nan,nan,nan, nan (no point in the point_cloud on this pixel)
@@ -263,13 +276,20 @@ class Zed(StereoRGBDCamera):
 
         return PointCloud(positions, colors)
 
-    def _retrieve_confidence_map(self) -> NumpyFloatImageType:
+    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
         self.camera.retrieve_measure(self.confidence_matrix, sl.MEASURE.CONFIDENCE)
-        return self.confidence_matrix.get_data()  # single channel float32 image
+        zed_confidence_map = self.confidence_matrix.get_data()  # single channel float32 image
+        # The ZED confidence map is in the range [0, 100], where 0 is the highest confidence and 100 the lowest.
+        # See: https://www.stereolabs.com/docs/depth-sensing/depth-settings#depth-confidence-filtering
+        # We convert it to a more standard range [0, 1], where 0 is the lowest confidence and 1 the highest.
+        confidence_map = 1 - zed_confidence_map / 100.0
+        return confidence_map
 
     def get_colored_point_cloud(self) -> PointCloud:
-        assert self.depth_mode != self.NONE_DEPTH_MODE, "Cannot retrieve depth data if depth mode is NONE"
-        assert self.depth_enabled, "Cannot retrieve depth data if depth is disabled"
+        if self.depth_mode == self.NONE_DEPTH_MODE:
+            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
+        if not self.depth_enabled:
+            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
 
         self._grab_images()
         return self._retrieve_colored_point_cloud()
@@ -306,7 +326,7 @@ def _test_zed_implementation() -> None:
 
     # test rgbd stereo camera
 
-    with Zed(Zed.RESOLUTION_2K, fps=15, depth_mode=Zed.PERFORMANCE_DEPTH_MODE) as zed:
+    with Zed(Zed.RESOLUTION_2K, fps=15, depth_mode=Zed.NEURAL_LIGHT_DEPTH_MODE) as zed:
         print(zed.get_colored_point_cloud().points)  # TODO: test the point_cloud more explicity?
         manual_test_stereo_rgbd_camera(zed)
 

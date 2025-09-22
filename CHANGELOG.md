@@ -8,14 +8,80 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
-- `ValueError`s have been replaced with semantically meaningful exceptions in `airo_robots.manipulators`. Code that was using `except ValueError` will need to be updated to catch the new exceptions.
+- The ZED confidence map now returns values between 0 and 1 instead of 100 to 0, to be consistent with the newly added confidence maps in airo-mono.
+- Assertions have been replaced with proper error handling and exceptions in several places to improve robustness and provide clearer error messages. This may affect existing code that relies on assertions for error checking.
+
 
 ### Added
+- Add generic support for depth confidence maps in `airo-camera-toolkit`. Confidence maps are single-channel float32 images with values between 0 and 1, where 0 means no confidence and 1 means full confidence. A type has been added to `airo-typing`: `NumpyConfidenceMapType`.
+  - The `DepthCamera` class has the most basic implementation, which naively assumes that confidence is lower around edges in the depth image. It uses Canny edge detection to find edges in the depth image and creates a confidence map based on the distance to the nearest edge.
+  - The `StereoRGBDCamera` class has a more advanced implementation, which uses the left and right RGB images to compute a confidence map based on the disparity map. It uses the OpenCV `StereoSGBM` algorithm to compute the disparity map and then computes the confidence map based on the disparity values.
+  - The `Realsense` class has a similar implementation to `StereoRGBDCamera`, but it uses a disparity map computed from the infrared images instead of the RGB images (because the D435 does not have a stereo RGB setup).
+  - The `Zed` class has a built-in confidence map that is provided by the ZED SDK.
 - `execute_trajectory` methods for executing time-parameterized trajectories on single and dual arm set-ups [#150](https://github.com/airo-ugent/airo-mono/issues/150)
 - Unit tests for `execute_trajectory` methods
 
 ### Changed
+- When an `AwaitableAction` timeouts, it will now print the file and line where it was created, as well as the file and line where `wait()` was called. This can help with debugging timeout issues.
+
+### Fixed
+
+### Removed
+
+## 2025.8.0
+
+### Breaking changes
+
+#### airo-tulip
+
+- Update airo-tulip to version 0.4.0, which returns odometry to the standard drive encoder based method.
+
+#### NumPy 2
+
+airo-mono is finally upgrading to NumPy 2.0! This is a major change that may break compatibility with some packages that depend on NumPy. Please read the notes below carefully.
+In particular, the ZED SDK has been updated to version 5.0, which requires CUDA 12.8 to be installed.
+You will need to update your CUDA installation and upgrade your ZED SDK to version 5.0 to use the ZED camera with airo-mono.
+
+This has implications for downstream packages (or your own code). If you depend on certain software that requires an older version of NumPy, you may need to either:
+
+- update that software to a version that is compatible with NumPy 2.0, or
+- stick with airo-mono version 2025.7.0 or earlier until the software you depend on is updated.
+
+The following changes have been made to airo-mono to support NumPy 2.0:
+
+- Update NumPy to version > 2.0, which may break compatibility with some packages that depend on NumPy.
+    - This forces downstream code to be compatible with the latest NumPy version.
+    - With this change, we also update the OpenCV version to 4.10, which is compatible with NumPy 2.0.
+    - With this change, we also update the Rerun version to 0.23, which is compatible with NumPy 2.0.
+    - With this change, we also update the ZED SDK to version 5.0, which is compatible with NumPy 2.0.
+- Update ZED SDK to version 5.0, which changes the API for the ZED camera provided by `airo-camera-toolkit` in the `Zed` class.
+    - This requires CUDA 12.8 to be installed.
+    - Depth modes have been replaced: you can now choose between `Zed.NEURAL_LIGHT_DEPTH_MODE`, `Zed.NEURAL_DEPTH_MODE`, and `Zed.NEURAL_PLUS_DEPTH_MODE`.
+    - This improves depth quality, especially when using the neural plus model.
+    - This also improves depth performance, especially when using the neural light model.
+    - For more information, see the [ZED SDK 5.0 blog post](https://www.stereolabs.com/en-be/blog/introducing-zed-sdk-50).
+
+### Added
+
+- Add documentation on how to include custom sensors for odometry.
+
+### Changed
+
+### Fixed
+
+- The `KELORobile` `move_platform_to_pose` method now calls the correct `get_odometry` method, allowing custom odometry implementations.
+
+### Removed
+
+## 2025.7.0
+
+### Breaking changes
+
+### Added
+
+### Changed
 - Update airo-tulip to version 0.3.0 for better orientation estimation.
+- Use [`airo-ipc`](https://github.com/airo-ugent/airo-ipc) for multiprocessing in `airo-camera-toolkit`.
 
 ### Fixed
 - Fixed a bug when the KELO Robile platform was moving around multiples of 360 degrees, where the target angle would switch.

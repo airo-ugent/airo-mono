@@ -71,7 +71,7 @@ class KELORobile(MobileRobot):
     ) -> None:
         stop = False
         while not stop:
-            current_pose = self._kelo_robile.get_odometry()
+            current_pose = self.get_odometry()
             delta_pose = target_pose - current_pose
             # Fix issues around multiples of 2PI
             while delta_pose[2] > np.pi:
@@ -80,7 +80,7 @@ class KELORobile(MobileRobot):
                 delta_pose[2] += 2 * np.pi
 
             vel_vec_angle = np.arctan2(delta_pose[1], delta_pose[0]) - current_pose[2]
-            vel_vec_norm = min(np.linalg.norm(delta_pose[:2]), 0.5)
+            vel_vec_norm = min(np.linalg.norm(delta_pose[:2]).item(), 0.5)
             vel_x = vel_vec_norm * np.cos(vel_vec_angle)
             vel_y = vel_vec_norm * np.sin(vel_vec_angle)
 
