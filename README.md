@@ -8,6 +8,31 @@ Welcome to `airo-mono`! This repository provides ready-to-use Python packages to
 
 Want to learn more about our vision? Check out the in-depth explanation [here](docs/about_this_repo.md)
 
+## Table of Contents
+
+- [Overview](#overview)
+  - [Packages](#packages-)
+  - [Sister repositories](#sister-repositories-)
+  - [Usage & Philosophy](#usage--philosophy-)
+  - [Getting started](#getting-started-)
+  - [Projects using `airo-mono`](#projects-using-airo-mono-)
+- [Installation](#installation-)
+  - [Option 1: Installation from PyPI](#option-1-installation-from-pypi-)
+  - [Option 2: Local clone](#option-2-local-clone-)
+    - [2.1 Conda method](#21-conda-method)
+    - [2.2 Pip method](#22-pip-method)
+  - [Option 3: Git submodule](#option-3-git-submodule-)
+- [Developer guide](#developer-guide-)
+  - [Setup](#setup)
+  - [Coding style](#coding-style-)
+  - [Testing](#testing-)
+  - [Continuous Integration (CI)](#continuous-integration-ci-)
+  - [Creating a new package](#creating-a-new-package-)
+  - [Command Line Interfaces](#command-line-interfaces-)
+  - [Versioning & Releasing](#versioning--releasing-)
+  - [Design choices](#design-choices-)
+    - [Management of local dependencies in a Monorepo](#management-of-local-dependencies-in-a-monorepo)
+
 ## Overview
 
 ### Packages 📦
