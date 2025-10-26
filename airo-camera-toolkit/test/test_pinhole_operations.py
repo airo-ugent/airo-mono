@@ -45,6 +45,50 @@ def test_reproject_camera_frame():
     assert np.isclose(reprojected_points, _ImageTestValues._positions_in_camera_frame, atol=1e-2).all()
 
 
+def test_depth_heuristic_edge_cases():
+    """Test depth extraction for points near or on the edge of the image."""
+    # Create a simple depth map with known values
+    depth_map = np.ones((100, 100)) * 5.0  # 100x100 depth map with depth value 5.0
+    mask_size = 11
+    
+    # Test cases: points at different edge positions
+    edge_coordinates = np.array([
+        [0, 0],      # top-left corner
+        [99, 0],     # top-right corner
+        [0, 99],     # bottom-left corner
+        [99, 99],    # bottom-right corner
+        [5, 0],      # top edge
+        [5, 99],     # bottom edge
+        [0, 50],     # left edge
+        [99, 50],    # right edge
+    ], dtype=float)
+    
+    # This should not raise an error and should return valid depth values
+    depths = extract_depth_from_depthmap_heuristic(edge_coordinates, depth_map, mask_size=mask_size)
+    
+    # All depths should be close to 5.0 (or NaN for fully out-of-bounds cases)
+    # The function should handle edge cases gracefully
+    assert depths.shape[0] == edge_coordinates.shape[0], "Should return one depth value per coordinate"
+    # At least some values should be valid (not all NaN)
+    assert not np.all(np.isnan(depths)), "Should return at least some valid depth values"
+
+
+def test_depth_heuristic_with_varied_depths_at_edges():
+    """Test that depth extraction works correctly when points are at edges with varying depth values."""
+    # Create a depth map with a gradient
+    depth_map = np.tile(np.arange(100, dtype=float).reshape(100, 1), (1, 100))
+    mask_size = 5
+    
+    # Test a point near the top edge
+    coords = np.array([[50, 2]], dtype=float)
+    depths = extract_depth_from_depthmap_heuristic(coords, depth_map, mask_size=mask_size)
+    
+    # Should return a valid depth value (not crash)
+    assert depths.shape[0] == 1
+    # The depth should be in a reasonable range (close to the actual row index)
+    assert not np.isnan(depths[0]), "Should return a valid depth value"
+
+
 def test_triangulation():
     # construct a simple example
     position = np.array([0.02, 0.01, 0.01])

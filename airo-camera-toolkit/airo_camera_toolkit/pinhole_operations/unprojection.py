@@ -153,16 +153,37 @@ def extract_depth_from_depthmap_heuristic(
         raise IndexError("coordinates out of bounds")
 
     # convert coordinates to integers
-    image_coordinates = image_coordinates.astype(np.uint32)
+    image_coordinates = image_coordinates.astype(np.int32)
 
     # extract depth values by taking the percentile of the depth values in a region around the point
     depth_regions = np.empty((image_coordinates.shape[0], (mask_size) ** 2))
     for i in range(image_coordinates.shape[0]):
-        depth_region = depth_map[
-            image_coordinates[i, 1] - mask_size // 2 : image_coordinates[i, 1] + mask_size // 2 + 1,
-            image_coordinates[i, 0] - mask_size // 2 : image_coordinates[i, 0] + mask_size // 2 + 1,
-        ]
-        depth_regions[i, :] = depth_region.flatten()
+        # Calculate the desired mask boundaries (using int32 to avoid overflow)
+        v_start_desired = int(image_coordinates[i, 1]) - mask_size // 2
+        v_end_desired = int(image_coordinates[i, 1]) + mask_size // 2 + 1
+        u_start_desired = int(image_coordinates[i, 0]) - mask_size // 2
+        u_end_desired = int(image_coordinates[i, 0]) + mask_size // 2 + 1
+        
+        # Clip the mask boundaries to the image boundaries
+        v_start = max(0, v_start_desired)
+        v_end = min(depth_map.shape[0], v_end_desired)
+        u_start = max(0, u_start_desired)
+        u_end = min(depth_map.shape[1], u_end_desired)
+        
+        # Extract the valid depth region
+        depth_region = depth_map[v_start:v_end, u_start:u_end]
+        
+        # Pad with NaN if the masked area is smaller than needed
+        if depth_region.size < mask_size ** 2:
+            padded_region = np.full((mask_size, mask_size), np.nan)
+            # Calculate where to place the extracted region within the padded region
+            v_offset = v_start - v_start_desired
+            u_offset = u_start - u_start_desired
+            padded_region[v_offset:v_offset + depth_region.shape[0], u_offset:u_offset + depth_region.shape[1]] = depth_region
+            depth_regions[i, :] = padded_region.flatten()
+        else:
+            depth_regions[i, :] = depth_region.flatten()
+    
     depth_values = np.nanquantile(depth_regions, depth_percentile, axis=1)
 
     return depth_values
