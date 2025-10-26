@@ -156,7 +156,8 @@ def extract_depth_from_depthmap_heuristic(
     image_coordinates = image_coordinates.astype(np.int32)
 
     # extract depth values by taking the percentile of the depth values in a region around the point
-    depth_regions = np.empty((image_coordinates.shape[0], (mask_size) ** 2))
+    mask_size_squared = mask_size ** 2
+    depth_regions = np.empty((image_coordinates.shape[0], mask_size_squared))
     for i in range(image_coordinates.shape[0]):
         # Calculate the desired mask boundaries (using int32 to avoid overflow)
         v_start_desired = int(image_coordinates[i, 1]) - mask_size // 2
@@ -174,7 +175,7 @@ def extract_depth_from_depthmap_heuristic(
         depth_region = depth_map[v_start:v_end, u_start:u_end]
         
         # Pad with NaN if the masked area is smaller than needed
-        if depth_region.size < mask_size ** 2:
+        if depth_region.size < mask_size_squared:
             padded_region = np.full((mask_size, mask_size), np.nan)
             # Calculate where to place the extracted region within the padded region
             v_offset = v_start - v_start_desired
