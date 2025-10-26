@@ -51,27 +51,29 @@ def test_depth_heuristic_edge_cases():
     IMAGE_SIZE = 100
     depth_map = np.ones((IMAGE_SIZE, IMAGE_SIZE)) * 5.0
     mask_size = 11
-    
+
     # Test cases: points at different edge positions
-    edge_coordinates = np.array([
-        [0, 0],                          # top-left corner
-        [IMAGE_SIZE - 1, 0],             # top-right corner
-        [0, IMAGE_SIZE - 1],             # bottom-left corner
-        [IMAGE_SIZE - 1, IMAGE_SIZE - 1],# bottom-right corner
-        [5, 0],                          # top edge
-        [5, IMAGE_SIZE - 1],             # bottom edge
-        [0, 50],                         # left edge
-        [IMAGE_SIZE - 1, 50],            # right edge
-    ], dtype=float)
-    
+    edge_coordinates = np.array(
+        [
+            [0, 0],  # top-left corner
+            [IMAGE_SIZE - 1, 0],  # top-right corner
+            [0, IMAGE_SIZE - 1],  # bottom-left corner
+            [IMAGE_SIZE - 1, IMAGE_SIZE - 1],  # bottom-right corner
+            [5, 0],  # top edge
+            [5, IMAGE_SIZE - 1],  # bottom edge
+            [0, 50],  # left edge
+            [IMAGE_SIZE - 1, 50],  # right edge
+        ],
+        dtype=float,
+    )
+
     # This should not raise an error and should return valid depth values
     depths = extract_depth_from_depthmap_heuristic(edge_coordinates, depth_map, mask_size=mask_size)
-    
-    # All depths should be close to 5.0 (or NaN for fully out-of-bounds cases)
-    # The function should handle edge cases gracefully
+
+    # All depths should be close to 5.0
     assert depths.shape[0] == edge_coordinates.shape[0], "Should return one depth value per coordinate"
-    # At least some values should be valid (not all NaN)
-    assert not np.all(np.isnan(depths)), "Should return at least some valid depth values"
+    # Check all depths are close to the expected value (5.0)
+    assert np.allclose(depths, 5.0, atol=1e-6), f"All depths should be close to 5.0, got {depths}"
 
 
 def test_depth_heuristic_with_varied_depths_at_edges():
@@ -80,15 +82,18 @@ def test_depth_heuristic_with_varied_depths_at_edges():
     IMAGE_SIZE = 100
     depth_map = np.tile(np.arange(IMAGE_SIZE, dtype=float).reshape(IMAGE_SIZE, 1), (1, IMAGE_SIZE))
     mask_size = 5
-    
+
     # Test a point near the top edge
     coords = np.array([[50, 2]], dtype=float)
     depths = extract_depth_from_depthmap_heuristic(coords, depth_map, mask_size=mask_size)
-    
+
     # Should return a valid depth value (not crash)
     assert depths.shape[0] == 1
-    # The depth should be in a reasonable range (close to the actual row index)
-    assert not np.isnan(depths[0]), "Should return a valid depth value"
+    # The depth should be a valid value from the extracted region
+    # At v=2 with mask_size=5, we extract rows 0-4, so 5th percentile should be close to 0
+    assert np.isclose(
+        depths[0], 0.0, atol=0.5
+    ), f"Depth should be close to 0.0 (5th percentile of rows 0-4), got {depths[0]}"
 
 
 def test_triangulation():
