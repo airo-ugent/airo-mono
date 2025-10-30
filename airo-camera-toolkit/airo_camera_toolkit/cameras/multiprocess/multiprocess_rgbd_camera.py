@@ -91,8 +91,9 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         while not self.shutdown_event.is_set():
             self._resolution_writer(ResolutionIdl(width=self._camera.resolution[0], height=self._camera.resolution[1]))
 
-            image = self._camera.get_rgb_image_as_int()
+            self._camera._grab_images()
             timestamp = time.time()
+            image = self._camera._retrieve_rgb_image_as_int()
             depth_map = self._camera._retrieve_depth_map()
             depth_image = self._camera._retrieve_depth_image()
             point_cloud = self._camera._retrieve_colored_point_cloud()

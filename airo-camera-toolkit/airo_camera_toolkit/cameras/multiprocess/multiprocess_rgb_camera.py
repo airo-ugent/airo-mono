@@ -125,8 +125,9 @@ class MultiprocessRGBPublisher(multiprocessing.context.Process):
                 )
                 self._fps_writer(FpsIdl(fps=self._camera.fps))
 
-                image = self._camera.get_rgb_image_as_int()
+                self._camera._grab_images()
                 timestamp = time.time()
+                image = self._camera._retrieve_rgb_image_as_int()
 
                 frame_data = RGBFrameBuffer(
                     timestamp=np.array([timestamp], dtype=np.float64),
