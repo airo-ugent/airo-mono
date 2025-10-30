@@ -14,6 +14,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Changed
 
 ### Fixed
+- Fixed timestamp in `MultiprocessRGBPublisher` and `MultiprocessRGBDPublisher` to represent the time when frames are captured from the camera, rather than when the message is created. This allows accurate latency measurement between image acquisition and processing.
 
 ### Removed
 
