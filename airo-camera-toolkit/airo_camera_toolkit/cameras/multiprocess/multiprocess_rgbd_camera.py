@@ -159,7 +159,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
                         timestamp=np.array([timestamp], dtype=np.float64),
                         point_cloud_positions=self._pcd_pos_buf,
                         point_cloud_colors=self._pcd_col_buf,
-                        point_cloud_valid=np.array(point_cloud_valid, dtype=np.uint32),
+                        point_cloud_valid=point_cloud_valid,
                     )
                 )
 
