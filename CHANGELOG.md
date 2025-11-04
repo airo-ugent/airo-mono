@@ -14,6 +14,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Changed
 
 ### Fixed
+- Fixed `extract_depth_from_depthmap_heuristic` function crashing when extracting depth values for points near image edges. The mask window now correctly clips to image boundaries and pads with NaN values when needed [#163](https://github.com/airo-ugent/airo-mono/issues/163).
 
 ### Removed
 
