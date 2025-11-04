@@ -1,4 +1,5 @@
 """code for sharing the data of a camera that implements the RGBDCamera interface between processes using shared memory"""
+
 import multiprocessing
 import time
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import Res
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import (
     MultiprocessRGBDPublisher,
     MultiprocessRGBDReceiver,
+    PointCloudBuffer,
 )
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl  # type: ignore
@@ -24,12 +26,13 @@ from airo_typing import (
     HomogeneousMatrixType,
     NumpyFloatImageType,
     NumpyIntImageType,
+    PointCloud,
 )
 
 
 @dataclass
 class StereoRGBDFrameBuffer(BaseIdl):  # type: ignore
-    """This struct, sent over shared memory, contains a timestamp, two RGB images, the camera intrinsics, a depth image, a depth map, and a point cloud.
+    """This struct, sent over shared memory, contains a timestamp, two RGB images, the camera intrinsics, a depth image, and a depth map.
     It also contains the pose of the right camera in the left camera frame."""
 
     # Timestamp of the frame
@@ -46,8 +49,6 @@ class StereoRGBDFrameBuffer(BaseIdl):  # type: ignore
     depth_image: np.ndarray
     # Depth map (height x width)
     depth: np.ndarray
-    # Point cloud (colors, positions x height * width x 3)
-    point_cloud: np.ndarray
 
     @staticmethod
     def template(width: int, height: int) -> Any:
@@ -60,7 +61,6 @@ class StereoRGBDFrameBuffer(BaseIdl):  # type: ignore
             pose_right_in_left=np.empty((4, 4), dtype=np.float64),
             depth_image=np.empty((height, width, 3), dtype=np.uint8),
             depth=np.empty((height, width), dtype=np.float32),
-            point_cloud=np.empty((2, height * width, 3), dtype=np.float32),
         )
 
 
@@ -72,16 +72,26 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
         camera_cls: type,
         camera_kwargs: dict = {},
         shared_memory_namespace: str = "camera",
+        enable_pointcloud: bool = True,
     ):
+        self.enable_pointcloud = enable_pointcloud
         super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
 
     def _setup(self) -> None:
         super()._setup()
 
-        # Some camera's, such as the Realsense D435i, return a sparse point cloud. This is not supported by the
-        # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
-        # for every pixel in the RBG image.
-        self._pcd_buf = np.zeros((2, self._camera.resolution[0] * self._camera.resolution[1], 3), dtype=np.float32)
+        if self.enable_pointcloud:
+            # Some cameras, such as the Realsense D435i, can return a sparse point cloud. This is not supported by the
+            # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
+            # for every pixel in the RBG image.
+            self._pcd_pos_buf = np.zeros(
+                (self._camera.resolution[0] * self._camera.resolution[1], 3),
+                dtype=np.float32,
+            )
+            self._pcd_col_buf = np.zeros(
+                (self._camera.resolution[0] * self._camera.resolution[1], 3),
+                dtype=np.uint8,
+            )
 
     def _setup_sm_writer(self) -> None:
         # Create the shared memory writer
@@ -89,8 +99,13 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
             domain_participant=self._dp,
             topic_name=self._shared_memory_namespace,
             idl_dataclass=StereoRGBDFrameBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
-            nr_of_buffers=4,
         )
+        if self.enable_pointcloud:
+            self._pcd_writer = SMWriter(
+                domain_participant=self._dp,
+                topic_name=f"{self._shared_memory_namespace}_pcd",
+                idl_dataclass=PointCloudBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
+            )
 
     def stop(self) -> None:
         self.shutdown_event.set()
@@ -109,26 +124,27 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
             self._resolution_writer(ResolutionIdl(width=self._camera.resolution[0], height=self._camera.resolution[1]))
 
             image_left = self._camera.get_rgb_image_as_int()
+            timestamp = time.time()
             image_right = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
             depth_map = self._camera.get_depth_map()
             depth_image = self._camera.get_depth_image()
-            point_cloud = self._camera.get_colored_point_cloud()
+            if self.enable_pointcloud:
+                point_cloud = self._camera._retrieve_colored_point_cloud()
 
-            # Some camera's, such as the Realsense D435i, return a sparse point cloud. This is not supported by the
-            # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
-            # for every pixel in the RBG image.
-            self._pcd_buf.fill(np.nan)
-            self._pcd_buf[0, : point_cloud.points.shape[0]] = point_cloud.points
-            if point_cloud.colors is not None:
-                self._pcd_buf[1, : point_cloud.colors.shape[0]] = (
-                    point_cloud.colors / 255.0
-                )  # Colors are in [0, 255], but buffer is float.
-            else:
-                self._pcd_buf[1, : point_cloud.points.shape[0]] = 0.0  # If no colors, use black.
+                # Some camera's, such as the Realsense D435i, return a sparse point cloud. This is not supported by the
+                # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
+                # for every pixel in the RBG image.
+                self._pcd_pos_buf.fill(np.nan)
+                self._pcd_pos_buf[: point_cloud.points.shape[0]] = point_cloud.points
+                if point_cloud.colors is not None:
+                    self._pcd_col_buf[: point_cloud.colors.shape[0]] = point_cloud.colors
+                else:
+                    self._pcd_col_buf[: point_cloud.points.shape[0]] = 0  # If no colors, use black.
+                point_cloud_valid = np.array([point_cloud.points.shape[0]], dtype=np.uint32)
 
             self._writer(
                 StereoRGBDFrameBuffer(
-                    timestamp=np.array([time.time()], dtype=np.float64),
+                    timestamp=np.array([timestamp], dtype=np.float64),
                     rgb_left=image_left,
                     rgb_right=image_right,
                     intrinsics_left=intrinsics_left,
@@ -136,13 +152,23 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
                     pose_right_in_left=pose_right_in_left,
                     depth=depth_map,
                     depth_image=depth_image,
-                    point_cloud=self._pcd_buf,
                 )
             )
 
+            if self.enable_pointcloud:
+                self._pcd_writer(
+                    PointCloudBuffer(
+                        timestamp=np.array([timestamp], dtype=np.float64),
+                        point_cloud_positions=self._pcd_pos_buf,
+                        point_cloud_colors=self._pcd_col_buf,
+                        point_cloud_valid=np.array(point_cloud_valid, dtype=np.uint32),
+                    )
+                )
+
 
 class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera):
-    def __init__(self, shared_memory_namespace: str) -> None:
+    def __init__(self, shared_memory_namespace: str, enable_pointcloud: bool = True) -> None:
+        self.enable_pointcloud = enable_pointcloud
         super().__init__(shared_memory_namespace)
 
     def _setup_sm_reader(self, resolution: CameraResolutionType) -> None:
@@ -151,11 +177,18 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
             domain_participant=self._dp,
             topic_name=self._shared_memory_namespace,
             idl_dataclass=StereoRGBDFrameBuffer.template(self.resolution[0], self.resolution[1]),
-            nr_of_buffers=4,
         )
+        if self.enable_pointcloud:
+            self._reader_pcd = SMReader(
+                domain_participant=self._dp,
+                topic_name=f"{self._shared_memory_namespace}_pcd",
+                idl_dataclass=PointCloudBuffer.template(self.resolution[0], self.resolution[1]),
+            )
 
         # Initialize a first frame.
         self._last_frame = StereoRGBDFrameBuffer.template(self.resolution[0], self.resolution[1])
+        if self.enable_pointcloud:
+            self._last_pcd_frame = PointCloudBuffer.template(self.resolution[0], self.resolution[1])
 
     def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int(view=view)).image_in_numpy_format
@@ -175,6 +208,15 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
             return self._last_frame.intrinsics_left
         else:
             return self._last_frame.intrinsics_right
+
+    def _retrieve_colored_point_cloud(self) -> PointCloud:
+        if not self.enable_pointcloud:
+            raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
+        num_points = self._last_pcd_frame.point_cloud_valid.item()
+        positions = self._last_pcd_frame.point_cloud_positions[:num_points]
+        colors = self._last_pcd_frame.point_cloud_colors[:num_points]
+        point_cloud = PointCloud(positions, colors)
+        return point_cloud
 
 
 if __name__ == "__main__":
@@ -209,7 +251,10 @@ if __name__ == "__main__":
 
     with np.printoptions(precision=3, suppress=True):
         print("Intrinsics left:\n", receiver.intrinsics_matrix())
-        print("Intrinsics right:\n", receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB))
+        print(
+            "Intrinsics right:\n",
+            receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB),
+        )
         print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
 
     cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
@@ -251,7 +296,10 @@ if __name__ == "__main__":
             point_cloud.points[np.isnan(point_cloud.points)] = 0
             if point_cloud.colors is not None:
                 point_cloud.colors[np.isnan(point_cloud.colors)] = 0
-            rr.log("point_cloud", rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors))
+            rr.log(
+                "point_cloud",
+                rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors),
+            )
 
         key = cv2.waitKey(10)
         if key == ord("q"):
