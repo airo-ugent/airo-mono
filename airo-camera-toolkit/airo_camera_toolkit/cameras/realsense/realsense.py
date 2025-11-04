@@ -43,6 +43,7 @@ class Realsense(RGBDCamera):
         resolution: CameraResolutionType = RESOLUTION_1080,
         fps: int = 30,
         enable_depth: bool = True,
+        enable_pointcloud: bool = True,
         enable_confidence_map: bool = False,
         enable_hole_filling: bool = True,
         serial_number: Optional[str] = None,
@@ -50,6 +51,9 @@ class Realsense(RGBDCamera):
         self._resolution = resolution
         self._fps = fps
         self._depth_enabled = enable_depth
+        self._pointcloud_enabled = enable_pointcloud
+        if self._pointcloud_enabled and not self._depth_enabled:
+            raise ValueError("enable_point_cloud can only be True if enable_depth is also True")
         self._confidence_enabled = enable_confidence_map
         if self._confidence_enabled and not self._depth_enabled:
             raise ValueError("enable_confidence_map can only be True if enable_depth is also True")
@@ -170,7 +174,8 @@ class Realsense(RGBDCamera):
             self._depth_frame = self.hole_filling.process(self._depth_frame)
 
         # Compute point cloud.
-        self._point_cloud = self._compute_point_cloud(aligned_frames)
+        if self._pointcloud_enabled:
+            self._point_cloud = self._compute_point_cloud(aligned_frames)
 
         if not self._confidence_enabled:
             return
@@ -225,8 +230,8 @@ class Realsense(RGBDCamera):
         return image
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
-        if not self._depth_enabled:
-            raise RuntimeError("Cannot retrieve point cloud if depth is disabled")
+        if not self._pointcloud_enabled:
+            raise RuntimeError("Cannot retrieve point cloud if point cloud is disabled")
         return self._point_cloud
 
     def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
