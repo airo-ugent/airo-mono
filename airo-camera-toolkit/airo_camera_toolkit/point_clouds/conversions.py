@@ -1,11 +1,14 @@
 from typing import Any
 
+import numpy as np
 import open3d as o3d
 import open3d.core as o3c
 from airo_typing import PointCloud
 
 
-def point_cloud_to_open3d(point_cloud: PointCloud) -> Any:  # TODO: change Any back to o3d.t.geometry.PointCloud
+def point_cloud_to_open3d(
+    point_cloud: PointCloud,
+) -> Any:  # TODO: change Any back to o3d.t.geometry.PointCloud
     """Converts a PointCloud dataclass object to an open3d tensor point cloud.
     Note that the memory buffers of the underlying numpy arrays are shared between the two.
 
@@ -22,7 +25,7 @@ def point_cloud_to_open3d(point_cloud: PointCloud) -> Any:  # TODO: change Any b
     }
 
     if point_cloud.colors is not None:
-        colors = o3c.Tensor.from_numpy(point_cloud.colors)
+        colors = o3c.Tensor.from_numpy(point_cloud.colors / 255.0)
         map_to_tensors["colors"] = colors
 
     if point_cloud.attributes is not None:
@@ -33,7 +36,9 @@ def point_cloud_to_open3d(point_cloud: PointCloud) -> Any:  # TODO: change Any b
     return pcd
 
 
-def open3d_to_point_cloud(pcd: Any) -> PointCloud:  # TODO: change Any back to o3d.t.geometry.PointCloud
+def open3d_to_point_cloud(
+    pcd: Any,
+) -> PointCloud:  # TODO: change Any back to o3d.t.geometry.PointCloud
     """Converts an open3d point cloud to a PointCloud dataclass object.
     Note that the memory buffers of the underlying numpy arrays are shared between the two.
 
@@ -41,7 +46,12 @@ def open3d_to_point_cloud(pcd: Any) -> PointCloud:  # TODO: change Any back to o
         pcd: the open3d tensor point cloud
     """
     points = pcd.point.positions.numpy()
-    colors = pcd.point.colors.numpy() if "colors" in pcd.point else None
+    if "colors" in pcd.point:
+        colors = pcd.point.colors.numpy()
+        if colors.dtype == np.float32:
+            colors = (colors * 255.0).astype(np.uint8)
+    else:
+        colors = None
 
     attributes = {}
     for attribute_name, array in pcd.point.items():
