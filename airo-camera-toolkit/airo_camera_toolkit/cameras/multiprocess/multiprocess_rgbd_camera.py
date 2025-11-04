@@ -59,7 +59,7 @@ class PointCloudBuffer(BaseIdl):
     point_cloud_valid: np.ndarray
 
     @staticmethod
-    def template(height: int, width: int) -> Any:
+    def template(width: int, height: int) -> Any:
         return PointCloudBuffer(
             timestamp=np.empty((1,), dtype=np.float64),
             point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
