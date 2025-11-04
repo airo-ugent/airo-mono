@@ -47,7 +47,7 @@ class RGBDFrameBuffer(BaseIdl):  # type: ignore
 
 
 @dataclass
-class PointCloudBuffer(BaseIdl):
+class PointCloudBuffer(BaseIdl):  # type: ignore
     """This struct, sent over shared memory, contains a timestamp, a point cloud, point cloud colors, and a point cloud valid counter."""
 
     timestamp: np.ndarray
