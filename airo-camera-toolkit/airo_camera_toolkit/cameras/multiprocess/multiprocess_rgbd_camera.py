@@ -34,8 +34,10 @@ class RGBDFrameBuffer(BaseIdl):  # type: ignore
     depth_image: np.ndarray
     # Depth map (height x width)
     depth: np.ndarray
-    # Point cloud (colors, positions x height * width x 3)
-    point_cloud: np.ndarray
+    # Point cloud positions (height * width x 3)
+    point_cloud_positions: np.ndarray
+    # Point cloud colors (height * width x 3)
+    point_cloud_colors: np.ndarray
     # Valid point cloud points (scalar), for sparse point clouds
     point_cloud_valid: np.ndarray
 
@@ -47,7 +49,8 @@ class RGBDFrameBuffer(BaseIdl):  # type: ignore
             intrinsics=np.empty((3, 3), dtype=np.float64),
             depth_image=np.empty((height, width, 3), dtype=np.uint8),
             depth=np.empty((height, width), dtype=np.float32),
-            point_cloud=np.empty((2, height * width, 3), dtype=np.float32),
+            point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
+            point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
             point_cloud_valid=np.empty((1,), dtype=np.uint32),
         )
 
@@ -69,7 +72,11 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
         # Some cameras, such as the Realsense D435i, can return a sparse point cloud. This is not supported by the
         # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
         # for every pixel in the RBG image.
-        self._pcd_buf = np.zeros((2, self._camera.resolution[0] * self._camera.resolution[1], 3), dtype=np.float32)
+        self._pcd_pos_buf = np.zeros(
+            (self._camera.resolution[0] * self._camera.resolution[1], 3),
+            dtype=np.float32,
+        )
+        self._pcd_col_buf = np.zeros((self._camera.resolution[0] * self._camera.resolution[1], 3), dtype=np.uint8)
 
     def _setup_sm_writer(self) -> None:
         # Create the shared memory writer
@@ -101,14 +108,12 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
             # Some camera's, such as the Realsense D435i, return a sparse point cloud. This is not supported by the
             # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
             # for every pixel in the RBG image.
-            self._pcd_buf.fill(np.nan)
-            self._pcd_buf[0, : point_cloud.points.shape[0]] = point_cloud.points
+            self._pcd_pos_buf.fill(np.nan)
+            self._pcd_pos_buf[: point_cloud.points.shape[0]] = point_cloud.points
             if point_cloud.colors is not None:
-                self._pcd_buf[1, : point_cloud.colors.shape[0]] = (
-                    point_cloud.colors / 255.0
-                )  # Colors are in [0, 255], but buffer is float.
+                self._pcd_col_buf[: point_cloud.colors.shape[0]] = point_cloud.colors
             else:
-                self._pcd_buf[1, : point_cloud.points.shape[0]] = 0.0  # If no colors, use black.
+                self._pcd_buf[: point_cloud.points.shape[0]] = 0  # If no colors, use black.
 
             self._writer(
                 RGBDFrameBuffer(
@@ -117,7 +122,8 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
                     intrinsics=self._camera.intrinsics_matrix(),
                     depth=depth_map,
                     depth_image=depth_image,
-                    point_cloud=self._pcd_buf,
+                    point_cloud_positions=self._pcd_pos_buf,
+                    point_cloud_colors=self._pcd_col_buf,
                     point_cloud_valid=np.array([point_cloud.points.shape[0]], dtype=np.uint32),
                 )
             )
@@ -148,9 +154,8 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
         num_points = self._last_frame.point_cloud_valid.item()
-        positions = self._last_frame.point_cloud[0, :num_points]
-        colors = self._last_frame.point_cloud[1, :num_points]
-        colors = (colors * 255.0).astype(np.uint8)
+        positions = self._last_frame.point_cloud_positions[:num_points]
+        colors = self._last_frame.point_cloud_colors[:num_points]
         point_cloud = PointCloud(positions, colors)
         return point_cloud
 
@@ -168,7 +173,11 @@ if __name__ == "__main__":
 
     publisher = MultiprocessRGBDPublisher(
         Zed,
-        camera_kwargs={"resolution": Zed.RESOLUTION_1080, "fps": camera_fps, "depth_mode": Zed.NEURAL_DEPTH_MODE},
+        camera_kwargs={
+            "resolution": Zed.RESOLUTION_1080,
+            "fps": camera_fps,
+            "depth_mode": Zed.NEURAL_DEPTH_MODE,
+        },
     )
 
     publisher.start()
