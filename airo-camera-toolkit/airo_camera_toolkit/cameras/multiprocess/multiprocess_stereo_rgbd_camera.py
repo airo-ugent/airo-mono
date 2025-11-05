@@ -218,11 +218,12 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
         point_cloud = PointCloud(positions, colors)
         return point_cloud
 
-
     def _grab_images(self) -> None:
         super()._grab_images()
         if self.enable_pointcloud:
             self._last_pcd_frame = self._reader_pcd()
+
+
 if __name__ == "__main__":
     """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
