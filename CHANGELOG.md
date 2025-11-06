@@ -10,12 +10,16 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 
 ### Added
+- Added an `enable_pointcloud` flag to `Realsense` (default: `True`). When set to `False`, the point cloud will not be computed.
+- Added an `enable_pointcloud` flag to `Multiprocess*RGBD[Publisher|Receiver]` classes (default: `True`). When set to `False`, the point cloud will not be transmitted.
 
 ### Changed
+- Added a `Realsense._retrieve_colored_point_cloud` implementation, avoiding the costly default implementation. This improves performance of point cloud retrieval with Realsense cameras.
 
 ### Fixed
 - Fixed timestamp in `MultiprocessRGBPublisher` and `MultiprocessRGBDPublisher` to represent the time when frames are captured from the camera, rather than when the message is created. This allows accurate latency measurement between image acquisition and processing.
 - Fixed `extract_depth_from_depthmap_heuristic` function crashing when extracting depth values for points near image edges. The mask window now correctly clips to image boundaries and pads with NaN values when needed [#163](https://github.com/airo-ugent/airo-mono/issues/163).
+- Fixed conversions between Open3D point clouds and airo-mono PointCloud types. They are now correctly casting between uint8 and float32. (Open3D uses floating point values between 0 and 1, but we use unsigned bytes between 0 and 255.)
 
 ### Removed
 

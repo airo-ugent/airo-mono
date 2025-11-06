@@ -15,6 +15,7 @@ from airo_typing import (
     NumpyDepthMapType,
     NumpyFloatImageType,
     NumpyIntImageType,
+    PointCloud,
 )
 from loguru import logger
 
@@ -42,6 +43,7 @@ class Realsense(RGBDCamera):
         resolution: CameraResolutionType = RESOLUTION_1080,
         fps: int = 30,
         enable_depth: bool = True,
+        enable_pointcloud: bool = True,
         enable_confidence_map: bool = False,
         enable_hole_filling: bool = True,
         serial_number: Optional[str] = None,
@@ -49,6 +51,9 @@ class Realsense(RGBDCamera):
         self._resolution = resolution
         self._fps = fps
         self._depth_enabled = enable_depth
+        self._pointcloud_enabled = enable_pointcloud
+        if self._pointcloud_enabled and not self._depth_enabled:
+            raise ValueError("enable_point_cloud can only be True if enable_depth is also True")
         self._confidence_enabled = enable_confidence_map
         if self._confidence_enabled and not self._depth_enabled:
             raise ValueError("enable_confidence_map can only be True if enable_depth is also True")
@@ -66,11 +71,31 @@ class Realsense(RGBDCamera):
         # Use max resolution that can handle the fps for depth (will be change by align_transform)
         depth_resolution = Realsense.RESOLUTION_720 if fps <= 30 else Realsense.RESOLUTION_480
         if self._depth_enabled:
-            config.enable_stream(rs.stream.depth, depth_resolution[0], depth_resolution[1], rs.format.z16, fps)
+            config.enable_stream(
+                rs.stream.depth,
+                depth_resolution[0],
+                depth_resolution[1],
+                rs.format.z16,
+                fps,
+            )
 
         if self._confidence_enabled:
-            config.enable_stream(rs.stream.infrared, 1, depth_resolution[0], depth_resolution[1], rs.format.y8, fps)
-            config.enable_stream(rs.stream.infrared, 2, depth_resolution[0], depth_resolution[1], rs.format.y8, fps)
+            config.enable_stream(
+                rs.stream.infrared,
+                1,
+                depth_resolution[0],
+                depth_resolution[1],
+                rs.format.y8,
+                fps,
+            )
+            config.enable_stream(
+                rs.stream.infrared,
+                2,
+                depth_resolution[0],
+                depth_resolution[1],
+                rs.format.y8,
+                fps,
+            )
 
         # Avoid having to reconnect the USB cable, see https://github.com/IntelRealSense/librealsense/issues/6628#issuecomment-646558144
         ctx = rs.context()
@@ -135,7 +160,7 @@ class Realsense(RGBDCamera):
         try:
             aligned_frames = self.align_transform.process(self._composite_frame)
         except RuntimeError as e:
-            # Sometimes, the realsense SDK throws an error withn aligning RGB and depth.
+            # Sometimes, the realsense SDK throws an error with aligning RGB and depth.
             # This can happen if the CPU is busy: https://github.com/IntelRealSense/librealsense/issues/6628#issuecomment-647379900
             # A solution is to try again. Here, we only try again once; if the error occurs again, we raise it
             # and let the user deal with it.
@@ -148,11 +173,35 @@ class Realsense(RGBDCamera):
         if self.hole_filling_enabled:
             self._depth_frame = self.hole_filling.process(self._depth_frame)
 
+        # Compute point cloud.
+        if self._pointcloud_enabled:
+            self._point_cloud = self._compute_point_cloud(aligned_frames)
+
         if not self._confidence_enabled:
             return
 
         self._infrared_frame_1 = aligned_frames.get_infrared_frame(1)
         self._infrared_frame_2 = aligned_frames.get_infrared_frame(2)
+
+    def _compute_point_cloud(self, aligned_frames: Any) -> PointCloud:
+        pcd = rs.pointcloud()
+        color_frame = aligned_frames.get_color_frame()
+        pcd.map_to(color_frame)
+        points = pcd.calculate(self._depth_frame)
+        v, t = points.get_vertices(), points.get_texture_coordinates()
+        vertices = np.asanyarray(v).view(np.float32).reshape(-1, 3)
+        tex_coords = np.asanyarray(t).view(np.float32).reshape(-1, 2)
+        color_image: NumpyIntImageType = np.asanyarray(color_frame.get_data())
+        h, w, _ = color_image.shape
+        # tex_coords shape is (N, 2)
+        u = tex_coords[:, 0]
+        v = tex_coords[:, 1]
+        # convert to pixel coordinates
+        x = np.clip((u * w).astype(np.int32), 0, w - 1)
+        y = np.clip((v * h).astype(np.int32), 0, h - 1)
+        # index color_image
+        colors = color_image[y, x]  # shape (N, 3)
+        return PointCloud(vertices, colors)
 
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
         image = self._retrieve_rgb_image_as_int()
@@ -179,6 +228,11 @@ class Realsense(RGBDCamera):
         frame_colorized = self.colorizer.colorize(frame)
         image = np.asanyarray(frame_colorized.get_data())  # this is uint8 with 3 channels
         return image
+
+    def _retrieve_colored_point_cloud(self) -> PointCloud:
+        if not self._pointcloud_enabled:
+            raise RuntimeError("Cannot retrieve point cloud if point cloud is disabled")
+        return self._point_cloud
 
     def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
         # Compute confidence map based on the disparity between the two IR images.
