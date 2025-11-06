@@ -181,7 +181,7 @@ class RGBDCamera(RGBCamera, DepthCamera):
         Default implementation uses the depth map and RGB with open3d's create_from_rgbd_image() function.
         See: https://www.open3d.org/docs/release/python_api/open3d.t.geometry.PointCloud.html#open3d.t.geometry.PointCloud.create_from_rgbd_image
         """
-        if not hasattr(self, "_logged_colored_point_cloud_warning") or not self._logged_colored_point_cloud_warning:
+        if not hasattr(self, "_logged_colored_point_cloud_warning"):
             logger.warning(
                 """You are using an RGBDCamera which does not override _retrieve_colored_point_cloud.
             We will use a default implementation based on Open3D, which is quite slow (several milliseconds per frame).
