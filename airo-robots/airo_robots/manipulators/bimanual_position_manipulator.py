@@ -200,7 +200,10 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         """
         left_awaitable = self._left_manipulator.servo_to_joint_configuration(left_joint_configuration, time)
         right_awaitable = self._right_manipulator.servo_to_joint_configuration(right_joint_configuration, time)
-        awaitables: Tuple[AwaitableAction, AwaitableAction] = (left_awaitable, right_awaitable)
+        awaitables: Tuple[AwaitableAction, AwaitableAction] = (
+            left_awaitable,
+            right_awaitable,
+        )
 
         # compose the awaitable actions
         def done_condition() -> bool:
@@ -242,9 +245,9 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         period_adjusted = duration / n_servos  # can be slightly different from period due to rounding
 
         logged_lag_warning = False
-        loop_start_time_ns = time.time_ns()
+        loop_start_time_ns = time.perf_counter_ns()
         for servo_index in range(n_servos):
-            iteration_start_time_ns = time.time_ns()
+            iteration_start_time_ns = time.perf_counter_ns()
             t_ns = iteration_start_time_ns - loop_start_time_ns
             t = t_ns / 1e9
             if t > duration:
@@ -262,21 +265,29 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
             # Interpolate between the two joint configurations.
             q_interp_left = lerp_positions(
-                i0, i1, np.asarray(joint_trajectory.path_left.positions), joint_trajectory.times, t
+                i0,
+                i1,
+                np.asarray(joint_trajectory.path_left.positions),
+                joint_trajectory.times,
+                t,
             )
             q_interp_right = lerp_positions(
-                i0, i1, np.asarray(joint_trajectory.path_right.positions), joint_trajectory.times, t
+                i0,
+                i1,
+                np.asarray(joint_trajectory.path_right.positions),
+                joint_trajectory.times,
+                t,
             )
             self.servo_to_joint_configuration(q_interp_left, q_interp_right, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
 
-            iter_duration_ns = time.time_ns() - iteration_start_time_ns
+            iter_duration_ns = time.perf_counter_ns() - iteration_start_time_ns
             period_adjusted_ns = int(period_adjusted * 1e9)
             # We want to wait for the period, but we also want to avoid waiting too long if the iteration took too long.
             # Sleeping is not very accurate (see airo_robots/scripts/measure_sleep_accuracy.py), so we busy-wait for the period.
             if iter_duration_ns < period_adjusted_ns:
-                current_time = time.time_ns()
-                while time.time_ns() < current_time + (period_adjusted_ns - iter_duration_ns):
+                current_time = time.perf_counter_ns()
+                while time.perf_counter_ns() < current_time + (period_adjusted_ns - iter_duration_ns):
                     pass
             else:
                 if not logged_lag_warning:

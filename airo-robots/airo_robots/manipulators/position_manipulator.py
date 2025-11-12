@@ -48,7 +48,11 @@ class PositionManipulator(ABC):
 
     """
 
-    def __init__(self, manipulator_specs: ManipulatorSpecs, gripper: Optional[ParallelPositionGripper] = None) -> None:
+    def __init__(
+        self,
+        manipulator_specs: ManipulatorSpecs,
+        gripper: Optional[ParallelPositionGripper] = None,
+    ) -> None:
         self._manipulator_specs = manipulator_specs
         self._gripper = gripper
         self._default_linear_speed = 0.1  # m/s often a good default value
@@ -136,7 +140,9 @@ class PositionManipulator(ABC):
 
     @abstractmethod
     def move_to_joint_configuration(
-        self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
+        self,
+        joint_configuration: JointConfigurationType,
+        joint_speed: Optional[float] = None,
     ) -> AwaitableAction:
         """move to a desired joint configuration (synchronous). This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory.
@@ -195,7 +201,9 @@ class PositionManipulator(ABC):
 
     @abstractmethod
     def inverse_kinematics(
-        self, tcp_pose: HomogeneousMatrixType, joint_configuration_near: Optional[JointConfigurationType] = None
+        self,
+        tcp_pose: HomogeneousMatrixType,
+        joint_configuration_near: Optional[JointConfigurationType] = None,
     ) -> Optional[JointConfigurationType]:
         """Solve inverse kinematics.
 
@@ -256,9 +264,9 @@ class PositionManipulator(ABC):
         period_adjusted = duration / n_servos  # can be slightly different from period due to rounding
 
         logged_lag_warning = False
-        loop_start_time_ns = time.time_ns()
+        loop_start_time_ns = time.perf_counter_ns()
         for servo_index in range(n_servos):
-            iteration_start_time_ns = time.time_ns()
+            iteration_start_time_ns = time.perf_counter_ns()
             t_ns = iteration_start_time_ns - loop_start_time_ns
             t = t_ns / 1e9
             if t > duration:
@@ -275,17 +283,23 @@ class PositionManipulator(ABC):
                 break
 
             # Interpolate between the two joint configurations.
-            q_interp = lerp_positions(i0, i1, np.asarray(joint_trajectory.path.positions), joint_trajectory.times, t)
+            q_interp = lerp_positions(
+                i0,
+                i1,
+                np.asarray(joint_trajectory.path.positions),
+                joint_trajectory.times,
+                t,
+            )
             self.servo_to_joint_configuration(q_interp, period_adjusted)
             # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
 
-            iter_duration_ns = time.time_ns() - iteration_start_time_ns
+            iter_duration_ns = time.perf_counter_ns() - iteration_start_time_ns
             period_adjusted_ns = int(period_adjusted * 1e9)
             # We want to wait for the period, but we also want to avoid waiting too long if the iteration took too long.
             # Sleeping is not very accurate (see airo_robots/scripts/measure_sleep_accuracy.py), so we busy-wait for the period.
             if iter_duration_ns < period_adjusted_ns:
-                current_time = time.time_ns()
-                while time.time_ns() < current_time + (period_adjusted_ns - iter_duration_ns):
+                current_time = time.perf_counter_ns()
+                while time.perf_counter_ns() < current_time + (period_adjusted_ns - iter_duration_ns):
                     pass
             else:
                 if not logged_lag_warning:
@@ -333,7 +347,9 @@ class PositionManipulator(ABC):
             )
 
     def _is_joint_configuration_nearby(
-        self, joint_configuration: JointConfigurationType, absolute_angle_tolerance: float = np.radians(1.0)
+        self,
+        joint_configuration: JointConfigurationType,
+        absolute_angle_tolerance: float = np.radians(1.0),
     ) -> bool:
         """Check that a joint configuration is nearby the current configuration.
 
@@ -344,7 +360,12 @@ class PositionManipulator(ABC):
         Returns: True if the joint configuration is not nearby the current configuration."""
         current_configuration = self.get_joint_configuration()
         return (
-            np.isclose(joint_configuration, current_configuration, atol=absolute_angle_tolerance, rtol=0.0)
+            np.isclose(
+                joint_configuration,
+                current_configuration,
+                atol=absolute_angle_tolerance,
+                rtol=0.0,
+            )
             .all()
             .item()
         )
@@ -415,9 +436,9 @@ def evaluate_constraint(
     period = 1 / frequency
     duration = (times[-1] - times[0]).item()
     n_servos = int(np.ceil(duration / period))
-    start_time_ns = time.time_ns()
+    start_time_ns = time.perf_counter_ns()
     for servo_index in range(n_servos):
-        t = (time.time_ns() - start_time_ns) / 1e9
+        t = (time.perf_counter_ns() - start_time_ns) / 1e9
         # Find the two joint configurations that are closest to time t.
         i0 = int(np.searchsorted(times, t, side="left") - 1)  # - 1: i0 is always >= 1 otherwise.
         i1 = i0 + 1
