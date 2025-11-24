@@ -10,6 +10,18 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## 2025.11.0
+
+### Breaking changes
+
+### Added
 - Added an `enable_pointcloud` flag to `Realsense` (default: `True`). When set to `False`, the point cloud will not be computed.
 - Added an `enable_pointcloud` flag to `Multiprocess*RGBD[Publisher|Receiver]` classes (default: `True`). When set to `False`, the point cloud will not be transmitted.
 
