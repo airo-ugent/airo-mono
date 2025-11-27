@@ -10,8 +10,10 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 
 ### Added
+- Added `gc_disabled()` context manager to temporarily disable garbage collection for performance-critical sections.
 
 ### Changed
+- Improved `execute_trajectory` reliability: we now temporarily disable the garbage collector in the hot loop to reduce latency using `gc_disabled()`.
 
 ### Fixed
 

@@ -11,6 +11,7 @@ from airo_robots.exceptions import (
 )
 from airo_robots.manipulators.position_manipulator import PositionManipulator, evaluate_constraint, lerp_positions
 from airo_typing import DualArmTrajectory, HomogeneousMatrixType, JointConfigurationType
+from hardware_interaction_utils import gc_disabled
 from loguru import logger
 
 
@@ -246,55 +247,58 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
         logged_lag_warning = False
         loop_start_time_ns = time.perf_counter_ns()
-        for servo_index in range(n_servos):
-            iteration_start_time_ns = time.perf_counter_ns()
-            t_ns = iteration_start_time_ns - loop_start_time_ns
-            t = t_ns / 1e9
-            if t > duration:
-                logger.warning(
-                    f"Time exceeded trajectory duration at servo index {servo_index} / {n_servos}. This means we are lagging, but we should have reached the final configuration. Stopping trajectory execution."
-                )
-                break
-
-            # Find the two joint configurations that are closest to time t.
-            i0 = int(np.searchsorted(joint_trajectory.times, t, side="left") - 1)  # - 1: i0 is always >= 1 otherwise.
-            i1 = i0 + 1
-
-            if i1 == len(joint_trajectory.times):
-                break
-
-            # Interpolate between the two joint configurations.
-            q_interp_left = lerp_positions(
-                i0,
-                i1,
-                np.asarray(joint_trajectory.path_left.positions),
-                joint_trajectory.times,
-                t,
-            )
-            q_interp_right = lerp_positions(
-                i0,
-                i1,
-                np.asarray(joint_trajectory.path_right.positions),
-                joint_trajectory.times,
-                t,
-            )
-            self.servo_to_joint_configuration(q_interp_left, q_interp_right, period_adjusted)
-            # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
-
-            iter_duration_ns = time.perf_counter_ns() - iteration_start_time_ns
-            period_adjusted_ns = int(period_adjusted * 1e9)
-            # We want to wait for the period, but we also want to avoid waiting too long if the iteration took too long.
-            # Sleeping is not very accurate (see airo_robots/scripts/measure_sleep_accuracy.py), so we busy-wait for the period.
-            if iter_duration_ns < period_adjusted_ns:
-                current_time = time.perf_counter_ns()
-                while time.perf_counter_ns() < current_time + (period_adjusted_ns - iter_duration_ns):
-                    pass
-            else:
-                if not logged_lag_warning:
+        with gc_disabled(verbose=True):
+            for servo_index in range(n_servos):
+                iteration_start_time_ns = time.perf_counter_ns()
+                t_ns = iteration_start_time_ns - loop_start_time_ns
+                t = t_ns / 1e9
+                if t > duration:
                     logger.warning(
-                        "Trajectory execution is lagging behind! This can cause large jumps with ServoJ, and should be avoided."
+                        f"Time exceeded trajectory duration at servo index {servo_index} / {n_servos}. This means we are lagging, but we should have reached the final configuration. Stopping trajectory execution."
                     )
-                    logged_lag_warning = True
+                    break
+
+                # Find the two joint configurations that are closest to time t.
+                i0 = int(
+                    np.searchsorted(joint_trajectory.times, t, side="left") - 1
+                )  # - 1: i0 is always >= 1 otherwise.
+                i1 = i0 + 1
+
+                if i1 == len(joint_trajectory.times):
+                    break
+
+                # Interpolate between the two joint configurations.
+                q_interp_left = lerp_positions(
+                    i0,
+                    i1,
+                    np.asarray(joint_trajectory.path_left.positions),
+                    joint_trajectory.times,
+                    t,
+                )
+                q_interp_right = lerp_positions(
+                    i0,
+                    i1,
+                    np.asarray(joint_trajectory.path_right.positions),
+                    joint_trajectory.times,
+                    t,
+                )
+                self.servo_to_joint_configuration(q_interp_left, q_interp_right, period_adjusted)
+                # We do not wait for the servo to finish, because we want to sample the trajectory at a fixed rate and avoid lagging.
+
+                iter_duration_ns = time.perf_counter_ns() - iteration_start_time_ns
+                period_adjusted_ns = int(period_adjusted * 1e9)
+                # We want to wait for the period, but we also want to avoid waiting too long if the iteration took too long.
+                # Sleeping is not very accurate (see airo_robots/scripts/measure_sleep_accuracy.py), so we busy-wait for the period.
+                if iter_duration_ns < period_adjusted_ns:
+                    current_time = time.perf_counter_ns()
+                    while time.perf_counter_ns() < current_time + (period_adjusted_ns - iter_duration_ns):
+                        pass
+                else:
+                    if not logged_lag_warning:
+                        logger.warning(
+                            "Trajectory execution is lagging behind! This can cause large jumps with ServoJ, and should be avoided."
+                        )
+                        logged_lag_warning = True
 
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity
         # However, I believe these functions are blocking, so right only stops after left has stopped.

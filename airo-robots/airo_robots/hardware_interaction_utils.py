@@ -1,6 +1,41 @@
+import gc
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import contextmanager
 from typing import Any, Callable
+
+from loguru import logger
+
+
+@contextmanager
+def gc_disabled(*, verbose: bool = False):
+    """Temporarily suspend the Python garbage collector for performance-critical code.
+
+    Limit the code inside this block to avoid memory accumulation.
+
+    This context manager disables the cyclic garbage collector on entry and
+    restores its original state on exit. If the collector was already
+    disabled when the block is entered, it remains disabled after the block.
+    If it was enabled, the collector is re-enabled and an explicit collection
+    is performed to reclaim any cyclic objects that accumulated while the GC
+    was off.
+
+    Args:
+        verbose: If `True`, will log debug messages when disabling/enabling gc."""
+    was_enabled = gc.isenabled()
+    if verbose:
+        logger.debug("Disabling garbage collection.")
+    gc.disable()
+    try:
+        yield
+    finally:
+        if was_enabled:
+            if verbose:
+                logger.debug("Re-enabling garbage collection and collecting garbage.")
+            gc.enable()
+            gc.collect()
+            if verbose:
+                logger.debug("Garbage collection reenabled.")
 
 
 class AsyncExecutor:
