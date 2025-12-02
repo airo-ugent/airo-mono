@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from typing import Any, Callable, Iterator
 
 from loguru import logger
+from typing_extensions import deprecated
 
 
 @contextmanager
@@ -36,8 +37,6 @@ def gc_disabled(*, verbose: bool = False) -> Iterator:
             gc.collect()
             if verbose:
                 logger.debug("Garbage collection reenabled.")
-
-from typing_extensions import deprecated
 
 
 @deprecated("Use ThreadPoolExecutor instead.")
