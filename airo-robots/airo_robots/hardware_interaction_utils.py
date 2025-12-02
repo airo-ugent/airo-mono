@@ -2,13 +2,13 @@ import gc
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from loguru import logger
 
 
 @contextmanager
-def gc_disabled(*, verbose: bool = False):
+def gc_disabled(*, verbose: bool = False) -> Iterator:
     """Temporarily suspend the Python garbage collector for performance-critical code.
 
     Limit the code inside this block to avoid memory accumulation.

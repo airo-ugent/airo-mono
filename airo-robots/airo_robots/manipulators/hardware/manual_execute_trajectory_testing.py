@@ -10,7 +10,7 @@ np.set_printoptions(precision=3)
 
 def _create_scene() -> Tuple:
     from airo_drake import add_floor, add_manipulator, add_meshcat, finish_build  # type: ignore
-    from pydrake.planning import RobotDiagramBuilder  # type: ignore
+    from pydrake.planning import RobotDiagramBuilder
 
     robot_diagram_builder = RobotDiagramBuilder()
 
