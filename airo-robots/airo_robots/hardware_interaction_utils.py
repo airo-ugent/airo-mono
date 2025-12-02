@@ -2,7 +2,10 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any, Callable
 
+from typing_extensions import deprecated
 
+
+@deprecated("Use ThreadPoolExecutor instead.")
 class AsyncExecutor:
     """Helper class to mock async hardware interfaces, used for testing.
 

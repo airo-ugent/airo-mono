@@ -12,6 +12,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 
 ### Changed
+- Deprecated `AsyncExecutor`. It is a very thin wrapper around [`ThreadPoolExecutor(max_workers=1)`](https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Executor), which should be used instead.
 
 ### Fixed
 
