@@ -37,7 +37,10 @@ def gc_disabled(*, verbose: bool = False) -> Iterator:
             if verbose:
                 logger.debug("Garbage collection reenabled.")
 
+from typing_extensions import deprecated
 
+
+@deprecated("Use ThreadPoolExecutor instead.")
 class AsyncExecutor:
     """Helper class to mock async hardware interfaces, used for testing.
 
