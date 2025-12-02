@@ -10,8 +10,10 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 
 ### Added
+- Added `gc_disabled()` context manager to temporarily disable garbage collection for performance-critical sections.
 
 ### Changed
+- Improved `execute_trajectory` reliability: we now temporarily disable the garbage collector in the hot loop to reduce latency using `gc_disabled()`.
 - Deprecated `AsyncExecutor`. It is a very thin wrapper around [`ThreadPoolExecutor(max_workers=1)`](https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Executor), which should be used instead.
 
 ### Fixed
