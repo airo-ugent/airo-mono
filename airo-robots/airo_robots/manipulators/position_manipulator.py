@@ -12,6 +12,7 @@ from airo_robots.exceptions import (
     TrajectoryConstraintViolationException,
 )
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper
+from airo_robots.hardware_interaction_utils import gc_disabled
 from airo_typing import (
     HomogeneousMatrixType,
     JointConfigurationType,
@@ -20,7 +21,6 @@ from airo_typing import (
     SingleArmTrajectory,
     TimesType,
 )
-from hardware_interaction_utils import gc_disabled
 from loguru import logger
 
 

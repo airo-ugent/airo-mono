@@ -9,9 +9,9 @@ from airo_robots.exceptions import (
     RobotConfigurationException,
     TrajectoryConstraintViolationException,
 )
+from airo_robots.hardware_interaction_utils import gc_disabled
 from airo_robots.manipulators.position_manipulator import PositionManipulator, evaluate_constraint, lerp_positions
 from airo_typing import DualArmTrajectory, HomogeneousMatrixType, JointConfigurationType
-from hardware_interaction_utils import gc_disabled
 from loguru import logger
 
 
