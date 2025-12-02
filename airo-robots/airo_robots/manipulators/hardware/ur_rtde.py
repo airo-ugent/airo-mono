@@ -31,7 +31,6 @@ def _torque_worker(
     use_gripper=False,
     log_path: str | None = "torque_log.csv",
 ):
-    """在独立进程里跑的 500Hz 力控循环，并缓存所有数据，最后统一写入文件"""
 
     rtde_c = RTDEControlInterface(ur_ip, 500.0)
     rtde_r = RTDEReceiveInterface(ur_ip, 500.0)
@@ -58,33 +57,23 @@ def _torque_worker(
     max_torque = UR3E_MAX_TORQUE * 0.8
     Kp_base = max_torque / np.array([0.25, 0.25, 0.5, 0.35, 0.3, 0.3])
 
-    # [关键调整]：
-    # 因为你现在的 Teleop 逻辑修复了 beta 滤波系数，
-    # 我们可以放心地提升刚度来减少相位延迟。
-    # 尝试乘以 1.2 到 1.5 之间的系数。
     Kp_scale_factor = 1.0
     Kp = Kp_base * Kp_scale_factor
-    # 比你现在更刚
-    # Kd 按与 Kp 比例 0.02~0.1 试
+
     Kd_ratios = np.array([0.04, 0.04, 0.04, 0.04, 0.04, 0.04])
     Kd = Kd_ratios * Kp
 
-    # UR3E_MAX_TORQUE = np.array([56.0, 56.0, 28.0, 9.0, 9.0, 9.0]) / 4
-    # max_torque = UR3E_MAX_TORQUE
-    # Kp = max_torque / np.array([0.25, 0.25, 0.25, 0.5, 0.5, 1.0])
-    # Kd = max_torque / (np.pi * 0.5)
-    # 日志缓存（内存）
+
     log_buffer = []
     t0 = time.time()
     qd_act_filtered = np.zeros(6)
-    # 滤波系数：越小越平滑，0.1~0.2 比较合适
     vel_filter_alpha = 0.12
 
     try:
         while running_flag.value:
             t_start = rtde_c.initPeriod()
 
-            # --- 读当前状态 ---
+
             q_act = np.array(rtde_r.getActualQ(), dtype=float)
             qd_act = np.array(rtde_r.getActualQd(), dtype=float)
             tcp_pose = np.array(rtde_r.getActualTCPPose(), dtype=float)
@@ -96,7 +85,6 @@ def _torque_worker(
             if gripper is not None:
                 gripper_cache_shared.value = float(gripper.get_current_width())
 
-            # --- 从共享内存读 target_pos ---
             target = np.array([target_pos_shared[i] for i in range(6)], dtype=float)
 
             # new
@@ -105,7 +93,7 @@ def _torque_worker(
 
             q_err = target - q_act
             for k in range(6):
-                threshold = 0.005 if k < 3 else 0.002  # 0.008 rad ≈ 0.45度
+                threshold = 0.005 if k < 3 else 0.002  # 0.008 rad ≈ 0.45
                 if abs(q_err[k]) < threshold:
                     q_err[k] = 0.0
             # qd_err = -qd_act
@@ -116,19 +104,16 @@ def _torque_worker(
             torque_target = torque_p + torque_d
             torque_target = np.clip(torque_target, -max_torque, max_torque)
 
-            # -------- 缓存数据到内存 --------
             t_now = time.time() - t0
             log_buffer.append(np.concatenate([
                 [t_now],
                 target, q_act, torque_p, torque_d, torque_target
             ]))
 
-            # -------- 实际控制 --------
             rtde_c.directTorque(torque_target.tolist())
             rtde_c.waitPeriod(t_start)
 
     finally:
-        # 平滑归零
         try:
             zero_torque = [0.0] * 6
             for _ in range(20):
@@ -151,7 +136,6 @@ def _torque_worker(
         except Exception:
             pass
 
-        # -------- 写入 CSV 文件 --------
         if log_path is not None and len(log_buffer) > 0:
             log_buffer = np.array(log_buffer)
             header = (
@@ -220,7 +204,6 @@ class URrtde(PositionManipulator):
                 # self._enable_torque_control()
                 self._torque_process = None
                 self.torque_mode = True
-                # 共享内存：6 关节
                 self.target_pos_shared = Array('d', [0.0] * 6)
                 self.pos_cache_shared = Array('d', [0.0] * 6)
                 self.tcp_cache_shared = Array('d', [0.0] * 6)  # 如果想存 4x4，可以改成 16 长度
@@ -417,75 +400,12 @@ class URrtde(PositionManipulator):
         translation = se3.translation
         return np.concatenate([translation, rotation])
 
-    # non-api methods
 
     def _is_move_command_finished(self) -> bool:
         """check if the robot has finished executing the last move command."""
         progress = self.rtde_control.getAsyncOperationProgress()
         return progress < 0
 
-    # def _torque_control_loop(self):
-    #     max_torque = self.UR3E_MAX_TORQUE
-    #
-    #     # Example gains, need to be selected for the purpose
-    #     Kp = max_torque / np.array([0.25, 0.25, 0.25, 0.5, 0.5, 1])
-    #     Kd = max_torque / (np.pi * 0.5)
-    #
-    #     q_err = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    #     q_err_acc = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-    #
-    #     # print(self.target_pos)
-    #     # print("x")
-    #
-    #     # Impedance Controller loop
-    #     timecounter = 0.0
-    #
-    #     try:
-    #         while self.torque_enable:
-    #             t_start = self.rtde_control.initPeriod()
-    #             self.pos_cache = np.array(self.rtde_receive.getActualQ())
-    #             self.tcp_cache = np.array(self.rtde_receive.getActualTCPPose())
-    #             if self.gripper:
-    #                 self.gripper_cache = np.array(self.gripper.get_current_width())
-    #             qd_act = np.array(self.rtde_receive.getActualQd())
-    #             q_err = self.target_pos - self.pos_cache
-    #             qd_err = 0.0 - qd_act
-    #
-    #             torque_p = Kp * q_err
-    #             torque_d = Kd * qd_err
-    #
-    #             torque_d = np.clip(torque_d, -0.2 * max_torque, 0.2 * max_torque)
-    #             torque_target = torque_p + torque_d
-    #             torque_target = np.clip(torque_target, -max_torque, max_torque)
-    #
-    #             self.rtde_control.directTorque(torque_target.tolist())
-    #             self.rtde_control.waitPeriod(t_start)
-    #
-    #             timecounter = timecounter + 0.002
-    #             # print(timecounter)
-    #
-    #     except KeyboardInterrupt:
-    #         pass
-    #
-    #     finally:
-    #         try:
-    #             print("trying to stop")
-    #             # self.stop_script()  # 如果有的话
-    #             self.target_pos = self.rtde_receive.getActualQ()
-    #             print(self.target_pos)
-    #
-    #             self.move_to_joint_configuration([-1.57, -1.57, -1.57, -3.14, -1.57, 3.157], 0.5).wait()
-    #             print(self.get_joint_configuration())
-    #             print("normal mode enable")
-    #         except AttributeError:
-    #             pass
-    #
-    #
-    #
-    # def _enable_torque_control(self):
-    #     thread_rxdata=threading.Thread(target=self._torque_control_loop)
-    #     thread_rxdata.start()
-    #     print("torque thread starts")
 
     def get_tcp_force(self) -> WrenchType:
         return np.array(self.rtde_receive.getActualTCPForce())
@@ -509,10 +429,8 @@ class URrtde(PositionManipulator):
         for i in range(6):
             self.target_pos_shared[i] = float(q_target[i])
 
-    # ---- 缓存状态的 getter，teleop 可以直接用 ----
     def get_cached_joint_configuration(self) -> np.ndarray:
         if not self.torque_mode:
-            # 非 torque 模式走原来的 RTDE
             return np.array(self.rtde_receive.getActualQ(), dtype=float)
         return np.array(self.pos_cache_shared[:], dtype=float)
 
@@ -528,10 +446,9 @@ class URrtde(PositionManipulator):
             return 0.0
         return float(self.gripper_cache_shared.value)
 
-    # ---- 启动 / 停止 torque 进程 ----
     def enable_torque_control(self, use_gripper: bool = False) -> None:
         if self._torque_process is not None and self._torque_process.is_alive():
-            return  # 已经在跑了
+            return
 
         self.running_flag.value = True
         self._torque_process = Process(
