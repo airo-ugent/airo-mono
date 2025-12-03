@@ -170,8 +170,8 @@ class URrtde(PositionManipulator):
         self,
         ip_address: str,
         manipulator_specs: ManipulatorSpecs,
-        torque_mode: bool = False,
         gripper: Optional[ParallelPositionGripper] = None,
+        torque_mode: bool = False,
         initial_joint=None,
     ) -> None:
         super().__init__(manipulator_specs, gripper)
