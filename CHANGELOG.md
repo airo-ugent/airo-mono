@@ -17,6 +17,25 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Removed
 
+## 2025.12.0
+
+### Breaking changes
+
+### Added
+- **Torque Control Support**: Added a `torque_mode` flag to `ur_rtde` (default: `False`).
+
+    - When enabled, it launches process `_torque_worker` (500Hz) to compute and control robot torque using PD control.
+
+    - Set the `target_pos` (joint configuration) in the 'URrtde' class to control robot pose.
+
+    - **Important**: Users must tune the PD parameters before use to ensure stability.
+
+### Changed
+
+### Fixed
+
+### Removed
+
 ## 2025.11.0
 
 ### Breaking changes
