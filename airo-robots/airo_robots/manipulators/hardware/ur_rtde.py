@@ -182,12 +182,13 @@ class URrtde(PositionManipulator):
                 self.torque_mode = True
                 self.target_pos_shared = Array("d", [0.0] * 6)
                 self.pos_cache_shared = Array("d", [0.0] * 6)
-                self.tcp_cache_shared = Array("d", [0.0] * 6)  # 如果想存 4x4，可以改成 16 长度
+                self.tcp_cache_shared = Array("d", [0.0] * 6)
                 self.gripper_cache_shared = Value("d", 0.0)
                 self.running_flag = Value("b", False)
                 tmp_recv = RTDEReceiveInterface(self.ip_address)
                 tmp_ctrl = RTDEControlInterface(self.ip_address)
-                tmp_ctrl.moveJ(initial_joint)
+                if initial_joint:
+                    tmp_ctrl.moveJ(initial_joint)
                 q0 = np.array(tmp_recv.getActualQ(), dtype=float)
                 tcp0 = np.array(tmp_recv.getActualTCPPose(), dtype=float)
                 for i in range(6):
