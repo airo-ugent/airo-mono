@@ -1,4 +1,5 @@
 import time
+from multiprocessing import Array, Process, Value
 from typing import Optional
 
 import numpy as np
@@ -7,27 +8,20 @@ from airo_robots.grippers import ParallelPositionGripper
 from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType, JointConfigurationType, WrenchType
-import threading
-from multiprocessing import Process, Array, Value
-
+from rtde_control import RTDEControlInterface
+from rtde_receive import RTDEReceiveInterface
 
 RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
 
-from rtde_control import RTDEControlInterface
-from rtde_receive import RTDEReceiveInterface
-
-import numpy as np
-import csv
-import time
 
 def _torque_worker(
     ur_ip,
-    target_pos_shared,   # Array('d', 6)
-    pos_cache_shared,    # Array('d', 6)
-    tcp_cache_shared,    # Array('d', 6)
+    target_pos_shared,  # Array('d', 6)
+    pos_cache_shared,  # Array('d', 6)
+    tcp_cache_shared,  # Array('d', 6)
     gripper_cache_shared,  # Value('d')
-    running_flag,        # Value('b')
+    running_flag,  # Value('b')
     use_gripper=False,
     log_path: str | None = "torque_log.csv",
 ):
@@ -38,6 +32,7 @@ def _torque_worker(
     gripper = None
     if use_gripper:
         from airo_robots.grippers import Robotiq2F85
+
         gripper = Robotiq2F85(ur_ip)
 
     # UR3E_MAX_TORQUE = np.array([72.0, 72.0, 72.0, 26.0, 18.0, 18.0])/6
@@ -52,8 +47,8 @@ def _torque_worker(
     #
     # Kp = UR3E_MAX_TORQUE / np.array([0.35, 0.35, 0.35, 0.6, 0.6, 1.0])
     # Kd = UR3E_MAX_TORQUE / (np.pi * 0.5)
-
-    UR3E_MAX_TORQUE = np.array([56., 56., 28., 9., 9., 9.])
+    # need tuning
+    UR3E_MAX_TORQUE = np.array([56.0, 56.0, 28.0, 9.0, 9.0, 9.0])
     max_torque = UR3E_MAX_TORQUE * 0.8
     Kp_base = max_torque / np.array([0.25, 0.25, 0.5, 0.35, 0.3, 0.3])
 
@@ -63,7 +58,6 @@ def _torque_worker(
     Kd_ratios = np.array([0.04, 0.04, 0.04, 0.04, 0.04, 0.04])
     Kd = Kd_ratios * Kp
 
-
     log_buffer = []
     t0 = time.time()
     qd_act_filtered = np.zeros(6)
@@ -72,7 +66,6 @@ def _torque_worker(
     try:
         while running_flag.value:
             t_start = rtde_c.initPeriod()
-
 
             q_act = np.array(rtde_r.getActualQ(), dtype=float)
             qd_act = np.array(rtde_r.getActualQd(), dtype=float)
@@ -90,10 +83,9 @@ def _torque_worker(
             # new
             qd_act_filtered = vel_filter_alpha * qd_act + (1 - vel_filter_alpha) * qd_act_filtered
 
-
             q_err = target - q_act
             for k in range(6):
-                threshold = 0.005 if k < 3 else 0.002  # 0.008 rad ≈ 0.45
+                threshold = 0.005 if k < 3 else 0.002  #
                 if abs(q_err[k]) < threshold:
                     q_err[k] = 0.0
             # qd_err = -qd_act
@@ -105,10 +97,7 @@ def _torque_worker(
             torque_target = np.clip(torque_target, -max_torque, max_torque)
 
             t_now = time.time() - t0
-            log_buffer.append(np.concatenate([
-                [t_now],
-                target, q_act, torque_p, torque_d, torque_target
-            ]))
+            log_buffer.append(np.concatenate([[t_now], target, q_act, torque_p, torque_d, torque_target]))
 
             rtde_c.directTorque(torque_target.tolist())
             rtde_c.waitPeriod(t_start)
@@ -139,12 +128,12 @@ def _torque_worker(
         if log_path is not None and len(log_buffer) > 0:
             log_buffer = np.array(log_buffer)
             header = (
-                ["time"] +
-                [f"target_{i}" for i in range(6)] +
-                [f"q_act_{i}" for i in range(6)] +
-                [f"torque_p_{i}" for i in range(6)] +
-                [f"torque_d_{i}" for i in range(6)] +
-                [f"torque_cmd_{i}" for i in range(6)]
+                ["time"]
+                + [f"target_{i}" for i in range(6)]
+                + [f"q_act_{i}" for i in range(6)]
+                + [f"torque_p_{i}" for i in range(6)]
+                + [f"torque_d_{i}" for i in range(6)]
+                + [f"torque_cmd_{i}" for i in range(6)]
             )
             np.savetxt(log_path, log_buffer, delimiter=",", header=",".join(header), comments="")
             print(f"[Torque Worker] Saved {len(log_buffer)} samples to {log_path}")
@@ -175,9 +164,7 @@ class URrtde(PositionManipulator):
     UR3E_MAX_TORQUE = np.array([54.0, 54.0, 28.0, 9.0, 9.0, 9.0])
     UR5E_MAX_TORQUE = np.array([150.0, 150.0, 150.0, 28.0, 28.0, 28.0])
 
-
-    rtde_frequency = 500 #for torque mode
-
+    rtde_frequency = 500  # for torque mode
 
     def __init__(
         self,
@@ -185,30 +172,19 @@ class URrtde(PositionManipulator):
         manipulator_specs: ManipulatorSpecs,
         torque_mode: bool = False,
         gripper: Optional[ParallelPositionGripper] = None,
-        initial_joint = None
+        initial_joint=None,
     ) -> None:
         super().__init__(manipulator_specs, gripper)
         self.ip_address = ip_address
         try:
             if torque_mode:
-                # # self.rtde_control = RTDEControlInterface(self.ip_address, self.rtde_frequency)
-                # self.rtde_control = RTDEControlInterface(self.ip_address, self.rtde_frequency)
-                # self.rtde_receive = RTDEReceiveInterface(self.ip_address, self.rtde_frequency)
-                # # self.target_pos = self.rtde_receive.getActualQ()
-                # self.torque_enable = True
-                # self.target_pos = np.array(self.rtde_receive.getActualQ(), dtype=float)
-                # self.pos_cache = self.target_pos
-                # self.tcp_cache = np.array(self.rtde_receive.getActualTCPPose(), dtype=float)
-                # if self.gripper:
-                #     self.gripper_cache = np.array(self.gripper.get_current_width(), dtype=float)
-                # self._enable_torque_control()
                 self._torque_process = None
                 self.torque_mode = True
-                self.target_pos_shared = Array('d', [0.0] * 6)
-                self.pos_cache_shared = Array('d', [0.0] * 6)
-                self.tcp_cache_shared = Array('d', [0.0] * 6)  # 如果想存 4x4，可以改成 16 长度
-                self.gripper_cache_shared = Value('d', 0.0)
-                self.running_flag = Value('b', False)
+                self.target_pos_shared = Array("d", [0.0] * 6)
+                self.pos_cache_shared = Array("d", [0.0] * 6)
+                self.tcp_cache_shared = Array("d", [0.0] * 6)  # 如果想存 4x4，可以改成 16 长度
+                self.gripper_cache_shared = Value("d", 0.0)
+                self.running_flag = Value("b", False)
                 tmp_recv = RTDEReceiveInterface(self.ip_address)
                 tmp_ctrl = RTDEControlInterface(self.ip_address)
                 tmp_ctrl.moveJ(initial_joint)
@@ -221,7 +197,6 @@ class URrtde(PositionManipulator):
                     self.tcp_cache_shared[i] = tcp0[i]
                 tmp_recv.disconnect()
                 tmp_ctrl.disconnect()
-
 
                 self.enable_torque_control(use_gripper=(gripper is not None))
 
@@ -251,8 +226,6 @@ class URrtde(PositionManipulator):
 
     def get_joint_configuration(self) -> JointConfigurationType:
         return np.array(self.rtde_receive.getActualQ())
-
-
 
     def get_tcp_pose(self) -> HomogeneousMatrixType:
         tpc_rotvec_pose = self.rtde_receive.getActualTCPPose()
@@ -333,6 +306,7 @@ class URrtde(PositionManipulator):
             default_timeout=2 * duration,
             default_sleep_resolution=0.002,
         )
+
     def servo_to_joint_configuration(
         self, joint_configuration: JointConfigurationType, duration: float
     ) -> AwaitableAction:
@@ -358,7 +332,7 @@ class URrtde(PositionManipulator):
         # use small granularity in the wait method to minimize latency between the action completion and the return of the wait method
         action_sent_time = time.time_ns()
         return AwaitableAction(
-            lambda: time.time_ns() - action_sent_time > (duration+0.7) * 1e9,
+            lambda: time.time_ns() - action_sent_time > (duration + 0.7) * 1e9,
             default_timeout=2 * duration,
             default_sleep_resolution=0.002,
         )
@@ -400,12 +374,10 @@ class URrtde(PositionManipulator):
         translation = se3.translation
         return np.concatenate([translation, rotation])
 
-
     def _is_move_command_finished(self) -> bool:
         """check if the robot has finished executing the last move command."""
         progress = self.rtde_control.getAsyncOperationProgress()
         return progress < 0
-
 
     def get_tcp_force(self) -> WrenchType:
         return np.array(self.rtde_receive.getActualTCPForce())
@@ -475,9 +447,6 @@ class URrtde(PositionManipulator):
         if self._torque_process.is_alive():
             print("warning: torque process still alive")
         self._torque_process = None
-
-
-
 
 
 if __name__ == "__main__":
