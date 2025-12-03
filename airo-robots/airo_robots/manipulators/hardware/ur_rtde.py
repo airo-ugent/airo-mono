@@ -1,4 +1,5 @@
 import time
+from multiprocessing import Array, Process, Value
 from typing import Optional
 
 import numpy as np
@@ -6,13 +7,136 @@ from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers import ParallelPositionGripper
 from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
-from airo_typing import HomogeneousMatrixType, JointConfigurationType
-from loguru import logger
+from airo_typing import HomogeneousMatrixType, JointConfigurationType, WrenchType
 from rtde_control import RTDEControlInterface
 from rtde_receive import RTDEReceiveInterface
 
 RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
+
+
+def _torque_worker(
+    ur_ip,
+    target_pos_shared,  # Array('d', 6)
+    pos_cache_shared,  # Array('d', 6)
+    tcp_cache_shared,  # Array('d', 6)
+    gripper_cache_shared,  # Value('d')
+    running_flag,  # Value('b')
+    use_gripper=False,
+    log_path: str | None = "torque_log.csv",
+):
+
+    rtde_c = RTDEControlInterface(ur_ip, 500.0)
+    rtde_r = RTDEReceiveInterface(ur_ip, 500.0)
+
+    gripper = None
+    if use_gripper:
+        from airo_robots.grippers import Robotiq2F85
+
+        gripper = Robotiq2F85(ur_ip)
+
+    # UR3E_MAX_TORQUE = np.array([72.0, 72.0, 72.0, 26.0, 18.0, 18.0])/6
+    # max_torque = UR3E_MAX_TORQUE
+    # Kp = max_torque / np.array([0.1, 0.1, 0.1, 0.1, 0.07, 0.125])
+    # Kp *= 2.5
+    # Kd = max_torque / (np.pi * 0.25)
+    # Kd *= 2
+
+    # UR3E_MAX_TORQUE = np.array([56., 56., 28., 9., 9., 9.]) * 0.5  # 或 0.7
+    # max_torque = UR3E_MAX_TORQUE
+    #
+    # Kp = UR3E_MAX_TORQUE / np.array([0.35, 0.35, 0.35, 0.6, 0.6, 1.0])
+    # Kd = UR3E_MAX_TORQUE / (np.pi * 0.5)
+    # need tuning
+    UR3E_MAX_TORQUE = np.array([56.0, 56.0, 28.0, 9.0, 9.0, 9.0])
+    max_torque = UR3E_MAX_TORQUE * 0.8
+    Kp_base = max_torque / np.array([0.25, 0.25, 0.5, 0.35, 0.3, 0.3])
+
+    Kp_scale_factor = 1.0
+    Kp = Kp_base * Kp_scale_factor
+
+    Kd_ratios = np.array([0.04, 0.04, 0.04, 0.04, 0.04, 0.04])
+    Kd = Kd_ratios * Kp
+
+    log_buffer = []
+    t0 = time.time()
+    qd_act_filtered = np.zeros(6)
+    vel_filter_alpha = 0.12
+
+    try:
+        while running_flag.value:
+            t_start = rtde_c.initPeriod()
+
+            q_act = np.array(rtde_r.getActualQ(), dtype=float)
+            qd_act = np.array(rtde_r.getActualQd(), dtype=float)
+            tcp_pose = np.array(rtde_r.getActualTCPPose(), dtype=float)
+
+            for i in range(6):
+                pos_cache_shared[i] = q_act[i]
+                tcp_cache_shared[i] = tcp_pose[i]
+
+            if gripper is not None:
+                gripper_cache_shared.value = float(gripper.get_current_width())
+
+            target = np.array([target_pos_shared[i] for i in range(6)], dtype=float)
+
+            # new
+            qd_act_filtered = vel_filter_alpha * qd_act + (1 - vel_filter_alpha) * qd_act_filtered
+
+            q_err = target - q_act
+            for k in range(6):
+                threshold = 0.005 if k < 3 else 0.002  #
+                if abs(q_err[k]) < threshold:
+                    q_err[k] = 0.0
+            # qd_err = -qd_act
+            qd_err = -qd_act_filtered
+            torque_p = Kp * q_err
+            torque_d = Kd * qd_err
+            torque_d = np.clip(torque_d, -0.2 * max_torque, 0.2 * max_torque)
+            torque_target = torque_p + torque_d
+            torque_target = np.clip(torque_target, -max_torque, max_torque)
+
+            t_now = time.time() - t0
+            log_buffer.append(np.concatenate([[t_now], target, q_act, torque_p, torque_d, torque_target]))
+
+            rtde_c.directTorque(torque_target.tolist())
+            rtde_c.waitPeriod(t_start)
+
+    finally:
+        try:
+            zero_torque = [0.0] * 6
+            for _ in range(20):
+                t_start = rtde_c.initPeriod()
+                rtde_c.directTorque(zero_torque)
+                rtde_c.waitPeriod(t_start)
+        except Exception:
+            pass
+
+        try:
+            rtde_c.stopScript()
+        except Exception:
+            pass
+        try:
+            rtde_c.disconnect()
+        except Exception:
+            pass
+        try:
+            rtde_r.disconnect()
+        except Exception:
+            pass
+
+        if log_path is not None and len(log_buffer) > 0:
+            log_buffer = np.array(log_buffer)
+            header = (
+                ["time"]
+                + [f"target_{i}" for i in range(6)]
+                + [f"q_act_{i}" for i in range(6)]
+                + [f"torque_p_{i}" for i in range(6)]
+                + [f"torque_d_{i}" for i in range(6)]
+                + [f"torque_cmd_{i}" for i in range(6)]
+            )
+            np.savetxt(log_path, log_buffer, delimiter=",", header=",".join(header), comments="")
+            print(f"[Torque Worker] Saved {len(log_buffer)} samples to {log_path}")
 
 
 class URrtde(PositionManipulator):
@@ -36,32 +160,55 @@ class URrtde(PositionManipulator):
     UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
     # https://www.universal-robots.com/media/240787/ur3_us.pdf
     UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+    UR5E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0)
+    UR3E_MAX_TORQUE = np.array([54.0, 54.0, 28.0, 9.0, 9.0, 9.0])
+    UR5E_MAX_TORQUE = np.array([150.0, 150.0, 150.0, 28.0, 28.0, 28.0])
+
+    rtde_frequency = 500  # for torque mode
 
     def __init__(
         self,
         ip_address: str,
         manipulator_specs: ManipulatorSpecs,
         gripper: Optional[ParallelPositionGripper] = None,
+        torque_mode: bool = False,
+        initial_joint=None,
     ) -> None:
         super().__init__(manipulator_specs, gripper)
         self.ip_address = ip_address
+        try:
+            if torque_mode:
+                self._torque_process = None
+                self.torque_mode = True
+                self.target_pos_shared = Array("d", [0.0] * 6)
+                self.pos_cache_shared = Array("d", [0.0] * 6)
+                self.tcp_cache_shared = Array("d", [0.0] * 6)
+                self.gripper_cache_shared = Value("d", 0.0)
+                self.running_flag = Value("b", False)
+                tmp_recv = RTDEReceiveInterface(self.ip_address)
+                tmp_ctrl = RTDEControlInterface(self.ip_address)
+                if initial_joint:
+                    tmp_ctrl.moveJ(initial_joint)
+                q0 = np.array(tmp_recv.getActualQ(), dtype=float)
+                tcp0 = np.array(tmp_recv.getActualTCPPose(), dtype=float)
+                for i in range(6):
+                    self.target_pos_shared[i] = q0[i]
+                    self.pos_cache_shared[i] = q0[i]
+                for i in range(6):
+                    self.tcp_cache_shared[i] = tcp0[i]
+                tmp_recv.disconnect()
+                tmp_ctrl.disconnect()
 
-        max_connection_attempts = 3
-        for connection_attempt in range(max_connection_attempts):
-            try:
+                self.enable_torque_control(use_gripper=(gripper is not None))
+
+            else:
                 self.rtde_control = RTDEControlInterface(self.ip_address)
                 self.rtde_receive = RTDEReceiveInterface(self.ip_address)
-                break
-            except RuntimeError as e:
-                logger.warning(
-                    f"Failed to connect to RTDE. Retrying... (Attempt {connection_attempt + 1}/{max_connection_attempts}). Error:\n{e}"
-                )
-                if connection_attempt == max_connection_attempts - 1:
-                    raise RuntimeError(
-                        "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
-                    )
-                else:
-                    time.sleep(1.0)
+
+        except RuntimeError:
+            raise RuntimeError(
+                "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
+            )
 
         self.default_linear_acceleration = 1.2  # m/s^2
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
@@ -71,12 +218,12 @@ class URrtde(PositionManipulator):
         """
 
         # sensible values but you might need to tweak them for your purposes.
-        self.servo_proportional_gain = 200
-        self.servo_lookahead_time = 0.1
+        self.servo_proportional_gain = 100
+        self.servo_lookahead_time = 0.2
 
         # some thresholds for the awaitable actions, to check if a move command has been completed
-        self._pose_reached_L2_threshold = 0.01
-        self._joint_config_reached_L2_threshold = 0.01
+        self._pose_reached_L2_threshold = 0.001
+        self._joint_config_reached_L2_threshold = 0.001
 
     def get_joint_configuration(self) -> JointConfigurationType:
         return np.array(self.rtde_receive.getActualQ())
@@ -149,7 +296,7 @@ class URrtde(PositionManipulator):
         # TODO: if we use IKFast, this would be faster than sending the pose to the robot and waiting for the response
 
         self.rtde_control.servoL(
-            tcp_rotvec_pose, 0.0, 0.0, duration, self.servo_lookahead_time, self.servo_proportional_gain
+            tcp_rotvec_pose, 0.3, 0.3, duration, self.servo_lookahead_time, self.servo_proportional_gain
         )
 
         # be careful when waiting for the action to be completed in a high frequency control loop,
@@ -186,7 +333,7 @@ class URrtde(PositionManipulator):
         # use small granularity in the wait method to minimize latency between the action completion and the return of the wait method
         action_sent_time = time.time_ns()
         return AwaitableAction(
-            lambda: time.time_ns() - action_sent_time > duration * 1e9,
+            lambda: time.time_ns() - action_sent_time > (duration + 0.7) * 1e9,
             default_timeout=2 * duration,
             default_sleep_resolution=0.002,
         )
@@ -228,17 +375,84 @@ class URrtde(PositionManipulator):
         translation = se3.translation
         return np.concatenate([translation, rotation])
 
-    # non-api methods
-
     def _is_move_command_finished(self) -> bool:
         """check if the robot has finished executing the last move command."""
         progress = self.rtde_control.getAsyncOperationProgress()
         return progress < 0
 
+    def get_tcp_force(self) -> WrenchType:
+        return np.array(self.rtde_receive.getActualTCPForce())
+
+    def stop_script(self):
+        self.rtde_control.stopScript()
+
+    # ---- shared target_pos 的 property，方便外界直接 self.ur.target_pos = q ----
+    @property
+    def target_pos(self) -> np.ndarray:
+        if not self.torque_mode:
+            raise RuntimeError("target_pos only valid in torque_mode")
+        return np.array(self.target_pos_shared[:], dtype=float)
+
+    @target_pos.setter
+    def target_pos(self, q_target: np.ndarray) -> None:
+        if not self.torque_mode:
+            raise RuntimeError("target_pos only valid in torque_mode")
+        q_target = np.asarray(q_target, dtype=float)
+        assert q_target.shape == (6,)
+        for i in range(6):
+            self.target_pos_shared[i] = float(q_target[i])
+
+    def get_cached_joint_configuration(self) -> np.ndarray:
+        if not self.torque_mode:
+            return np.array(self.rtde_receive.getActualQ(), dtype=float)
+        return np.array(self.pos_cache_shared[:], dtype=float)
+
+    def get_cached_tcp_pose(self) -> np.ndarray:
+        if not self.torque_mode:
+            return np.array(self.rtde_receive.getActualTCPPose(), dtype=float)
+        return np.array(self.tcp_cache_shared[:], dtype=float)
+
+    def get_cached_gripper_width(self) -> float:
+        if not self.torque_mode:
+            if self.gripper:
+                return float(self.gripper.get_current_width())
+            return 0.0
+        return float(self.gripper_cache_shared.value)
+
+    def enable_torque_control(self, use_gripper: bool = False) -> None:
+        if self._torque_process is not None and self._torque_process.is_alive():
+            return
+
+        self.running_flag.value = True
+        self._torque_process = Process(
+            target=_torque_worker,
+            args=(
+                self.ip_address,
+                self.target_pos_shared,
+                self.pos_cache_shared,
+                self.tcp_cache_shared,
+                self.gripper_cache_shared,
+                self.running_flag,
+                use_gripper,
+            ),
+            daemon=True,
+        )
+        self._torque_process.start()
+        print("torque process starts")
+
+    def disable_torque_control(self) -> None:
+        if self._torque_process is None:
+            return
+        self.running_flag.value = False
+        self._torque_process.join(timeout=5.0)
+        if self._torque_process.is_alive():
+            print("warning: torque process still alive")
+        self._torque_process = None
+
 
 if __name__ == "__main__":
     """test script for UR rtde.
-    e.g. python airo-robots/airo_robots/manipulators/hardware/ur_rtde.py --ip_address 10.42.0.162
+    ex. python airo-robots/airo_robots/manipulators/ur3e.py --ip_address 10.42.0.162 for Victor
     """
     import click
     from airo_robots.manipulators.hardware.manual_manipulator_testing import manual_test_robot
