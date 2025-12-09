@@ -19,7 +19,6 @@ from airo_typing import (
     JointPathType,
     SingleArmTrajectory,
     TimesType,
-    WrenchType,
 )
 from loguru import logger
 
@@ -35,7 +34,7 @@ class ManipulatorSpecs:
 
     max_joint_speeds: List[float]
     max_linear_speed: float
-    max_torque: Optional[WrenchType] = None
+    max_torque: Optional[List[float]]
 
     @property
     def dof(self) -> int:
@@ -101,15 +100,14 @@ class PositionManipulator(ABC):
         self._default_joint_speed = speed
 
     @property
-    def default_torque(self) -> Optional[WrenchType]:
-        """the leading-axis joint speed to use in move_to_joint_configuration or move_to_tcp_pose if no speed is specified."""
+    def default_torque(self) -> Optional[List[float]]:
         if self._manipulator_specs.max_torque is None:
             return None
         else:
             return self._default_torque
 
     @default_torque.setter
-    def default_torque(self, torque: WrenchType) -> None:
+    def default_torque(self, torque: List[float]) -> None:
         if self._manipulator_specs.max_torque is None:
             pass
         else:

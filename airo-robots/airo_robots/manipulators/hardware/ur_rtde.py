@@ -1,14 +1,14 @@
 import time
 from multiprocessing import Array, Process, Value
 from multiprocessing.sharedctypes import Synchronized, SynchronizedArray
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers import ParallelPositionGripper
 from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
-from airo_typing import HomogeneousMatrixType, JointConfigurationType, WrenchType
+from airo_typing import HomogeneousMatrixType, JointConfigurationType
 from loguru import logger
 from rtde_control import RTDEControlInterface
 from rtde_receive import RTDEReceiveInterface
@@ -19,12 +19,11 @@ RotVecPoseType = np.ndarray
 
 def _torque_worker(
     ur_ip: str,
-    torque_limit: WrenchType,
+    torque_limit: List[float],
     target_pos_shared: SynchronizedArray,
     pos_cache_shared: SynchronizedArray,
     tcp_cache_shared: SynchronizedArray,
     running_flag: Synchronized,
-    log_path: Optional[str] = "torque_log.csv",
 ) -> None:
 
     """
@@ -46,8 +45,6 @@ def _torque_worker(
             worker writes the current TCP pose [x, y, z, rx, ry, rz].
         running_flag: Shared boolean flag. The loop runs as long
             as this is True. Set to False from the main process to stop the worker.
-        log_path: Path to save the control loop data
-            (targets, actuals, torques) as a CSV file. Defaults to "torque_log.csv".
 
     Returns:
         None
@@ -116,18 +113,6 @@ def _torque_worker(
         except Exception as e:
             logger.warning(f"Failed to stop Torque Loop: {e}")
 
-        if log_path is not None and len(log_buffer) > 0:
-            header = (
-                ["time"]
-                + [f"target_{i}" for i in range(6)]
-                + [f"q_act_{i}" for i in range(6)]
-                + [f"torque_p_{i}" for i in range(6)]
-                + [f"torque_d_{i}" for i in range(6)]
-                + [f"torque_cmd_{i}" for i in range(6)]
-            )
-            np.savetxt(log_path, log_buffer, delimiter=",", header=",".join(header), comments="")
-            logger.success(f"Saved {len(log_buffer)} samples to {log_path}")
-
 
 class URrtde(PositionManipulator):
     """Implementation of the Position-controlled manipulator class for UR robots.
@@ -147,12 +132,10 @@ class URrtde(PositionManipulator):
     # ROBOT SPEC CONFIGURATIONS
 
     # https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
-    UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, np.array([54.0, 54.0, 28.0, 9.0, 9.0, 9.0]))
+    UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0])
     # https://www.universal-robots.com/media/240787/ur3_us.pdf
     UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
-    UR5E_CONFIG = ManipulatorSpecs(
-        [1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0, np.array([150.0, 150.0, 150.0, 28.0, 28.0, 28.0])
-    )
+    UR5E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0, [150.0, 150.0, 150.0, 28.0, 28.0, 28.0])
 
     def __init__(
         self,
@@ -160,7 +143,7 @@ class URrtde(PositionManipulator):
         manipulator_specs: ManipulatorSpecs,
         gripper: Optional[ParallelPositionGripper] = None,
         torque_mode: bool = False,
-        initial_joint: Optional[JointConfigurationType] = None,
+        initial_joint_configuration: Optional[JointConfigurationType] = None,
     ) -> None:
         """
         Args:
@@ -181,8 +164,8 @@ class URrtde(PositionManipulator):
                 self.running_flag = Value("b", False)
                 tmp_recv = RTDEReceiveInterface(self.ip_address)
                 tmp_ctrl = RTDEControlInterface(self.ip_address)
-                if initial_joint is not None:
-                    tmp_ctrl.moveJ(initial_joint)
+                if initial_joint_configuration is not None:
+                    tmp_ctrl.moveJ(initial_joint_configuration)
                 q0 = np.array(tmp_recv.getActualQ(), dtype=float)
                 tcp0 = np.array(tmp_recv.getActualTCPPose(), dtype=float)
                 for i in range(6):
@@ -374,7 +357,7 @@ class URrtde(PositionManipulator):
         progress = self.rtde_control.getAsyncOperationProgress()
         return progress < 0
 
-    def get_tcp_force(self) -> WrenchType:
+    def get_tcp_force(self) -> np.ndarray:
         return np.array(self.rtde_receive.getActualTCPForce())
 
     def stop_script(self) -> None:
@@ -383,13 +366,13 @@ class URrtde(PositionManipulator):
     @property
     def target_pos(self) -> JointConfigurationType:
         if not self.torque_mode:
-            raise RuntimeError("target_pos only valid in torque_mode")
+            raise RuntimeError("target_pos is only valid in torque_mode")
         return np.array(self.target_pos_shared[:], dtype=float)
 
     @target_pos.setter
     def target_pos(self, q_target: JointConfigurationType) -> None:
         if not self.torque_mode:
-            raise RuntimeError("target_pos only valid in torque_mode")
+            raise RuntimeError("target_pos is only valid in torque_mode")
         q_target = np.asarray(q_target, dtype=float)
         assert q_target.shape == (6,)
         for i in range(6):
