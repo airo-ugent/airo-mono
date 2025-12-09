@@ -104,7 +104,7 @@ class PositionManipulator(ABC):
     def default_torque(self) -> Optional[WrenchType]:
         """the leading-axis joint speed to use in move_to_joint_configuration or move_to_tcp_pose if no speed is specified."""
         if self._manipulator_specs.max_torque is None:
-            pass
+            return None
         else:
             return self._default_torque
 
