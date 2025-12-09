@@ -134,7 +134,7 @@ class URrtde(PositionManipulator):
     # https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
     UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0])
     # https://www.universal-robots.com/media/240787/ur3_us.pdf
-    UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+    UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, None)
     UR5E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0, [150.0, 150.0, 150.0, 28.0, 28.0, 28.0])
 
     def __init__(
