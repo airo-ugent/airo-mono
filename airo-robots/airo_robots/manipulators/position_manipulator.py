@@ -34,7 +34,7 @@ class ManipulatorSpecs:
 
     max_joint_speeds: List[float]
     max_linear_speed: float
-    max_torque: Optional[List[float]]
+    max_torque: Optional[List[float]] = None
 
     @property
     def dof(self) -> int:
