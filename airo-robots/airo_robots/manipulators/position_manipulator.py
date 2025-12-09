@@ -101,21 +101,27 @@ class PositionManipulator(ABC):
         self._default_joint_speed = speed
 
     @property
-    def default_torque(self) -> WrenchType:
+    def default_torque(self) -> Optional[WrenchType]:
         """the leading-axis joint speed to use in move_to_joint_configuration or move_to_tcp_pose if no speed is specified."""
-        return self._default_torque
+        if self._manipulator_specs.max_torque is None:
+            pass
+        else:
+            return self._default_torque
 
     @default_torque.setter
     def default_torque(self, torque: WrenchType) -> None:
-        if torque.shape != self._manipulator_specs.max_torque.shape:
+        if self._manipulator_specs.max_torque is None:
             pass
-        if np.any(torque > self._manipulator_specs.max_torque):
-            raise ValueError(
-                f"Torque violation! Requested: {torque}, "
-                f"Max limits: {self._manipulator_specs.max_torque}. "
-                f"Indices exceeding limit: {np.where(torque > self._manipulator_specs.max_torque)[0]}"
-            )
-        self._default_torque = torque
+        else:
+            if torque.shape != self._manipulator_specs.max_torque.shape:
+                pass
+            if np.any(torque > self._manipulator_specs.max_torque):
+                raise ValueError(
+                    f"Torque violation! Requested: {torque}, "
+                    f"Max limits: {self._manipulator_specs.max_torque}. "
+                    f"Indices exceeding limit: {np.where(torque > self._manipulator_specs.max_torque)[0]}"
+                )
+            self._default_torque = torque
 
     @abstractmethod
     def get_tcp_pose(self) -> HomogeneousMatrixType:

@@ -173,8 +173,7 @@ class URrtde(PositionManipulator):
         self.ip_address = ip_address
         try:
             if torque_mode:
-                self.process: Optional[Process] = None
-                self._torque_process = None
+                self._torque_process: Optional[Process] = None
                 self.torque_mode = True
                 self.target_pos_shared = Array("d", [0.0] * 6)
                 self.pos_cache_shared = Array("d", [0.0] * 6)
