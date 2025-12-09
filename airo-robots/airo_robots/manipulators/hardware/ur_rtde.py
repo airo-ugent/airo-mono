@@ -156,6 +156,9 @@ class URrtde(PositionManipulator):
         self.ip_address = ip_address
         try:
             if torque_mode:
+                if manipulator_specs.max_torque is None:
+                    raise ValueError("Cannot enable torque mode without setting the maximum allowed torques.")
+
                 self._torque_process: Optional[Process] = None
                 self.torque_mode = True
                 self.target_pos_shared = Array("d", [0.0] * 6)
