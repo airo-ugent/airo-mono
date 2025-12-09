@@ -10,18 +10,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 
 ### Added
+- Added `gc_disabled()` context manager to temporarily disable garbage collection for performance-critical sections.
 
-### Changed
-
-### Fixed
-
-### Removed
-
-## Unreleased
-
-### Breaking changes
-
-### Added
 - **Torque Control Support**: Added a `torque_mode` flag to `ur_rtde` (default: `False`).
 
     - When enabled, it launches process `_torque_worker` (500Hz) to compute and control robot torque using PD control.
@@ -29,8 +19,9 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
     - Set the `target_pos` (joint configuration) in the 'URrtde' class to control robot pose.
 
     - **Important**: Users must tune the PD parameters before use to ensure stability.
-
 ### Changed
+- Improved `execute_trajectory` reliability: we now temporarily disable the garbage collector in the hot loop to reduce latency using `gc_disabled()`.
+- Deprecated `AsyncExecutor`. It is a very thin wrapper around [`ThreadPoolExecutor(max_workers=1)`](https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Executor), which should be used instead.
 
 ### Fixed
 

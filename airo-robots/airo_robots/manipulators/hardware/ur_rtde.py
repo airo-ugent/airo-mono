@@ -117,7 +117,6 @@ def _torque_worker(
             logger.warning(f"Failed to stop Torque Loop: {e}")
 
         if log_path is not None and len(log_buffer) > 0:
-            log_buffer = np.array(log_buffer)
             header = (
                 ["time"]
                 + [f"target_{i}" for i in range(6)]
@@ -150,6 +149,7 @@ class URrtde(PositionManipulator):
     # https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
     UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, np.array([54.0, 54.0, 28.0, 9.0, 9.0, 9.0]))
     # https://www.universal-robots.com/media/240787/ur3_us.pdf
+    UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
     UR5E_CONFIG = ManipulatorSpecs(
         [1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0, np.array([150.0, 150.0, 150.0, 28.0, 28.0, 28.0])
     )
@@ -173,6 +173,7 @@ class URrtde(PositionManipulator):
         self.ip_address = ip_address
         try:
             if torque_mode:
+                self.process: Optional[Process] = None
                 self._torque_process = None
                 self.torque_mode = True
                 self.target_pos_shared = Array("d", [0.0] * 6)
@@ -377,7 +378,7 @@ class URrtde(PositionManipulator):
     def get_tcp_force(self) -> WrenchType:
         return np.array(self.rtde_receive.getActualTCPForce())
 
-    def stop_script(self):
+    def stop_script(self) -> None:
         self.rtde_control.stopScript()
 
     @property
