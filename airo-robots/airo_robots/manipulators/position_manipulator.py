@@ -30,10 +30,12 @@ class ManipulatorSpecs:
     dof: the Degrees of freedom of the robot, can be used to verify the shape of joint configurations
     max_joint_speeds: list of max joint speeds in [rad/s]
     max_linear_speed: an (approximate) maximal linear speed [m/s], since it is hard to test for joint speed limitations on each interpolation step
+    max_torque: list of max joint torques in [Nm]
     """
 
     max_joint_speeds: List[float]
     max_linear_speed: float
+    max_torque: Optional[List[float]] = None
 
     @property
     def dof(self) -> int:
@@ -57,6 +59,7 @@ class PositionManipulator(ABC):
         self._manipulator_specs = manipulator_specs
         self._gripper = gripper
         self._default_linear_speed = 0.1  # m/s often a good default value
+        self._default_torque = manipulator_specs.max_torque
         self._default_joint_speed = min(manipulator_specs.max_joint_speeds) / 4
 
     @property
@@ -96,6 +99,28 @@ class PositionManipulator(ABC):
                 f"joint speed {speed} is too high. Max joint speeds are {self._manipulator_specs.max_joint_speeds}"
             )
         self._default_joint_speed = speed
+
+    @property
+    def default_torque(self) -> Optional[List[float]]:
+        if self._manipulator_specs.max_torque is None:
+            return None
+        else:
+            if self._default_torque is not None:
+                return self._default_torque
+            else:
+                return None
+
+    @default_torque.setter
+    def default_torque(self, torque: List[float]) -> None:
+        if self._manipulator_specs.max_torque is not None:
+            torque_array = np.asarray(torque)
+            if np.any(torque_array > self._manipulator_specs.max_torque):
+                raise ValueError(
+                    f"Torque violation! Requested: {torque_array}, "
+                    f"Max limits: {self._manipulator_specs.max_torque}. "
+                    f"Indices exceeding limit: {np.where(torque_array > self._manipulator_specs.max_torque)[0]}"
+                )
+            self._default_torque = torque
 
     @abstractmethod
     def get_tcp_pose(self) -> HomogeneousMatrixType:

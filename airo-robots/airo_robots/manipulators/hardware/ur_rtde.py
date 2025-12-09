@@ -1,5 +1,7 @@
 import time
-from typing import Optional
+from multiprocessing import Array, Process, Value
+from multiprocessing.sharedctypes import Synchronized, SynchronizedArray
+from typing import List, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -13,6 +15,103 @@ from rtde_receive import RTDEReceiveInterface
 
 RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
+
+
+def _torque_worker(
+    ur_ip: str,
+    torque_limit: List[float],
+    target_pos_shared: SynchronizedArray,
+    pos_cache_shared: SynchronizedArray,
+    tcp_cache_shared: SynchronizedArray,
+    running_flag: Synchronized,
+) -> None:
+
+    """
+    Executes a real-time PD torque control loop (500Hz) for the UR manipulator.
+
+    This function acts as a worker process that calculates and sends torque commands
+    to the robot controller via the RTDE interface. It uses a PD controller to
+    drive the robot towards the target positions found in the shared memory.
+
+    It also synchronizes the robot's current state (joint positions, TCP pose) back to shared memory for the main process to read.
+
+    Args:
+        ur_ip: The IP address of the UR robot.
+        target_pos_shared: Shared memory array (size 6) containing
+            the desired joint positions. The worker reads from this.
+        pos_cache_shared: Shared memory array (size 6) where the
+            worker writes the current joint positions (radians).
+        tcp_cache_shared: Shared memory array (size 6) where the
+            worker writes the current TCP pose [x, y, z, rx, ry, rz].
+        running_flag: Shared boolean flag. The loop runs as long
+            as this is True. Set to False from the main process to stop the worker.
+
+    Returns:
+        None
+    """
+    rtde_c = RTDEControlInterface(ur_ip, 500.0)
+    rtde_r = RTDEReceiveInterface(ur_ip, 500.0)
+
+    # need tuning
+    max_torque = np.asarray(torque_limit) * 0.8
+    Kp = max_torque / np.array([0.25, 0.25, 0.5, 0.35, 0.3, 0.3])
+
+    Kd_ratios = np.array([0.04, 0.04, 0.04, 0.04, 0.04, 0.04])
+    Kd = Kd_ratios * Kp
+
+    log_buffer = []
+    t0 = time.time()
+    qd_act_filtered = np.array([0.0] * 6)
+    vel_filter_alpha = 0.12
+
+    try:
+        while running_flag.value:
+            t_start = rtde_c.initPeriod()
+
+            q_act = np.array(rtde_r.getActualQ())
+            qd_act = np.array(rtde_r.getActualQd())
+            tcp_pose = np.array(rtde_r.getActualTCPPose())
+
+            for i in range(6):
+                pos_cache_shared[i] = q_act[i]
+                tcp_cache_shared[i] = tcp_pose[i]
+
+            target = np.array([target_pos_shared[i] for i in range(6)])
+
+            # new
+            qd_act_filtered = vel_filter_alpha * qd_act + (1 - vel_filter_alpha) * qd_act_filtered
+
+            q_err = target - q_act
+            for k in range(6):
+                threshold = 0.005 if k < 3 else 0.002  #
+                if abs(q_err[k]) < threshold:
+                    q_err[k] = 0.0
+            # qd_err = -qd_act
+            qd_err = -qd_act_filtered
+            torque_p = Kp * q_err
+            torque_d = Kd * qd_err
+            torque_d = np.clip(torque_d, -0.2 * max_torque, 0.2 * max_torque)
+            torque_target = torque_p + torque_d
+            torque_target = np.clip(torque_target, -max_torque, max_torque)
+
+            t_now = time.time() - t0
+            log_buffer.append(np.concatenate([[t_now], target, q_act, torque_p, torque_d, torque_target]))
+
+            rtde_c.directTorque(torque_target.tolist())
+            rtde_c.waitPeriod(t_start)
+
+    finally:
+        try:
+            zero_torque = [0.0] * 6
+            for _ in range(20):
+                t_start = rtde_c.initPeriod()
+                rtde_c.directTorque(zero_torque)
+                rtde_c.waitPeriod(t_start)
+            rtde_c.stopScript()
+            rtde_c.disconnect()
+            rtde_r.disconnect()
+        except Exception as e:
+            logger.warning(f"Failed to stop Torque Loop: {e}")
 
 
 class URrtde(PositionManipulator):
@@ -33,35 +132,64 @@ class URrtde(PositionManipulator):
     # ROBOT SPEC CONFIGURATIONS
 
     # https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
-    UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+    # Torque values: https://www.universal-robots.com/articles/ur/robot-care-maintenance/max-joint-torques-cb3-and-e-series/
+    UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0])
     # https://www.universal-robots.com/media/240787/ur3_us.pdf
-    UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+    UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0])
+    UR5E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0, [150.0, 150.0, 150.0, 28.0, 28.0, 28.0])
 
     def __init__(
         self,
         ip_address: str,
         manipulator_specs: ManipulatorSpecs,
         gripper: Optional[ParallelPositionGripper] = None,
+        torque_mode: bool = False,
+        initial_joint_configuration: Optional[JointConfigurationType] = None,
     ) -> None:
+        """
+        Args:
+            initial_joint (Optional[JointConfigurationType]): A specific joint configuration to move the robot
+                BEFORE starting the torque control loop.
+                If provided, the robot will perform a blocking move to this position during initialization.
+                This is highly recommended in torque_mode to ensure the robot starts from a known, safe configuration.
+        """
         super().__init__(manipulator_specs, gripper)
         self.ip_address = ip_address
+        try:
+            if torque_mode:
+                if manipulator_specs.max_torque is None:
+                    raise ValueError("Cannot enable torque mode without setting the maximum allowed torques.")
 
-        max_connection_attempts = 3
-        for connection_attempt in range(max_connection_attempts):
-            try:
+                self._torque_process: Optional[Process] = None
+                self.torque_mode = True
+                self.target_pos_shared = Array("d", [0.0] * 6)
+                self.pos_cache_shared = Array("d", [0.0] * 6)
+                self.tcp_cache_shared = Array("d", [0.0] * 6)
+                self.running_flag = Value("b", False)
+                tmp_recv = RTDEReceiveInterface(self.ip_address)
+                tmp_ctrl = RTDEControlInterface(self.ip_address)
+                if initial_joint_configuration is not None:
+                    tmp_ctrl.moveJ(initial_joint_configuration)
+                q0 = np.array(tmp_recv.getActualQ(), dtype=float)
+                tcp0 = np.array(tmp_recv.getActualTCPPose(), dtype=float)
+                for i in range(6):
+                    self.target_pos_shared[i] = q0[i]
+                    self.pos_cache_shared[i] = q0[i]
+                for i in range(6):
+                    self.tcp_cache_shared[i] = tcp0[i]
+                tmp_recv.disconnect()
+                tmp_ctrl.disconnect()
+
+                self.enable_torque_control()
+
+            else:
                 self.rtde_control = RTDEControlInterface(self.ip_address)
                 self.rtde_receive = RTDEReceiveInterface(self.ip_address)
-                break
-            except RuntimeError as e:
-                logger.warning(
-                    f"Failed to connect to RTDE. Retrying... (Attempt {connection_attempt + 1}/{max_connection_attempts}). Error:\n{e}"
-                )
-                if connection_attempt == max_connection_attempts - 1:
-                    raise RuntimeError(
-                        "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
-                    )
-                else:
-                    time.sleep(1.0)
+
+        except RuntimeError:
+            raise RuntimeError(
+                "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
+            )
 
         self.default_linear_acceleration = 1.2  # m/s^2
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
@@ -71,7 +199,7 @@ class URrtde(PositionManipulator):
         """
 
         # sensible values but you might need to tweak them for your purposes.
-        self.servo_proportional_gain = 200
+        self.servo_proportional_gain = 100
         self.servo_lookahead_time = 0.1
 
         # some thresholds for the awaitable actions, to check if a move command has been completed
@@ -228,12 +356,73 @@ class URrtde(PositionManipulator):
         translation = se3.translation
         return np.concatenate([translation, rotation])
 
-    # non-api methods
-
     def _is_move_command_finished(self) -> bool:
         """check if the robot has finished executing the last move command."""
         progress = self.rtde_control.getAsyncOperationProgress()
         return progress < 0
+
+    def get_tcp_force(self) -> np.ndarray:
+        return np.array(self.rtde_receive.getActualTCPForce())
+
+    def stop_script(self) -> None:
+        self.rtde_control.stopScript()
+
+    @property
+    def target_pos(self) -> JointConfigurationType:
+        if not self.torque_mode:
+            raise RuntimeError("target_pos is only valid in torque_mode")
+        return np.array(self.target_pos_shared[:], dtype=float)
+
+    @target_pos.setter
+    def target_pos(self, q_target: JointConfigurationType) -> None:
+        if not self.torque_mode:
+            raise RuntimeError("target_pos is only valid in torque_mode")
+        q_target = np.asarray(q_target, dtype=float)
+        assert q_target.shape == (6,)
+        for i in range(6):
+            self.target_pos_shared[i] = float(q_target[i])
+
+    def get_cached_joint_configuration(self) -> JointConfigurationType:
+        if not self.torque_mode:
+            return np.array(self.rtde_receive.getActualQ(), dtype=float)
+        return np.array(self.pos_cache_shared[:], dtype=float)
+
+    def get_cached_tcp_pose(self) -> HomogeneousMatrixType:
+        if not self.torque_mode:
+            tpc_rotvec_pose = self.rtde_receive.getActualTCPPose()
+            return self._convert_rotvec_pose_to_homogeneous_pose(tpc_rotvec_pose)
+        return self._convert_rotvec_pose_to_homogeneous_pose(np.array(self.tcp_cache_shared[:], dtype=float))
+
+    def enable_torque_control(self) -> None:
+        if self._torque_process is not None and self._torque_process.is_alive():
+            return
+        self.running_flag.value = True
+        self._torque_process = Process(
+            target=_torque_worker,
+            args=(
+                self.ip_address,
+                self.default_torque,
+                self.target_pos_shared,
+                self.pos_cache_shared,
+                self.tcp_cache_shared,
+                self.running_flag,
+            ),
+            daemon=True,
+        )
+        self._torque_process.start()
+        logger.info("Torque process started")
+
+    def disable_torque_control(self) -> None:
+        if self._torque_process is None:
+            return
+        logger.info("Stopping torque process...")
+        self.running_flag.value = False
+        self._torque_process.join(timeout=5.0)
+        if self._torque_process.is_alive():
+            logger.warning("Torque process is still alive!")
+        else:
+            logger.info("Torque process stopped successfully")
+        self._torque_process = None
 
 
 if __name__ == "__main__":
