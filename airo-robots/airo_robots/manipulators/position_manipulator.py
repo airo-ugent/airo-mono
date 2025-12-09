@@ -19,6 +19,7 @@ from airo_typing import (
     JointPathType,
     SingleArmTrajectory,
     TimesType,
+    WrenchType,
 )
 from loguru import logger
 
@@ -29,10 +30,12 @@ class ManipulatorSpecs:
     dof: the Degrees of freedom of the robot, can be used to verify the shape of joint configurations
     max_joint_speeds: list of max joint speeds in [rad/s]
     max_linear_speed: an (approximate) maximal linear speed [m/s], since it is hard to test for joint speed limitations on each interpolation step
+    max_torque: list of max joint torques in [Nm]
     """
 
     max_joint_speeds: List[float]
     max_linear_speed: float
+    max_torque: Optional[WrenchType] = None
 
     @property
     def dof(self) -> int:
@@ -54,8 +57,10 @@ class PositionManipulator(ABC):
         gripper: Optional[ParallelPositionGripper] = None,
     ) -> None:
         self._manipulator_specs = manipulator_specs
+        print(manipulator_specs)
         self._gripper = gripper
         self._default_linear_speed = 0.1  # m/s often a good default value
+        self._default_torque = manipulator_specs.max_torque
         self._default_joint_speed = min(manipulator_specs.max_joint_speeds) / 4
 
     @property
@@ -95,6 +100,23 @@ class PositionManipulator(ABC):
                 f"joint speed {speed} is too high. Max joint speeds are {self._manipulator_specs.max_joint_speeds}"
             )
         self._default_joint_speed = speed
+
+    @property
+    def default_torque(self) -> WrenchType:
+        """the leading-axis joint speed to use in move_to_joint_configuration or move_to_tcp_pose if no speed is specified."""
+        return self._default_torque
+
+    @default_torque.setter
+    def default_torque(self, torque: WrenchType) -> None:
+        if torque.shape != self._manipulator_specs.max_torque.shape:
+            pass
+        if np.any(torque > self._manipulator_specs.max_torque):
+            raise ValueError(
+                f"Torque violation! Requested: {torque}, "
+                f"Max limits: {self._manipulator_specs.max_torque}. "
+                f"Indices exceeding limit: {np.where(torque > self._manipulator_specs.max_torque)[0]}"
+            )
+        self._default_torque = torque
 
     @abstractmethod
     def get_tcp_pose(self) -> HomogeneousMatrixType:

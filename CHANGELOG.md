@@ -17,7 +17,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Removed
 
-## 2025.12.0
+## Unreleased
 
 ### Breaking changes
 
