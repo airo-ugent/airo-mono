@@ -53,7 +53,7 @@ def _torque_worker(
     rtde_r = RTDEReceiveInterface(ur_ip, 500.0)
 
     # need tuning
-    max_torque = torque_limit * 0.8
+    max_torque = np.asarray(torque_limit) * 0.8
     Kp = max_torque / np.array([0.25, 0.25, 0.5, 0.35, 0.3, 0.3])
 
     Kd_ratios = np.array([0.04, 0.04, 0.04, 0.04, 0.04, 0.04])
@@ -61,22 +61,22 @@ def _torque_worker(
 
     log_buffer = []
     t0 = time.time()
-    qd_act_filtered = np.zeros(6)
+    qd_act_filtered = np.array([0.0] * 6)
     vel_filter_alpha = 0.12
 
     try:
         while running_flag.value:
             t_start = rtde_c.initPeriod()
 
-            q_act = np.array(rtde_r.getActualQ(), dtype=float)
-            qd_act = np.array(rtde_r.getActualQd(), dtype=float)
-            tcp_pose = np.array(rtde_r.getActualTCPPose(), dtype=float)
+            q_act = np.array(rtde_r.getActualQ())
+            qd_act = np.array(rtde_r.getActualQd())
+            tcp_pose = np.array(rtde_r.getActualTCPPose())
 
             for i in range(6):
                 pos_cache_shared[i] = q_act[i]
                 tcp_cache_shared[i] = tcp_pose[i]
 
-            target = np.array([target_pos_shared[i] for i in range(6)], dtype=float)
+            target = np.array([target_pos_shared[i] for i in range(6)])
 
             # new
             qd_act_filtered = vel_filter_alpha * qd_act + (1 - vel_filter_alpha) * qd_act_filtered

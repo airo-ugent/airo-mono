@@ -104,20 +104,20 @@ class PositionManipulator(ABC):
         if self._manipulator_specs.max_torque is None:
             return None
         else:
-            return self._default_torque
+            if self._default_torque is not None:
+                return self._default_torque
+            else:
+                return None
 
     @default_torque.setter
     def default_torque(self, torque: List[float]) -> None:
-        if self._manipulator_specs.max_torque is None:
-            pass
-        else:
-            if torque.shape != self._manipulator_specs.max_torque.shape:
-                pass
-            if np.any(torque > self._manipulator_specs.max_torque):
+        if self._manipulator_specs.max_torque is not None:
+            torque_array = np.asarray(torque)
+            if np.any(torque_array > self._manipulator_specs.max_torque):
                 raise ValueError(
-                    f"Torque violation! Requested: {torque}, "
+                    f"Torque violation! Requested: {torque_array}, "
                     f"Max limits: {self._manipulator_specs.max_torque}. "
-                    f"Indices exceeding limit: {np.where(torque > self._manipulator_specs.max_torque)[0]}"
+                    f"Indices exceeding limit: {np.where(torque_array > self._manipulator_specs.max_torque)[0]}"
                 )
             self._default_torque = torque
 
