@@ -57,7 +57,6 @@ class PositionManipulator(ABC):
         gripper: Optional[ParallelPositionGripper] = None,
     ) -> None:
         self._manipulator_specs = manipulator_specs
-        print(manipulator_specs)
         self._gripper = gripper
         self._default_linear_speed = 0.1  # m/s often a good default value
         self._default_torque = manipulator_specs.max_torque
