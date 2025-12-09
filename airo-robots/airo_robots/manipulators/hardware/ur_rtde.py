@@ -132,9 +132,10 @@ class URrtde(PositionManipulator):
     # ROBOT SPEC CONFIGURATIONS
 
     # https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
+    # Torque values: https://www.universal-robots.com/articles/ur/robot-care-maintenance/max-joint-torques-cb3-and-e-series/
     UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0])
     # https://www.universal-robots.com/media/240787/ur3_us.pdf
-    UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, None)
+    UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0])
     UR5E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0, [150.0, 150.0, 150.0, 28.0, 28.0, 28.0])
 
     def __init__(
