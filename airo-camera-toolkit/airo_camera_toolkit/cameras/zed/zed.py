@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, ClassVar, List, Optional
+from typing import Any, ClassVar, Final, List, Optional
 
 from loguru import logger
 
@@ -83,14 +83,14 @@ class Zed(StereoRGBDCamera):
         # keep in mind though that the depth map is calculated during the `grab`operation, so the depth mode also influences the
         # fps of the rgb images, which is why the default depth mode is None
 
-        NEURAL_DEPTH_MODE: ClassVar[sl.DEPTH_MODE] = sl.DEPTH_MODE.NEURAL
-        NEURAL_LIGHT_DEPTH_MODE: ClassVar[sl.DEPTH_MODE] = sl.DEPTH_MODE.NEURAL_LIGHT
-        NEURAL_PLUS_DEPTH_MODE: ClassVar[sl.DEPTH_MODE] = sl.DEPTH_MODE.NEURAL_PLUS
+        NEURAL_DEPTH_MODE: ClassVar[Final[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL
+        NEURAL_LIGHT_DEPTH_MODE: ClassVar[Final[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL_LIGHT
+        NEURAL_PLUS_DEPTH_MODE: ClassVar[Final[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL_PLUS
 
         # no depth mode, higher troughput of the RGB images as the GPU has to do less work
         # can also turn depth off in the runtime params, which is recommended as it allows for switching at runtime.
-        NONE_DEPTH_MODE: ClassVar[sl.DEPTH_MODE] = sl.DEPTH_MODE.NONE
-        DEPTH_MODES: ClassVar[tuple[sl.DEPTH_MODE, ...]] = (
+        NONE_DEPTH_MODE: ClassVar[Final[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NONE
+        DEPTH_MODES: ClassVar[Final[tuple[sl.DEPTH_MODE, ...]]] = (
             NEURAL_DEPTH_MODE,
             NONE_DEPTH_MODE,
             NEURAL_LIGHT_DEPTH_MODE,
@@ -100,12 +100,12 @@ class Zed(StereoRGBDCamera):
         # for info on image resolution, pixel sizes, fov..., see:
         # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
         # make sure to check the combination of frame rates and resolution is available.
-        RESOLUTION_2K: ClassVar[CameraResolutionType] = (2208, 1242)
-        RESOLUTION_1080: ClassVar[CameraResolutionType] = (1920, 1080)
-        RESOLUTION_720: ClassVar[CameraResolutionType] = (1280, 720)
-        RESOLUTION_VGA: ClassVar[CameraResolutionType] = (672, 376)
+        RESOLUTION_2K: ClassVar[Final[CameraResolutionType]] = (2208, 1242)
+        RESOLUTION_1080: ClassVar[Final[CameraResolutionType]] = (1920, 1080)
+        RESOLUTION_720: ClassVar[Final[CameraResolutionType]] = (1280, 720)
+        RESOLUTION_VGA: ClassVar[Final[CameraResolutionType]] = (672, 376)
 
-        resolution_to_identifier_dict: ClassVar[dict[tuple[int, int], sl.RESOLUTION]] = {
+        resolution_to_identifier_dict: ClassVar[Final[dict[tuple[int, int], sl.RESOLUTION]]] = {
             RESOLUTION_2K: sl.RESOLUTION.HD2K,
             RESOLUTION_1080: sl.RESOLUTION.HD1080,
             RESOLUTION_720: sl.RESOLUTION.HD720,
@@ -166,13 +166,17 @@ class Zed(StereoRGBDCamera):
         # for more info on the different mapping resolutions and ranges, see:
         # https://www.stereolabs.com/docs/spatial-mapping/using-mapping
         # note that mapping on the HIGH resolution setting is resource-intensive, and slows down spatial map updates.
-        MAPPING_RESOLUTION_LOW: ClassVar[sl.MAPPING_RESOLUTION] = sl.MAPPING_RESOLUTION.LOW  # resolution of 2cm
-        MAPPING_RESOLUTION_MEDIUM: ClassVar[sl.MAPPING_RESOLUTION] = sl.MAPPING_RESOLUTION.MEDIUM  # resolution of 5cm
-        MAPPING_RESOLUTION_HIGH: ClassVar[sl.MAPPING_RESOLUTION] = sl.MAPPING_RESOLUTION.HIGH  # resolution of 8cm
+        MAPPING_RESOLUTION_LOW: ClassVar[Final[sl.MAPPING_RESOLUTION]] = sl.MAPPING_RESOLUTION.LOW  # resolution of 2cm
+        MAPPING_RESOLUTION_MEDIUM: ClassVar[
+            Final[sl.MAPPING_RESOLUTION]
+        ] = sl.MAPPING_RESOLUTION.MEDIUM  # resolution of 5cm
+        MAPPING_RESOLUTION_HIGH: ClassVar[
+            Final[sl.MAPPING_RESOLUTION]
+        ] = sl.MAPPING_RESOLUTION.HIGH  # resolution of 8cm
 
-        MAPPING_RANGE_SHORT: ClassVar[sl.MAPPING_RANGE] = sl.MAPPING_RANGE.SHORT  # integrates depth up to 3.5m
-        MAPPING_RANGE_MEDIUM: ClassVar[sl.MAPPING_RANGE] = sl.MAPPING_RANGE.MEDIUM  # integrates depth up to 5m
-        MAPPING_RANGE_FAR: ClassVar[sl.MAPPING_RANGE] = sl.MAPPING_RANGE.LONG  # integrates depth up to 10m
+        MAPPING_RANGE_SHORT: ClassVar[Final[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.SHORT  # integrates depth up to 3.5m
+        MAPPING_RANGE_MEDIUM: ClassVar[Final[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.MEDIUM  # integrates depth up to 5m
+        MAPPING_RANGE_FAR: ClassVar[Final[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.LONG  # integrates depth up to 10m
 
         # ---------------- Instance attributes and methods ----------------
 
@@ -217,12 +221,12 @@ class Zed(StereoRGBDCamera):
 
         # ---------------- Constants & aliases for camera positional tracking parameters -----------------
 
-        REFERENCE_FRAME_WORLD: ClassVar[sl.REFERENCE_FRAME] = sl.REFERENCE_FRAME.WORLD
-        REFERENCE_FRAME_CAMERA: ClassVar[sl.REFERENCE_FRAME] = sl.REFERENCE_FRAME.CAMERA
+        REFERENCE_FRAME_WORLD: ClassVar[Final[sl.REFERENCE_FRAME]] = sl.REFERENCE_FRAME.WORLD
+        REFERENCE_FRAME_CAMERA: ClassVar[Final[sl.REFERENCE_FRAME]] = sl.REFERENCE_FRAME.CAMERA
 
         # ---------------- Instance attributes and methods ----------------
 
-        initial_world_transform: HomogeneousMatrixType = np.eye(4)
+        initial_world_transform: Optional[HomogeneousMatrixType] = None
         enable_pose_smoothing: bool = False
         set_floor_as_origin: bool = False
         align_with_gravity: bool = False
@@ -234,7 +238,10 @@ class Zed(StereoRGBDCamera):
 
             # set the tracking parameters
             zed_transform = sl.Transform()
-            zed_transform.m[:, :] = self.initial_world_transform.astype(np.float32)
+            if self.initial_world_transform is None:
+                zed_transform.m[:, :] = np.eye(4, dtype=np.float32)
+            else:
+                zed_transform.m[:, :] = self.initial_world_transform.astype(np.float32)
 
             tracking_params.set_initial_world_transform(zed_transform)
             tracking_params.enable_pose_smoothing = self.enable_pose_smoothing
@@ -291,10 +298,34 @@ class Zed(StereoRGBDCamera):
         depth_mode: sl.DEPTH_MODE = InitParams.NONE_DEPTH_MODE,
         serial_number: Optional[str] = None,
         svo_filepath: Optional[str] = None,
-        camera_runtime_params: Optional[sl.RuntimeParameters] = None,
-        camera_tracking_params: Optional[sl.PositionalTrackingParameters] = None,
-        camera_mapping_params: Optional[sl.SpatialMappingParameters] = None,
+        camera_runtime_params: Optional[RuntimeParams] = None,
+        camera_tracking_params: Optional[TrackingParams] = None,  # If none, positional tracking is disabled
+        camera_mapping_params: Optional[MappingParams] = None,  # If none, spatial mapping is disabled
     ) -> None:
+
+        """
+        Initializes the ZED camera interface with the specified parameters.
+
+        Init parameters are passed individually to remain backwards compatible with previous versions.
+        An InitParams dataclass is then created internally using these parameters.
+
+        Runtime parameters, tracking parameters and mapping parameters are expected to be None,
+        or instances of their respective dataclasses.
+
+        Args:
+            resolution (CameraResolutionType): The camera resolution. Defaults to InitParams.RESOLUTION_2K.
+            fps (int): The frames per second for camera capture. Defaults to 15.
+            depth_mode (sl.DEPTH_MODE): The depth mode for the camera. Defaults to InitParams.NONE_DEPTH_MODE.
+            serial_number (Optional[str]): The serial number of the camera to use. Defaults to None.
+            svo_filepath (Optional[str]): Path to an SVO file for playback instead of live capture. Defaults to None.
+            camera_runtime_params (Optional[RuntimeParams]): Runtime parameters for the camera.
+                                                                       If None, a RuntimeParams instance with default values is used.
+                                                                       Defaults to None.
+            camera_tracking_params (Optional[TrackingParams]): Parameters for positional tracking.
+                                                                         If None, positional tracking is disabled. Defaults to None.
+            camera_mapping_params (Optional[MappingParams]): Parameters for spatial mapping.
+                                                                       If None, spatial mapping is disabled. Defaults to None.
+        """
 
         # Create init parameters
         self.camera_init_params = self.InitParams(
