@@ -83,14 +83,14 @@ class Zed(StereoRGBDCamera):
         # keep in mind though that the depth map is calculated during the `grab`operation, so the depth mode also influences the
         # fps of the rgb images, which is why the default depth mode is None
 
-        NEURAL_DEPTH_MODE: ClassVar[Final[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL
-        NEURAL_LIGHT_DEPTH_MODE: ClassVar[Final[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL_LIGHT
-        NEURAL_PLUS_DEPTH_MODE: ClassVar[Final[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL_PLUS
+        NEURAL_DEPTH_MODE: Final[ClassVar[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL
+        NEURAL_LIGHT_DEPTH_MODE: Final[ClassVar[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL_LIGHT
+        NEURAL_PLUS_DEPTH_MODE: Final[ClassVar[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NEURAL_PLUS
 
         # no depth mode, higher troughput of the RGB images as the GPU has to do less work
         # can also turn depth off in the runtime params, which is recommended as it allows for switching at runtime.
-        NONE_DEPTH_MODE: ClassVar[Final[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NONE
-        DEPTH_MODES: ClassVar[Final[tuple[sl.DEPTH_MODE, ...]]] = (
+        NONE_DEPTH_MODE: Final[ClassVar[sl.DEPTH_MODE]] = sl.DEPTH_MODE.NONE
+        DEPTH_MODES: Final[ClassVar[tuple[sl.DEPTH_MODE, ...]]] = (
             NEURAL_DEPTH_MODE,
             NONE_DEPTH_MODE,
             NEURAL_LIGHT_DEPTH_MODE,
@@ -100,12 +100,12 @@ class Zed(StereoRGBDCamera):
         # for info on image resolution, pixel sizes, fov..., see:
         # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
         # make sure to check the combination of frame rates and resolution is available.
-        RESOLUTION_2K: ClassVar[Final[CameraResolutionType]] = (2208, 1242)
-        RESOLUTION_1080: ClassVar[Final[CameraResolutionType]] = (1920, 1080)
-        RESOLUTION_720: ClassVar[Final[CameraResolutionType]] = (1280, 720)
-        RESOLUTION_VGA: ClassVar[Final[CameraResolutionType]] = (672, 376)
+        RESOLUTION_2K: Final[ClassVar[CameraResolutionType]] = (2208, 1242)
+        RESOLUTION_1080: Final[ClassVar[CameraResolutionType]] = (1920, 1080)
+        RESOLUTION_720: Final[ClassVar[CameraResolutionType]] = (1280, 720)
+        RESOLUTION_VGA: Final[ClassVar[CameraResolutionType]] = (672, 376)
 
-        resolution_to_identifier_dict: ClassVar[Final[dict[tuple[int, int], sl.RESOLUTION]]] = {
+        resolution_to_identifier_dict: Final[ClassVar[dict[tuple[int, int], sl.RESOLUTION]]] = {
             RESOLUTION_2K: sl.RESOLUTION.HD2K,
             RESOLUTION_1080: sl.RESOLUTION.HD1080,
             RESOLUTION_720: sl.RESOLUTION.HD720,
@@ -166,17 +166,17 @@ class Zed(StereoRGBDCamera):
         # for more info on the different mapping resolutions and ranges, see:
         # https://www.stereolabs.com/docs/spatial-mapping/using-mapping
         # note that mapping on the HIGH resolution setting is resource-intensive, and slows down spatial map updates.
-        MAPPING_RESOLUTION_LOW: ClassVar[Final[sl.MAPPING_RESOLUTION]] = sl.MAPPING_RESOLUTION.LOW  # resolution of 2cm
-        MAPPING_RESOLUTION_MEDIUM: ClassVar[
-            Final[sl.MAPPING_RESOLUTION]
+        MAPPING_RESOLUTION_LOW: Final[ClassVar[sl.MAPPING_RESOLUTION]] = sl.MAPPING_RESOLUTION.LOW  # resolution of 2cm
+        MAPPING_RESOLUTION_MEDIUM: Final[
+            ClassVar[sl.MAPPING_RESOLUTION]
         ] = sl.MAPPING_RESOLUTION.MEDIUM  # resolution of 5cm
-        MAPPING_RESOLUTION_HIGH: ClassVar[
-            Final[sl.MAPPING_RESOLUTION]
+        MAPPING_RESOLUTION_HIGH: Final[
+            ClassVar[sl.MAPPING_RESOLUTION]
         ] = sl.MAPPING_RESOLUTION.HIGH  # resolution of 8cm
 
-        MAPPING_RANGE_SHORT: ClassVar[Final[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.SHORT  # integrates depth up to 3.5m
-        MAPPING_RANGE_MEDIUM: ClassVar[Final[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.MEDIUM  # integrates depth up to 5m
-        MAPPING_RANGE_FAR: ClassVar[Final[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.LONG  # integrates depth up to 10m
+        MAPPING_RANGE_SHORT: Final[ClassVar[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.SHORT  # integrates depth up to 3.5m
+        MAPPING_RANGE_MEDIUM: Final[ClassVar[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.MEDIUM  # integrates depth up to 5m
+        MAPPING_RANGE_FAR: Final[ClassVar[sl.MAPPING_RANGE]] = sl.MAPPING_RANGE.LONG  # integrates depth up to 10m
 
         # ---------------- Instance attributes and methods ----------------
 
@@ -221,8 +221,8 @@ class Zed(StereoRGBDCamera):
 
         # ---------------- Constants & aliases for camera positional tracking parameters -----------------
 
-        REFERENCE_FRAME_WORLD: ClassVar[Final[sl.REFERENCE_FRAME]] = sl.REFERENCE_FRAME.WORLD
-        REFERENCE_FRAME_CAMERA: ClassVar[Final[sl.REFERENCE_FRAME]] = sl.REFERENCE_FRAME.CAMERA
+        REFERENCE_FRAME_WORLD: Final[ClassVar[sl.REFERENCE_FRAME]] = sl.REFERENCE_FRAME.WORLD
+        REFERENCE_FRAME_CAMERA: Final[ClassVar[sl.REFERENCE_FRAME]] = sl.REFERENCE_FRAME.CAMERA
 
         # ---------------- Instance attributes and methods ----------------
 
@@ -302,7 +302,6 @@ class Zed(StereoRGBDCamera):
         camera_tracking_params: Optional[TrackingParams] = None,  # If none, positional tracking is disabled
         camera_mapping_params: Optional[MappingParams] = None,  # If none, spatial mapping is disabled
     ) -> None:
-
         """
         Initializes the ZED camera interface with the specified parameters.
 
@@ -639,7 +638,7 @@ class Zed(StereoRGBDCamera):
     # this is important if you want to reuse the camera
     # multiple times within a python script, in which case you should release the camera before creating a new object.
     # cf. https://stackoverflow.com/questions/865115/how-do-i-correctly-clean-up-a-python-object
-    def __enter__(self) -> StereoRGBDCamera:
+    def __enter__(self) -> Zed:
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
