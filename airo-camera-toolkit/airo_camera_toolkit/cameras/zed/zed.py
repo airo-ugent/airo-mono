@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, ClassVar, List, Optional
 
 from loguru import logger
@@ -34,6 +35,76 @@ from airo_typing import (
     OpenCVIntImageType,
     PointCloud,
 )
+
+
+@dataclass(frozen=True)
+class ZedSpatialMap:
+    """
+    Wrapper around the ZED spatial map (fused point cloud) object.
+
+    This class provides a number of cached properties and is therefore supposed to be immutable (however, not enforced).
+    """
+
+    chunks: list[PointCloud]
+    chunks_updated: list[bool]
+
+    @cached_property
+    def full_pointcloud(self) -> PointCloud:
+        """
+        Returns a (cached) full point cloud by concatenating the points (and optionally colors) from all chunks.
+
+        Returns:
+            PointCloud: The combined point cloud containing all points and colors from the chunks.
+        """
+        # If empty chunks, return empty pointcloud
+        if len(self.chunks) == 0:
+            return PointCloud(points=np.empty((0, 3)), colors=None)
+
+        all_points = []
+        all_colors = []
+
+        for chunk in self.chunks:
+            all_points.append(chunk.points)
+            if chunk.colors is not None:
+                all_colors.append(chunk.colors)
+
+        all_points_array = np.vstack(all_points)
+        if all_colors:
+            all_colors_array = np.vstack(all_colors)
+        else:
+            all_colors_array = None
+
+        return PointCloud(points=all_points_array, colors=all_colors_array)
+
+    @cached_property
+    def size(self) -> int:
+        """
+        Returns the (cached) number of points in the full point cloud.
+
+        Returns:
+            int: The number of points in the full point cloud.
+        """
+        return self.full_pointcloud.points.shape[0]
+
+    @cached_property
+    def num_chunks(self) -> int:
+        """
+        Returns the (cached) number of chunks in the spatial map.
+
+        Returns:
+            int: The number of chunks in the spatial map.
+        """
+        return len(self.chunks)
+
+    @cached_property
+    def chunk_sizes(self) -> list[int]:
+        """
+        Returns the (cached) sizes of each chunk in the spatial map.
+
+        Returns:
+            list[int]: A list containing the number of points in each chunk.
+        """
+        return [chunk.points.shape[0] for chunk in self.chunks]
 
 
 class Zed(StereoRGBDCamera):
@@ -578,7 +649,7 @@ class Zed(StereoRGBDCamera):
             raise RuntimeError("Cannot request spatial map update if spatial mapping is not enabled.")
         self.camera.request_spatial_map_async()
 
-    def _get_spatial_map(self) -> list[tuple[PointCloud, bool]]:
+    def _retrieve_spatial_map(self) -> ZedSpatialMap:
         """
         Retrieves the current spatial map from the camera as a list of point clouds with update status.
         Returns:
@@ -601,7 +672,8 @@ class Zed(StereoRGBDCamera):
             logger.warning("Could not retrieve spatial map.")
             logger.warning("Returning last known spatial map.")
 
-        spatial_map = []
+        chunks = []
+        chunks_updated = []
 
         # process per chunk
         for chunk in self.spatial_map.chunks:
@@ -609,20 +681,21 @@ class Zed(StereoRGBDCamera):
                 continue
 
             # extract points
-            points = cv2.cvtColor(chunk.vertices, cv2.COLOR_BGRA2BGR).reshape(-1, 3)
+            points = chunk.vertices[:, :3].copy()
 
             # extract RGB values
             rgba_float = chunk.vertices[:, 3]
             rgba_uint32 = rgba_float.view(np.uint32)
-            r = (rgba_uint32 >> 0) & 0xFF
+            b = (rgba_uint32 >> 0) & 0xFF
             g = (rgba_uint32 >> 8) & 0xFF
-            b = (rgba_uint32 >> 16) & 0xFF
+            r = (rgba_uint32 >> 16) & 0xFF
             rgb_values = np.stack([r, g, b], axis=1).astype(np.uint8)
 
             # extend spatial map
-            spatial_map.append((PointCloud(points, rgb_values), chunk.has_been_updated))
+            chunks.append(PointCloud(points, rgb_values))
+            chunks_updated.append(chunk.has_been_updated)
 
-        return spatial_map
+        return ZedSpatialMap(chunks, chunks_updated)
 
     def get_colored_point_cloud(self) -> PointCloud:
         if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
@@ -691,16 +764,14 @@ def _test_zed_implementation() -> None:
             zed._request_spatial_map_update()
             time.sleep(0.1)  # wait a bit before next grab
 
-            spatial_map = zed._get_spatial_map()
+            spatial_map = zed._retrieve_spatial_map()
             if not spatial_map:
                 logger.warning("Spatial map is empty.")
 
-            num_points = 0
-            for i, (chunk, updated) in enumerate(spatial_map):
-                num_points += chunk.points.shape[0]
-            print(f"Spatial map with {len(spatial_map)} chunks and {num_points} points in total retrieved.")
+            print(
+                f"Spatial map with {len(spatial_map.chunks)} chunks and {spatial_map.size} points in total retrieved."
+            )
 
 
 if __name__ == "__main__":
-    pass
-    # _test_zed_implementation()
+    _test_zed_implementation()
