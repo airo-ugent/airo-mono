@@ -220,9 +220,9 @@ if __name__ == "__main__":
     publisher = MultiprocessRGBDPublisher(
         Zed,
         camera_kwargs={
-            "resolution": Zed.RESOLUTION_1080,
+            "resolution": Zed.InitParams.RESOLUTION_1080,
             "fps": camera_fps,
-            "depth_mode": Zed.NEURAL_DEPTH_MODE,
+            "depth_mode": Zed.InitParams.NEURAL_DEPTH_MODE,
         },
     )
 

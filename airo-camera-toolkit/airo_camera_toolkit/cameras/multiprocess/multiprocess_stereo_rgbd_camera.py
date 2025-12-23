@@ -233,7 +233,7 @@ if __name__ == "__main__":
 
     multiprocessing.set_start_method("spawn", force=True)
 
-    resolution = Zed.RESOLUTION_720
+    resolution = Zed.InitParams.RESOLUTION_720
     camera_fps = 15
 
     publisher = MultiprocessStereoRGBDPublisher(
@@ -241,7 +241,7 @@ if __name__ == "__main__":
         camera_kwargs={
             "resolution": resolution,
             "fps": camera_fps,
-            "depth_mode": Zed.NEURAL_DEPTH_MODE,
+            "depth_mode": Zed.InitParams.NEURAL_DEPTH_MODE,
         },
     )
 
