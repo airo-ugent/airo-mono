@@ -1,3 +1,6 @@
+# Schunk branch
+This branch contains (legacy) development code for communicating with Schunk grippers, see `airo-robots/airo_robots/grippers/hardware/`.
+
 # airo-mono
 Welcome to `airo-mono`! This repository provides ready-to-use Python packages to accelerate the development of robotic manipulation systems.
 
