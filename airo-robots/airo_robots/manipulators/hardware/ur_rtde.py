@@ -7,6 +7,7 @@ from airo_robots.grippers import ParallelPositionGripper
 from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType, JointConfigurationType
+from enum import Enum
 from loguru import logger
 from rtde_control import RTDEControlInterface
 from rtde_receive import RTDEReceiveInterface
@@ -32,10 +33,19 @@ class URrtde(PositionManipulator):
 
     # ROBOT SPEC CONFIGURATIONS
 
-    # https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
-    UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
     # https://www.universal-robots.com/media/240787/ur3_us.pdf
     UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+    # https://www.universal-robots.com/media/1827367/05_2023_collective_data-sheet.pdf
+    UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+    # https://www.universal-robots.com/media/1827367/05_2023_collective_data-sheet.pdf
+    UR5E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0)
+
+    class URModelNames(str, Enum):
+        """
+        Used by URrtde.get_model() method to identify the robot model.
+        """
+        UR3 = "UR3"
+        UR5 = "UR5"
 
     def __init__(
         self,
@@ -91,6 +101,9 @@ class URrtde(PositionManipulator):
             sock.sendall(b"get robot model\n")
             model_name = sock.recv(1024).decode().strip()
 
+        assert model_name in URrtde.URModelNames._value2member_map_, (
+            f"Unknown UR robot model name received from UR dashboard server: {model_name}"
+        )
         return model_name
 
     def get_joint_configuration(self) -> JointConfigurationType:
