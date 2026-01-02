@@ -1,9 +1,9 @@
-# ZED Installation
+# ZED Installation (Zed SDK 5.0+ with Cuda 12)
 This file will get you started with the ZED2i cameras.
 
 ## 1. ZED SDK
-The first step is to install the ZED SDK, before installing:
-* Ensure you have **nvidia-drivers** installed, check with `nvidia-smi`. The installer will automatically install a CUDA 11.X version is you do not have it.
+The first step is to install the ZED SDK (version 5.0 or higher), before installing:
+* Ensure you have **nvidia-drivers** installed, check with `nvidia-smi`. The installer will automatically install a CUDA 11.X+ version is you do not have it.
 * During the setup, you will be asked whether the **Python API** should be installed. Make sure to **activate** the venv of conda env you want to use with the ZED cameras. (You can also answer `no` and install the Python package later.)
 * You can say `no` to the AI-model stuff.
 
@@ -46,10 +46,10 @@ Now We will test whether our `airo_camera_toolkit can access the ZED cameras.
 In this directory run:
 ```
 conda activate airo-mono
-python zed2i.py
+python zed.py
 ```
 Complete the prompts. If everything looks normal, congrats, you successfully completed the installation! :tada:
 
 ### ZED Diagnostics tool.
 
-There is a ZED diagnostics tool that you can use if things are not working. run `ZED_Diagnostic`. However, don't expect too much from it..
+There is a ZED diagnostics tool that you can use if things are not working. run `ZED_Diagnostic`. However, don't expect too much from it.

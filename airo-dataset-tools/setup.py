@@ -5,15 +5,15 @@ import setuptools
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo-dataset-tools",
-    version="2024.1.0",
+    version="2025.11.0",
     author="Victor-Louis De Gusseme",
     author_email="victorlouisdg@gmail.com",
-    description="TODO",
+    description="Scripts for loading and converting datasets for the Ghent University AI and Robotics Lab",
     install_requires=[
-        "numpy",
+        "numpy>=2.0",
         "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
-        "opencv-contrib-python==4.8.1.78",  # See airo-camera-toolkit setup.py for explanation
-        "opencv-python-headless==4.8.1.78",  # See airo-camera-toolkit setup.py for explanation
+        "opencv-contrib-python==4.10.0.84",  # See airo-camera-toolkit setup.py for explanation
+        "opencv-python-headless==4.10.0.84",  # See airo-camera-toolkit setup.py for explanation
         "pycocotools",
         "xmltodict",
         "tqdm",
@@ -21,8 +21,9 @@ setuptools.setup(
         "Pillow",
         "types-Pillow",
         "albumentations",
-        "airo-typing",
-        "airo-spatial-algebra",
+        "click",
+        "airo-typing>=2025.11.0",
+        "airo-spatial-algebra>=2025.11.0",
     ],
     packages=setuptools.find_packages(exclude=["test"]),
     entry_points={

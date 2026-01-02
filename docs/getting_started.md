@@ -24,6 +24,7 @@ We support the following manipulators:
 We support the following grippers:
 
 - [Robotiq 2F-85](https://robotiq.com/products/2f85-140-adaptive-robot-gripper)
+- [Schunk EGK40](https://schunk.com/us/en/gripping-systems/parallel-gripper/egk/egk-40-mb-m-b/p/000000000001491762)
 
 We support the following wheeled mobile platforms:
 
@@ -75,6 +76,9 @@ Often, you want to read camera images in a separate process, to control the robo
 The `multiprocess` module in the `airo-camera-toolkit` package provides a way to do this:
 see [the README](airo-camera-toolkit/README.md) for more information.
 
+For other multiprocessing needs, e.g., custom sensors or logging, we recommend using [`airo-ipc`](https://pypi.org/project/airo-ipc/).
+This is also the library underlying the `multiprocess` module in `airo-camera-toolkit`.
+
 #### Image operations
 
 When interfacing with RGB(-D) cameras, certain operations are often needed, such as projecting 3D points to pixels and
@@ -114,7 +118,7 @@ robot functionality and for collecting data.
 The AIRO-mono sister packages [airo-drake](https://pypi.org/project/airo-drake/),
 [airo-planner](https://pypi.org/project/airo-planner/) and [airo-models](https://pypi.org/project/airo-models/) provide
 tools for rendering robots in simulation and performing motion planning using [Drake](https://drake.mit.edu/)
-and [OMPL](https://ompl.kavrakilab.org/).
+and [OMPL](https://ompl.kavrakilab.org/) or using [cuRobo](https://curobo.org/).
 
 See their respective READMEs for more information.
 
@@ -123,17 +127,20 @@ See their respective READMEs for more information.
 ### Logging and visualization 📈
 
 For logging of images, point clouds, sensor data... we recommend using [Rerun](https://rerun.io/).
-This application allows for fast real-time logging of data, locally or remotely over a websocket connection.
+This application allows for fast real-time logging of data, locally or remotely over a gRPC connection.
 See their [documentation](https://rerun.io/docs/getting-started/what-is-rerun) for more information.
 
 While Rerun was originally mainly intended for logging, it can also be used for visualization of data:
 using the [Blueprint API](https://rerun.io/docs/concepts/blueprint), you can lay out the viewer as you see fit
 and log data to create real-time visualizations. This was, e.g., done, for the [ITF World 2024 demo (0:27)](https://youtu.be/ThvECQgYLqQ?t=27).
 
+It can also be used as an alternative to a full-blown simulator if you only want to visualize the environment.
+For example, [airo-planner](https://pypi.org/project/airo-planner/) uses it to visualize cuRobo's state, instead of using [Isaac Sim](https://developer.nvidia.com/isaac/sim).
+
 ### Deep learning 🧠
 
 For deep learning, we recommend using [PyTorch](https://pytorch.org/). For annotating data, we recommend
-using [CVAT](https://www.cvat.ai/).
+using [CVAT](https://www.cvat.ai/). For logging, we recommend using [Weights and Biases](https://wandb.ai/site).
 
 ## Recommended coding practices ⌨
 

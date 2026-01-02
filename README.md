@@ -8,6 +8,31 @@ Welcome to `airo-mono`! This repository provides ready-to-use Python packages to
 
 Want to learn more about our vision? Check out the in-depth explanation [here](docs/about_this_repo.md)
 
+## Table of Contents
+
+- [Overview](#overview)
+  - [Packages](#packages-)
+  - [Sister repositories](#sister-repositories-)
+  - [Usage & Philosophy](#usage--philosophy-)
+  - [Getting started](#getting-started-)
+  - [Projects using `airo-mono`](#projects-using-airo-mono-)
+- [Installation](#installation-)
+  - [Option 1: Installation from PyPI](#option-1-installation-from-pypi-)
+  - [Option 2: Local clone](#option-2-local-clone-)
+    - [2.1 Conda method](#21-conda-method)
+    - [2.2 Pip method](#22-pip-method)
+  - [Option 3: Git submodule](#option-3-git-submodule-)
+- [Developer guide](#developer-guide-)
+  - [Setup](#setup)
+  - [Coding style](#coding-style-)
+  - [Testing](#testing-)
+  - [Continuous Integration (CI)](#continuous-integration-ci-)
+  - [Creating a new package](#creating-a-new-package-)
+  - [Command Line Interfaces](#command-line-interfaces-)
+  - [Versioning & Releasing](#versioning--releasing-)
+  - [Design choices](#design-choices-)
+    - [Management of local dependencies in a Monorepo](#management-of-local-dependencies-in-a-monorepo)
+
 ## Overview
 
 ### Packages 📦
@@ -39,28 +64,29 @@ Run `package-name --help` for details. Example: `airo-dataset-tools --help`
 ### Sister repositories 🌱
 Repositories that follow the same style as `airo-mono` packages, but are not part of the monorepo (for various reasons):
 
-| Repository                                                     | Description                                     |
-| -------------------------------------------------------------- | ----------------------------------------------- |
-| 🎥 [`airo-blender`](https://github.com/airo-ugent/airo-blender) | Synthetic data generation with Blender          |
+| Repository                                                      | Description                            |
+|-----------------------------------------------------------------| -------------------------------------- |
+| 🎥 [`airo-blender`](https://github.com/airo-ugent/airo-blender) | Synthetic data generation with Blender |
 | 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
-| 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                          |
+| 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                 |
 | 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
-| 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip) | Driver for the KELO mobile robot platform |
+| 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip)     | Driver for the KELO mobile robot platform |
+| 🔛 [`airo-ipc`](https://github.com/airo-ugent/airo-ipc)         | Inter-process communication library |
 
 ### Usage & Philosophy 📖
-We believe in *keep simple things simple*. Starting a new project should\* be as simple as:
+We believe in *keep simple things simple*. Starting a new project is as simple as:
 ```bash
 pip install airo-camera-toolkit airo-robots
 ```
 And writing a simple script:
 ```python
-from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
+from airo_camera_toolkit.cameras.zed.zed import Zed
 from airo_robots.manipulators.hardware.ur_rtde import URrtde
 from airo_robots.grippers.hardware.robotiq_2f85_urcap import Robotiq2F85
 
 robot_ip_address = "10.40.0.162"
 
-camera = Zed2i()
+camera = Zed()
 robot = URrtde(ip_address=robot_ip_address)
 gripper = Robotiq2F85(ip_address=robot_ip_address)
 
@@ -70,20 +96,30 @@ robot.move_linear_to_tcp_pose(grasp_pose).wait()
 gripper.close().wait()
 ```
 
-> \* we are still simplifying the installation process and the long imports
+### Getting started 🚀
+To get started with `airo-mono`, check out our [getting started guide](docs/getting_started.md) which provides examples and explanations of the main functionalities provided by the packages.
 
 ### Projects using `airo-mono` 🎉
 Probably the best way to learn what `airo-mono` has to offer, is to look at the projects it powers:
 
 | Project                                                                     | Description                                                                                                 |
 | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 🍹 [ITF World 2025](https://airo.ugent.be/itfworld/) | airo-mono powered our demos at ITF World 2025 |
 | 👕 [`cloth-competition`](https://github.com/Victorlouisdg/cloth-competition) | airo-mono is the backbone of the [ICRA 2024 Cloth Competition](https://airo.ugent.be/cloth_competition/) 🏆! |
+| 🧪 [ITF World 2024](https://airo.ugent.be/news/itf2024/) | airo-mono powered our demo at ITF World 2024 |
 
 ## Installation 🔧
 
-### Option 1: Local clone 📥
+### Option 1: Installation from PyPI 📦
 
-#### 1.1 Conda method
+Install the packages from PyPI.
+```
+pip install airo-camera-toolkit airo-dataset-tools airo-robots
+```
+
+### Option 2: Local clone 📥
+
+#### 2.1 Conda method
 Make sure you have a version of conda e.g. [miniconda](https://docs.anaconda.com/free/miniconda/) installed.
 To make the conda environment creation faster, we recommend configuring the [libmamba solver](https://www.anaconda.com/blog/a-faster-conda-for-a-growing-community) first.
 
@@ -95,31 +131,13 @@ conda env create -f environment.yaml
 ```
 This will create a conda environment called `airo-mono` with all packages installed. You can activate the environment with `conda activate airo-mono`.
 
-#### 1.2 Pip method
+#### 2.2 Pip method
 While we prefer using conda, you can also install the packages simply with pip:
 
 ```bash
 git clone https://github.com/airo-ugent/airo-mono.git
 cd airo-mono
 pip install -e airo-robots -e airo-dataset-tools -e airo-camera-toolkit
-```
-
-### Option 2: Installation from Github 🌐
-> ℹ️ This method will be deprecated in the future, as we are moving to PyPI for package distribution. [Direct references](https://peps.python.org/pep-0440/#direct-references) are not allowed in projects that are to be published on PyPI.
-
-You can also install the packages from this repository directly with pip. This is mainly useful if you want to put `airo-mono` packages as dependencies in your `environment.yaml` file:
-```yaml
-name: my-airo-project
-channels:
-  - conda-forge
-dependencies:
-  - python=3.10
-  - pip
-  - pip:
-      - "airo-typing @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-typing"
-      - "airo-spatial-algebra @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-spatial-algebra"
-      - "airo-camera-toolkit @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-camera-toolkit"
-      - "airo-dataset-tools @ git+https://github.com/airo-ugent/airo-mono@main#subdirectory=airo-dataset-tools"
 ```
 
 ### Option 3: Git submodule 🚇
@@ -133,14 +151,6 @@ cd airo-mono
 ```
 You can now add the packages you need to your requirements or environment file, either in development mode or through a regular pip install.
 More about submodules can be found [here](https://git-scm.com/book/en/v2/Git-Tools-Submodules). Make sure to install the packages in one pip command such that pip can install them in the appropriate order to deal with internal dependencies.
-
-### Option 4: Installation from PyPI 📦
-> 🚧 Not available yet, but coming soon.
-
-Install the packages from PyPI.
-```
-pip install airo-camera-toolkit airo-dataset-tools airo-robots
-```
 
 ## Developer guide 🛠️
 ### Setup
@@ -157,7 +167,7 @@ Our [.pre-commit-config.yaml](.pre-commit-config.yaml) file defines the tools an
   - **Formatting**: Black, isort, and autoflake
   - **Linting**: Flake8
 
-**Typing:** Packages can be typed (optional, but strongly recommended). For this, mypy is used. Note that pre-commit curretnly does not run mypy, so you should run it manually with `mypy <package-dir>`, e.g. `mypy airo-camera-toolkit`.
+**Typing:** Packages can be typed (optional, but strongly recommended). For this, mypy is used. Note that pre-commit currently does not run mypy, so you should run it manually with `mypy <package-dir>`, e.g. `mypy airo-camera-toolkit`.
 
 **Docstrings:** Should be in the [google docstring format](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
 

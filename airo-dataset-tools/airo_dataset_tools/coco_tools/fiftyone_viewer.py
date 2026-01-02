@@ -14,7 +14,8 @@ def view_coco_dataset(
     if label_types is None or not label_types:
         label_types = ["detections", "segmentations", "keypoints"]
     else:
-        assert all([label_type in ["detections", "segmentations", "keypoints"] for label_type in label_types])
+        if not all([label_type in ["detections", "segmentations", "keypoints"] for label_type in label_types]):
+            raise ValueError("label_types must be a subset of ['detections', 'segmentations', 'keypoints']")
 
     labels_json_path = os.path.realpath(labels_json_path)
 

@@ -81,7 +81,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         time.sleep(0.1)
 
     @property
-    def speed(self) -> float | None:
+    def speed(self) -> float:
         """return speed setting [m/s]."""
         return self.bks.set_vel / 1000
 
@@ -97,7 +97,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         return self.bks.actual_vel / 1000
 
     @property
-    def max_grasp_force(self) -> float | None:
+    def max_grasp_force(self) -> float:
         _force = rescale_range(self.bks.set_force, 0, 100, self.gripper_specs.min_force, self.gripper_specs.max_force)
         return _force
 
@@ -186,6 +186,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         :param set_speed_and_force: setting to false can improve control frequency as less transactions have to happen with the gripper
         """
         if set_speed_and_force:
+            assert speed is not None and force is not None
             self.speed = speed
             self.max_grasp_force = force
         _width = np.clip(width, self.gripper_specs.min_width, self.gripper_specs.max_width)
@@ -217,6 +218,7 @@ class SchunkEGK40_USB(ParallelPositionGripper):
         minimal by default, which is desirable for the strong Schunk gripper.
         """
         if set_speed_and_force:
+            assert speed is not None and force is not None
             self.speed = speed
             self.max_grasp_force = force
         self.bks.set_pos = -width_difference * 1000

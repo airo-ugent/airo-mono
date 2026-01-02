@@ -1,4 +1,4 @@
-""" methods for getting from 2D image coordinates to 3D world coordinates using depth information (a.k.a. unprojection)"""
+"""methods for getting from 2D image coordinates to 3D world coordinates using depth information (a.k.a. unprojection)"""
 
 import numpy as np
 from airo_spatial_algebra.operations import _HomogeneousPoints
@@ -54,9 +54,10 @@ def unproject_onto_depth_values(
     Returns:
         numpy array of shape (N, 3) containing the 3D positions of the points in the camera frame
     """
-    assert (
-        image_coordinates.shape[0] == depth_values.shape[0]
-    ), "coordinates and depth values must have the same length"
+    if image_coordinates.shape[0] != depth_values.shape[0]:
+        raise IndexError(
+            f"coordinates and depth values must have the same length (but they are: {image_coordinates.shape[0]} and {depth_values.shape[0]})"
+        )
 
     homogeneous_coords = np.ones((image_coordinates.shape[0], 3))
     homogeneous_coords[:, :2] = image_coordinates
@@ -136,26 +137,52 @@ def extract_depth_from_depthmap_heuristic(
         (np.ndarray) a 1D array of the depth values for the specified coordinates
     """
 
-    assert mask_size % 2, "only odd sized markers allowed"
-    assert (
-        depth_percentile < 0.25
-    ), "For straight corners, about 75 percent of the region will be background.. Are your sure you want the percentile to be lower?"
+    if mask_size % 2 == 0:
+        raise ValueError("only odd sized markers allowed")
+    if depth_percentile >= 0.25:
+        # TODO: The question in this error message implies that we should not raise an error, but instead log a warning.
+        raise ValueError(
+            "For straight corners, about 75 percent of the region will be background. Are your sure you want the percentile to be lower?"
+        )
     # check all coordinates are within the size of the depth map to avoid unwanted wrapping of the array indices
-    assert np.max(image_coordinates[:, 1]) < depth_map.shape[0], "V coordinates out of bounds"
-    assert np.max(image_coordinates[:, 0]) < depth_map.shape[1], "U coordinates out of bounds"
-    assert np.min(image_coordinates) >= 0, "coordinates out of bounds"
+    if np.max(image_coordinates[:, 1]) >= depth_map.shape[0]:
+        raise IndexError("V coordinates out of bounds")
+    if np.max(image_coordinates[:, 0]) >= depth_map.shape[1]:
+        raise IndexError("U coordinates out of bounds")
+    if np.min(image_coordinates) < 0:
+        raise IndexError("coordinates out of bounds")
 
     # convert coordinates to integers
-    image_coordinates = image_coordinates.astype(np.uint32)
+    image_coordinates = image_coordinates.astype(np.int32)
 
     # extract depth values by taking the percentile of the depth values in a region around the point
-    depth_regions = np.empty((image_coordinates.shape[0], (mask_size) ** 2))
+    mask_size_squared = mask_size**2
+    depth_regions = np.empty((image_coordinates.shape[0], mask_size_squared))
     for i in range(image_coordinates.shape[0]):
-        depth_region = depth_map[
-            image_coordinates[i, 1] - mask_size // 2 : image_coordinates[i, 1] + mask_size // 2 + 1,
-            image_coordinates[i, 0] - mask_size // 2 : image_coordinates[i, 0] + mask_size // 2 + 1,
-        ]
-        depth_regions[i, :] = depth_region.flatten()
+        # Calculate the desired mask boundaries (using int32 to avoid overflow)
+        v_start_desired = int(image_coordinates[i, 1]) - mask_size // 2
+        v_end_desired = int(image_coordinates[i, 1]) + mask_size // 2 + 1
+        u_start_desired = int(image_coordinates[i, 0]) - mask_size // 2
+        u_end_desired = int(image_coordinates[i, 0]) + mask_size // 2 + 1
+
+        # Clip the mask boundaries to the image boundaries
+        v_start = max(0, v_start_desired)
+        v_end = min(depth_map.shape[0], v_end_desired)
+        u_start = max(0, u_start_desired)
+        u_end = min(depth_map.shape[1], u_end_desired)
+
+        # Extract the valid depth region
+        depth_region = depth_map[v_start:v_end, u_start:u_end]
+
+        # Flatten and pad with NaN if the masked area is smaller than needed
+        flattened_region = depth_region.flatten()
+        if flattened_region.size < mask_size_squared:
+            padded_region = np.full(mask_size_squared, np.nan)
+            padded_region[: flattened_region.size] = flattened_region
+            depth_regions[i, :] = padded_region
+        else:
+            depth_regions[i, :] = flattened_region
+
     depth_values = np.nanquantile(depth_regions, depth_percentile, axis=1)
 
     return depth_values

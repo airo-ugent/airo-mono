@@ -14,13 +14,18 @@ keep the communication alive.
 
 ## Hardware installation
 
+Find the long grey interface cable with a 5-pin round DIN connector on one end and four wires (blue, brown, black, white) on the other end. Connect the DIN to the Schunk itself. The blue wire must go to the UR control box' GND, the brown to its PWR input. The black wire goes to the B- input of a USB-to-RS485 converter, the white to its A+ input. Use a USB extender cable to plug the USB-to-RS485 into your laptop or workstation.
 
+<img align="left" height="350" src="https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/assets/schunk_installation1.jpeg">
+<img align="left" height="350" src="https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/assets/schunk_installation2.jpeg">
+
+<BR CLEAR="all">
 
 ## Software installation
 
 1. `git clone https://github.com/SCHUNK-SE-Co-KG/bkstools.git`
 
-2. In your project environment, run `pip install -e <path-to-bkstools-clone>`. In later steps we need to adjust one of the project files, so the regular `pip install bkstools` from PyPI is not applicable.
+2. In your project environment, run `pip install -e <path-to-bkstools-clone>`. In later steps we need to adjust one of the project files, so the regular `pip install bkstools` from PyPI is not preferable.
 
 3. Find the name of the USB interface where your Schunk is connected. Run `sudo dmesg | grep tty` and you should see a line like `ch341-uart converter now attached to ttyUSB0`. In this case, the USB interface is ttyUSB0.
 

@@ -17,7 +17,6 @@ Vector2DArrayType = np.ndarray
 Vectors2DType = Union[Vector2DType, Vector2DArrayType]
 """a convenience type that represents a (2,) 2D vector or (N,2) array of 3D vectors."""
 
-
 Vector3DType = np.ndarray
 """ a (3,) np array that represents a 3D position/translation/direction
 """
@@ -82,6 +81,9 @@ JointPathType = np.ndarray
 TimesType = np.ndarray
 """ a (T,) array of monotonically increasing times (float), corresponding to a path"""
 
+JointPathConstraintType = Tuple[Callable[[JointConfigurationType], float], float]
+"""a tuple of a constraint function and a tolerance value: when the constraint function's absolute output is smaller than the tolerance, the constraint is satisfied."""
+
 
 @dataclass
 class JointPathContainer:
@@ -89,6 +91,7 @@ class JointPathContainer:
     velocities: Optional[JointPathType] = None
     accelerations: Optional[JointPathType] = None
     efforts: Optional[JointPathType] = None
+    constraint: Optional[JointPathConstraintType] = None
 
 
 @dataclass
@@ -142,6 +145,8 @@ TorchFloatImageType = np.ndarray
 
 NumpyDepthMapType = np.ndarray
 """ a depth map (z-buffer),float, (H,W)"""
+NumpyConfidenceMapType = np.ndarray
+""" a confidence map (higher is more confidence), float(0-1), (H,W)"""
 
 CameraResolutionType = Tuple[int, int]
 """ a tuple of image (width, height) in pixels"""
@@ -151,7 +156,6 @@ CameraIntrinsicsMatrixType = np.ndarray
 
 K = [[fx,s,cx],[0,fy,cy],[0,0,1]]
 see e.g. https://ksimek.github.io/2013/08/13/intrinsic/ for more details """
-
 
 CameraExtrinsicMatrixType = HomogeneousMatrixType
 """4x4 camera extrinsic matrix,
