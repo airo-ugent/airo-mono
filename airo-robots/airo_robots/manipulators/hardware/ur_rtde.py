@@ -78,6 +78,21 @@ class URrtde(PositionManipulator):
         self._pose_reached_L2_threshold = 0.01
         self._joint_config_reached_L2_threshold = 0.01
 
+    def get_model(self) -> str:
+        """
+        This method connects directly to the robot's RTDE dashboard server to get the robot model name.
+        Note that the response doesn't distinguish between e-series and non-e-series robots. Hence,
+        possible outputs are: "UR3", "UR5", "UR10", ...
+        """
+        import socket
+
+        with socket.create_connection((self.ip_address, 29999), timeout=5) as sock:
+            sock.recv(1024)  # read initial welcome
+            sock.sendall(b"get robot model\n")
+            model_name = sock.recv(1024).decode().strip()
+
+        return model_name
+
     def get_joint_configuration(self) -> JointConfigurationType:
         return np.array(self.rtde_receive.getActualQ())
 
