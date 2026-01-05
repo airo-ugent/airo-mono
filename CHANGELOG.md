@@ -8,13 +8,16 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- Code implementation for communicating with Schunk grippers has been changed to SchunkGripperProcess, SchunkEGK40_USB has been relegated to the schunk branch of this repo. 
 
 ### Added
 - Added `gc_disabled()` context manager to temporarily disable garbage collection for performance-critical sections.
+- Added get_model() method to URrtde to automatically detect the UR model (UR3, UR3e, UR5e)
 
 ### Changed
 - Improved `execute_trajectory` reliability: we now temporarily disable the garbage collector in the hot loop to reduce latency using `gc_disabled()`.
 - Deprecated `AsyncExecutor`. It is a very thin wrapper around [`ThreadPoolExecutor(max_workers=1)`](https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Executor), which should be used instead.
+- get_model() (see Added) is now used in the URrtde constructor to automatically detect the UR model and set the manipulator specs appropriately.
 
 ### Fixed
 
