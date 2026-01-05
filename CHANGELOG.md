@@ -8,7 +8,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
-- Code implementation for communicating with Schunk grippers has been changed to SchunkGripperProcess, SchunkEGK40_USB has been relegated to the schunk branch of this repo. 
+- Code implementation for communicating with Schunk grippers has been changed to SchunkGripperProcess, SchunkEGK40_USB has been relegated to the schunk branch of this repo.
+- Default manipulator specs in URrtde class were wrong, they are now multiplied by Pi -> caution: your robot may suddenly move 3x faster if you didn't set joint speed yourself.
 
 ### Added
 - Added `gc_disabled()` context manager to temporarily disable garbage collection for performance-critical sections.
