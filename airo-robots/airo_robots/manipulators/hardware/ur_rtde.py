@@ -50,8 +50,8 @@ class URrtde(PositionManipulator):
     }
 
     # For backward compatibility
+    UR3_CONFIG = MANIPULATOR_SPECS[URModels.UR3]
     UR3E_CONFIG = MANIPULATOR_SPECS[URModels.UR3e]
-    UR3_CONFIG = MANIPULATOR_SPECS[URModels.UR3e]
 
     def __init__(self, ip_address: str, 
                  manipulator_specs: Optional[ManipulatorSpecs] = None,
