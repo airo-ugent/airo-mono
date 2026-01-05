@@ -1,197 +1,265 @@
-"""code for sharing the data of a camera that implements the RGBDCamera interface between processes using shared memory"""
-import time
-from multiprocessing import resource_tracker, shared_memory
-from typing import Optional
+"""Publisher and receiver classes for multiprocess camera sharing."""
 
-import cv2
-import loguru
+import multiprocessing
+import time
+from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
     MultiprocessRGBPublisher,
     MultiprocessRGBReceiver,
-    shared_memory_block_like,
+    ResolutionIdl,
 )
-
-logger = loguru.logger
 from airo_camera_toolkit.interfaces import RGBDCamera
-from airo_typing import NumpyDepthMapType, NumpyIntImageType
+from airo_camera_toolkit.utils.image_converter import ImageConverter
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter  # type: ignore
+from airo_typing import CameraResolutionType, NumpyDepthMapType, NumpyIntImageType, PointCloud
+from loguru import logger
 
-_DEPTH_SHM_NAME = "depth"
-_DEPTH__SHAPE_SHM_NAME = "depth_shape"
-_DEPTH_IMAGE_SHM_NAME = "depth_image"
-_DEPTH_IMAGE_SHAPE_SHM_NAME = "depth_image_shape"
+
+@dataclass
+class RGBDFrameBuffer(BaseIdl):  # type: ignore
+    """This struct, sent over shared memory, contains a timestamp, an RGB image, the camera intrinsics, a depth image, and a depth map."""
+
+    # Timestamp of the frame (seconds)
+    timestamp: np.ndarray
+    # Color image data (height x width x channels)
+    rgb: np.ndarray
+    # Intrinsic camera parameters (camera matrix)
+    intrinsics: np.ndarray
+    # Depth image data (height x width)
+    depth_image: np.ndarray
+    # Depth map (height x width)
+    depth: np.ndarray
+
+    @staticmethod
+    def template(width: int, height: int) -> Any:
+        return RGBDFrameBuffer(
+            timestamp=np.empty((1,), dtype=np.float64),
+            rgb=np.empty((height, width, 3), dtype=np.uint8),
+            intrinsics=np.empty((3, 3), dtype=np.float64),
+            depth_image=np.empty((height, width, 3), dtype=np.uint8),
+            depth=np.empty((height, width), dtype=np.float32),
+        )
+
+
+@dataclass
+class PointCloudBuffer(BaseIdl):  # type: ignore
+    """This struct, sent over shared memory, contains a timestamp, a point cloud, point cloud colors, and a point cloud valid counter."""
+
+    timestamp: np.ndarray
+    # Point cloud positions (height * width x 3)
+    point_cloud_positions: np.ndarray
+    # Point cloud colors (height * width x 3)
+    point_cloud_colors: np.ndarray
+    # Valid point cloud points (scalar), for sparse point clouds
+    point_cloud_valid: np.ndarray
+
+    @staticmethod
+    def template(width: int, height: int) -> Any:
+        return PointCloudBuffer(
+            timestamp=np.empty((1,), dtype=np.float64),
+            point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
+            point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
+            point_cloud_valid=np.empty((1,), dtype=np.uint32),
+        )
 
 
 class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
-    """publishes the data of a camera that implements the RGBDCamera interface to shared memory blocks.
-    Shared memory blocks can then be accessed in other processes using their names,
-    cf. https://docs.python.org/3/library/multiprocessing.shared_memory.html#module-multiprocessing.shared_memory
-
-    The Receiver class is a convenient way of doing so and is the intended way of using this class.
-    """
+    """Publishes the data of a camera that implements the RGBDCamera interface to shared memory blocks."""
 
     def __init__(
         self,
         camera_cls: type,
         camera_kwargs: dict = {},
         shared_memory_namespace: str = "camera",
+        enable_pointcloud: bool = True,
     ):
+        self.enable_pointcloud = enable_pointcloud
         super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
 
-        self.depth_shm: Optional[shared_memory.SharedMemory] = None
-        self.depth_image_shm: Optional[shared_memory.SharedMemory] = None
-
     def _setup(self) -> None:
-        """in-process creation of camera object and shared memory blocks"""
         super()._setup()
-        assert isinstance(self._camera, RGBDCamera)
 
-        depth_name = f"{self._shared_memory_namespace}_{_DEPTH_SHM_NAME}"
-        depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH__SHAPE_SHM_NAME}"
-        depth_image_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
-        depth_image_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHAPE_SHM_NAME}"
+        if self.enable_pointcloud:
+            # Some cameras, such as the Realsense D435i, can return a sparse point cloud. This is not supported by the
+            # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
+            # for every pixel in the RBG image.
+            self._pcd_pos_buf = np.zeros(
+                (self._camera.resolution[0] * self._camera.resolution[1], 3),
+                dtype=np.float32,
+            )
+            self._pcd_col_buf = np.zeros(
+                (self._camera.resolution[0] * self._camera.resolution[1], 3),
+                dtype=np.uint8,
+            )
 
-        depth_map = self._camera.get_depth_map()
-        depth_map_shape = np.array([depth_map.shape])
-        depth_image = self._camera.get_depth_image()
-        depth_image_shape = np.array([depth_image.shape])
-
-        self.depth_shm, self.depth_shm_array = shared_memory_block_like(depth_map, depth_name)
-        self.depth_shape_shm, self.depth_shape_shm_array = shared_memory_block_like(depth_map_shape, depth_shape_name)
-        self.depth_image_shm, self.depth_image_shm_array = shared_memory_block_like(depth_image, depth_image_name)
-        (
-            self.depth_image_shape_shm,
-            self.depth_image_shape_shm_array,
-        ) = shared_memory_block_like(depth_image_shape, depth_image_shape_name)
+    def _setup_sm_writer(self) -> None:
+        # Create the shared memory writer
+        self._writer = SMWriter(
+            domain_participant=self._dp,
+            topic_name=self._shared_memory_namespace,
+            idl_dataclass=RGBDFrameBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
+        )
+        if self.enable_pointcloud:
+            self._pcd_writer = SMWriter(
+                domain_participant=self._dp,
+                topic_name=f"{self._shared_memory_namespace}_pcd",
+                idl_dataclass=PointCloudBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
+            )
 
     def stop(self) -> None:
         self.shutdown_event.set()
 
     def run(self) -> None:
-        """main loop of the process, runs until the process is terminated"""
+        logger.info(f"{self.__class__.__name__} process started.")
         self._setup()
         assert isinstance(self._camera, RGBDCamera)  # For mypy
+        logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
 
         while not self.shutdown_event.is_set():
-            image = self._camera.get_rgb_image_as_int()
+            self._resolution_writer(ResolutionIdl(width=self._camera.resolution[0], height=self._camera.resolution[1]))
+
+            self._camera._grab_images()
+            timestamp = time.time()
+            image = self._camera._retrieve_rgb_image_as_int()
             depth_map = self._camera._retrieve_depth_map()
             depth_image = self._camera._retrieve_depth_image()
-            self.rgb_shm_array[:] = image[:]
-            self.depth_shm_array[:] = depth_map[:]
-            self.depth_image_shm_array[:] = depth_image[:]
-            self.timestamp_shm_array[:] = np.array([time.time()])[:]
 
-        self.unlink_shared_memory()
+            if self.enable_pointcloud:
+                point_cloud = self._camera._retrieve_colored_point_cloud()
 
-    def unlink_shared_memory(self) -> None:
-        """unlink the shared memory blocks so that they are deleted when the process is terminated"""
-        super().unlink_shared_memory()
+                # Some camera's, such as the Realsense D435i, return a sparse point cloud. This is not supported by the
+                # current implementation of the RGBDFrameBuffer. Therefore, we make sure that we always retrieve a point
+                # for every pixel in the RBG image.
+                self._pcd_pos_buf.fill(np.nan)
+                self._pcd_pos_buf[: point_cloud.points.shape[0]] = point_cloud.points
+                if point_cloud.colors is not None:
+                    self._pcd_col_buf[: point_cloud.colors.shape[0]] = point_cloud.colors
+                else:
+                    self._pcd_col_buf[: point_cloud.points.shape[0]] = 0  # If no colors, use black.
+                point_cloud_valid = np.array([point_cloud.points.shape[0]], dtype=np.uint32)
 
-        assert isinstance(self.depth_shm, shared_memory.SharedMemory)
-        assert isinstance(self.depth_image_shm, shared_memory.SharedMemory)
+            self._writer(
+                RGBDFrameBuffer(
+                    timestamp=np.array([timestamp], dtype=np.float64),
+                    rgb=image,
+                    intrinsics=self._camera.intrinsics_matrix(),
+                    depth=depth_map,
+                    depth_image=depth_image,
+                )
+            )
 
-        self.depth_shm.close()
-        self.depth_image_shm.close()
-        self.depth_shm.unlink()
-        self.depth_image_shm.unlink()
+            if self.enable_pointcloud:
+                self._pcd_writer(
+                    PointCloudBuffer(
+                        timestamp=np.array([timestamp], dtype=np.float64),
+                        point_cloud_positions=self._pcd_pos_buf,
+                        point_cloud_colors=self._pcd_col_buf,
+                        point_cloud_valid=point_cloud_valid,
+                    )
+                )
 
 
 class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
-    """Implements the RGBD camera interface for a camera that is running in a different process and shares its data using shared memory blocks.
-    To be used with the Publisher class.
-    """
+    """Implements the RGBD camera interface for a camera that is running in a different process, to be used with the Publisher class."""
 
-    def __init__(self, shared_memory_namespace: str) -> None:
+    def __init__(self, shared_memory_namespace: str, enable_pointcloud: bool = True) -> None:
+        self.enable_pointcloud = enable_pointcloud
         super().__init__(shared_memory_namespace)
 
-        depth_name = f"{self._shared_memory_namespace}_{_DEPTH_SHM_NAME}"
-        depth_shape_name = f"{self._shared_memory_namespace}_{_DEPTH__SHAPE_SHM_NAME}"
-        depth_image_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHM_NAME}"
-        depth_image_shape_name = f"{self._shared_memory_namespace}_{_DEPTH_IMAGE_SHAPE_SHM_NAME}"
-
-        # Attach to existing shared memory blocks. Retry a few times to give the publisher time to start up (opening
-        # connection to a camera can take a while).
-        is_shm_found = False
-        for i in range(10):
-            try:
-                self.depth_shm = shared_memory.SharedMemory(name=depth_name)
-                self.depth_shape_shm = shared_memory.SharedMemory(name=depth_shape_name)
-                self.depth_image_shm = shared_memory.SharedMemory(name=depth_image_name)
-                self.depth_image_shape_shm = shared_memory.SharedMemory(name=depth_image_shape_name)
-                is_shm_found = True
-                break
-            except FileNotFoundError:
-                print(
-                    f'INFO: SharedMemory namespace "{self._shared_memory_namespace}" (RGBD) not found yet, retrying in 5 seconds.'
-                )
-                time.sleep(5)
-
-        if not is_shm_found:
-            raise FileNotFoundError("Shared memory not found.")
-
-        # Same comment as in base class:
-        resource_tracker.unregister(self.depth_shm._name, "shared_memory")  # type: ignore[attr-defined]
-        resource_tracker.unregister(self.depth_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
-        resource_tracker.unregister(self.depth_image_shm._name, "shared_memory")  # type: ignore[attr-defined]
-        resource_tracker.unregister(self.depth_image_shape_shm._name, "shared_memory")  # type: ignore[attr-defined]
-
-        self.depth_shape_shm_array: np.ndarray = np.ndarray((2,), dtype=np.int64, buffer=self.depth_shape_shm.buf)
-        self.depth_image_shape_shm_array: np.ndarray = np.ndarray(
-            (3,), dtype=np.int64, buffer=self.depth_image_shape_shm.buf
+    def _setup_sm_reader(self, resolution: CameraResolutionType) -> None:
+        # Create the shared memory reader
+        self._reader = SMReader(
+            domain_participant=self._dp,
+            topic_name=self._shared_memory_namespace,
+            idl_dataclass=RGBDFrameBuffer.template(self.resolution[0], self.resolution[1]),
         )
+        if self.enable_pointcloud:
+            self._reader_pcd = SMReader(
+                domain_participant=self._dp,
+                topic_name=f"{self._shared_memory_namespace}_pcd",
+                idl_dataclass=PointCloudBuffer.template(self.resolution[0], self.resolution[1]),
+            )
 
-        depth_shape = tuple(self.depth_shape_shm_array[:])
-        depth_image_shape = tuple(self.depth_image_shape_shm_array[:])
-
-        self.depth_shm_array: np.ndarray = np.ndarray(depth_shape, dtype=np.float32, buffer=self.depth_shm.buf)
-        self.depth_image_shm_array: np.ndarray = np.ndarray(
-            depth_image_shape, dtype=np.uint8, buffer=self.depth_image_shm.buf
-        )
-
-        self.previous_depth_map_timestamp = time.time()
-        self.previous_depth_image_timestamp = time.time()
+        # Initialize a first frame.
+        self._last_frame = RGBDFrameBuffer.template(self.resolution[0], self.resolution[1])
+        if self.enable_pointcloud:
+            self._last_pcd_frame = PointCloudBuffer.template(self.resolution[0], self.resolution[1])
 
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
-        return self.depth_shm_array
+        return self._last_frame.depth
 
     def _retrieve_depth_image(self) -> NumpyIntImageType:
-        return self.depth_image_shm_array
+        return self._last_frame.depth_image
 
-    def _close_shared_memory(self) -> None:
-        """Closing shared memory signal that"""
-        self.depth_shm.close()
-        self.depth_image_shm.close()
-
-    def __del__(self) -> None:
-        self._close_shared_memory()
+    def _retrieve_colored_point_cloud(self) -> PointCloud:
+        if not self.enable_pointcloud:
+            raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
+        num_points = self._last_pcd_frame.point_cloud_valid.item()
+        positions = self._last_pcd_frame.point_cloud_positions[:num_points]
+        colors = self._last_pcd_frame.point_cloud_colors[:num_points]
+        point_cloud = PointCloud(positions, colors)
+        return point_cloud
 
 
 if __name__ == "__main__":
     """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
+    camera_fps = 15
 
-    from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
+    import cv2
+    from airo_camera_toolkit.cameras.zed.zed import Zed
 
-    resolution = Zed2i.RESOLUTION_720
+    multiprocessing.set_start_method("spawn", force=True)
 
-    p = MultiprocessRGBDPublisher(
-        Zed2i,
+    publisher = MultiprocessRGBDPublisher(
+        Zed,
         camera_kwargs={
-            "resolution": resolution,
-            "fps": 30,
-            "depth_mode": Zed2i.NEURAL_DEPTH_MODE,
+            "resolution": Zed.RESOLUTION_1080,
+            "fps": camera_fps,
+            "depth_mode": Zed.NEURAL_DEPTH_MODE,
         },
     )
-    p.start()
+
+    publisher.start()
     receiver = MultiprocessRGBDReceiver("camera")
 
+    cv2.namedWindow("RGB", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("DEPTH", cv2.WINDOW_NORMAL)
+
+    time_current = None
+    time_previous = None
+
     while True:
-        logger.info("Getting image")
-        depth_map = receiver.get_depth_map()
+        time_previous = time_current
+        time_current = time.time()
+
+        pcd = receiver.get_colored_point_cloud()
         depth_image = receiver.get_depth_image()
-        cv2.imshow("Depth Map", depth_map)
-        cv2.imshow("Depth Image", depth_image)
+
+        image_rgb = receiver.get_rgb_image_as_int()
+        image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
+        cv2.imshow("RGB", image)
+        cv2.imshow("DEPTH", depth_image)
         key = cv2.waitKey(10)
         if key == ord("q"):
             break
+
+        if time_previous is not None:
+            fps = 1 / (time_current - time_previous)
+
+            fps_str = f"{fps:.2f}".rjust(6, " ")
+            camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
+            if fps < 0.9 * camera_fps:
+                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (too slow)")
+            else:
+                logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
+
+    publisher.stop()
+    publisher.join()
+    cv2.destroyAllWindows()

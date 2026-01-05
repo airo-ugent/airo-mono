@@ -92,18 +92,16 @@ def create_yolo_dataset_from_coco_instances_dataset(
                 yolo_id = yolo_category_index.index(category)
                 if use_segmentation:
                     segmentation = annotation.segmentation
-                    # convert to polygon if required
+                    # convert to **single** polygon
                     segmentation = BinarySegmentationMask.from_coco_segmentation_mask(segmentation, width, height)
-                    segmentation = segmentation.as_polygon
+                    segmentation = segmentation.as_single_polygon
 
                     if segmentation is None:
                         # should actually never happen as each annotation is assumed to have a segmentation if you pass use_segmentation=True
                         # but we filter it for convenience to deal with edge cases
                         print(f"skipping annotation for image {image_path}, as it has no segmentation")
                         continue
-                    segmentation = segmentation[
-                        0
-                    ]  # only use first polygon, since coco does not support multiple polygons?
+
                     file.write(f"{yolo_id}")
                     for (x, y) in zip(segmentation[0::2], segmentation[1::2]):
                         file.write(f" {x/width} {y/height}")

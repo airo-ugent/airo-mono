@@ -3,9 +3,9 @@ import os
 from typing import Any, Callable, List, Optional
 
 import albumentations as A
+import cv2
 import numpy as np
 import tqdm
-from airo_dataset_tools.coco_tools.transforms import PillowResize
 from airo_dataset_tools.data_parsers.coco import (
     CocoImage,
     CocoInstanceAnnotation,
@@ -85,17 +85,27 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
         all_masks = []
         for annotation in annotations:
             if transform_keypoints:
-                assert isinstance(annotation, CocoKeypointAnnotation)
+                if not isinstance(annotation, CocoKeypointAnnotation):
+                    raise TypeError("coco_dataset must be a CocoKeypointsDataset if transform_keypoints is True")
                 all_keypoints_xy.extend(annotation.keypoints)
                 # convert coco keypoints to list of (x,y) keypoints
 
             if transform_bbox:
-                all_bboxes.append(annotation.bbox)
+                bbox = annotation.bbox
+                assert bbox is not None  # for mypy
+                # set bbox width, height to at least 1
+                if bbox[3] < 1 or bbox[2] < 1:
+                    # x_min must be < x_max for albumentations check
+                    bbox = (0.0, 0.0, 1.0, 1.0)
+                    print(
+                        f"Invalid bbox for image {coco_image.file_name} and annotation {annotation.id}. Setting to [0.0, 0.0, 1.0, 1.0]"
+                    )
+                all_bboxes.append(bbox)
 
             if transform_segmentation:
                 # convert segmentation to binary mask
                 mask = annotation.segmentation
-                assert mask is not None
+                assert mask is not None  # for mypy
                 bitmap = BinarySegmentationMask.from_coco_segmentation_mask(
                     mask, coco_image.width, coco_image.height
                 ).bitmap
@@ -123,7 +133,10 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
         if not os.path.exists(transformed_image_dir):
             os.makedirs(transformed_image_dir)
         # specify quality to use for JPEG, (format is determined by file extension)
-        transformed_image.save(os.path.join(target_image_path, coco_image.file_name), quality=95)
+        # transformed_image.save(os.path.join(target_image_path, coco_image.file_name))
+        # convert to BGR for opencv
+        transformed_image_cv2 = cv2.cvtColor(np.array(transformed_image), cv2.COLOR_RGB2BGR)
+        cv2.imwrite(os.path.join(target_image_path, coco_image.file_name), transformed_image_cv2)
 
         # change the metadata of the image coco object
         coco_image.width = transformed_image.width
@@ -138,7 +151,8 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
             all_transformed_masks = transformed["masks"]
         for annotation in annotations:
             if transform_keypoints:
-                assert isinstance(annotation, CocoKeypointAnnotation)
+                if not isinstance(annotation, CocoKeypointAnnotation):
+                    raise TypeError("coco_dataset must be a CocoKeypointsDataset if transform_keypoints is True")
                 transformed_keypoints = all_transformed_keypoints_xy[: len(annotation.keypoints) // 3]
                 all_transformed_keypoints_xy = all_transformed_keypoints_xy[len(annotation.keypoints) // 3 :]
 
@@ -184,7 +198,7 @@ def resize_coco_dataset(
         transformed_dataset_dir = target_dataset_dir
     os.makedirs(transformed_dataset_dir, exist_ok=True)
 
-    transforms = [PillowResize(height, width)]
+    transforms = [A.Resize(height, width)]
     coco_json = json.load(open(annotations_json_path, "r"))
     coco_dataset = CocoInstancesDataset(**coco_json)
     transformed_dataset = apply_transform_to_coco_dataset(

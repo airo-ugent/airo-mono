@@ -7,8 +7,11 @@ from airo_robots.grippers import ParallelPositionGripper
 from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType, JointConfigurationType
+from enum import Enum
+from loguru import logger
 from rtde_control import RTDEControlInterface
 from rtde_receive import RTDEReceiveInterface
+import socket
 
 RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
@@ -29,29 +32,52 @@ class URrtde(PositionManipulator):
     control/receive interface attributes directly if you need them.
     """
 
-    # ROBOT SPEC CONFIGURATIONS
+    class URModels(str, Enum):
+        """
+        Used by URrtde.get_model() method to identify the robot model. Every model added
+        here should also have an entry in the MANIPULATOR_SPECS dictionary.
+        """
+        UR3 = "UR3"
+        UR3e = "UR3e"
+        UR5e = "UR5e"
 
-    # https://www.universal-robots.com/media/1807464/ur3e-rgb-fact-sheet-landscape-a4.pdf
-    UR3E_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
-    # https://www.universal-robots.com/media/240787/ur3_us.pdf
-    UR3_CONFIG = ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0)
+    MANIPULATOR_SPECS = {
+        # https://www.universal-robots.com/media/240787/ur3_us.pdf
+        # https://www.universal-robots.com/media/1827367/05_2023_collective_data-sheet.pdf
+        URModels.UR3: ManipulatorSpecs([np.pi]*3 + [2*np.pi]*3, 1.0),
+        URModels.UR3e: ManipulatorSpecs([np.pi]*3 + [2*np.pi]*3, 1.0),
+        URModels.UR5e: ManipulatorSpecs([np.pi]*6, 1.0),
+    }
 
-    def __init__(
-        self,
-        ip_address: str,
-        manipulator_specs: ManipulatorSpecs,
-        gripper: Optional[ParallelPositionGripper] = None,
-    ) -> None:
-        super().__init__(manipulator_specs, gripper)
+    # For backward compatibility
+    UR3_CONFIG = MANIPULATOR_SPECS[URModels.UR3]
+    UR3E_CONFIG = MANIPULATOR_SPECS[URModels.UR3e]
+
+    def __init__(self, ip_address: str, 
+                 manipulator_specs: Optional[ManipulatorSpecs] = None,
+                 gripper: Optional[ParallelPositionGripper] = None) -> None:
         self.ip_address = ip_address
-        try:
-            self.rtde_control = RTDEControlInterface(self.ip_address)
-            self.rtde_receive = RTDEReceiveInterface(self.ip_address)
+        if not manipulator_specs:
+            self.model = self.get_model()
+            manipulator_specs = URrtde.MANIPULATOR_SPECS[self.model]
+        super().__init__(manipulator_specs, gripper)
 
-        except RuntimeError:
-            raise RuntimeError(
-                "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
-            )
+        max_connection_attempts = 3
+        for connection_attempt in range(max_connection_attempts):
+            try:
+                self.rtde_control = RTDEControlInterface(self.ip_address)
+                self.rtde_receive = RTDEReceiveInterface(self.ip_address)
+                break
+            except RuntimeError as e:
+                logger.warning(
+                    f"Failed to connect to RTDE. Retrying... (Attempt {connection_attempt + 1}/{max_connection_attempts}). Error:\n{e}"
+                )
+                if connection_attempt == max_connection_attempts - 1:
+                    raise RuntimeError(
+                        "Could not connect to the robot. Is the robot in remote control? Is the IP correct? Is the network connection ok?"
+                    )
+                else:
+                    time.sleep(1.0)
 
         self.default_linear_acceleration = 1.2  # m/s^2
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
@@ -67,6 +93,37 @@ class URrtde(PositionManipulator):
         # some thresholds for the awaitable actions, to check if a move command has been completed
         self._pose_reached_L2_threshold = 0.01
         self._joint_config_reached_L2_threshold = 0.01
+
+    def get_model(self) -> URModels:
+        """
+        https://s3-eu-west-1.amazonaws.com/ur-support-site/42728/DashboardServer_e-Series_2022.pdf
+        https://s3-eu-west-1.amazonaws.com/ur-support-site/15690/Dashboard_Server_CB-Series.pdf
+
+        This method connects directly to the robot's RTDE dashboard server to get the robot model name.
+        Note that the dashboard server response doesn't distinguish between e-series and non-e-series robots. Hence,
+        we use the Polyscope version to determine the exact model and return it as a `URModelNames` enum.
+
+        """
+        with socket.create_connection((self.ip_address, 29999), timeout=5) as sock:
+            sock.recv(1024)  # read initial welcome
+            sock.sendall(b"get robot model\n")
+            model_name = sock.recv(1024).decode().strip()  # possible outputs are: "UR3", "UR5", "UR10", "UR16"
+            sock.sendall(b"PolyscopeVersion\n")
+            polyscope_version = sock.recv(1024).decode().strip().split(" ")[1] 
+
+        # Determine e-series suffix from Polyscope version (CB series should have version starting with "3")
+        if polyscope_version.startswith("5"):
+            model_name += "e"  # e-series robot
+        try:
+            model_enum = URrtde.URModels(model_name)
+        except ValueError:
+            raise AssertionError(f"Unknown UR robot model detected: {model_name}")
+
+        assert model_enum in URrtde.MANIPULATOR_SPECS, (
+            f"Manipulator specs for UR robot model {model_enum} not found in URrtde.MANIPULATOR_SPECS."
+        )
+        logger.info(f"Detected UR robot model: {model_enum.value} with PolyScope version: {polyscope_version}")
+        return model_enum
 
     def get_joint_configuration(self) -> JointConfigurationType:
         return np.array(self.rtde_receive.getActualQ())
@@ -228,7 +285,7 @@ class URrtde(PositionManipulator):
 
 if __name__ == "__main__":
     """test script for UR rtde.
-    ex. python airo-robots/airo_robots/manipulators/ur3e.py --ip_address 10.42.0.162 for Victor
+    e.g. python airo-robots/airo_robots/manipulators/hardware/ur_rtde.py --ip_address 10.42.0.162
     """
     import click
     from airo_robots.manipulators.hardware.manual_manipulator_testing import manual_test_robot

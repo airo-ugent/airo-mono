@@ -12,24 +12,21 @@ There a few things that make this difficult:
 * We also might want to log, visualize, save images or videos.
 * Parallellism in a [single Python process is tricky due to the GIL](https://stackoverflow.com/questions/18114285/what-are-the-differences-between-the-threading-and-multiprocessing-modules).
 
-To overcome these difficulties we used the Python [multiprocessing](https://docs.python.org/3/library/multiprocessing.html) module to create a solution where:
+To overcome these difficulties we used [airo-ipc](https://github.com/airo-ugent/airo-ipc) to create a solution where:
 * Camera images can be retrieved, visualized, recorded, etc. without being blocked by user code (e.g. robot commands)
 * Robot commands can be sent at high frequency without having to retrieve images inbetween
 
 ## Implementation
-![Diagram](https://i.imgur.com/jEUOdZH.jpg)
-
-
 Two classes are at the core of our solution:
 * `MultiprocessRGBPublisher`: a class that write images from a camera to shared memory, from its own process.
 * `MultiprocessRGBReceiver`: a class that reads images from shared memory, but hides this complexity from its users.
 
-Note that the publisher is a subclass of `Process`, this way it can publish uninterrupted.
+Note that the publisher is a subclass of `SpawnProcess`, this way it can publish uninterrupted.
 The receiver is subclass of `RGBCamera` which ensures that it follows the interface of a regular airo-camera-toolkit camera.
 
 ## Usage
 See the  main function in [multiprocess_rgb_camera.py](./multiprocess_rgb_camera.py) for a simple example of how to use these classes with a ZED camera.
-The main difference with the regular workflow is that instead of instantiating a `Zed2i` object, you now have to first create a `MultiprocessRGBPublisher` with the class and its kwargs, and then one or more `MultiprocessRGBReceiver`s.
+The main difference with the regular workflow is that instead of instantiating a `Zed` object, you now have to first create a `MultiprocessRGBPublisher` with the class and its kwargs, and then one or more `MultiprocessRGBReceiver`s.
 
 > :information_source: Similar to how regular `RGBCamera`s behave, `MultiprocessRGBReceiver`s will block until a new image is available.
 

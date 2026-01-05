@@ -35,7 +35,9 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 from pydantic import BaseModel, field_validator, model_validator
 
 # Used by CocoInfo and CocoImage
-Datetime = str  # COCO uses both YYYY-MM-DD and YYYY-MM-DD HH:MM:SS for datetime
+Datetime = Union[
+    str, int
+]  # COCO uses both YYYY-MM-DD and YYYY-MM-DD HH:MM:SS for datetime, CVAT places 0 for missing values
 Url = str
 
 # Used by CocoImage and CocoLicenses
@@ -114,7 +116,8 @@ class CocoInstanceAnnotation(BaseModel, extra="allow"):  # allow extra fields, t
     def iscrowd_must_be_binary(cls, v: IsCrowd) -> IsCrowd:
         if v is None:
             return None
-        assert v in [0, 1]
+        if v not in [0, 1]:
+            raise ValueError("iscrowd must be 0 or 1")
         return v
 
 
@@ -128,7 +131,8 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
     @field_validator("keypoints")
     @classmethod
     def keypoints_must_be_multiple_of_three(cls, v: Keypoints) -> Keypoints:
-        assert len(v) % 3 == 0, "keypoints list must be a multiple of 3"
+        if len(v) % 3 != 0:
+            raise ValueError("keypoints list must be a multiple of 3")
         return v
 
     @field_validator("keypoints")
@@ -138,9 +142,10 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
         for i in range(0, len(v), 3):
             max_coordinate_value = max(v[i], max_coordinate_value)
             max_coordinate_value = max(v[i + 2], max_coordinate_value)
-        assert (
-            max_coordinate_value > 1
-        ), f"keypoints coordinates must be in pixel space, but max_coordinate is {max_coordinate_value}"
+        if max_coordinate_value <= 1:
+            raise ValueError(
+                f"keypoints coordinates must be in pixel space, but max_coordinate is {max_coordinate_value}"
+            )
         return v
 
     @model_validator(mode="after")
@@ -149,9 +154,10 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
         for v in self.keypoints[2::3]:
             if v > 0:
                 labeled_keypoints += 1
-        assert (
-            labeled_keypoints == self.num_keypoints
-        ), f"num_keypoints {self.num_keypoints} does not match number of labeled of keypoints {labeled_keypoints} for annotation {self.id}"
+        if labeled_keypoints != self.num_keypoints:
+            raise ValueError(
+                f"num_keypoints {self.num_keypoints} does not match number of labeled of keypoints {labeled_keypoints} for annotation {self.id}"
+            )
         return self
 
 
@@ -171,7 +177,8 @@ class CocoInstancesDataset(BaseModel):
     @field_validator("annotations")
     @classmethod
     def annotations_list_cannot_be_empty(cls, v: List[CocoInstanceAnnotation]) -> List[CocoInstanceAnnotation]:
-        assert len(v) > 0, "annotations list cannot be empty"
+        if len(v) == 0:
+            raise ValueError("annotations list cannot be empty")
         return v
 
     # skip on failure becasue this validator requires the annotations list to be non-empty
@@ -179,9 +186,10 @@ class CocoInstancesDataset(BaseModel):
     def annotations_catergory_id_exist_in_categories(self) -> "CocoInstancesDataset":
         category_ids = set([category.id for category in self.categories])
         for annotation in self.annotations:
-            assert (
-                annotation.category_id in category_ids
-            ), f"Annotation {annotation.id} has category_id {annotation.category_id} which does not exist in categories."
+            if annotation.category_id not in category_ids:
+                raise ValueError(
+                    f"Annotation {annotation.id} has category_id {annotation.category_id} which does not exist in categories."
+                )
         return self
 
 
@@ -197,7 +205,8 @@ class CocoKeypointsDataset(CocoInstancesDataset):
     def num_keypoints_matches_annotations(self) -> "CocoKeypointsDataset":
         category_dict = {category.id: category for category in self.categories}
         for annotation in self.annotations:
-            assert len(annotation.keypoints) // 3 == len(
-                category_dict[annotation.category_id].keypoints
-            ), f"Number of keypoints for annotation {annotation.id} does not match number of keypoints in category."
+            if len(annotation.keypoints) // 3 != len(category_dict[annotation.category_id].keypoints):
+                raise ValueError(
+                    f"Number of keypoints for annotation {annotation.id} does not match number of keypoints in category."
+                )
         return self
