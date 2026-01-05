@@ -44,9 +44,9 @@ class URrtde(PositionManipulator):
     MANIPULATOR_SPECS = {
         # https://www.universal-robots.com/media/240787/ur3_us.pdf
         # https://www.universal-robots.com/media/1827367/05_2023_collective_data-sheet.pdf
-        URModels.UR3: ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0),
-        URModels.UR3e: ManipulatorSpecs([1.0, 1.0, 1.0, 2.0, 2.0, 2.0], 1.0),
-        URModels.UR5e: ManipulatorSpecs([1.0, 1.0, 1.0, 1.0, 1.0, 1.0], 1.0),
+        URModels.UR3: ManipulatorSpecs([np.pi]*3 + [2*np.pi]*3, 1.0),
+        URModels.UR3e: ManipulatorSpecs([np.pi]*3 + [2*np.pi]*3, 1.0),
+        URModels.UR5e: ManipulatorSpecs([np.pi]*6, 1.0),
     }
 
     # For backward compatibility
@@ -122,7 +122,7 @@ class URrtde(PositionManipulator):
         assert model_enum in URrtde.MANIPULATOR_SPECS, (
             f"Manipulator specs for UR robot model {model_enum} not found in URrtde.MANIPULATOR_SPECS."
         )
-        logger.info(f"Detected UR robot model: {model_enum.value} with Polyscope version: {polyscope_version}")
+        logger.info(f"Detected UR robot model: {model_enum.value} with PolyScope version: {polyscope_version}")
         return model_enum
 
     def get_joint_configuration(self) -> JointConfigurationType:
