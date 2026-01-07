@@ -61,8 +61,8 @@ class URrtde(PositionManipulator):
         gripper: Optional[ParallelPositionGripper] = None,
     ) -> None:
         self.ip_address = ip_address
+        self.model = self.get_model()
         if not manipulator_specs:
-            self.model = self.get_model()
             manipulator_specs = URrtde.MANIPULATOR_SPECS[self.model]
         super().__init__(manipulator_specs, gripper)
 
