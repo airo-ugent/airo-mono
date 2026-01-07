@@ -1,5 +1,7 @@
 import logging
 import multiprocessing as mp
+from multiprocessing.sharedctypes import Synchronized
+
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -22,7 +24,7 @@ class GripperCommand:
     """Command sent to the gripper process"""
 
     cmd_type: str
-    params: Dict[str, Any] = None
+    params: Dict[str, Any] | None = None
 
 
 # values obtained from https://schunk.com/be/nl/grijpsystemen/parallelgrijper/egk/egk-40-mb-m-b/p/000000000001491762
@@ -73,8 +75,8 @@ class SchunkGripperProcess(ParallelPositionGripper):
         self._last_target_position = mp.Value("f", 0.0)
 
         # Command queue for parent->child communication
-        self._cmd_queue = mp.Queue()
-        self._result_queue = mp.Queue(maxsize=1)
+        self._cmd_queue : mp.Queue = mp.Queue()
+        self._result_queue : mp.Queue = mp.Queue(maxsize=1)
 
         # Flag to signal process termination
         self._terminate = mp.Event()
@@ -100,12 +102,12 @@ class SchunkGripperProcess(ParallelPositionGripper):
     def _gripper_process_main(
         self,
         usb_interface: str,
-        position,
-        last_target_position,
+        position: Synchronized,  # mp.Value
+        last_target_position: Synchronized,  # mp.Value
         cmd_queue: mp.Queue,
         result_queue: mp.Queue,
-        terminate,
-    ):
+        terminate: Any  # mp.Event
+    ) -> None:
         """Main function running in the child process
         This continuously updates the gripper position and executes commands from the command queue if the queue is not empty
         """
@@ -154,9 +156,9 @@ class SchunkGripperProcess(ParallelPositionGripper):
             # Small sleep to prevent CPU hogging
             time.sleep(0.001)
 
-    def _execute_command(  # noqa: C901
-        self, gripper: BKSModule, command: GripperCommand, position, last_target_position, result_queue
-    ) -> Any:  # noqa: C901
+    def _execute_command(
+        self, gripper: BKSModule, command: GripperCommand, position: Synchronized, last_target_position: Synchronized, result_queue: mp.Queue
+    ) -> bool:
         """Execute a command on the gripper"""
         logger.info(f"Executing command: {command.cmd_type}")
 
@@ -240,7 +242,7 @@ class SchunkGripperProcess(ParallelPositionGripper):
         else:
             raise ValueError(f"Unknown command: {command.cmd_type}")
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Close the gripper process"""
         self._terminate.set()
         self._process.join(timeout=1.0)
@@ -345,7 +347,8 @@ class SchunkGripperProcess(ParallelPositionGripper):
 
 if __name__ == "__main__":
     # Example usage
-    gripper = SchunkGripperProcess("/dev/ttyUSB2,11")
+    PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:13.3:1.0-port0,12,115200,8E1"
+    gripper = SchunkGripperProcess(usb_interface=PORT)
 
     try:
         gripper.speed = 0.04
@@ -360,11 +363,11 @@ if __name__ == "__main__":
         w.wait()
         position = gripper.get_current_width()
         print(f"final position: {position}")
-        gripper.close().wait()
+        """gripper.close().wait()
         gripper.move(0.01).wait()
 
         gripper.open().wait()
-        gripper.move(0.01).wait()
+        gripper.move(0.01).wait()"""
 
     finally:
         print("done")
