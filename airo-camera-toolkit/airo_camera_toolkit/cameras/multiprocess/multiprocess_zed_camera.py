@@ -76,6 +76,31 @@ class SpatialMapBuffer(BaseIdl):  # type: ignore
         )
 
 
+@dataclass
+class DynamicCameraData:
+    """
+    A data class representing dynamic camera data captured from a ZED camera.
+
+    Attributes:
+        image_left (NumpyIntImageType): Left stereo image from the ZED camera.
+        image_right (NumpyIntImageType): Right stereo image from the ZED camera.
+        depth_map (NumpyDepthMapType): Raw depth map data from the ZED sensor.
+        depth_image (NumpyIntImageType): Depth information represented as an integer image.
+        camera_pose (HomogeneousMatrixType): 4x4 homogeneous transformation matrix representing
+            the camera's position and orientation in 3D space.
+        point_cloud_valid (np.ndarray): Boolean mask indicating valid points in the point cloud.
+        spatial_map (ZedSpatialMap): Spatial mapping data from the ZED camera's SLAM system.
+    """
+
+    image_left: NumpyIntImageType
+    image_right: NumpyIntImageType
+    depth_map: NumpyDepthMapType
+    depth_image: NumpyIntImageType
+    camera_pose: HomogeneousMatrixType
+    point_cloud_valid: np.ndarray
+    spatial_map: ZedSpatialMap
+
+
 class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
     """Publishes the data of a Zed camera that implements the StereoRGBDCamera interface to shared memory blocks."""
 
@@ -131,18 +156,7 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
     def stop(self) -> None:
         self.shutdown_event.set()
 
-    def _retrieve_dynamic_camera_data(
-        self, frame_count: int
-    ) -> tuple[
-        NumpyIntImageType,
-        NumpyIntImageType,
-        NumpyDepthMapType,
-        NumpyIntImageType,
-        HomogeneousMatrixType,
-        np.ndarray,
-        ZedSpatialMap,
-    ]:
-
+    def _retrieve_dynamic_camera_data(self, frame_count: int) -> "DynamicCameraData":
         # Get information for the ZEDFrameBuffer
         image_left = self._camera.get_rgb_image_as_int()
         image_right = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
@@ -178,7 +192,15 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             if frame_count % self.map_refresh_interval == 0:
                 spatial_map = self._camera._retrieve_spatial_map()
 
-        return (image_left, image_right, depth_map, depth_image, camera_pose, point_cloud_valid, spatial_map)
+        return DynamicCameraData(
+            image_left,
+            image_right,
+            depth_map,
+            depth_image,
+            camera_pose,
+            point_cloud_valid,  # type: ignore
+            spatial_map,  # type: ignore
+        )
 
     def _write_camera_data_to_sm(
         self,
@@ -186,27 +208,21 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
         intrinsics_left: np.ndarray,
         intrinsics_right: np.ndarray,
         pose_right_in_left: np.ndarray,
-        image_left: NumpyIntImageType,
-        image_right: NumpyIntImageType,
-        depth_map: NumpyDepthMapType,
-        depth_image: NumpyIntImageType,
-        camera_pose: HomogeneousMatrixType,
-        point_cloud_valid: np.ndarray,
-        spatial_map: ZedSpatialMap,
+        dyn_camera_data: "DynamicCameraData",
     ) -> None:
 
         # Write the ZedFrameBuffer to shared memory
         self._writer(
             ZedFrameBuffer(
                 timestamp=np.array([timestamp], dtype=np.float64),
-                rgb_left=image_left,
-                rgb_right=image_right,
+                rgb_left=dyn_camera_data.image_left,
+                rgb_right=dyn_camera_data.image_right,
                 intrinsics_left=intrinsics_left,
                 intrinsics_right=intrinsics_right,
                 pose_right_in_left=pose_right_in_left,
-                depth=depth_map,
-                depth_image=depth_image,
-                camera_pose=camera_pose,
+                depth=dyn_camera_data.depth_map,
+                depth_image=dyn_camera_data.depth_image,
+                camera_pose=dyn_camera_data.camera_pose,
             )
         )
 
@@ -217,19 +233,19 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
                     timestamp=np.array([timestamp], dtype=np.float64),
                     point_cloud_positions=self._pcd_pos_buf,
                     point_cloud_colors=self._pcd_col_buf,
-                    point_cloud_valid=point_cloud_valid,
+                    point_cloud_valid=dyn_camera_data.point_cloud_valid,
                 )
             )
 
         # If spatial mapping is enabled, the spatial map has been updated, and the spatial map is non-empty, write the SpatialMapBuffer to shared memory
         # Can be empty in the beginning when the map is still being built.
-        if self.enable_spatial_mapping and spatial_map and spatial_map.size > 0:
+        if self.enable_spatial_mapping and dyn_camera_data.spatial_map and dyn_camera_data.spatial_map.size > 0:
             # Prepare spatial map data for shared memory
-            num_chunks = spatial_map.num_chunks
-            chunks_updated = spatial_map.chunks_updated
-            chunk_sizes = spatial_map.chunk_sizes
-            point_positions = spatial_map.full_pointcloud.points
-            point_colors = spatial_map.full_pointcloud.colors
+            num_chunks = dyn_camera_data.spatial_map.num_chunks
+            chunks_updated = dyn_camera_data.spatial_map.chunks_updated
+            chunk_sizes = dyn_camera_data.spatial_map.chunk_sizes
+            point_positions = dyn_camera_data.spatial_map.full_pointcloud.points
+            point_colors = dyn_camera_data.spatial_map.full_pointcloud.colors
 
             # Check if number of chunks exceeds maximum allowed
             # For simplicity, just throw error for now. Could later be improved to only send partial map.
@@ -240,16 +256,16 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
 
             # Check if number of points exceeds maximum allowed.
             # For simplicity, just throw error for now. Could later be improved to only send partial map.
-            if spatial_map.size > self.max_spatial_map_points:
+            if dyn_camera_data.spatial_map.size > self.max_spatial_map_points:
                 raise RuntimeError(
-                    f"Spatial map has {spatial_map.size} points, exceeding the maximum of {self.max_spatial_map_points}."
+                    f"Spatial map has {dyn_camera_data.spatial_map.size} points, exceeding the maximum of {self.max_spatial_map_points}."
                 )
 
             # Put data in buffers
             self._spatial_map_chunks_updated[:num_chunks] = np.array(chunks_updated)
             self._spatial_map_chunk_sizes[:num_chunks] = np.array(chunk_sizes)
-            self._spatial_map_point_positions[: spatial_map.size, :] = np.array(point_positions)
-            self._spatial_map_point_colors[: spatial_map.size, :] = np.array(point_colors)
+            self._spatial_map_point_positions[: dyn_camera_data.spatial_map.size, :] = np.array(point_positions)
+            self._spatial_map_point_colors[: dyn_camera_data.spatial_map.size, :] = np.array(point_colors)
 
             self._spatial_map_writer(
                 SpatialMapBuffer(
@@ -291,7 +307,7 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
                 intrinsics_left,
                 intrinsics_right,
                 pose_right_in_left,
-                *dyn_camera_data,
+                dyn_camera_data,
             )
 
             frame_count += 1
@@ -425,27 +441,27 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
             self._last_spatial_map_frame = self._reader_spatial_map()
 
 
-def camera_to_rerun(points_cam: np.ndarray) -> np.ndarray:
-    """
-    Convert points from camera frame (X right, Y down, Z forward)
-    to Rerun frame (X right, Y forward, Z up).
-    """
-    assert points_cam.shape[1] == 3
-
-    points_rerun = np.empty_like(points_cam)
-
-    points_rerun[:, 0] = points_cam[:, 0]  # X -> X
-    points_rerun[:, 1] = points_cam[:, 2]  # Z -> Y
-    points_rerun[:, 2] = -points_cam[:, 1]  # -Y -> Z
-
-    return points_rerun
-
-
 if __name__ == "__main__":
     """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
     import cv2
+    import rerun as rr
+
+    def camera_to_rerun(points_cam: np.ndarray) -> np.ndarray:
+        """
+        Convert points from camera frame (X right, Y down, Z forward)
+        to Rerun frame (X right, Y forward, Z up).
+        """
+        assert points_cam.shape[1] == 3
+
+        points_rerun = np.empty_like(points_cam)
+
+        points_rerun[:, 0] = points_cam[:, 0]  # X -> X
+        points_rerun[:, 1] = points_cam[:, 2]  # Z -> Y
+        points_rerun[:, 2] = -points_cam[:, 1]  # -Y -> Z
+
+        return points_rerun
 
     multiprocessing.set_start_method("spawn", force=True)
 
@@ -488,8 +504,6 @@ if __name__ == "__main__":
     cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
     cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
     # cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
-
-    import rerun as rr
 
     rr.init(f"{MultiprocessZedReceiver.__name__}")
     rr.spawn(memory_limit="2GB")
