@@ -22,7 +22,6 @@ package_names=(
     "airo-spatial-algebra"
     "airo-dataset-tools"
     "airo-robots"
-    "airo-teleop"
     "airo-camera-toolkit"
 
 )
