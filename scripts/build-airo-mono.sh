@@ -16,7 +16,7 @@
 #
 # Is it the first time that you're using this script? You should use TestPyPI first.
 
-if [[ ! -d "airo-camera-toolkit" || ! -d "airo-dataset-tools" || ! -d "airo-robots" || ! -d "airo-spatial-algebra" || ! -d "airo-teleop" || ! -d "airo-typing" ]]; then
+if [[ ! -d "airo-camera-toolkit" || ! -d "airo-dataset-tools" || ! -d "airo-robots" || ! -d "airo-spatial-algebra" || ! -d "airo-typing" ]]; then
   echo "One or more package directories are missing. Please make sure you are in the root directory of the repository."
   exit 1
 fi
@@ -29,7 +29,7 @@ if [[ $CHOICE != "y" ]]; then
 fi
 
 # Loop over the packages and run `python -m build` in each package directory to build the package.
-for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-teleop airo-typing; do
+for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
   cd "${package}" || exit 1
   echo "Building package: ${package}"
   python -m build
@@ -45,7 +45,7 @@ if [[ $CHOICE != "y" ]]; then
 fi
 
 # Loop over the packages and publish them using twine.
-for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-teleop airo-typing; do
+for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
   cd "${package}" || exit 1
   echo "Publishing package: ${package}"
   twine upload dist/*
