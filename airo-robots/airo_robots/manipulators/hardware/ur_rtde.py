@@ -61,11 +61,6 @@ class URrtde(PositionManipulator):
         gripper: Optional[ParallelPositionGripper] = None,
     ) -> None:
         self.ip_address = ip_address
-        self.model = self.get_model()
-        if not manipulator_specs:
-            manipulator_specs = URrtde.MANIPULATOR_SPECS[self.model]
-        super().__init__(manipulator_specs, gripper)
-
         max_connection_attempts = 3
         for connection_attempt in range(max_connection_attempts):
             try:
@@ -83,6 +78,10 @@ class URrtde(PositionManipulator):
                 else:
                     time.sleep(1.0)
 
+        self.model = self.get_model()
+        if not manipulator_specs:
+            manipulator_specs = URrtde.MANIPULATOR_SPECS[self.model]
+        super().__init__(manipulator_specs, gripper)
         self.default_linear_acceleration = 1.2  # m/s^2
         self.default_leading_axis_joint_acceleration = 1.2  # rad/s^2
         """
