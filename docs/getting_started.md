@@ -108,10 +108,6 @@ provides conversion functions to convert CVAT annotations to different formats, 
 We provide a small set of algebraic operations in the `airo-spatial-algebra` package. These operations are useful for
 robotics applications, such as transforming points and poses in 3D space.
 
-### Teleoperation 🎮
-
-The `airo-teleop` package provides a way to teleoperate robots using a joystick. This package is useful for testing
-robot functionality and for collecting data.
 
 ### Motion planning and simulation 🛹
 

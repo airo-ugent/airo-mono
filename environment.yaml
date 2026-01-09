@@ -10,5 +10,4 @@ dependencies:
     - -e airo-camera-toolkit/
     - -e airo-robots/
     - -e airo-dataset-tools/
-    - -e airo-teleop/
 

@@ -44,7 +44,6 @@ The airo-mono repository employs a monorepo structure, offering multiple Python 
 | 🏗️ [`airo-dataset-tools`](airo-dataset-tools)     | Creating, loading, and manipulating datasets              | @victorlouisdg |
 | 🤖 [`airo-robots`](airo-robots)                   | Simple interfaces for controlling robot arms and grippers | @tlpss         |
 | 📐 [`airo-spatial-algebra`](airo-spatial-algebra) | Transforms and SE3 pose conversions                       | @tlpss         |
-| 🎮 [`airo-teleop`](airo-teleop)                   | Intuitive teleoperation of robot arms                     | @tlpss         |
 | 🛡️ [`airo-typing`](airo-typing)                   | Type definitions and conventions                          | @tlpss         |
 
 **Detailed Information:** Each package contains its own dedicated README outlining:
@@ -71,6 +70,7 @@ Repositories that follow the same style as `airo-mono` packages, but are not par
 | 🔛 [`airo-ipc`](https://github.com/airo-ugent/airo-ipc)         | Inter-process communication library |
 | 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
 | 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
+| 🎮 [`airo-teleop`](https://github.com/airo-ugent/airo-teleop/)  | Intuitive teleoperation of robot arms     |
 | 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip)     | Driver for the KELO mobile robot platform |
 | 🦾 [`ur-analytic-ik`](https://github.com/Victorlouisdg/ur-analytic-ik)     | Analytic IK calculations for UR manipulators |
 
