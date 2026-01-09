@@ -233,7 +233,7 @@ if __name__ == "__main__":
 
     publisher = MultiprocessRGBPublisher(
         Zed,
-        camera_kwargs={"resolution": Zed.RESOLUTION_1080, "fps": camera_fps},
+        camera_kwargs={"resolution": Zed.InitParams.RESOLUTION_1080, "fps": camera_fps},
         shared_memory_namespace=namespace,
     )
     publisher.start()
