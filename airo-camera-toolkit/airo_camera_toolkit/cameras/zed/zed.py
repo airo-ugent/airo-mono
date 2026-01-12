@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from dataclasses import dataclass
+from functools import cached_property
+from typing import Any, ClassVar, List, Optional
 
 from loguru import logger
 
@@ -35,6 +37,76 @@ from airo_typing import (
 )
 
 
+@dataclass(frozen=True)
+class ZedSpatialMap:
+    """
+    Wrapper around the ZED spatial map (fused point cloud) object.
+
+    This class provides a number of cached properties and is therefore supposed to be immutable (however, not enforced).
+    """
+
+    chunks: list[PointCloud]
+    chunks_updated: list[bool]
+
+    @cached_property
+    def full_pointcloud(self) -> PointCloud:
+        """
+        Returns a (cached) full point cloud by concatenating the points (and optionally colors) from all chunks.
+
+        Returns:
+            PointCloud: The combined point cloud containing all points and colors from the chunks.
+        """
+        # If empty chunks, return empty pointcloud
+        if len(self.chunks) == 0:
+            return PointCloud(points=np.empty((0, 3)), colors=None)
+
+        all_points = []
+        all_colors = []
+
+        for chunk in self.chunks:
+            all_points.append(chunk.points)
+            if chunk.colors is not None:
+                all_colors.append(chunk.colors)
+
+        all_points_array = np.vstack(all_points)
+        if all_colors:
+            all_colors_array = np.vstack(all_colors)
+        else:
+            all_colors_array = None
+
+        return PointCloud(points=all_points_array, colors=all_colors_array)
+
+    @cached_property
+    def size(self) -> int:
+        """
+        Returns the (cached) number of points in the full point cloud.
+
+        Returns:
+            int: The number of points in the full point cloud.
+        """
+        return self.full_pointcloud.points.shape[0]
+
+    @cached_property
+    def num_chunks(self) -> int:
+        """
+        Returns the (cached) number of chunks in the spatial map.
+
+        Returns:
+            int: The number of chunks in the spatial map.
+        """
+        return len(self.chunks)
+
+    @cached_property
+    def chunk_sizes(self) -> list[int]:
+        """
+        Returns the (cached) sizes of each chunk in the spatial map.
+
+        Returns:
+            list[int]: A list containing the number of points in each chunk.
+        """
+        return [chunk.points.shape[0] for chunk in self.chunks]
+
+
 class Zed(StereoRGBDCamera):
     """
     Wrapper around the ZED SDK
@@ -44,109 +116,330 @@ class Zed(StereoRGBDCamera):
     and corresponding intrinsics matrices.
 
     Also note that all depth values are relative to the left camera.
+
+    Next to rgb frames and depth maps, The ZED-sdk provides other useful frameworks like spatial mapping or positional tracking:
+    - Spatial mapping (also called 3D reconstruction) is the ability to create a 3D mesh of the environment.
+      This mesh can be a pointcloud or a triangular mesh. Here we assume that a pointcloud is used.
+      More information can be found here: https://www.stereolabs.com/docs/spatial-mapping
+    - Positional tracking is the ability to track the pose of the camera in space over time.
+      More information can be found here: https://www.stereolabs.com/docs/positional-tracking
     """
 
-    # for more info on the different depth modes, see:
-    # https://www.stereolabs.com/docs/depth-sensing/depth-modes
-    # keep in mind though that the depth map is calculated during the `grab`operation, so the depth mode also influences the
-    # fps of the rgb images, which is why the default depth mode is None
+    @dataclass
+    class InitParams:
+        """
+        InitParams is a dataclass that encapsulates initialization parameters for configuring a ZED camera.
+        It also provides class-level aliases for commonly used depth modes and resolutions,
+        as well as dictionaries for conversion between ZED resolution types and native airo-mono resolution types.
 
-    NEURAL_DEPTH_MODE = sl.DEPTH_MODE.NEURAL
-    NEURAL_LIGHT_DEPTH_MODE = sl.DEPTH_MODE.NEURAL_LIGHT
-    NEURAL_PLUS_DEPTH_MODE = sl.DEPTH_MODE.NEURAL_PLUS
+        Instance Attributes:
+            resolution (CameraResolutionType): Selected camera resolution. Defaults to RESOLUTION_2K.
+            fps (int): Frames per second. Defaults to 15.
+            depth_mode (sl.DEPTH_MODE): Selected depth mode. Defaults to NONE_DEPTH_MODE.
+            serial_number (Optional[str]): Camera serial number for device selection.
+            svo_filepath (Optional[str]): Path to SVO file for playback.
 
-    # no depth mode, higher troughput of the RGB images as the GPU has to do less work
-    # can also turn depth off in the runtime params, which is recommended as it allows for switching at runtime.
-    NONE_DEPTH_MODE = sl.DEPTH_MODE.NONE
-    DEPTH_MODES = (NEURAL_DEPTH_MODE, NONE_DEPTH_MODE, NEURAL_LIGHT_DEPTH_MODE, NEURAL_PLUS_DEPTH_MODE)
+        Methods:
+            build_zed_init_params(self) -> sl.InitParameters:
+                Builds and returns an sl.InitParameters object configured with the current instance attributes.
+                Sets camera resolution, FPS, depth mode, coordinate units, and depth range.
+                If serial_number is provided, sets it in the parameters.
+                If svo_filepath is provided, configures input type for SVO playback.
+        """
 
-    # for info on image resolution, pixel sizes, fov..., see:
-    # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
-    # make sure to check the combination of frame rates and resolution is available.
-    RESOLUTION_2K = (2208, 1242)
-    RESOLUTION_1080 = (1920, 1080)
-    RESOLUTION_720 = (1280, 720)
-    RESOLUTION_VGA = (672, 376)
+        # ---------------- Constants & aliases for camera initialization parameters -----------------
 
-    resolution_to_identifier_dict = {
-        RESOLUTION_2K: sl.RESOLUTION.HD2K,
-        RESOLUTION_1080: sl.RESOLUTION.HD1080,
-        RESOLUTION_720: sl.RESOLUTION.HD720,
-        RESOLUTION_VGA: sl.RESOLUTION.VGA,
-    }
+        # Note: although the aliases are constants, they are not annotated with Final because variables
+        # should not be annotated with BOTH Final and ClassVar according to PEP-591.
+        # (Also gives runtime errors when testing with python 3.11.)
 
-    def __init__(  # type: ignore[no-any-unimported]
+        # for more info on the different depth modes, see:
+        # https://www.stereolabs.com/docs/depth-sensing/depth-modes
+        # keep in mind though that the depth map is calculated during the `grab`operation, so the depth mode also influences the
+        # fps of the rgb images, which is why the default depth mode is None
+
+        NEURAL_DEPTH_MODE: ClassVar[sl.DEPTH_MODE] = sl.DEPTH_MODE.NEURAL
+        NEURAL_LIGHT_DEPTH_MODE: ClassVar[sl.DEPTH_MODE] = sl.DEPTH_MODE.NEURAL_LIGHT
+        NEURAL_PLUS_DEPTH_MODE: ClassVar[sl.DEPTH_MODE] = sl.DEPTH_MODE.NEURAL_PLUS
+
+        # no depth mode, higher troughput of the RGB images as the GPU has to do less work
+        # can also turn depth off in the runtime params, which is recommended as it allows for switching at runtime.
+        NONE_DEPTH_MODE: ClassVar[sl.DEPTH_MODE] = sl.DEPTH_MODE.NONE
+        DEPTH_MODES: ClassVar[tuple[sl.DEPTH_MODE, ...]] = (
+            NEURAL_DEPTH_MODE,
+            NONE_DEPTH_MODE,
+            NEURAL_LIGHT_DEPTH_MODE,
+            NEURAL_PLUS_DEPTH_MODE,
+        )
+
+        # for info on image resolution, pixel sizes, fov..., see:
+        # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view-
+        # make sure to check the combination of frame rates and resolution is available.
+        RESOLUTION_2K: ClassVar[CameraResolutionType] = (2208, 1242)
+        RESOLUTION_1080: ClassVar[CameraResolutionType] = (1920, 1080)
+        RESOLUTION_720: ClassVar[CameraResolutionType] = (1280, 720)
+        RESOLUTION_VGA: ClassVar[CameraResolutionType] = (672, 376)
+
+        resolution_to_identifier_dict: ClassVar[dict[tuple[int, int], sl.RESOLUTION]] = {
+            RESOLUTION_2K: sl.RESOLUTION.HD2K,
+            RESOLUTION_1080: sl.RESOLUTION.HD1080,
+            RESOLUTION_720: sl.RESOLUTION.HD720,
+            RESOLUTION_VGA: sl.RESOLUTION.VGA,
+        }
+
+        # ---------------- Instance attributes and methods ----------------
+
+        resolution: CameraResolutionType
+        fps: int
+        depth_mode: sl.DEPTH_MODE
+        serial_number: Optional[str]
+        svo_filepath: Optional[str]
+
+        def build_zed_init_params(self) -> sl.InitParameters:
+            init_params = sl.InitParameters()
+
+            if self.serial_number:
+                init_params.set_from_serial_number(self.serial_number)
+
+            if self.svo_filepath:
+                input_type = sl.InputType()
+                input_type.set_from_svo_file(self.svo_filepath)
+                init_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=False)
+
+            # set the init parameters
+            init_params.camera_resolution = self.resolution_to_identifier_dict[self.resolution]
+            init_params.camera_fps = self.fps
+            # https://www.stereolabs.com/docs/depth-sensing/depth-settings/
+            init_params.depth_mode = self.depth_mode
+            init_params.coordinate_units = sl.UNIT.METER
+            # objects closerby will have artifacts so they are filtered out (querying them will give a - Infinty)
+            init_params.depth_minimum_distance = 0.3
+            init_params.depth_maximum_distance = 10.0  # filter out far away objects
+
+            return init_params
+
+    @dataclass
+    class MappingParams:
+        """
+        MappingParams is a dataclass that encapsulates spatial mapping parameters for configuring a ZED camera.
+        It also provides class-level aliases for commonly used mapping resolutions and ranges.
+
+        Instance Attributes:
+            mapping_resolution (sl.SPATIAL_MAPPING_RESOLUTION): Selected mapping resolution. Defaults to MAPPING_RESOLUTION_MEDIUM.
+            mapping_range (sl.SPATIAL_MAPPING_RANGE): Selected mapping range. Defaults to MAPPING_RANGE_SHORT.
+            max_memory_usage (int): The maximum CPU memory (in MB) allocated for the meshing process. Defaults to 2048.
+            chunk_only (bool): Whether to only use chunks for mapping. Defaults to False.
+
+        Methods:
+            build_zed_mapping_params(self) -> sl.SpatialMappingParameters:
+                Builds and returns an sl.SpatialMappingParameters object configured with the current instance attributes.
+                Sets mapping type, resolution, range, and chunk-only option.
+        """
+
+        # ---------------- Constants & aliases for camera spatial mapping parameters -----------------
+
+        # Note: although the aliases are constants, they are not annotated with Final because variables
+        # should not be annotated with BOTH Final and ClassVar according to PEP-591.
+        # (Also gives runtime errors when testing with python 3.11.)
+
+        # for more info on the different mapping resolutions and ranges, see:
+        # https://www.stereolabs.com/docs/spatial-mapping/using-mapping
+        # note that mapping on the HIGH resolution setting is resource-intensive, and slows down spatial map updates.
+        MAPPING_RESOLUTION_LOW: ClassVar[sl.MAPPING_RESOLUTION] = sl.MAPPING_RESOLUTION.LOW  # resolution of 2cm
+        MAPPING_RESOLUTION_MEDIUM: ClassVar[sl.MAPPING_RESOLUTION] = sl.MAPPING_RESOLUTION.MEDIUM  # resolution of 5cm
+        MAPPING_RESOLUTION_HIGH: ClassVar[sl.MAPPING_RESOLUTION] = sl.MAPPING_RESOLUTION.HIGH  # resolution of 8cm
+
+        MAPPING_RANGE_SHORT: ClassVar[sl.MAPPING_RANGE] = sl.MAPPING_RANGE.SHORT  # integrates depth up to 3.5m
+        MAPPING_RANGE_MEDIUM: ClassVar[sl.MAPPING_RANGE] = sl.MAPPING_RANGE.MEDIUM  # integrates depth up to 5m
+        MAPPING_RANGE_FAR: ClassVar[sl.MAPPING_RANGE] = sl.MAPPING_RANGE.LONG  # integrates depth up to 10m
+
+        # ---------------- Instance attributes and methods ----------------
+
+        mapping_resolution: sl.SPATIAL_MAPPING_RESOLUTION = MAPPING_RESOLUTION_MEDIUM
+        mapping_range: sl.SPATIAL_MAPPING_RANGE = MAPPING_RANGE_SHORT
+        max_memory_usage: int = 2048
+        chunk_only: bool = False
+
+        def build_zed_mapping_params(self) -> sl.SpatialMappingParameters:
+            mapping_params = sl.SpatialMappingParameters(map_type=sl.SPATIAL_MAP_TYPE.FUSED_POINT_CLOUD)
+
+            # set the mapping parameters
+            mapping_params.set_resolution(self.mapping_resolution)
+            mapping_params.set_range(self.mapping_range)
+            mapping_params.max_memory_usage = self.max_memory_usage
+            mapping_params.use_chunk_only = self.chunk_only
+
+            return mapping_params
+
+    @dataclass
+    class TrackingParams:
+        """
+        TrackingParams is a dataclass that encapsulates positional tracking parameters for configuring a ZED camera.
+        It also provides class-level aliases for commonly used reference frames.
+
+        Instance Attributes:
+            initial_world_transform (HomogeneousMatrixType): Position of the camera in the world frame at the start of tracking.
+                                                             Defaults to identity matrix.
+            enable_pose_smoothing (bool): Whether to enable smooth pose correction for small drift correction. Defaults to False.
+            set_floor_as_origin (bool): Initializes the tracking to be aligned with the floor plane to better position the camera in space.
+                                        Defaults to False.
+            align_with_gravity (bool): Whether to override 2 of the 3 rotations from initial_world_transform using the IMU gravity.
+                                       Defaults to False.
+            static_camera (bool): Whether the camera is static. Defaults to False.
+            enable_2d_ground_mode (bool): Whether to constrain the positional tracking to a 2D plane. Defaults to False.
+
+        Methods:
+            build_zed_tracking_params(self) -> sl.PositionalTrackingParameters:
+                Builds and returns an sl.PositionalTrackingParameters object configured with the current instance attributes.
+                Sets gravity as origin and static camera options.
+        """
+
+        # ---------------- Constants & aliases for camera positional tracking parameters -----------------
+
+        # Note: although the aliases are constants, they are not annotated with Final because variables
+        # should not be annotated with BOTH Final and ClassVar according to PEP-591.
+        # (Also gives runtime errors when testing with python 3.11.)
+
+        REFERENCE_FRAME_WORLD: ClassVar[sl.REFERENCE_FRAME] = sl.REFERENCE_FRAME.WORLD
+        REFERENCE_FRAME_CAMERA: ClassVar[sl.REFERENCE_FRAME] = sl.REFERENCE_FRAME.CAMERA
+
+        # ---------------- Instance attributes and methods ----------------
+
+        initial_world_transform: Optional[HomogeneousMatrixType] = None
+        enable_pose_smoothing: bool = False
+        set_floor_as_origin: bool = False
+        align_with_gravity: bool = False
+        static_camera: bool = False
+        enable_2d_ground_mode: bool = False
+
+        def build_zed_tracking_params(self) -> sl.PositionalTrackingParameters:
+            tracking_params = sl.PositionalTrackingParameters()
+
+            # set the tracking parameters
+            zed_transform = sl.Transform()
+            if self.initial_world_transform is None:
+                zed_transform.m[:, :] = np.eye(4, dtype=np.float32)
+            else:
+                zed_transform.m[:, :] = self.initial_world_transform.astype(np.float32)
+
+            tracking_params.set_initial_world_transform(zed_transform)
+            tracking_params.enable_pose_smoothing = self.enable_pose_smoothing
+            tracking_params.set_floor_as_origin = self.set_floor_as_origin
+            tracking_params.set_gravity_as_origin = self.align_with_gravity
+            # If the camera is static, this setting provides better performances and makes boxes stick to the ground.
+            tracking_params.set_as_static = self.static_camera
+            tracking_params.enable_2d_ground_mode = self.enable_2d_ground_mode
+
+            return tracking_params
+
+    @dataclass
+    class RuntimeParams:
+        """
+        RuntimeParams is a dataclass that encapsulates runtime parameters for configuring a ZED camera.
+
+        Instance Attributes:
+            enable_fill_mode (bool): Whether to enable fill mode for depth computation. Defaults to False
+            texture_confidence_threshold (int): Threshold to reject depth values based on their texture confidence, defaults to 100.
+                                                It can be seen as a probability of error, scaled to 100.
+            confidence_threshold (int): Threshold to reject depth values based on their confidence, defaults to 100.
+                                        It can be seen as a probability of error, scaled to 100.
+            depth_enabled (bool): Whether to compute the depth map. Defaults to True.
+
+        Methods:
+            build_zed_runtime_params(self) -> sl.RuntimeParameters:
+                Builds and returns an sl.RuntimeParameters object configured with the current instance attributes.
+                Sets fill mode, texture confidence threshold, confidence threshold, and depth enable options.
+        """
+
+        # ---------------- Instance attributes and methods ----------------
+
+        enable_fill_mode: bool = False
+        texture_confidence_threshold: int = 100
+        confidence_threshold: int = 100
+        depth_enabled: bool = True
+
+        def build_zed_runtime_params(self) -> sl.RuntimeParameters:
+            runtime_params = sl.RuntimeParameters()
+
+            # set runtime parameters
+            # Enabling fill mode changed for SDK 4.0: https://www.stereolabs.com/developers/release/4.0/migration-guide/
+            runtime_params.enable_fill_mode = self.enable_fill_mode  # standard > fill for accuracy. See docs.
+            runtime_params.texture_confidence_threshold = self.texture_confidence_threshold
+            runtime_params.confidence_threshold = self.confidence_threshold
+            runtime_params.enable_depth = self.depth_enabled
+
+            return runtime_params
+
+    def __init__(
         self,
-        resolution: CameraResolutionType = RESOLUTION_2K,
+        resolution: CameraResolutionType = InitParams.RESOLUTION_2K,
         fps: int = 15,
-        depth_mode: sl.DEPTH_MODE = NONE_DEPTH_MODE,
+        depth_mode: sl.DEPTH_MODE = InitParams.NONE_DEPTH_MODE,
         serial_number: Optional[str] = None,
         svo_filepath: Optional[str] = None,
+        camera_runtime_params: Optional[RuntimeParams] = None,
+        camera_tracking_params: Optional[TrackingParams] = None,  # If none, positional tracking is disabled
+        camera_mapping_params: Optional[MappingParams] = None,  # If none, spatial mapping is disabled
     ) -> None:
-        self._resolution = resolution
-        self._fps = fps
-        self.depth_mode = depth_mode
-        self.serial_number = int(serial_number) if serial_number else None
+        """
+        Initializes the ZED camera interface with the specified parameters.
 
+        Init parameters are passed individually to remain backwards compatible with previous versions.
+        An InitParams dataclass is then created internally using these parameters.
+
+        Runtime parameters, tracking parameters and mapping parameters are expected to be None,
+        or instances of their respective dataclasses.
+
+        Args:
+            resolution (CameraResolutionType): The camera resolution. Defaults to InitParams.RESOLUTION_2K.
+            fps (int): The frames per second for camera capture. Defaults to 15.
+            depth_mode (sl.DEPTH_MODE): The depth mode for the camera. Defaults to InitParams.NONE_DEPTH_MODE.
+            serial_number (Optional[str]): The serial number of the camera to use. Defaults to None.
+            svo_filepath (Optional[str]): Path to an SVO file for playback instead of live capture. Defaults to None.
+            camera_runtime_params (Optional[RuntimeParams]): Runtime parameters for the camera.
+                                                                       If None, a RuntimeParams instance with default values is used.
+                                                                       Defaults to None.
+            camera_tracking_params (Optional[TrackingParams]): Parameters for positional tracking.
+                                                                         If None, positional tracking is disabled. Defaults to None.
+            camera_mapping_params (Optional[MappingParams]): Parameters for spatial mapping.
+                                                                       If None, spatial mapping is disabled. Defaults to None.
+        """
+
+        # Create init parameters
+        self.camera_init_params = self.InitParams(
+            resolution=resolution,
+            fps=fps,
+            depth_mode=depth_mode,
+            serial_number=serial_number,
+            svo_filepath=svo_filepath,
+        )
+        self._zed_init_params = self.camera_init_params.build_zed_init_params()
+
+        # Create runtime parameters
+        self.camera_runtime_params = (
+            camera_runtime_params if camera_runtime_params is not None else self.RuntimeParams()
+        )
+        self._zed_runtime_params = self.camera_runtime_params.build_zed_runtime_params()
+
+        # Create tracking parameters
+        self.camera_tracking_params = camera_tracking_params  # None if positional tracking not enabled
+        if self.camera_tracking_params:
+            self._zed_tracking_params = self.camera_tracking_params.build_zed_tracking_params()
+
+        # Create mapping parameters
+        self.camera_mapping_params = camera_mapping_params  # None if spatial mapping not enabled
+        if self.camera_mapping_params:
+            self._zed_mapping_params = self.camera_mapping_params.build_zed_mapping_params()
+
+        # create camera object
         self.camera = sl.Camera()
 
-        # TODO: create a configuration class for the camera parameters
-        self.camera_params = sl.InitParameters()
-
-        if self.serial_number:
-            self.camera_params.set_from_serial_number(self.serial_number)
-
-        if svo_filepath:
-            input_type = sl.InputType()
-            input_type.set_from_svo_file(svo_filepath)
-            self.camera_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=False)
-
-        self.camera_params.camera_resolution = Zed.resolution_to_identifier_dict[resolution]
-        self.camera_params.camera_fps = fps
-        # https://www.stereolabs.com/docs/depth-sensing/depth-settings/
-        self.camera_params.depth_mode = depth_mode
-        self.camera_params.coordinate_units = sl.UNIT.METER
-        # objects closerby will have artifacts so they are filtered out (querying them will give a - Infinty)
-        self.camera_params.depth_minimum_distance = 0.3
-        self.camera_params.depth_maximum_distance = 10.0  # filter out far away objects
-
+        # if camera is open, close it first and re-open with correct parameters
         if self.camera.is_opened():
-            # close to open with correct params
             self.camera.close()
 
-        N_OPEN_ATTEMPTS = 5
-        for i in range(N_OPEN_ATTEMPTS):
-            status = self.camera.open(self.camera_params)
-            if status == sl.ERROR_CODE.SUCCESS:
-                break
-            logger.info(f"Opening Zed camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
-            if self.serial_number:
-                logger.info(f"Rebooting {self.serial_number}")
-                sl.Camera.reboot(self.serial_number)
-            time.sleep(2)
-            logger.info(f"Available ZED cameras: {sl.Camera.get_device_list()}")
-            self.camera = sl.Camera()
-
-        if status != sl.ERROR_CODE.SUCCESS:
-            logger.error(
-                "Could not open Zed camera. Sometimes, unplugging the camera and plugging it back in helps.\n"
-                "Alternatively, try to reboot the camera by running `ZED_Explorer --reboot` in a terminal."
-            )
-            raise IndexError(f"Could not open Zed camera, error = {status}")
-
-        # TODO: create a configuration class for the runtime parameters
-        self.runtime_params = sl.RuntimeParameters()
-        # Enabling fill mode changed for SDK 4.0: https://www.stereolabs.com/developers/release/4.0/migration-guide/
-        self.runtime_params.enable_fill_mode = False  # standard > fill for accuracy. See docs.
-        self.runtime_params.texture_confidence_threshold = 100
-        self.runtime_params.confidence_threshold = 100
-        self.depth_enabled = True
-
-        # Enable Positional tracking (mandatory for object detection)
-        # positional_tracking_parameters = sl.PositionalTrackingParameters()
-        # If the camera is static, uncomment the following line to have better performances and boxes sticked to the ground.
-        # positional_tracking_parameters.set_as_static = True
-        # self.camera.enable_positional_tracking(positional_tracking_parameters)
+        # Start the camera with the specified parameters & settings
+        self._start_camera()
 
         # create reusable memory blocks for the measures
         # these will be allocated the first time they are used
@@ -155,18 +448,56 @@ class Zed(StereoRGBDCamera):
         self.depth_image_matrix = sl.Mat()
         self.depth_matrix = sl.Mat()
         self.point_cloud_matrix = sl.Mat()
+        self.pose = sl.Pose()
+        self.spatial_map = sl.FusedPointCloud()
 
         self.confidence_matrix = sl.Mat()
         self.confidence_map = None
 
+    def _start_camera(self) -> None:
+        # try to open the camera
+        N_OPEN_ATTEMPTS = 5
+        for i in range(N_OPEN_ATTEMPTS):
+            init_status = self.camera.open(self._zed_init_params)
+            if init_status == sl.ERROR_CODE.SUCCESS:
+                break
+            logger.info(f"Opening Zed camera failed, attempt {i + 1}/{N_OPEN_ATTEMPTS}")
+            if self.camera_init_params.serial_number:
+                logger.info(f"Rebooting {self.camera_init_params.serial_number}")
+                sl.Camera.reboot(self.camera_init_params.serial_number)
+            time.sleep(2)
+            logger.info(f"Available ZED cameras: {sl.Camera.get_device_list()}")
+            self.camera = sl.Camera()
+
+        if init_status != sl.ERROR_CODE.SUCCESS:
+            logger.error(
+                "Could not open Zed camera. Sometimes, unplugging the camera and plugging it back in helps.\n"
+                "Alternatively, try to reboot the camera by running `ZED_Explorer --reboot` in a terminal."
+            )
+            raise RuntimeError(f"Could not open Zed camera, error = {init_status}")
+
+        # Enable Positional tracking and Spatial Mapping if parameters are provided
+        if self.camera_tracking_params:
+            tracking_status = self.camera.enable_positional_tracking(self._zed_tracking_params)
+            if tracking_status != sl.ERROR_CODE.SUCCESS:
+                raise RuntimeError(f"Could not enable positional tracking on Zed camera, error = {tracking_status}")
+            logger.info("Positional tracking enabled on Zed camera.")
+        if self.camera_mapping_params:
+            if not self.camera_tracking_params:
+                raise RuntimeError("Positional tracking must be enabled before spatial mapping can be enabled.")
+            mapping_status = self.camera.enable_spatial_mapping(self._zed_mapping_params)
+            if mapping_status != sl.ERROR_CODE.SUCCESS:
+                raise RuntimeError(f"Could not enable spatial mapping on Zed camera, error = {mapping_status}")
+            logger.info("Spatial mapping enabled on Zed camera.")
+
     @property
     def fps(self) -> int:
         """The frame rate of the camera, in frames per second."""
-        return self._fps
+        return self.camera_init_params.fps
 
     @property
     def resolution(self) -> CameraResolutionType:
-        return self._resolution
+        return self.camera_init_params.resolution
 
     def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> CameraIntrinsicsMatrixType:
         # get the 'rectified' intrinsics matrices.
@@ -202,20 +533,21 @@ class Zed(StereoRGBDCamera):
     @property
     def depth_enabled(self) -> bool:
         """Runtime parameter to enable/disable the depth & point_cloud computation. This speeds up the RGB image capture."""
-        return self.runtime_params.enable_depth
+        return self.camera_runtime_params.depth_enabled
 
     @depth_enabled.setter
     def depth_enabled(self, value: bool) -> None:
-        self.runtime_params.enable_depth = value
+        self.camera_runtime_params.depth_enabled = value
+        self._zed_runtime_params.enable_depth = value
 
     def _grab_images(self) -> None:
         """grabs (and waits for) the latest image(s) from the camera, rectifies them and computes the depth information (based on the depth mode setting)"""
         # this is a blocking call
         # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1Camera.html#a2338c15f49b5f132df373a06bd281822
         # we might want to consider running this in a seperate thread and using a queue to store the images?
-        error_code = self.camera.grab(self.runtime_params)
+        error_code = self.camera.grab(self._zed_runtime_params)
         if error_code != sl.ERROR_CODE.SUCCESS:
-            raise IndexError("Could not grab new camera frame")
+            raise RuntimeError("Could not grab new camera frame")
 
     def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         image = self._retrieve_rgb_image_as_int(view)
@@ -239,18 +571,18 @@ class Zed(StereoRGBDCamera):
         return image
 
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
-        if self.depth_mode == self.NONE_DEPTH_MODE:
+        if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
             raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
-        if not self.depth_enabled:
+        if not self.camera_runtime_params.depth_enabled:
             raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_measure(self.depth_matrix, sl.MEASURE.DEPTH)
         depth_map = self.depth_matrix.get_data()
         return depth_map
 
     def _retrieve_depth_image(self) -> NumpyIntImageType:
-        if self.depth_mode == self.NONE_DEPTH_MODE:
+        if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
             raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
-        if not self.depth_enabled:
+        if not self.camera_runtime_params.depth_enabled:
             raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_image(self.depth_image_matrix, sl.VIEW.DEPTH)
         image_bgra = self.depth_image_matrix.get_data()
@@ -259,9 +591,9 @@ class Zed(StereoRGBDCamera):
         return image
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
-        if self.depth_mode == self.NONE_DEPTH_MODE:
+        if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
             raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
-        if not self.depth_enabled:
+        if not self.camera_runtime_params.depth_enabled:
             raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         self.camera.retrieve_measure(self.point_cloud_matrix, sl.MEASURE.XYZ)
         # shape (width, height, 4) with the 4th dim being x,y,z,(rgba packed into float)
@@ -285,10 +617,90 @@ class Zed(StereoRGBDCamera):
         confidence_map = 1 - zed_confidence_map / 100.0
         return confidence_map
 
+    def _retrieve_camera_pose(
+        self, coordinate_frame: sl.REFERENCE_FRAME = TrackingParams.REFERENCE_FRAME_WORLD
+    ) -> HomogeneousMatrixType:
+        """
+        Retrieves the current camera pose as a 4x4 homogeneous transformation matrix in the specified coordinate frame.
+
+        If the world frame is used, the pose is relative to the initial camera pose when tracking started.
+        The initial world transformation is also taken into account.
+
+        If the camera frame is used, the pose relates to the previous pose of the camera.
+        """
+        if not self.camera_tracking_params:
+            raise RuntimeError("Cannot retrieve pose if positional tracking is not enabled.")
+
+        positional_tracking_state = self.camera.get_position(self.pose, coordinate_frame)
+        if positional_tracking_state != sl.POSITIONAL_TRACKING_STATE.OK:
+            logger.warning(f"Positional tracking state is not OK: {positional_tracking_state}")
+            logger.warning("Returning the last known pose.")
+        pose_transform = self.pose.pose_data()
+        pose_np = pose_transform.m
+        return pose_np
+
+    def _request_spatial_map_update(self) -> None:
+        """
+        Request a the spatial map update process in a non-blocking thread from the spatial mapping process.
+        This function will trigger the generation of a mesh without blocking the program.
+        Note: Only one mesh can be generated at a time, if the previous mesh generation is not over, new function calls will be ignored.
+        """
+        if not self.camera_mapping_params:
+            raise RuntimeError("Cannot request spatial map update if spatial mapping is not enabled.")
+        self.camera.request_spatial_map_async()
+
+    def _retrieve_spatial_map(self) -> ZedSpatialMap:
+        """
+        Retrieves the current spatial map from the camera as a list of point clouds with update status.
+        Returns:
+            list[tuple[PointCloud, bool]]: A list of tuples, each containing a PointCloud object and a boolean
+                                           indicating whether the corresponding chunk has been updated.
+        Raises:
+            RuntimeError: If spatial mapping is not enabled.
+        Notes:
+            - If the spatial map update is not ready or cannot be retrieved, the last known spatial map is returned.
+            - Each chunk in the spatial map is processed to extract 3D points and their corresponding RGB values.
+            - Chunks with no vertices are skipped.
+        """
+        if not self.camera_mapping_params:
+            raise RuntimeError("Cannot retrieve spatial map if spatial mapping is not enabled.")
+
+        if self.camera.get_spatial_map_request_status_async() != sl.ERROR_CODE.SUCCESS:
+            logger.info("Spatial map update not ready yet.")
+            logger.info("Returning last known spatial map.")
+        elif self.camera.retrieve_spatial_map_async(self.spatial_map) != sl.ERROR_CODE.SUCCESS:
+            logger.warning("Could not retrieve spatial map.")
+            logger.warning("Returning last known spatial map.")
+
+        chunks = []
+        chunks_updated = []
+
+        # process per chunk
+        for chunk in self.spatial_map.chunks:
+            if chunk.vertices.size == 0:
+                continue
+
+            # extract points
+            points = chunk.vertices[:, :3].copy()
+
+            # extract RGB values
+            rgba_float = chunk.vertices[:, 3]
+            rgba_uint32 = rgba_float.view(np.uint32)
+            b = (rgba_uint32 >> 0) & 0xFF
+            g = (rgba_uint32 >> 8) & 0xFF
+            r = (rgba_uint32 >> 16) & 0xFF
+            rgb_values = np.stack([r, g, b], axis=1).astype(np.uint8)
+
+            # extend spatial map
+            chunks.append(PointCloud(points, rgb_values))
+            chunks_updated.append(chunk.has_been_updated)
+
+        return ZedSpatialMap(chunks, chunks_updated)
+
     def get_colored_point_cloud(self) -> PointCloud:
-        if self.depth_mode == self.NONE_DEPTH_MODE:
+        if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
             raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
-        if not self.depth_enabled:
+        if not self.camera_runtime_params.depth_enabled:
             raise RuntimeError("Cannot retrieve depth data if depth is disabled")
 
         self._grab_images()
@@ -307,7 +719,7 @@ class Zed(StereoRGBDCamera):
     # this is important if you want to reuse the camera
     # multiple times within a python script, in which case you should release the camera before creating a new object.
     # cf. https://stackoverflow.com/questions/865115/how-do-i-correctly-clean-up-a-python-object
-    def __enter__(self) -> StereoRGBDCamera:
+    def __enter__(self) -> Zed:
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
@@ -324,16 +736,41 @@ def _test_zed_implementation() -> None:
     print(serial_numbers)
     input("each camera connected to the pc should be listed, press enter to continue")
 
-    # test rgbd stereo camera
-
-    with Zed(Zed.RESOLUTION_2K, fps=15, depth_mode=Zed.NEURAL_LIGHT_DEPTH_MODE) as zed:
+    with Zed(depth_mode=Zed.InitParams.NEURAL_DEPTH_MODE) as zed:
         print(zed.get_colored_point_cloud().points)  # TODO: test the point_cloud more explicity?
         manual_test_stereo_rgbd_camera(zed)
 
     # profile rgb throughput, should be at 60FPS, i.e. 0.017s
+    with Zed(resolution=Zed.InitParams.RESOLUTION_720, fps=60) as zed:
+        profile_rgb_throughput(zed)
 
-    zed = Zed(Zed.RESOLUTION_720, fps=60)
-    profile_rgb_throughput(zed)
+    time.sleep(5)
+
+    # Test pose retrieval and spatial mapping
+    # Note that it is normal that no spatial map is retrieved the first few frames.
+    print("Testing pose retrieval and spatial mapping...")
+    tracking_params = Zed.TrackingParams(align_with_gravity=True)
+    mapping_params = Zed.MappingParams()
+    with Zed(
+        depth_mode=Zed.InitParams.NEURAL_DEPTH_MODE,
+        camera_tracking_params=tracking_params,
+        camera_mapping_params=mapping_params,
+    ) as zed:
+        for _ in range(20):  # grab 20 frames
+            zed._grab_images()
+            pose = zed._retrieve_camera_pose()
+
+            print(f"Current pose:\n{pose}")
+            zed._request_spatial_map_update()
+            time.sleep(0.1)  # wait a bit before next grab
+
+            spatial_map = zed._retrieve_spatial_map()
+            if not spatial_map:
+                logger.warning("Spatial map is empty.")
+
+            print(
+                f"Spatial map with {len(spatial_map.chunks)} chunks and {spatial_map.size} points in total retrieved."
+            )
 
 
 if __name__ == "__main__":
