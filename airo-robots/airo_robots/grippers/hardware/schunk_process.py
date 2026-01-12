@@ -347,13 +347,14 @@ class SchunkGripperProcess(ParallelPositionGripper):
 
 if __name__ == "__main__":
     # Example usage
-    PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:13.3:1.0-port0,12,115200,8E1"
+    #PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:13.3:1.0-port0,12,115200,8E1"
+    PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:1:1.0-port0,11,115200,8E1"
     gripper = SchunkGripperProcess(usb_interface=PORT)
 
     try:
         gripper.speed = 0.04
         gripper.max_grasp_force = gripper.gripper_specs.min_force
-        target = 0.05
+        target = 0.06
         position = gripper.get_current_width()
         print(f"Initial position: {position}")
         w = gripper.move(target)
