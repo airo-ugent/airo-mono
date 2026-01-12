@@ -3,6 +3,7 @@ from airo_camera_toolkit.cameras.multiprocess.mixin import CameraMixin, RGBMixin
 from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.receiver import SharedMemoryReceiver
 from airo_camera_toolkit.cameras.multiprocess.schema import CameraSchema, RGBSchema
+from airo_typing import CameraResolutionType
 
 
 class MultiprocessRGBCameraPublisher(CameraPublisher):
@@ -17,7 +18,7 @@ class MultiprocessRGBCameraPublisher(CameraPublisher):
 
 
 class MultiprocessRGBReceiver(SharedMemoryReceiver, CameraMixin, RGBMixin):
-    def __init__(self, namespace, resolution):
+    def __init__(self, namespace: str, resolution: CameraResolutionType):
         SharedMemoryReceiver.__init__(
             self,
             resolution,
@@ -71,6 +72,7 @@ if __name__ == "__main__":
 
         image_rgb = receiver.get_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
+
         cv2.imshow(NAMESPACE, image)
         key = cv2.waitKey(10)
         if key == ord("q"):

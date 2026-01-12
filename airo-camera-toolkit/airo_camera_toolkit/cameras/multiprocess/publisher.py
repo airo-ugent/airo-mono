@@ -34,6 +34,8 @@ class CameraPublisher(Process):
         self._camera: Camera = self._camera_cls(**self._camera_kwargs)
         logger.info(f"Successfully instantiated a {self._camera_cls.__name__} camera.")
 
+        logger.info(f"Initializing CameraPublisher with schemas: {self._schemas}")
+
         # Initialize the DDS domain participant.
         self._dp = DomainParticipant()
         self._writers = {

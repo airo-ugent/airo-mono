@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import numpy as np
-from airo_camera_toolkit.interfaces import DepthCamera, RGBCamera, RGBDCamera
+from airo_camera_toolkit.interfaces import DepthCamera, RGBCamera, RGBDCamera, StereoRGBDCamera
 from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
 from airo_typing import CameraResolutionType, PointCloud
 
@@ -43,6 +43,51 @@ class RGBFrameBuffer(BaseIdl):
         return RGBFrameBuffer(
             timestamp=np.array([timestamp], dtype=np.float64),
             rgb=image,
+        )
+
+
+@dataclass
+class StereoRGBFrameBuffer(BaseIdl):
+    # Timestamp of the frame (seconds)
+    timestamp: np.ndarray
+    # Color image data (height x width x channels)
+    rgb_left: np.ndarray
+    rgb_right: np.ndarray
+    # Intrinsic camera parameters (camera matrix)
+    intrinsics_left: np.ndarray
+    intrinsics_right: np.ndarray
+    # Extrinsic camera parameters (camera matrix)
+    pose_right_in_left: np.ndarray
+
+    @staticmethod
+    def allocate_empty(resolution: CameraResolutionType) -> BaseIdl:
+        width, height = resolution
+
+        return StereoRGBFrameBuffer(
+            timestamp=np.empty((1,), dtype=np.float64),
+            rgb_left=np.empty((height, width, 3), dtype=np.uint8),
+            rgb_right=np.empty((height, width, 3), dtype=np.uint8),
+            intrinsics_left=np.empty((3, 3), dtype=np.float64),
+            intrinsics_right=np.empty((3, 3), dtype=np.float64),
+            pose_right_in_left=np.empty((4, 4), dtype=np.float64),
+        )
+
+    @staticmethod
+    def allocate_from_camera(camera: StereoRGBDCamera) -> BaseIdl:
+        image_left = camera._retrieve_rgb_image_as_int(StereoRGBDCamera.LEFT_RGB)
+        image_right = camera._retrieve_rgb_image_as_int(StereoRGBDCamera.RIGHT_RGB)
+        intrinsics_left = camera.intrinsics_matrix(StereoRGBDCamera.LEFT_RGB)
+        intrinsics_right = camera.intrinsics_matrix(StereoRGBDCamera.RIGHT_RGB)
+        pose_right_in_left = camera.pose_of_right_view_in_left_view
+
+        timestamp = time.time()
+        return StereoRGBFrameBuffer(
+            timestamp=np.array([timestamp], dtype=np.float64),
+            rgb_left=image_left,
+            rgb_right=image_right,
+            intrinsics_left=intrinsics_left,
+            intrinsics_right=intrinsics_right,
+            pose_right_in_left=pose_right_in_left,
         )
 
 

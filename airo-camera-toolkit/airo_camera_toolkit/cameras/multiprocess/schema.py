@@ -7,8 +7,16 @@ from airo_camera_toolkit.cameras.multiprocess.idl import (
     DepthFrameBuffer,
     PointCloudBuffer,
     RGBFrameBuffer,
+    StereoRGBFrameBuffer,
 )
-from airo_camera_toolkit.cameras.multiprocess.mixin import CameraMixin, DepthMixin, Mixin, PointCloudMixin, RGBMixin
+from airo_camera_toolkit.cameras.multiprocess.mixin import (
+    CameraMixin,
+    DepthMixin,
+    Mixin,
+    PointCloudMixin,
+    RGBMixin,
+    StereoRGBMixin,
+)
 from airo_camera_toolkit.interfaces import Camera
 from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
 from airo_typing import CameraResolutionType
@@ -33,6 +41,9 @@ class Schema(ABC):
     def read_into_receiver(self, frame: BaseIdl, receiver: Mixin) -> None:
         pass
 
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
 
 class CameraSchema(Schema):
     def __init__(self):
@@ -48,6 +59,14 @@ class RGBSchema(Schema):
 
     def read_into_receiver(self, frame: RGBFrameBuffer, receiver: RGBMixin) -> None:
         receiver._rgb_frame = frame
+
+
+class StereoRGBSchema(Schema):
+    def __init__(self):
+        super().__init__("stereo", StereoRGBFrameBuffer)
+
+    def read_into_receiver(self, frame: StereoRGBFrameBuffer, receiver: StereoRGBMixin) -> None:
+        receiver._stereo_frame = frame
 
 
 class DepthSchema(Schema):

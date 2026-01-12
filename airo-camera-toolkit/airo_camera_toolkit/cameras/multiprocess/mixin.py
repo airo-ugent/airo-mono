@@ -1,10 +1,11 @@
 from abc import ABC
 
-from airo_camera_toolkit.interfaces import DepthCamera, RGBCamera, RGBDCamera
+from airo_camera_toolkit.interfaces import DepthCamera, RGBCamera, RGBDCamera, StereoRGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,
+    HomogeneousMatrixType,
     NumpyConfidenceMapType,
     NumpyDepthMapType,
     NumpyFloatImageType,
@@ -36,6 +37,29 @@ class RGBMixin(Mixin, RGBCamera):
 
     def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
         return self._rgb_frame.rgb
+
+    def get_current_timestamp(self) -> float:  # TODO to cameramixin!
+        return self._rgb_frame.timestamp
+
+
+class StereoRGBMixin(Mixin, StereoRGBDCamera):
+    def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
+        return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int(view)).image_in_numpy_format
+
+    def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
+        if view == StereoRGBDCamera.LEFT_RGB:
+            return self._stereo_frame.rgb_left
+        else:
+            return self._stereo_frame.rgb_right
+
+    def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> CameraIntrinsicsMatrixType:
+        if view == StereoRGBDCamera.LEFT_RGB:
+            return self._stereo_frame.intrinsics_left
+        else:
+            return self._stereo_frame.intrinsics_right
+
+    def pose_of_right_view_in_left_view(self) -> HomogeneousMatrixType:
+        return self._stereo_frame.pose_right_in_left
 
 
 class DepthMixin(Mixin, DepthCamera):

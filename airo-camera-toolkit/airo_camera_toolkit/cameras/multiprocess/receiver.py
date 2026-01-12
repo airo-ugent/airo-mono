@@ -3,6 +3,7 @@ from airo_camera_toolkit.interfaces import Camera
 from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType
 from cyclonedds.domain import DomainParticipant
+from loguru import logger
 
 
 class SharedMemoryReceiver(Camera):
@@ -16,6 +17,8 @@ class SharedMemoryReceiver(Camera):
         self._schemas = schemas
         self._shared_memory_namespace = shared_memory_namespace
 
+        logger.info(f"Initializing SharedMemoryReceiver with schemas: {schemas}")
+
         self._dp = DomainParticipant()
         self._readers = {
             s: SMReader(
@@ -25,6 +28,9 @@ class SharedMemoryReceiver(Camera):
             )
             for s in schemas
         }
+
+        # Initial grab
+        self._grab_images()
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         pass  # Needed to instantiate. Otherwise this class is abstract.
