@@ -210,7 +210,6 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
         pose_right_in_left: np.ndarray,
         dyn_camera_data: "DynamicCameraData",
     ) -> None:
-
         # Write the ZedFrameBuffer to shared memory
         self._writer(
             ZedFrameBuffer(
@@ -323,7 +322,6 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         max_spatial_map_chunks: int = 10000,
         max_spatial_map_points: int = 1000000,
     ) -> None:
-
         self.enable_positional_tracking = enable_positional_tracking
         self.enable_spatial_mapping = enable_spatial_mapping
 
@@ -558,7 +556,10 @@ if __name__ == "__main__":
                 point_cloud.colors[np.isnan(point_cloud.colors)] = 0
             rr.log(
                 "World/point_cloud",
-                rr.Points3D(positions=camera_to_rerun(point_cloud.points), colors=point_cloud.colors),
+                rr.Points3D(
+                    positions=camera_to_rerun(point_cloud.points),
+                    colors=point_cloud.colors,
+                ),
             )
 
         # If enabled, log spatial map to rerun
@@ -566,7 +567,10 @@ if __name__ == "__main__":
             full_pointcloud = spatial_map.full_pointcloud
             rr.log(
                 "World/spatial_map",
-                rr.Points3D(positions=camera_to_rerun(full_pointcloud.points), colors=full_pointcloud.colors),
+                rr.Points3D(
+                    positions=camera_to_rerun(full_pointcloud.points),
+                    colors=full_pointcloud.colors,
+                ),
             )
 
         # Visualize camera pose in Rerun
