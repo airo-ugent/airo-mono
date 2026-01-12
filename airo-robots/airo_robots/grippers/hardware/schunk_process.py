@@ -155,7 +155,7 @@ class SchunkGripperProcess(ParallelPositionGripper):
             # Small sleep to prevent CPU hogging
             time.sleep(0.001)
 
-    def _execute_command(  # noqa: C901  # type: ignore[no-any-unimported]
+    def _execute_command(  # type: ignore[no-any-unimported]  # noqa: C901
         self,
         gripper: BKSModule,
         command: GripperCommand,
