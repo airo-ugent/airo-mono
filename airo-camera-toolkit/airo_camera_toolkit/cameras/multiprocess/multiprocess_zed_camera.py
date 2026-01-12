@@ -198,7 +198,7 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             depth_map,
             depth_image,
             camera_pose,
-            point_cloud_valid,  # type: ignore
+            point_cloud_valid,
             spatial_map,  # type: ignore
         )
 
