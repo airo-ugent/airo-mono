@@ -195,7 +195,7 @@ class Zed(StereoRGBDCamera):
         serial_number: Optional[str]
         svo_filepath: Optional[str]
 
-        def build_zed_init_params(self) -> sl.InitParameters:  # type: ignore
+        def build_zed_init_params(self) -> sl.InitParameters:
             init_params = sl.InitParameters()
 
             if self.serial_number:
@@ -260,7 +260,7 @@ class Zed(StereoRGBDCamera):
         max_memory_usage: int = 2048
         chunk_only: bool = False
 
-        def build_zed_mapping_params(self) -> sl.SpatialMappingParameters:  # type: ignore
+        def build_zed_mapping_params(self) -> sl.SpatialMappingParameters:
             mapping_params = sl.SpatialMappingParameters(map_type=sl.SPATIAL_MAP_TYPE.FUSED_POINT_CLOUD)
 
             # set the mapping parameters
@@ -312,7 +312,7 @@ class Zed(StereoRGBDCamera):
         static_camera: bool = False
         enable_2d_ground_mode: bool = False
 
-        def build_zed_tracking_params(self) -> sl.PositionalTrackingParameters:  # type: ignore
+        def build_zed_tracking_params(self) -> sl.PositionalTrackingParameters:
             tracking_params = sl.PositionalTrackingParameters()
 
             # set the tracking parameters
@@ -358,7 +358,7 @@ class Zed(StereoRGBDCamera):
         confidence_threshold: int = 100
         depth_enabled: bool = True
 
-        def build_zed_runtime_params(self) -> sl.RuntimeParameters:  # type: ignore
+        def build_zed_runtime_params(self) -> sl.RuntimeParameters:
             runtime_params = sl.RuntimeParameters()
 
             # set runtime parameters
