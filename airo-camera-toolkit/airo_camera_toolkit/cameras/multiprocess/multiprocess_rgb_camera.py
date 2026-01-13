@@ -1,4 +1,3 @@
-import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.mixin import CameraMixin, RGBMixin
 from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.receiver import SharedMemoryReceiver
@@ -39,18 +38,17 @@ if __name__ == "__main__":
 
     import cv2
     from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
-    from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture
+    from airo_camera_toolkit.cameras.zed.zed import Zed
     from airo_camera_toolkit.utils.image_converter import ImageConverter
     from loguru import logger
 
     multiprocessing.set_start_method("spawn", force=True)
 
     publisher = MultiprocessRGBCameraPublisher(
-        OpenCVVideoCapture,
+        Zed,
         camera_kwargs={
-            "resolution": OpenCVVideoCapture.RESOLUTION_480,
+            "resolution": Zed.InitParams.RESOLUTION_720,
             "fps": CAMERA_FPS,
-            "intrinsics_matrix": np.eye(3),
         },
         shared_memory_namespace=NAMESPACE,
     )
@@ -59,7 +57,7 @@ if __name__ == "__main__":
     time.sleep(5)
 
     # The receiver behaves just like a regular RGBCamera
-    receiver = MultiprocessRGBReceiver(NAMESPACE, resolution=OpenCVVideoCapture.RESOLUTION_480)
+    receiver = MultiprocessRGBReceiver(NAMESPACE, resolution=Zed.InitParams.RESOLUTION_720)
 
     cv2.namedWindow(NAMESPACE, cv2.WINDOW_NORMAL)
 

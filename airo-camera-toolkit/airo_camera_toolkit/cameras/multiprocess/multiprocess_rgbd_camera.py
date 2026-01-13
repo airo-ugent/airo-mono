@@ -1,3 +1,4 @@
+import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.mixin import CameraMixin, DepthMixin, PointCloudMixin, RGBMixin
 from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.receiver import SharedMemoryReceiver
@@ -43,6 +44,7 @@ if __name__ == "__main__":
     import time
 
     import cv2
+    import rerun as rr
     from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
     from airo_camera_toolkit.cameras.zed.zed import Zed
     from airo_camera_toolkit.utils.image_converter import ImageConverter
@@ -72,12 +74,17 @@ if __name__ == "__main__":
     time_current = None
     time_previous = None
 
+    log_point_cloud = True
+    if log_point_cloud:
+        rr.init("multiprocess_rgbd_camera", spawn=True)
+
     while True:
         time_previous = time_current
         time_current = time.time()
 
         image_rgb = receiver.get_rgb_image_as_int()
         depth_image = receiver.get_depth_image()
+        point_cloud = receiver.get_colored_point_cloud()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
         depth_image = ImageConverter.from_numpy_int_format(depth_image).image_in_opencv_format
         cv2.imshow("RGB", image)
@@ -85,6 +92,15 @@ if __name__ == "__main__":
         key = cv2.waitKey(10)
         if key == ord("q"):
             break
+
+        if log_point_cloud:
+            point_cloud.points[np.isnan(point_cloud.points)] = 0
+            if point_cloud.colors is not None:
+                point_cloud.colors[np.isnan(point_cloud.colors)] = 0
+            rr.log(
+                "point_cloud",
+                rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors),
+            )
 
         if time_previous is not None:
             fps = 1 / (time_current - time_previous)
