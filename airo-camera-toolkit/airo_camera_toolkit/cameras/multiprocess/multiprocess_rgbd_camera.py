@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
+    FpsIdl,
     MultiprocessRGBPublisher,
     MultiprocessRGBReceiver,
     ResolutionIdl,
@@ -122,6 +123,7 @@ class MultiprocessRGBDPublisher(MultiprocessRGBPublisher):
 
         while not self.shutdown_event.is_set():
             self._resolution_writer(ResolutionIdl(width=self._camera.resolution[0], height=self._camera.resolution[1]))
+            self._fps_writer(FpsIdl(fps=self._camera.fps))
 
             self._camera._grab_images()
             timestamp = time.time()
