@@ -30,6 +30,9 @@ class CameraMixin(Mixin):
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         return self._metadata_frame.intrinsics
 
+    def get_current_timestamp(self) -> float:
+        return self._metadata_frame.timestamp
+
 
 class RGBMixin(Mixin, RGBCamera):
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
@@ -37,9 +40,6 @@ class RGBMixin(Mixin, RGBCamera):
 
     def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
         return self._rgb_frame.rgb
-
-    def get_current_timestamp(self) -> float:  # TODO to cameramixin!
-        return self._rgb_frame.timestamp
 
 
 class StereoRGBMixin(Mixin, StereoRGBDCamera):
@@ -75,4 +75,8 @@ class DepthMixin(Mixin, DepthCamera):
 
 class PointCloudMixin(Mixin, RGBDCamera):
     def _retrieve_colored_point_cloud(self) -> PointCloud:
-        return self._point_cloud_frame.point_cloud
+        num_points = self._point_cloud_frame.point_cloud_valid.item()
+        positions = self._point_cloud_frame.point_cloud_positions[:num_points]
+        colors = self._point_cloud_frame.point_cloud_colors[:num_points]
+        point_cloud = PointCloud(positions, colors)
+        return point_cloud

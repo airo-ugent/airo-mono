@@ -86,7 +86,6 @@ if __name__ == "__main__":
         depth_image = receiver._retrieve_depth_image()
         point_cloud = receiver._retrieve_colored_point_cloud()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
-        depth_image = ImageConverter.from_numpy_int_format(depth_image).image_in_opencv_format
         cv2.imshow("RGB", image)
         cv2.imshow("DEPTH", depth_image)
         key = cv2.waitKey(10)

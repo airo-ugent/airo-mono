@@ -21,8 +21,6 @@ class Buffer(ABC, BaseIdl):
 
 @dataclass
 class RGBFrameBuffer(Buffer):
-    # Timestamp of the frame (seconds)
-    timestamp: np.ndarray
     # Color image data (height x width x channels)
     rgb: np.ndarray
 
@@ -31,15 +29,12 @@ class RGBFrameBuffer(Buffer):
         width, height = resolution
 
         return RGBFrameBuffer(
-            timestamp=np.empty((1,), dtype=np.float64),
             rgb=np.empty((height, width, 3), dtype=np.uint8),
         )
 
     def fill_from_camera(self, camera: RGBCamera) -> BaseIdl:
         image = camera._retrieve_rgb_image_as_int()
 
-        timestamp = time.time()
-        self.timestamp[0] = timestamp
         self.rgb = image
 
         return self
@@ -47,8 +42,6 @@ class RGBFrameBuffer(Buffer):
 
 @dataclass
 class StereoRGBFrameBuffer(Buffer):
-    # Timestamp of the frame (seconds)
-    timestamp: np.ndarray
     # Color image data (height x width x channels)
     rgb_left: np.ndarray
     rgb_right: np.ndarray
@@ -63,7 +56,6 @@ class StereoRGBFrameBuffer(Buffer):
         width, height = resolution
 
         return StereoRGBFrameBuffer(
-            timestamp=np.empty((1,), dtype=np.float64),
             rgb_left=np.empty((height, width, 3), dtype=np.uint8),
             rgb_right=np.empty((height, width, 3), dtype=np.uint8),
             intrinsics_left=np.empty((3, 3), dtype=np.float64),
@@ -78,7 +70,6 @@ class StereoRGBFrameBuffer(Buffer):
         intrinsics_right = camera.intrinsics_matrix(StereoRGBDCamera.RIGHT_RGB)
         pose_right_in_left = camera.pose_of_right_view_in_left_view
 
-        self.timestamp[0] = time.time()
         self.rgb_left = image_left
         self.rgb_right = image_right
         self.intrinsics_left = intrinsics_left
@@ -90,8 +81,6 @@ class StereoRGBFrameBuffer(Buffer):
 
 @dataclass
 class DepthFrameBuffer(Buffer):
-    # Timestamp of the frame (seconds)
-    timestamp: np.ndarray
     # Depth image data (height x width)
     depth_image: np.ndarray
     # Depth map (height x width)
@@ -104,7 +93,6 @@ class DepthFrameBuffer(Buffer):
         width, height = resolution
 
         return DepthFrameBuffer(
-            timestamp=np.empty((1,), dtype=np.float64),
             depth_image=np.empty((height, width, 3), dtype=np.uint8),
             depth_map=np.empty((height, width), dtype=np.float32),
             confidence_map=np.empty((height, width), dtype=np.float32),
@@ -115,7 +103,6 @@ class DepthFrameBuffer(Buffer):
         depth_map = camera._retrieve_depth_map()
         confidence_map = camera._retrieve_confidence_map()
 
-        self.timestamp[0] = time.time()
         self.depth_image = depth_image
         self.depth_map = depth_map
         self.confidence_map = confidence_map
@@ -125,8 +112,6 @@ class DepthFrameBuffer(Buffer):
 
 @dataclass
 class PointCloudBuffer(Buffer):
-    # Timestamp of the frame (seconds)
-    timestamp: np.ndarray
     # Point cloud positions (height * width x 3)
     point_cloud_positions: np.ndarray
     # Point cloud colors (height * width x 3)
@@ -146,7 +131,6 @@ class PointCloudBuffer(Buffer):
         width, height = resolution
 
         return PointCloudBuffer(
-            timestamp=np.empty((1,), dtype=np.float64),
             point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
             point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
             point_cloud_valid=np.empty((1,), dtype=np.uint32),
@@ -155,7 +139,6 @@ class PointCloudBuffer(Buffer):
     def fill_from_camera(self, camera: RGBDCamera) -> BaseIdl:
         point_cloud = camera._retrieve_colored_point_cloud()
 
-        self.timestamp[0] = time.time()
         self.point_cloud_positions[: point_cloud.points.shape[0]] = point_cloud.points
         if point_cloud.colors is not None:
             self.point_cloud_colors[: point_cloud.colors.shape[0]] = point_cloud.colors
@@ -168,6 +151,8 @@ class PointCloudBuffer(Buffer):
 
 @dataclass
 class CameraMetadataBuffer(Buffer):
+    # Timestamp of the frame (seconds)
+    timestamp: np.ndarray
     # (2,) uint32 array: width, height.
     resolution: np.ndarray
     # (1,) float32 scalar array: fps.
@@ -178,12 +163,14 @@ class CameraMetadataBuffer(Buffer):
     @staticmethod
     def allocate_empty(resolution: CameraResolutionType) -> BaseIdl:
         return CameraMetadataBuffer(
+            timestamp=np.empty((1,), dtype=np.float64),
             resolution=np.empty_like(resolution, dtype=np.uint32),
             intrinsics_matrix=np.empty((3, 3), dtype=np.float32),
             fps=np.empty((1,), dtype=np.float32),
         )
 
     def fill_from_camera(self, camera: RGBCamera) -> BaseIdl:
+        self.timestamp[0] = time.time()
         self.resolution = np.array(camera.resolution).astype(np.uint32)
         self.intrinsics_matrix = camera.intrinsics_matrix().astype(np.float32)
         self.fps[0] = camera.fps
