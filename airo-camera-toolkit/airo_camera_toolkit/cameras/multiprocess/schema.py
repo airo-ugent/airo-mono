@@ -27,15 +27,19 @@ class Schema(ABC):
         self._topic = topic
         self._buffer_type = type
 
+        self._buffer = None
+
     @property
     def topic(self) -> str:
         return self._topic
 
     def allocate_empty(self, resolution: CameraResolutionType) -> BaseIdl:
-        return self._buffer_type.allocate_empty(resolution)
+        self._buffer = self._buffer_type.allocate_empty(resolution)
+        return self._buffer
 
-    def allocate_from_camera(self, camera: Camera) -> BaseIdl:
-        return self._buffer_type.allocate_from_camera(camera)
+    def fill_from_camera(self, camera: Camera) -> BaseIdl:
+        self._buffer.fill_from_camera(camera)
+        return self._buffer
 
     @abstractmethod
     def read_into_receiver(self, frame: BaseIdl, receiver: Mixin) -> None:

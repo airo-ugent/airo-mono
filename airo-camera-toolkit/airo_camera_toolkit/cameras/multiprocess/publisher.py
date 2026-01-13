@@ -61,5 +61,5 @@ class CameraPublisher(Process):
             self._camera._grab_images()
 
             for schema in self._schemas:
-                idl = schema.allocate_from_camera(self._camera)
+                idl = schema.fill_from_camera(self._camera)
                 self._writers[schema](idl)

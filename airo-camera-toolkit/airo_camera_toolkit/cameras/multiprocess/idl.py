@@ -15,12 +15,12 @@ class Buffer(ABC, BaseIdl):
         pass
 
     @abstractmethod
-    def allocate_from_camera(camera: RGBCamera) -> BaseIdl:
+    def fill_from_camera(self, camera: RGBCamera) -> BaseIdl:
         pass
 
 
 @dataclass
-class RGBFrameBuffer(BaseIdl):
+class RGBFrameBuffer(Buffer):
     # Timestamp of the frame (seconds)
     timestamp: np.ndarray
     # Color image data (height x width x channels)
@@ -35,19 +35,18 @@ class RGBFrameBuffer(BaseIdl):
             rgb=np.empty((height, width, 3), dtype=np.uint8),
         )
 
-    @staticmethod
-    def allocate_from_camera(camera: RGBCamera) -> BaseIdl:
+    def fill_from_camera(self, camera: RGBCamera) -> BaseIdl:
         image = camera._retrieve_rgb_image_as_int()
 
         timestamp = time.time()
-        return RGBFrameBuffer(
-            timestamp=np.array([timestamp], dtype=np.float64),
-            rgb=image,
-        )
+        self.timestamp[0] = timestamp
+        self.rgb = image
+
+        return self
 
 
 @dataclass
-class StereoRGBFrameBuffer(BaseIdl):
+class StereoRGBFrameBuffer(Buffer):
     # Timestamp of the frame (seconds)
     timestamp: np.ndarray
     # Color image data (height x width x channels)
@@ -72,27 +71,25 @@ class StereoRGBFrameBuffer(BaseIdl):
             pose_right_in_left=np.empty((4, 4), dtype=np.float64),
         )
 
-    @staticmethod
-    def allocate_from_camera(camera: StereoRGBDCamera) -> BaseIdl:
+    def fill_from_camera(self, camera: StereoRGBDCamera) -> BaseIdl:
         image_left = camera._retrieve_rgb_image_as_int(StereoRGBDCamera.LEFT_RGB)
         image_right = camera._retrieve_rgb_image_as_int(StereoRGBDCamera.RIGHT_RGB)
         intrinsics_left = camera.intrinsics_matrix(StereoRGBDCamera.LEFT_RGB)
         intrinsics_right = camera.intrinsics_matrix(StereoRGBDCamera.RIGHT_RGB)
         pose_right_in_left = camera.pose_of_right_view_in_left_view
 
-        timestamp = time.time()
-        return StereoRGBFrameBuffer(
-            timestamp=np.array([timestamp], dtype=np.float64),
-            rgb_left=image_left,
-            rgb_right=image_right,
-            intrinsics_left=intrinsics_left,
-            intrinsics_right=intrinsics_right,
-            pose_right_in_left=pose_right_in_left,
-        )
+        self.timestamp[0] = time.time()
+        self.rgb_left = image_left
+        self.rgb_right = image_right
+        self.intrinsics_left = intrinsics_left
+        self.intrinsics_right = intrinsics_right
+        self.pose_right_in_left = pose_right_in_left
+
+        return self
 
 
 @dataclass
-class DepthFrameBuffer(BaseIdl):
+class DepthFrameBuffer(Buffer):
     # Timestamp of the frame (seconds)
     timestamp: np.ndarray
     # Depth image data (height x width)
@@ -113,23 +110,21 @@ class DepthFrameBuffer(BaseIdl):
             confidence_map=np.empty((height, width), dtype=np.float32),
         )
 
-    @staticmethod
-    def allocate_from_camera(camera: DepthCamera) -> BaseIdl:
+    def fill_from_camera(self, camera: DepthCamera) -> BaseIdl:
         depth_image = camera._retrieve_depth_image()
         depth_map = camera._retrieve_depth_map()
         confidence_map = camera._retrieve_confidence_map()
 
-        timestamp = time.time()
-        return DepthFrameBuffer(
-            timestamp=np.array([timestamp], dtype=np.float64),
-            depth_image=depth_image,
-            depth_map=depth_map,
-            confidence_map=confidence_map,
-        )
+        self.timestamp[0] = time.time()
+        self.depth_image = depth_image
+        self.depth_map = depth_map
+        self.confidence_map = confidence_map
+
+        return self
 
 
 @dataclass
-class PointCloudBuffer(BaseIdl):
+class PointCloudBuffer(Buffer):
     # Timestamp of the frame (seconds)
     timestamp: np.ndarray
     # Point cloud positions (height * width x 3)
@@ -157,38 +152,22 @@ class PointCloudBuffer(BaseIdl):
             point_cloud_valid=np.empty((1,), dtype=np.uint32),
         )
 
-    @staticmethod
-    def allocate_from_camera(camera: RGBDCamera) -> BaseIdl:
+    def fill_from_camera(self, camera: RGBDCamera) -> BaseIdl:
         point_cloud = camera._retrieve_colored_point_cloud()
 
-        pcd_pos_buf = np.full(
-            (camera.resolution[0] * camera.resolution[1], 3),
-            fill_value=np.nan,
-            dtype=np.float32,
-        )
-        pcd_col_buf = np.zeros(
-            (camera.resolution[0] * camera.resolution[1], 3),
-            dtype=np.uint8,
-        )
-
-        pcd_pos_buf[: point_cloud.points.shape[0]] = point_cloud.points
+        self.timestamp[0] = time.time()
+        self.point_cloud_positions[: point_cloud.points.shape[0]] = point_cloud.points
         if point_cloud.colors is not None:
-            pcd_col_buf[: point_cloud.colors.shape[0]] = point_cloud.colors
+            self.point_cloud_colors[: point_cloud.colors.shape[0]] = point_cloud.colors
         else:
-            pcd_col_buf[: point_cloud.points.shape[0]] = 0  # If no colors, use black.
-        point_cloud_valid = np.array([point_cloud.points.shape[0]], dtype=np.uint32)
+            self.point_cloud_colors[: point_cloud.colors.shape[0]] = 0  # If no colors, use black.
+        self.point_cloud_valid[0] = point_cloud.points.shape[0]
 
-        timestamp = time.time()
-        return PointCloudBuffer(
-            timestamp=np.array([timestamp], dtype=np.float64),
-            point_cloud_positions=pcd_pos_buf,
-            point_cloud_colors=pcd_col_buf,
-            point_cloud_valid=point_cloud_valid,
-        )
+        return self
 
 
 @dataclass
-class CameraMetadataBuffer(BaseIdl):
+class CameraMetadataBuffer(Buffer):
     # (2,) uint32 array: width, height.
     resolution: np.ndarray
     # (1,) float32 scalar array: fps.
@@ -204,10 +183,9 @@ class CameraMetadataBuffer(BaseIdl):
             fps=np.empty((1,), dtype=np.float32),
         )
 
-    @staticmethod
-    def allocate_from_camera(camera: RGBCamera) -> BaseIdl:
-        return CameraMetadataBuffer(
-            resolution=np.array(camera.resolution).astype(np.uint32),
-            intrinsics_matrix=camera.intrinsics_matrix().astype(np.float32),
-            fps=np.array([camera.fps], dtype=np.float32),
-        )
+    def fill_from_camera(self, camera: RGBCamera) -> BaseIdl:
+        self.resolution = np.array(camera.resolution).astype(np.uint32)
+        self.intrinsics_matrix = camera.intrinsics_matrix().astype(np.float32)
+        self.fps[0] = camera.fps
+
+        return self

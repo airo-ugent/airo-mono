@@ -74,7 +74,7 @@ if __name__ == "__main__":
     time_current = None
     time_previous = None
 
-    log_point_cloud = True
+    log_point_cloud = False
     if log_point_cloud:
         rr.init("multiprocess_rgbd_camera", spawn=True)
 
@@ -83,8 +83,8 @@ if __name__ == "__main__":
         time_current = time.time()
 
         image_rgb = receiver.get_rgb_image_as_int()
-        depth_image = receiver.get_depth_image()
-        point_cloud = receiver.get_colored_point_cloud()
+        depth_image = receiver._retrieve_depth_image()
+        point_cloud = receiver._retrieve_colored_point_cloud()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
         depth_image = ImageConverter.from_numpy_int_format(depth_image).image_in_opencv_format
         cv2.imshow("RGB", image)
