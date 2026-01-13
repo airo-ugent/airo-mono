@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Type
 
-from airo_camera_toolkit.cameras.multiprocess.idl import (
+from airo_camera_toolkit.cameras.multiprocess.buffer import (
     Buffer,
     CameraMetadataBuffer,
     DepthFrameBuffer,
@@ -42,7 +42,7 @@ class Schema(ABC):
         return self._buffer
 
     @abstractmethod
-    def read_into_receiver(self, frame: BaseIdl, receiver: Mixin) -> None:
+    def read_into_receiver(self, frame: Buffer, receiver: Mixin) -> None:
         pass
 
     def __repr__(self) -> str:

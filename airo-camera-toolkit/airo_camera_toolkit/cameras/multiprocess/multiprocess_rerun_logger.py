@@ -8,6 +8,7 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import Mul
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import MultiprocessRGBDReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 from airo_camera_toolkit.utils.image_converter import ImageConverter
+from airo_typing import CameraResolutionType
 
 logger = loguru.logger
 
@@ -16,13 +17,15 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
     def __init__(
         self,
         shared_memory_namespace: str,
+        camera_resolution: CameraResolutionType,
         rerun_application_id: str = "rerun",
         image_transform: Optional[ImageTransform] = None,
         entity_path: Optional[str] = None,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
-        self.shutdown_event = multiprocessing.Event()
+        self._camera_resolution = camera_resolution
+        self.shutdown_event = multiprocessing.get_context("spawn").Event()
         self._rerun_application_id = rerun_application_id
         self._image_transform = image_transform
 
@@ -52,7 +55,7 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         rr.init(self._rerun_application_id)
         rr.connect_grpc()
 
-        self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
+        self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace, self._camera_resolution)
 
         while not self.shutdown_event.is_set():
             self._log_rgb_image()
@@ -65,6 +68,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
     def __init__(
         self,
         shared_memory_namespace: str,
+        camera_resolution: CameraResolutionType,
         rerun_application_id: str = "rerun",
         image_transform: Optional[ImageTransform] = None,
         entity_path: Optional[str] = None,
@@ -72,6 +76,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
     ):
         super().__init__(
             shared_memory_namespace,
+            camera_resolution,
             rerun_application_id,
             image_transform,
             entity_path,
@@ -97,7 +102,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         rerun.init(self._rerun_application_id)
         rerun.connect_grpc()
 
-        self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace)
+        self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace, self._camera_resolution)
 
         while not self.shutdown_event.is_set():
             self._log_rgb_image()
@@ -108,7 +113,10 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
 
 
 if __name__ == "__main__":
-    rerun_logger = MultiprocessRGBDRerunLogger("camera")
+    from airo_camera_toolkit.cameras.zed.zed import Zed
+
+    # Assumes that a RGBDPublisher is running, and that rerun is spawned externally.
+    rerun_logger = MultiprocessRGBDRerunLogger("camera", Zed.InitParams.RESOLUTION_720)
     rerun_logger.start()
     time.sleep(10)
     rerun_logger.stop()
