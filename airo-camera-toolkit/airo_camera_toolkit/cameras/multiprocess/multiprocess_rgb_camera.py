@@ -173,6 +173,8 @@ class MultiprocessRGBReceiver(RGBCamera):
 
         self._fps = self._read_fps(self._shared_memory_namespace)
 
+        self._grab_images()
+
     def _read_fps(self, shared_memory_namespace: str) -> int:
         logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
         fps_reader = DDSReader(self._dp, f"{shared_memory_namespace}_fps", FpsIdl)

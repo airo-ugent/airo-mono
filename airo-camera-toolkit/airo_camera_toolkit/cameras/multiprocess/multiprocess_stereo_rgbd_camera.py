@@ -190,6 +190,8 @@ class MultiprocessStereoRGBDReceiver(MultiprocessRGBDReceiver, StereoRGBDCamera)
         if self.enable_pointcloud:
             self._last_pcd_frame = PointCloudBuffer.template(self.resolution[0], self.resolution[1])
 
+        self._grab_images()
+
     def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int(view=view)).image_in_numpy_format
 

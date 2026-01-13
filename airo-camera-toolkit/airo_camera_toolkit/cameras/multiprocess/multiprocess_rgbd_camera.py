@@ -190,6 +190,8 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         if self.enable_pointcloud:
             self._last_pcd_frame = PointCloudBuffer.template(self.resolution[0], self.resolution[1])
 
+        self._grab_images()
+
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
         return self._last_frame.depth
 
