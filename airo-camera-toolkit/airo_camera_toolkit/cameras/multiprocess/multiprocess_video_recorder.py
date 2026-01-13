@@ -49,8 +49,7 @@ class MultiprocessVideoRecorder(SpawnProcess):
         camera_fps = receiver.fps
         camera_period = 1 / camera_fps
 
-        width, height = self._resolution
-        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", camera_fps, (width, height))
+        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", camera_fps)
 
         logger.info(f"Recording video to {self._video_path}")
 
@@ -116,7 +115,9 @@ class MultiprocessVideoRecorder(SpawnProcess):
 
 if __name__ == "__main__":
     """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
-    recorder = MultiprocessVideoRecorder("camera", resolution=(640, 480))
+    from airo_camera_toolkit.cameras.zed.zed import Zed
+
+    recorder = MultiprocessVideoRecorder("camera", resolution=Zed.InitParams.RESOLUTION_720)
     recorder.start()
     time.sleep(10)
     recorder.stop()
