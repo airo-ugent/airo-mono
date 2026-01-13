@@ -7,7 +7,7 @@ from typing import Any
 
 import loguru
 import numpy as np
-from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import ResolutionIdl
+from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import FpsIdl, ResolutionIdl
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import (
     MultiprocessRGBDPublisher,
     MultiprocessRGBDReceiver,
@@ -122,6 +122,7 @@ class MultiprocessStereoRGBDPublisher(MultiprocessRGBDPublisher):
 
         while not self.shutdown_event.is_set():
             self._resolution_writer(ResolutionIdl(width=self._camera.resolution[0], height=self._camera.resolution[1]))
+            self._fps_writer(FpsIdl(fps=self._camera.fps))
 
             image_left = self._camera.get_rgb_image_as_int()
             timestamp = time.time()

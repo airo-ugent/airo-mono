@@ -32,6 +32,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Fixed
 - Multiprocess cameras will now get an initial frame upon initialization using `_grab_images`, to avoid premature reads of invalid data (e.g., calling `intrinsics_matrix()` before `get_rgb_image_as_int()` - the latter triggers `_grab_images`).
 - `MultiprocessRGBDPublisher` now correctly publishes the FPS.
+- `MultiprocessStereoRGBDPublisher` now correctly publishes the FPS.
 
 ### Removed
 
