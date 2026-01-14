@@ -1,6 +1,12 @@
 from typing import Final
 
-import pyzed.sl as sl
+try:
+    import pyzed.sl as sl
+except ImportError:
+    raise ImportError(
+        "You should install the ZED SDK and pip install the python bindings in your environment first, see the installation README."
+    )
+
 from airo_camera_toolkit.cameras.multiprocess.buffer import CameraPoseBuffer, SpatialMapBuffer
 from airo_camera_toolkit.cameras.multiprocess.mixin import (
     CameraMixin,
