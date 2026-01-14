@@ -58,3 +58,26 @@ class CameraMetadataBuffer(Buffer):
     fps: np.ndarray
     # (3, 3) float32 array containing intrinsics.
     intrinsics_matrix: np.ndarray
+
+
+# --- ZED specific --- #
+@dataclass
+class CameraPoseBuffer(Buffer):
+    # The pose of the camera (4x4 float32). This is relative to the initial camera pose.
+    camera_pose_world_frame: np.ndarray
+    # The pose of the camera (4x4 float32). This is relative to the previous camera pose.
+    camera_pose_camera_frame: np.ndarray
+
+
+@dataclass
+class SpatialMapBuffer(Buffer):
+    # Amount of chunks in the spatial map (scalar uint32).
+    num_chunks: np.ndarray
+    # Indicators of which chunks have been updated (MAX_CHUNKS uint8).
+    chunks_updated: np.ndarray
+    # Size of each chunk (number of points) (MAX_CHUNKS uint32).
+    chunk_sizes: np.ndarray
+    # Flattened chunk position data ((MAX_POINTS, 3) float32).
+    point_positions: np.ndarray
+    # Flattened chunk color data ((MAX_POINTS, 3) uint8).
+    point_colors: np.ndarray

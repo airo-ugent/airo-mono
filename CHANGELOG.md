@@ -12,6 +12,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Default manipulator specs in `URrtde` class were wrong, they are now multiplied by π -> **caution**: your robot may suddenly move 3x faster if you didn't set joint speed yourself.
 - Old airo-teleop package was removed from the monorepo, in favor of a new [airo-teleop](https://github.com/airo-ugent/airo-teleop/), which is now considered a sister repository.
 - Changed the usage interface of the parameter constants in `zed.py`. These constants are now accessible through their respective dataclass (e.g., NEURAL_DEPTH_MODE -> InitParams.NEURAL_DEPTH_MODE).
+- Multiprocess camera receivers now need to know the camera resolution in advance (in addition to the shared memory namespace). This is because of a simplification of the underlying code which also reduces DDS communication overhead.
 
 ### Added
 - Added `gc_disabled()` context manager to temporarily disable garbage collection for performance-critical sections.

@@ -653,8 +653,7 @@ class Zed(StereoRGBDCamera):
         """
         Retrieves the current spatial map from the camera as a list of point clouds with update status.
         Returns:
-            list[tuple[PointCloud, bool]]: A list of tuples, each containing a PointCloud object and a boolean
-                                           indicating whether the corresponding chunk has been updated.
+            ZedSpatialMap: A dataclass containing the spatial map information.
         Raises:
             RuntimeError: If spatial mapping is not enabled.
         Notes:

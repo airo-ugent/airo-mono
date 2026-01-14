@@ -30,7 +30,8 @@ class SharedMemoryReceiver(Camera):
         self._grab_images()
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
-        pass  # Needed to instantiate. Otherwise this class is abstract.
+        # Needed to instantiate. Otherwise this class is abstract.
+        raise NotImplementedError("The intrinsics_matrix() method is supposed to be implemented via Mixins.")
 
     def _grab_images(self) -> None:
         for s in self._schemas:

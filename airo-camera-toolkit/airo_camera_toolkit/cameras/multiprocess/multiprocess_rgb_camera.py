@@ -16,7 +16,9 @@ class MultiprocessRGBCameraPublisher(CameraPublisher):
         super().__init__(camera_cls, camera_kwargs, schemas, shared_memory_namespace)
 
 
-class MultiprocessRGBReceiver(SharedMemoryReceiver, CameraMixin, RGBMixin):
+# Inheritance order matters! The first class encountered determines which method is used, is it if defined in >1 Mixin.
+# CameraMixin must be before SharedMemoryReceiver for intrinsics_matrix()!
+class MultiprocessRGBReceiver(CameraMixin, RGBMixin, SharedMemoryReceiver):
     def __init__(self, namespace: str, resolution: CameraResolutionType):
         SharedMemoryReceiver.__init__(
             self,
@@ -37,6 +39,7 @@ if __name__ == "__main__":
     import time
 
     import cv2
+    import numpy as np
     from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
     from airo_camera_toolkit.cameras.zed.zed import Zed
     from airo_camera_toolkit.utils.image_converter import ImageConverter
@@ -60,6 +63,10 @@ if __name__ == "__main__":
     receiver = MultiprocessRGBReceiver(NAMESPACE, resolution=Zed.InitParams.RESOLUTION_720)
 
     cv2.namedWindow(NAMESPACE, cv2.WINDOW_NORMAL)
+
+    with np.printoptions(precision=3, suppress=True):
+        print("Intrinsics matrix:")
+        print(receiver.intrinsics_matrix())
 
     time_current = None
     time_previous = None
