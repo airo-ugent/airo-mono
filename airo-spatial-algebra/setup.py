@@ -5,7 +5,7 @@ import setuptools
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo_spatial_algebra",
-    version="2025.11.0",
+    version="2026.1.0",
     description="Code for working with SE3 poses, transforms... for robotic manipulation at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
@@ -13,7 +13,7 @@ setuptools.setup(
         "numpy>=2.0",
         "scipy",
         "spatialmath-python",
-        "airo-typing>=2025.11.0",
+        "airo-typing>=2026.01.0",
     ],
     packages=setuptools.find_packages(exclude=["test"]),
     # include py.typed to declare type information is available, see

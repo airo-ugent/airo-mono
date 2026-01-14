@@ -8,6 +8,18 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## 2026.1.0
+
+### Breaking changes
 - Code implementation for communicating with Schunk grippers has been changed to `SchunkGripperProcess`, `SchunkEGK40_USB` has been relegated to the schunk branch of this repo.
 - Default manipulator specs in `URrtde` class were wrong, they are now multiplied by π -> **caution**: your robot may suddenly move 3x faster if you didn't set joint speed yourself.
 - Old airo-teleop package was removed from the monorepo, in favor of a new [airo-teleop](https://github.com/airo-ugent/airo-teleop/), which is now considered a sister repository.
