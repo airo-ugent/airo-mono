@@ -7,6 +7,8 @@ from loguru import logger
 
 
 class SharedMemoryReceiver(Camera):
+    """A SharedMemoryReceiver is a subscriber for one or more topics communicated over shared memory, published by a CameraPublisher (see publisher.py)."""
+
     def __init__(
         self,
         camera_resolution: CameraResolutionType,

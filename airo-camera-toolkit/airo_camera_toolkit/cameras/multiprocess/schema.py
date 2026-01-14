@@ -1,3 +1,5 @@
+"""Schemas define the serialization and deserialization logic for buffers that are shared over shared memory."""
+
 import time
 from abc import ABC, abstractmethod
 from typing import Type
@@ -25,6 +27,11 @@ from airo_typing import CameraResolutionType, PointCloud
 
 class Schema(ABC):
     def __init__(self, topic: str, type: Type[Buffer]) -> None:
+        """Initialize a new schema with a given topic name and buffer type.
+
+        Args:
+            topic: A unique name.
+            type: The Buffer class type."""
         self._topic = topic
         self._buffer_type = type
 
@@ -36,6 +43,7 @@ class Schema(ABC):
 
     @property
     def buffer(self) -> Buffer:
+        """Retrieve the buffer. If it is not allocated, this raises a ValueError. Call allocate_empty first."""
         self._assert_buffer_allocated()
         return self._buffer
 
@@ -45,21 +53,39 @@ class Schema(ABC):
 
     @abstractmethod
     def allocate_empty(self, resolution: CameraResolutionType) -> None:
-        pass
+        """Allocate an empty buffer (cf. malloc in C) with the required size.
+
+        This method must be used on the publisher and receiver side to allocate memory.
+
+        Args:
+            resolution: The camera resolution."""
 
     @abstractmethod
     def fill_from_camera(self, camera: Camera) -> None:
-        pass
+        """Fill the previously allocated buffer with relevant data (serializing it into numpy arrays) obtained via the camera object.
+
+        This method must be used on the publisher side - as it is the one that has access to the camera.
+
+        Args:
+            camera: The camera instance."""
 
     @abstractmethod
     def read_into_receiver(self, frame: Buffer, receiver: Mixin) -> None:
-        pass
+        """Read the data from the provided frame, deserialize it, and set the necessary fields on the receiver.
+
+        The fields that should be set are determined by the mixin. See mixin.py.
+
+        Args:
+            frame: The buffer obtained from the receiver, who read it from shared memory.
+            receiver: The receiver object, which will be filled in with the new data."""
 
     def __repr__(self) -> str:
         return self.__class__.__name__
 
 
 class CameraSchema(Schema):
+    """Camera metadata. See CameraMetadataBuffer and CameraMixin."""
+
     def __init__(self):
         super().__init__("metadata", CameraMetadataBuffer)
 
@@ -83,6 +109,8 @@ class CameraSchema(Schema):
 
 
 class RGBSchema(Schema):
+    """RGB data. See RGBFrameBuffer and RGBMixin."""
+
     def __init__(self):
         super().__init__("rgb", RGBFrameBuffer)
 
@@ -102,6 +130,8 @@ class RGBSchema(Schema):
 
 
 class StereoRGBSchema(Schema):
+    """Stereo RGB data. See StereoRGBFrameBuffer and StereoRGBMixin."""
+
     def __init__(self):
         super().__init__("stereo", StereoRGBFrameBuffer)
 
@@ -136,6 +166,8 @@ class StereoRGBSchema(Schema):
 
 
 class DepthSchema(Schema):
+    """Depth data. See DepthFrameBuffer and DepthMixin."""
+
     def __init__(self):
         super().__init__("depth", DepthFrameBuffer)
 
@@ -164,6 +196,8 @@ class DepthSchema(Schema):
 
 
 class PointCloudSchema(Schema):
+    """Point cloud data. See PointCloudBuffer and PointCloudMixin."""
+
     def __init__(self):
         super().__init__("pcd", PointCloudBuffer)
 

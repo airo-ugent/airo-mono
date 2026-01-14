@@ -205,6 +205,8 @@ class MultiprocessZedPublisher(CameraPublisher):
 class MultiprocessZedReceiver(
     StereoRGBMixin, CameraMixin, DepthMixin, PointCloudMixin, CameraPoseMixin, SpatialMapMixin, SharedMemoryReceiver
 ):
+    """Multiprocess implementation of Zed (which is itself an extension of StereoRGBDCamera). To be used with MultiprocessZedPublisher."""
+
     def __init__(
         self,
         namespace: str,

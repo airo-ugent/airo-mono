@@ -28,6 +28,8 @@ class MultiprocessStereoRGBDCameraPublisher(CameraPublisher):
 # Inheritance order matters! The first class encountered determines which method is used, is it if defined in >1 Mixin.
 # StereoRGBMixin MUST be before CameraMixin and SharedMemoryReceiver for intrinsics_matrix()!
 class MultiprocessStereoRGBDReceiver(StereoRGBMixin, CameraMixin, DepthMixin, PointCloudMixin, SharedMemoryReceiver):
+    """Multiprocess implementation of StereoRGBDCamera. To be used with MultiprocessStereoRGBDCameraPublisher."""
+
     def __init__(
         self,
         namespace: str,

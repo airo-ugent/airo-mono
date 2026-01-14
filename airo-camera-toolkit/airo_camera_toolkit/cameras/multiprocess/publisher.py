@@ -9,6 +9,8 @@ from loguru import logger
 
 
 class CameraPublisher(Process):
+    """A CameraPublisher is a publisher for one or more topics communicated over shared memory (see receiver.py for subscribers)."""
+
     def __init__(
         self,
         camera_cls: type,

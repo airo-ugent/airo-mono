@@ -1,6 +1,9 @@
+"""These mixins provide the necessary methods to retrieve data from shared memory. By subclassing from a mixin, you get implementations
+belonging to `Camera`, `RGBCamera`, etcetera for free - assuming the receiver uses the necessary schemas."""
+
 from abc import ABC
 
-from airo_camera_toolkit.interfaces import DepthCamera, RGBCamera, RGBDCamera, StereoRGBDCamera
+from airo_camera_toolkit.interfaces import Camera, DepthCamera, RGBCamera, RGBDCamera, StereoRGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
@@ -18,7 +21,9 @@ class Mixin(ABC):
     pass
 
 
-class CameraMixin(Mixin):
+class CameraMixin(Mixin, Camera):
+    """Implements the Camera interface for SharedMemoryReceiver."""
+
     @property
     def resolution(self) -> CameraResolutionType:
         return self._metadata_frame.resolution
@@ -35,6 +40,8 @@ class CameraMixin(Mixin):
 
 
 class RGBMixin(Mixin, RGBCamera):
+    """Implements the RGBCamera interface for SharedMemoryReceiver."""
+
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int()).image_in_numpy_format
 
@@ -43,6 +50,8 @@ class RGBMixin(Mixin, RGBCamera):
 
 
 class StereoRGBMixin(Mixin, StereoRGBDCamera):
+    """Implements the StereoRGBDCamera interface for SharedMemoryReceiver."""
+
     def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int(view)).image_in_numpy_format
 
@@ -64,6 +73,8 @@ class StereoRGBMixin(Mixin, StereoRGBDCamera):
 
 
 class DepthMixin(Mixin, DepthCamera):
+    """Implements the DepthCamera interface for SharedMemoryReceiver."""
+
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
         return self._depth_frame.depth_map
 
@@ -75,5 +86,7 @@ class DepthMixin(Mixin, DepthCamera):
 
 
 class PointCloudMixin(Mixin, RGBDCamera):
+    """Implements part of the RGBDCamera interface for SharedMemoryReceiver."""
+
     def _retrieve_colored_point_cloud(self) -> PointCloud:
         return self._point_cloud_frame

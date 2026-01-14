@@ -1,3 +1,7 @@
+"""This file defines several POD buffer types, that contain the NumPy arrays to be shared over shared memory.
+These must be data classes, derived from Buffer, and they must only contain NumPy arrays.
+For serialization/deserialization logic, see schema.py."""
+
 from abc import ABC
 from dataclasses import dataclass
 
@@ -44,7 +48,7 @@ class PointCloudBuffer(Buffer):
     point_cloud_positions: np.ndarray
     # Point cloud colors (height * width x 3)
     point_cloud_colors: np.ndarray
-    # Valid point cloud points (scalar), for sparse point clouds
+    # Valid point cloud points (scalar), for sparse point clouds like the Realsense
     point_cloud_valid: np.ndarray
 
 

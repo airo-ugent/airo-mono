@@ -2,7 +2,7 @@
 
 Multiprocessing in the airo-camera-toolkit was born from a simple need:
 
-> "We want to command robots and at the same time view a smooth camera feed.
+> We want to command robots and at the same time view a smooth camera feed.
 
 There a few things that make this difficult:
 * Robot commands can take long to execute (several seconds)
@@ -17,12 +17,52 @@ To overcome these difficulties we used [airo-ipc](https://github.com/airo-ugent/
 * Robot commands can be sent at high frequency without having to retrieve images inbetween
 
 ## Implementation
-Two classes are at the core of our solution:
-* `MultiprocessRGBPublisher`: a class that write images from a camera to shared memory, from its own process.
-* `MultiprocessRGBReceiver`: a class that reads images from shared memory, but hides this complexity from its users.
+The implementation of multiprocessing in the airo-camera-toolkit decouples data from transport and provides a flexible way to construct new publisher/subscriber pairs. You need to know three core concepts:
 
-Note that the publisher is a subclass of `SpawnProcess`, this way it can publish uninterrupted.
-The receiver is subclass of `RGBCamera` which ensures that it follows the interface of a regular airo-camera-toolkit camera.
+- Buffers: contain the data.
+- Schemas: contain the (de)serialization logic, and define which data is shared. Each schema is intrinsically linked to one buffer type. Schemas:
+  - allocate buffers,
+  - serialize data and write it to buffers,
+  - read from buffers and deserialize data,
+  - write deserialized data to specific fields in receivers.
+- Mixins: provide implementations of camera interfaces for receivers. Each mixin is intrinsically linked to one schema, as the field(s) the mixin reads from should correspond to those the schema writes to.
+
+More information on this follows below.
+
+A **schema** represents a single type of data that can be transported over shared memory. Examples include RGBSchema, DepthSchema, and PointCloudSchema. Schemas define the structure of the data, how an empty buffer for that data is allocated, and how the buffer is filled using a camera instance.
+
+Allocation is only done once, similarly to C's `malloc` (initialization of empty NumPy arrays), afterwards existing buffers are written to.
+
+Each schema has an associated [POD](https://en.wikipedia.org/wiki/Passive_data_structure) **buffer** type, such as RGBFrameBuffer, DepthFrameBuffer, or PointCloudBuffer. Buffers are simple dataclasses that subclass BaseIdl (from `airo-ipc`) and contain NumPy arrays. They are responsible only for data layout; all transport logic lives elsewhere.
+
+The **CameraPublisher** is a multiprocessing.Process that runs _grab_images() in a loop. In that same loop, it publishes all data defined by the schemas it was configured with. Which data is published is determined entirely by the list of schemas passed to the publisher.
+
+On the receiving side, there is similarly a single **SharedMemoryReceiver** that implements the `Camera` interface. It is also configured with a list of schemas. In its _grab_images() method, it reads data for all configured schemas from shared memory and stores the latest buffers internally. Like the publisher, the receiver itself contains no RGB-, depth-, or point-cloud-specific logic.
+
+```python
+# [...]
+def _grab_images(self) -> None:
+        for s in self._schemas:
+            s.read_into_receiver(self._readers[s](), self)
+```
+
+To expose the received data through the familiar camera interfaces, the design uses [**mixins**](https://en.wikipedia.org/wiki/Mixin). Each schema has a corresponding mixin, such as RGBMixin, DepthMixin, or PointCloudMixin. A mixin provides the methods needed to access a specific type of data by reading from the buffers populated by the SharedMemoryReceiver. Mixins contain no transport logic; they only expose data that is already available.
+
+```python
+class Mixin(ABC):
+    pass
+
+class RGBMixin(Mixin, RGBCamera):
+    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
+        return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int()).image_in_numpy_format
+
+    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+        return self._rgb_frame.rgb
+```
+
+By combining SharedMemoryReceiver with the appropriate mixins, the existing multiprocess camera classes can be reconstructed with minimal code. For example, an RGB receiver can be implemented by combining SharedMemoryReceiver, CameraMixin, and RGBMixin, and by passing CameraSchema and RGBSchema to the receiver constructor. The schemas determine which data is read from shared memory, while the mixins determine which camera interface methods are available.
+
+Extending this to RGB-D cameras is straightforward. A multiprocess RGB-D receiver is created by adding DepthSchema and DepthMixin. If point cloud support is desired, PointCloudSchema and PointCloudMixin can be added as well. Implementing a new camera variant is now largely a matter of selecting the appropriate schemas and mixins, rather than creating new publisher and receiver classes. This means that if you, for example, only want to transmit the depth map, or only the point cloud, this is trivial.
 
 ## Usage
 See the  main function in [multiprocess_rgb_camera.py](./multiprocess_rgb_camera.py) for a simple example of how to use these classes with a ZED camera.
