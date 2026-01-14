@@ -38,14 +38,11 @@ class CameraPublisher(Process):
 
         # Initialize the DDS domain participant.
         self._dp = DomainParticipant()
-        self._writers = {
-            s: SMWriter(
-                self._dp,
-                f"{self._shared_memory_namespace}_{s.topic}",
-                s.allocate_empty(self._camera.resolution),
-            )
-            for s in self._schemas
-        }
+
+        self._writers = dict()
+        for s in self._schemas:
+            s.allocate_empty(self._camera.resolution)
+            self._writers[s] = SMWriter(self._dp, f"{self._shared_memory_namespace}_{s.topic}", s.buffer)
 
     def stop(self) -> None:
         self.shutdown_event.set()
@@ -61,5 +58,5 @@ class CameraPublisher(Process):
             self._camera._grab_images()
 
             for schema in self._schemas:
-                buffer = schema.fill_from_camera(self._camera)
-                self._writers[schema](buffer)
+                schema.fill_from_camera(self._camera)
+                self._writers[schema](schema.buffer)

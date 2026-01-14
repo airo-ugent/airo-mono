@@ -20,14 +20,11 @@ class SharedMemoryReceiver(Camera):
         logger.info(f"Initializing SharedMemoryReceiver with schemas: {schemas}")
 
         self._dp = DomainParticipant()
-        self._readers = {
-            s: SMReader(
-                self._dp,
-                f"{self._shared_memory_namespace}_{s.topic}",
-                s.allocate_empty(self._camera_resolution),
-            )
-            for s in schemas
-        }
+
+        self._readers = dict()
+        for s in self._schemas:
+            s.allocate_empty(self._camera_resolution)
+            self._readers[s] = SMReader(self._dp, f"{self._shared_memory_namespace}_{s.topic}", s.buffer)
 
         # Initial grab
         self._grab_images()
