@@ -1,9 +1,8 @@
 import logging
 import multiprocessing as mp
-from multiprocessing.sharedctypes import Synchronized
-
 import time
 from dataclasses import dataclass
+from multiprocessing.sharedctypes import Synchronized
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -24,7 +23,7 @@ class GripperCommand:
     """Command sent to the gripper process"""
 
     cmd_type: str
-    params: Dict[str, Any] | None = None
+    params: Dict[str, Any] = {}
 
 
 # values obtained from https://schunk.com/be/nl/grijpsystemen/parallelgrijper/egk/egk-40-mb-m-b/p/000000000001491762
@@ -75,8 +74,8 @@ class SchunkGripperProcess(ParallelPositionGripper):
         self._last_target_position = mp.Value("f", 0.0)
 
         # Command queue for parent->child communication
-        self._cmd_queue : mp.Queue = mp.Queue()
-        self._result_queue : mp.Queue = mp.Queue(maxsize=1)
+        self._cmd_queue: mp.Queue = mp.Queue()
+        self._result_queue: mp.Queue = mp.Queue(maxsize=1)
 
         # Flag to signal process termination
         self._terminate = mp.Event()
@@ -106,7 +105,7 @@ class SchunkGripperProcess(ParallelPositionGripper):
         last_target_position: Synchronized,  # mp.Value
         cmd_queue: mp.Queue,
         result_queue: mp.Queue,
-        terminate: Any  # mp.Event
+        terminate: Any,  # mp.Event
     ) -> None:
         """Main function running in the child process
         This continuously updates the gripper position and executes commands from the command queue if the queue is not empty
@@ -156,8 +155,13 @@ class SchunkGripperProcess(ParallelPositionGripper):
             # Small sleep to prevent CPU hogging
             time.sleep(0.001)
 
-    def _execute_command(
-        self, gripper: BKSModule, command: GripperCommand, position: Synchronized, last_target_position: Synchronized, result_queue: mp.Queue
+    def _execute_command(  # type: ignore[no-any-unimported]  # noqa: C901
+        self,
+        gripper: BKSModule,
+        command: GripperCommand,
+        position: Synchronized,
+        last_target_position: Synchronized,
+        result_queue: mp.Queue,
     ) -> bool:
         """Execute a command on the gripper"""
         logger.info(f"Executing command: {command.cmd_type}")
@@ -175,14 +179,14 @@ class SchunkGripperProcess(ParallelPositionGripper):
             last_target_pos = last_target_position.value
 
             if abs(actual_pos - last_target_pos) > 0.1:  # gripper did not reach its previous target
-                # print(f"gripper did not reach its previous target: {actual_pos} != {last_target_pos}")
+                logger.warning(f"Gripper did not reach its previous target: {actual_pos} != {last_target_pos}")
                 # if new target is same direction: do not execute.
                 if last_target_pos > actual_pos and command.params.get("position") > actual_pos:
                     return True
                 # if new target is same direction: do not execute.
                 if last_target_pos < actual_pos and command.params.get("position") < actual_pos:
                     return True
-                print(f"executing move_pose nonetheless, new target: {command.params.get('position')}")
+                logger.warning(f"Executing move_pose nonetheless, new target: {command.params.get('position')}")
 
             pos = command.params.get("position")
 
@@ -251,21 +255,19 @@ class SchunkGripperProcess(ParallelPositionGripper):
 
     # Implementation of ParallelPositionGripper abstract methods
 
-    def _send_command_and_wait_for_result(self, command: GripperCommand) -> None:
+    def _send_command_and_wait_for_result(self, command: GripperCommand) -> bool:
         """Send a command to the gripper process and wait for the result"""
         # Clear result queue - multiprocessing Queue doesn't have clear() method
         while not self._result_queue.empty():
             try:
                 self._result_queue.get_nowait()
             except Exception as e:
-                print(f"Error clearing result queue: {e}")
+                logger.error(f"Error clearing result queue: {e}")
         self._cmd_queue.put(command)
         result = self._result_queue.get(timeout=1.0)
-        if result["success"]:
-            # print(f"command executed successfully: {command}, result={result}")
-            return result["result"]
-        else:
+        if not result["success"]:
             raise RuntimeError(f"Failed to execute command: {command}, result={result}")
+        return result["result"]
 
     #########################################################
     # interface methods
@@ -329,7 +331,7 @@ class SchunkGripperProcess(ParallelPositionGripper):
         # Create awaitable action that checks if the gripper has reached the target position
         return AwaitableAction(lambda: not self.is_moving())
 
-    def servo(self, width):
+    def servo(self, width: float) -> None:
         width = np.clip(width, self.gripper_specs.min_width, self.gripper_specs.max_width)
         width_mm_gripper = (self.gripper_specs.max_width - width) * 1000.0
         self._send_command_and_wait_for_result(
@@ -347,7 +349,7 @@ class SchunkGripperProcess(ParallelPositionGripper):
 
 if __name__ == "__main__":
     # Example usage
-    #PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:13.3:1.0-port0,12,115200,8E1"
+    # PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:13.3:1.0-port0,12,115200,8E1"
     PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:1:1.0-port0,11,115200,8E1"
     gripper = SchunkGripperProcess(usb_interface=PORT)
 
