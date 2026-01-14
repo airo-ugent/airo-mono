@@ -314,7 +314,7 @@ if __name__ == "__main__":  # noqa: C901
     # -----------------------------
     WINDOW = 200
 
-    timings = {
+    timings: dict[str, deque] = {
         "grab": deque(maxlen=WINDOW),
         "rgb": deque(maxlen=WINDOW),
         "depth": deque(maxlen=WINDOW),
@@ -324,7 +324,7 @@ if __name__ == "__main__":  # noqa: C901
         "total": deque(maxlen=WINDOW),
     }
 
-    fps_window = deque(maxlen=50)
+    fps_window: deque = deque(maxlen=50)
 
     frame_idx = 0
     previous_frame_time = time.time()
