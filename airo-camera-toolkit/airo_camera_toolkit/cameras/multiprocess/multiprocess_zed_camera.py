@@ -1,6 +1,5 @@
 from typing import Final
 
-import numpy as np
 import pyzed.sl as sl
 from airo_camera_toolkit.cameras.multiprocess.buffer import CameraPoseBuffer, SpatialMapBuffer
 from airo_camera_toolkit.cameras.multiprocess.mixin import (
@@ -239,14 +238,13 @@ class MultiprocessZedReceiver(
         SharedMemoryReceiver.__init__(self, resolution, schemas, namespace)
 
 
-if __name__ == "__main__":
-    """example of how to use the MultiprocessZedPublisher and MultiprocessZedReceiver.
-    You can also use the MultiprocessZedReceiver in a different process (e.g. in a different python script)
-    """
+if __name__ == "__main__":  # noqa: C901
     import multiprocessing
     import time
+    from collections import deque
 
     import cv2
+    import numpy as np
     import rerun as rr
 
     def camera_to_rerun(points_cam: np.ndarray) -> np.ndarray:
@@ -254,14 +252,10 @@ if __name__ == "__main__":
         Convert points from camera frame (X right, Y down, Z forward)
         to Rerun frame (X right, Y forward, Z up).
         """
-        assert points_cam.shape[1] == 3
-
         points_rerun = np.empty_like(points_cam)
-
-        points_rerun[:, 0] = points_cam[:, 0]  # X -> X
-        points_rerun[:, 1] = points_cam[:, 2]  # Z -> Y
-        points_rerun[:, 2] = -points_cam[:, 1]  # -Y -> Z
-
+        points_rerun[:, 0] = points_cam[:, 0]
+        points_rerun[:, 1] = points_cam[:, 2]
+        points_rerun[:, 2] = -points_cam[:, 1]
         return points_rerun
 
     multiprocessing.set_start_method("spawn", force=True)
@@ -271,6 +265,7 @@ if __name__ == "__main__":
 
     camera_tracking_params = Zed.TrackingParams()
     camera_mapping_params = Zed.MappingParams()
+
     publisher = MultiprocessZedPublisher(
         Zed,
         camera_kwargs={
@@ -281,44 +276,32 @@ if __name__ == "__main__":
             "camera_mapping_params": camera_mapping_params,
         },
     )
-
     publisher.start()
 
     receiver = MultiprocessZedReceiver(
-        "camera", resolution, enable_positional_tracking=True, enable_spatial_mapping=True
+        "camera",
+        resolution,
+        enable_positional_tracking=True,
+        enable_spatial_mapping=True,
     )
 
-    # while not receiver.is_ready():
-    #     logger.warning("Waiting for receiver to be ready...")
-    #     time.sleep(1.0)
-
+    # Prime shared memory
     receiver._grab_images()
-
-    with np.printoptions(precision=3, suppress=True):
-        print("Intrinsics left:\n", receiver.intrinsics_matrix())
-        print(
-            "Intrinsics right:\n",
-            receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB),
-        )
-        print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
 
     cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
     cv2.namedWindow("RGB Image Right", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
     cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
-    # cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
 
-    rr.init(f"{MultiprocessZedReceiver.__name__}")
+    rr.init(MultiprocessZedReceiver.__name__)
     rr.spawn(memory_limit="2GB")
 
-    # 1. Setup World Coordinate System (Z-Up)
     rr.log("World", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
     rr.log(
         "World/Camera/Pinhole",
         rr.Pinhole(
-            resolution=[1280, 720],  # Arbitrary resolution for visualization
-            focal_length=700,  # Arbitrary FOV for visualization
+            resolution=[1280, 720],
+            focal_length=700,
         ),
         static=True,
     )
@@ -326,82 +309,138 @@ if __name__ == "__main__":
     log_point_cloud = False
     log_spatial_map = True
 
-    time_current = None
-    time_previous = None
+    # -----------------------------
+    # PROFILING STATE
+    # -----------------------------
+    WINDOW = 200
 
+    timings = {
+        "grab": deque(maxlen=WINDOW),
+        "rgb": deque(maxlen=WINDOW),
+        "depth": deque(maxlen=WINDOW),
+        "pointcloud": deque(maxlen=WINDOW),
+        "spatial_map": deque(maxlen=WINDOW),
+        "rerun": deque(maxlen=WINDOW),
+        "total": deque(maxlen=WINDOW),
+    }
+
+    fps_window = deque(maxlen=50)
+
+    frame_idx = 0
+    previous_frame_time = time.time()
+    t_last_frame = time.perf_counter()
+
+    # -----------------------------
+    # MAIN LOOP
+    # -----------------------------
     while True:
-        time_previous = time_current
-        time_current = time.time()
+        t_frame_start = time.perf_counter()
 
-        # Retrieve images and data from shared memory
+        # ---- Grab from shared memory
+        t0 = time.perf_counter()
+        receiver._grab_images()
+        t1 = time.perf_counter()
+
+        frame_time = receiver.get_current_timestamp()
+        if frame_time <= previous_frame_time:
+            continue
+        previous_frame_time = frame_time
+
+        # Track FPS
+        t_now = time.perf_counter()
+        fps_window.append(1.0 / (t_now - t_last_frame))
+        t_last_frame = t_now
+
+        if len(fps_window) == fps_window.maxlen:
+            print(f"Camera FPS: {np.mean(fps_window):.2f}")
+
+        # ---- RGB
         image = receiver.get_rgb_image_as_int()
         image_right = receiver._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+        t2 = time.perf_counter()
+
+        # ---- Depth
         depth_map = receiver.get_depth_map()
         depth_image = receiver.get_depth_image()
-        # confidence_map = receiver._retrieve_confidence_map()
+        t3 = time.perf_counter()
+
+        # ---- Point cloud
         point_cloud = receiver.get_colored_point_cloud()
+        t4 = time.perf_counter()
 
-        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
-
+        # ---- Spatial map
         spatial_map = receiver._retrieve_spatial_map()
-        pose_matrix = receiver._retrieve_camera_pose()
+        t5 = time.perf_counter()
 
-        # Visualize images using OpenCV
-        cv2.imshow("RGB Image", image_bgr)
-        cv2.imshow("RGB Image Right", image_right_bgr)
-        cv2.imshow("Depth Map", depth_map)
-        cv2.imshow("Depth Image", depth_image)
-        # cv2.imshow("Confidence Map", confidence_map)
+        # ---- Rerun logging
+        t_rr0 = time.perf_counter()
 
-        # If enabled, log point cloud to rerun
         if log_point_cloud:
-            point_cloud.points[np.isnan(point_cloud.points)] = 0
-            if point_cloud.colors is not None:
-                point_cloud.colors[np.isnan(point_cloud.colors)] = 0
+            pc = point_cloud
+            pc.points[np.isnan(pc.points)] = 0
+            if pc.colors is not None:
+                pc.colors[np.isnan(pc.colors)] = 0
+
             rr.log(
                 "World/point_cloud",
                 rr.Points3D(
-                    positions=camera_to_rerun(point_cloud.points),
-                    colors=point_cloud.colors,
+                    positions=camera_to_rerun(pc.points),
+                    colors=pc.colors,
                 ),
             )
 
-        # If enabled, log spatial map to rerun
         if log_spatial_map:
-            full_pointcloud = spatial_map.full_pointcloud
+            full_pc = spatial_map.full_pointcloud
             rr.log(
                 "World/spatial_map",
                 rr.Points3D(
-                    positions=camera_to_rerun(full_pointcloud.points),
-                    colors=full_pointcloud.colors,
+                    positions=camera_to_rerun(full_pc.points),
+                    colors=full_pc.colors,
                 ),
             )
 
-        # Visualize camera pose in Rerun
-
-        # Extract Translation (first 3 rows, 4th column)
+        pose_matrix = receiver._retrieve_camera_pose()
         translation = pose_matrix[:3, 3]
-
-        # Extract Rotation Matrix (3x3 top-left)
         rotation_mat = pose_matrix[:3, :3]
 
-        R_x_90 = np.array(
-            [
-                [1, 0, 0],
-                [0, 0, 1],
-                [0, -1, 0],
-            ],
-            dtype=float,
-        )
-
+        R_x_90 = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]], dtype=float)
         rotation_mat = rotation_mat @ R_x_90
 
-        # Log the transform.
-        # This moves "World/Camera" (and its child "Pinhole") to the new location.
-        rr.log("World/Camera", rr.Transform3D(translation=translation, mat3x3=rotation_mat))
+        rr.log(
+            "World/Camera",
+            rr.Transform3D(
+                translation=translation,
+                mat3x3=rotation_mat,
+            ),
+        )
 
-        key = cv2.waitKey(10)
+        t_rr1 = time.perf_counter()
+
+        # ---- OpenCV visualization
+        cv2.imshow("RGB Image", cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+        cv2.imshow("RGB Image Right", cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR))
+        cv2.imshow("Depth Image", depth_image)
+
+        # ---- Record timings (ms)
+        timings["grab"].append((t1 - t0) * 1e3)
+        timings["rgb"].append((t2 - t1) * 1e3)
+        timings["depth"].append((t3 - t2) * 1e3)
+        timings["pointcloud"].append((t4 - t3) * 1e3)
+        timings["spatial_map"].append((t5 - t4) * 1e3)
+        timings["rerun"].append((t_rr1 - t_rr0) * 1e3)
+        timings["total"].append((time.perf_counter() - t_frame_start) * 1e3)
+
+        # ---- Print stats
+        frame_idx += 1
+        if frame_idx % WINDOW == 0:
+            print("\n=== Throughput breakdown (ms) ===")
+            for k, v in timings.items():
+                print(f"{k:12s}: {np.mean(v):6.2f}")
+            fps = 1000.0 / np.mean(timings["total"])
+            print(f"{'FPS':12s}: {fps:6.2f}")
+
+        # ---- Input
+        key = cv2.waitKey(1)
         if key == ord("q"):
             break
         elif key == ord("l"):
