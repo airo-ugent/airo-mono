@@ -1,6 +1,6 @@
 from airo_camera_toolkit.cameras.multiprocess.schema import Schema
 from airo_camera_toolkit.interfaces import Camera
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
+from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader  # type: ignore
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType
 from cyclonedds.domain import DomainParticipant
 from loguru import logger
@@ -37,4 +37,4 @@ class SharedMemoryReceiver(Camera):
 
     def _grab_images(self) -> None:
         for s in self._schemas:
-            s.read_into_receiver(self._readers[s](), self)
+            s.read_into_receiver(self._readers[s](), self)  # type: ignore[arg-type]

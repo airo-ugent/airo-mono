@@ -102,7 +102,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         rerun.init(self._rerun_application_id)
         rerun.connect_grpc()
 
-        self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace, self._camera_resolution)
+        self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace, self._camera_resolution)
 
         while not self.shutdown_event.is_set():
             self._log_rgb_image()

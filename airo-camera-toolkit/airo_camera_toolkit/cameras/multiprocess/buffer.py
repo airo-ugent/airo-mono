@@ -6,11 +6,11 @@ from abc import ABC
 from dataclasses import dataclass
 
 import numpy as np
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl  # type: ignore
 
 
 @dataclass
-class Buffer(ABC, BaseIdl):
+class Buffer(ABC, BaseIdl):  # type:ignore[no-any-unimported]
     pass
 
 

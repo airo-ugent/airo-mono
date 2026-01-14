@@ -3,7 +3,7 @@ from multiprocessing.context import Process
 
 from airo_camera_toolkit.cameras.multiprocess.schema import Schema
 from airo_camera_toolkit.interfaces import Camera
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
+from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter  # type: ignore
 from cyclonedds.domain import DomainParticipant
 from loguru import logger
 

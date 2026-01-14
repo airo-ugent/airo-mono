@@ -20,14 +20,17 @@ from airo_camera_toolkit.cameras.multiprocess.schema import (
     StereoRGBSchema,
 )
 from airo_camera_toolkit.cameras.zed.zed import Zed, ZedSpatialMap
-from airo_camera_toolkit.interfaces import StereoRGBDCamera
+from airo_camera_toolkit.interfaces import Camera, StereoRGBDCamera
 from airo_typing import CameraResolutionType, HomogeneousMatrixType, PointCloud
 
 # Schemas and mixins are defined in this file, unlike more generic implementations, because they require Zed imports.
 
 
 class CameraPoseMixin(Mixin):
-    def _retrieve_camera_pose(
+    _camera_pose_world_frame: HomogeneousMatrixType
+    _camera_pose_camera_frame: HomogeneousMatrixType
+
+    def _retrieve_camera_pose(  # type:ignore[no-any-unimported]
         self, coordinate_frame: sl.REFERENCE_FRAME = Zed.TrackingParams.REFERENCE_FRAME_WORLD
     ) -> HomogeneousMatrixType:
         if coordinate_frame == Zed.TrackingParams.REFERENCE_FRAME_WORLD:
@@ -37,7 +40,7 @@ class CameraPoseMixin(Mixin):
 
 
 class CameraPoseSchema(Schema):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("pose", CameraPoseBuffer)
 
     def allocate_empty(self, resolution: CameraResolutionType) -> None:
@@ -46,20 +49,25 @@ class CameraPoseSchema(Schema):
             camera_pose_camera_frame=np.empty((4, 4), dtype=np.float32),
         )
 
-    def fill_from_camera(self, camera: Zed) -> None:
+    def fill_from_camera(self, camera: Camera) -> None:
         self._assert_buffer_allocated()
+        assert isinstance(camera, Zed)  # for mypy
+        assert isinstance(self._buffer, CameraPoseBuffer)  # for mypy
 
         self._buffer.camera_pose_world_frame = camera._retrieve_camera_pose(Zed.TrackingParams.REFERENCE_FRAME_WORLD)
         self._buffer.camera_pose_camera_frame = camera._retrieve_camera_pose(Zed.TrackingParams.REFERENCE_FRAME_CAMERA)
 
-    def read_into_receiver(self, frame: CameraPoseBuffer, receiver: CameraPoseMixin) -> None:
+    def read_into_receiver(self, frame: CameraPoseBuffer, receiver: Mixin) -> None:
+        assert isinstance(receiver, CameraPoseMixin)  # for mypy
         receiver._camera_pose_world_frame = frame.camera_pose_world_frame
         receiver._camera_pose_camera_frame = frame.camera_pose_camera_frame
 
 
 class SpatialMapMixin(Mixin):
+    _spatial_map: ZedSpatialMap
+
     def _retrieve_spatial_map(self) -> ZedSpatialMap:
-        return receiver._spatial_map
+        return self._spatial_map
 
 
 class SpatialMapSchema(Schema):
@@ -81,8 +89,10 @@ class SpatialMapSchema(Schema):
             point_colors=np.empty((self._max_points, 3), dtype=np.uint8),
         )
 
-    def fill_from_camera(self, camera: Zed) -> None:
+    def fill_from_camera(self, camera: Camera) -> None:
         self._assert_buffer_allocated()
+        assert isinstance(camera, Zed)  # for mypy
+        assert isinstance(self._buffer, SpatialMapBuffer)  # for mypy
 
         self._frame_counter += 1
 
@@ -135,8 +145,9 @@ class SpatialMapSchema(Schema):
         self._buffer.point_positions[: spatial_map.size, :] = np.array(point_positions)
         self._buffer.point_colors[: spatial_map.size, :] = np.array(point_colors)
 
-    def read_into_receiver(self, frame: SpatialMapBuffer, receiver: SpatialMapMixin) -> None:
+    def read_into_receiver(self, frame: SpatialMapBuffer, receiver: Mixin) -> None:
         # Reconstruct the ZedSpatialMap from shared memory.
+        assert isinstance(receiver, SpatialMapMixin)  # for mypy
 
         num_chunks = int(frame.num_chunks.item())
 

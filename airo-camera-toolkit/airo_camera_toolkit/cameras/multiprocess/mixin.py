@@ -3,6 +3,12 @@ belonging to `Camera`, `RGBCamera`, etcetera for free - assuming the receiver us
 
 from abc import ABC
 
+from airo_camera_toolkit.cameras.multiprocess.buffer import (
+    CameraMetadataBuffer,
+    DepthFrameBuffer,
+    RGBFrameBuffer,
+    StereoRGBFrameBuffer,
+)
 from airo_camera_toolkit.interfaces import Camera, DepthCamera, RGBCamera, RGBDCamera, StereoRGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import (
@@ -24,9 +30,12 @@ class Mixin(ABC):
 class CameraMixin(Mixin, Camera):
     """Implements the Camera interface for SharedMemoryReceiver."""
 
+    _metadata_frame: CameraMetadataBuffer
+
     @property
     def resolution(self) -> CameraResolutionType:
-        return self._metadata_frame.resolution
+        width, height = self._metadata_frame.resolution
+        return width, height
 
     @property
     def fps(self) -> float:
@@ -36,11 +45,13 @@ class CameraMixin(Mixin, Camera):
         return self._metadata_frame.intrinsics_matrix
 
     def get_current_timestamp(self) -> float:
-        return self._metadata_frame.timestamp
+        return self._metadata_frame.timestamp.item()
 
 
 class RGBMixin(Mixin, RGBCamera):
     """Implements the RGBCamera interface for SharedMemoryReceiver."""
+
+    _rgb_frame: RGBFrameBuffer
 
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int()).image_in_numpy_format
@@ -51,6 +62,8 @@ class RGBMixin(Mixin, RGBCamera):
 
 class StereoRGBMixin(Mixin, StereoRGBDCamera):
     """Implements the StereoRGBDCamera interface for SharedMemoryReceiver."""
+
+    _stereo_frame: StereoRGBFrameBuffer
 
     def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int(view)).image_in_numpy_format
@@ -75,6 +88,8 @@ class StereoRGBMixin(Mixin, StereoRGBDCamera):
 class DepthMixin(Mixin, DepthCamera):
     """Implements the DepthCamera interface for SharedMemoryReceiver."""
 
+    _depth_frame: DepthFrameBuffer
+
     def _retrieve_depth_map(self) -> NumpyDepthMapType:
         return self._depth_frame.depth_map
 
@@ -87,6 +102,8 @@ class DepthMixin(Mixin, DepthCamera):
 
 class PointCloudMixin(Mixin, RGBDCamera):
     """Implements part of the RGBDCamera interface for SharedMemoryReceiver."""
+
+    _point_cloud_frame: PointCloud
 
     def _retrieve_colored_point_cloud(self) -> PointCloud:
         return self._point_cloud_frame

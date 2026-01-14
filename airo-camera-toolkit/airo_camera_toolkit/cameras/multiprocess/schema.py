@@ -2,7 +2,7 @@
 
 import time
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Optional, Type
 
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.buffer import (
@@ -21,7 +21,7 @@ from airo_camera_toolkit.cameras.multiprocess.mixin import (
     RGBMixin,
     StereoRGBMixin,
 )
-from airo_camera_toolkit.interfaces import Camera, DepthCamera, RGBCamera, StereoRGBDCamera
+from airo_camera_toolkit.interfaces import Camera, DepthCamera, RGBCamera, RGBDCamera, StereoRGBDCamera
 from airo_typing import CameraResolutionType, PointCloud
 
 
@@ -35,7 +35,7 @@ class Schema(ABC):
         self._topic = topic
         self._buffer_type = type
 
-        self._buffer = None
+        self._buffer: Optional[Buffer] = None
 
     @property
     def topic(self) -> str:
@@ -45,6 +45,7 @@ class Schema(ABC):
     def buffer(self) -> Buffer:
         """Retrieve the buffer. If it is not allocated, this raises a ValueError. Call allocate_empty first."""
         self._assert_buffer_allocated()
+        assert self._buffer is not None and isinstance(self._buffer, Buffer)  # for mypy
         return self._buffer
 
     def _assert_buffer_allocated(self) -> None:
@@ -86,7 +87,7 @@ class Schema(ABC):
 class CameraSchema(Schema):
     """Camera metadata. See CameraMetadataBuffer and CameraMixin."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("metadata", CameraMetadataBuffer)
 
     def allocate_empty(self, resolution: CameraResolutionType) -> None:
@@ -99,19 +100,22 @@ class CameraSchema(Schema):
 
     def fill_from_camera(self, camera: Camera) -> None:
         self._assert_buffer_allocated()
+        assert isinstance(camera, RGBCamera)  # for mypy
+        assert isinstance(self._buffer, CameraMetadataBuffer)  # for mypy
         self._buffer.timestamp[0] = time.time()
         self._buffer.resolution = np.array(camera.resolution).astype(np.uint32)
         self._buffer.intrinsics_matrix = camera.intrinsics_matrix().astype(np.float32)
         self._buffer.fps[0] = camera.fps
 
-    def read_into_receiver(self, frame: CameraMetadataBuffer, receiver: CameraMixin) -> None:
+    def read_into_receiver(self, frame: CameraMetadataBuffer, receiver: Mixin) -> None:
+        assert isinstance(receiver, CameraMixin)  # for mypy
         receiver._metadata_frame = frame
 
 
 class RGBSchema(Schema):
     """RGB data. See RGBFrameBuffer and RGBMixin."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("rgb", RGBFrameBuffer)
 
     def allocate_empty(self, resolution: CameraResolutionType) -> None:
@@ -120,19 +124,22 @@ class RGBSchema(Schema):
             rgb=np.empty((height, width, 3), dtype=np.uint8),
         )
 
-    def fill_from_camera(self, camera: RGBCamera) -> None:
+    def fill_from_camera(self, camera: Camera) -> None:
         self._assert_buffer_allocated()
+        assert isinstance(camera, RGBCamera)  # for mypy
+        assert isinstance(self._buffer, RGBFrameBuffer)  # for mypy
         image = camera._retrieve_rgb_image_as_int()
         self._buffer.rgb = image
 
-    def read_into_receiver(self, frame: RGBFrameBuffer, receiver: RGBMixin) -> None:
+    def read_into_receiver(self, frame: RGBFrameBuffer, receiver: Mixin) -> None:
+        assert isinstance(receiver, RGBMixin)  # for mypy
         receiver._rgb_frame = frame
 
 
 class StereoRGBSchema(Schema):
     """Stereo RGB data. See StereoRGBFrameBuffer and StereoRGBMixin."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("stereo", StereoRGBFrameBuffer)
 
     def allocate_empty(self, resolution: CameraResolutionType) -> None:
@@ -146,8 +153,10 @@ class StereoRGBSchema(Schema):
             pose_right_in_left=np.empty((4, 4), dtype=np.float64),
         )
 
-    def fill_from_camera(self, camera: StereoRGBDCamera) -> None:
+    def fill_from_camera(self, camera: Camera) -> None:
         self._assert_buffer_allocated()
+        assert isinstance(camera, StereoRGBDCamera)  # for mypy
+        assert isinstance(self._buffer, StereoRGBFrameBuffer)  # for mypy
 
         image_left = camera._retrieve_rgb_image_as_int(StereoRGBDCamera.LEFT_RGB)
         image_right = camera._retrieve_rgb_image_as_int(StereoRGBDCamera.RIGHT_RGB)
@@ -161,14 +170,15 @@ class StereoRGBSchema(Schema):
         self._buffer.intrinsics_right = intrinsics_right
         self._buffer.pose_right_in_left = pose_right_in_left
 
-    def read_into_receiver(self, frame: StereoRGBFrameBuffer, receiver: StereoRGBMixin) -> None:
+    def read_into_receiver(self, frame: StereoRGBFrameBuffer, receiver: Mixin) -> None:
+        assert isinstance(receiver, StereoRGBMixin)  # for mypy
         receiver._stereo_frame = frame
 
 
 class DepthSchema(Schema):
     """Depth data. See DepthFrameBuffer and DepthMixin."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("depth", DepthFrameBuffer)
 
     def allocate_empty(self, resolution: CameraResolutionType) -> None:
@@ -180,8 +190,10 @@ class DepthSchema(Schema):
             confidence_map=np.empty((height, width), dtype=np.float32),
         )
 
-    def fill_from_camera(self, camera: DepthCamera) -> None:
+    def fill_from_camera(self, camera: Camera) -> None:
         self._assert_buffer_allocated()
+        assert isinstance(camera, DepthCamera)  # for mypy
+        assert isinstance(self._buffer, DepthFrameBuffer)  # for mypy
 
         depth_image = camera._retrieve_depth_image()
         depth_map = camera._retrieve_depth_map()
@@ -191,14 +203,15 @@ class DepthSchema(Schema):
         self._buffer.depth_map = depth_map
         self._buffer.confidence_map = confidence_map
 
-    def read_into_receiver(self, frame: DepthFrameBuffer, receiver: DepthMixin) -> None:
+    def read_into_receiver(self, frame: DepthFrameBuffer, receiver: Mixin) -> None:
+        assert isinstance(receiver, DepthMixin)  # for mypy
         receiver._depth_frame = frame
 
 
 class PointCloudSchema(Schema):
     """Point cloud data. See PointCloudBuffer and PointCloudMixin."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("pcd", PointCloudBuffer)
 
     def allocate_empty(self, resolution: CameraResolutionType) -> None:
@@ -210,8 +223,10 @@ class PointCloudSchema(Schema):
             point_cloud_valid=np.empty((1,), dtype=np.uint32),
         )
 
-    def fill_from_camera(self, camera: DepthCamera) -> None:
+    def fill_from_camera(self, camera: Camera) -> None:
         self._assert_buffer_allocated()
+        assert isinstance(camera, RGBDCamera)  # for mypy
+        assert isinstance(self._buffer, PointCloudBuffer)  # for mypy
 
         point_cloud = camera._retrieve_colored_point_cloud()
 
@@ -219,10 +234,11 @@ class PointCloudSchema(Schema):
         if point_cloud.colors is not None:
             self._buffer.point_cloud_colors[: point_cloud.colors.shape[0]] = point_cloud.colors
         else:
-            self._buffer.point_cloud_colors[: point_cloud.colors.shape[0]] = 0  # If no colors, use black.
+            self._buffer.point_cloud_colors[: point_cloud.points.shape[0]] = 0  # If no colors, use black.
         self._buffer.point_cloud_valid[0] = point_cloud.points.shape[0]
 
-    def read_into_receiver(self, frame: PointCloudBuffer, receiver: PointCloudMixin) -> None:
+    def read_into_receiver(self, frame: PointCloudBuffer, receiver: Mixin) -> None:
+        assert isinstance(receiver, PointCloudMixin)  # for mypy
         num_points = frame.point_cloud_valid.item()
         positions = frame.point_cloud_positions[:num_points]
         colors = frame.point_cloud_colors[:num_points]
