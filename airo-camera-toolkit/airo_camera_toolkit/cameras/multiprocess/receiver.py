@@ -25,8 +25,9 @@ class SharedMemoryReceiver(Camera):
 
         self._readers = dict()
         for s in self._schemas:
-            s.allocate_empty(self._camera_resolution)
-            self._readers[s] = SMReader(self._dp, f"{self._shared_memory_namespace}_{s.topic}", s.buffer)
+            self._readers[s] = SMReader(
+                self._dp, f"{self._shared_memory_namespace}_{s.topic}", s.allocate(self._camera_resolution)
+            )
 
         # Initial grab
         self._grab_images()
@@ -36,5 +37,8 @@ class SharedMemoryReceiver(Camera):
         raise NotImplementedError("The intrinsics_matrix() method is supposed to be implemented via Mixins.")
 
     def _grab_images(self) -> None:
-        for s in self._schemas:
-            s.read_into_receiver(self._readers[s](), self)  # type: ignore[arg-type]
+        for schema in self._schemas:
+            # Read serialized buffer from shared memory.
+            buffer_data = self._readers[schema]()
+            # Deserialize buffer and read into field defined by mixins.
+            schema.deserialize(buffer_data, self)

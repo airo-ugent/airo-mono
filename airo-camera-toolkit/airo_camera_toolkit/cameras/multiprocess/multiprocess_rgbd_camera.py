@@ -1,8 +1,16 @@
+from typing import List
+
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.mixin import CameraMixin, DepthMixin, PointCloudMixin, RGBMixin
 from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.receiver import SharedMemoryReceiver
-from airo_camera_toolkit.cameras.multiprocess.schema import CameraSchema, DepthSchema, PointCloudSchema, RGBSchema
+from airo_camera_toolkit.cameras.multiprocess.schema import (
+    CameraSchema,
+    DepthSchema,
+    PointCloudSchema,
+    RGBSchema,
+    Schema,
+)
 from airo_typing import CameraResolutionType
 
 
@@ -14,7 +22,7 @@ class MultiprocessRGBDCameraPublisher(CameraPublisher):
         shared_memory_namespace: str = "camera",
         enable_pointcloud: bool = True,
     ) -> None:
-        schemas = [CameraSchema(), RGBSchema(), DepthSchema()]
+        schemas: List[Schema] = [CameraSchema(), RGBSchema(), DepthSchema()]
         if enable_pointcloud:
             schemas.append(PointCloudSchema())
         super().__init__(camera_cls, camera_kwargs, schemas, shared_memory_namespace)
@@ -31,7 +39,7 @@ class MultiprocessRGBDReceiver(CameraMixin, RGBMixin, DepthMixin, PointCloudMixi
         resolution: CameraResolutionType,
         enable_pointcloud: bool = True,
     ):
-        schemas = [CameraSchema(), RGBSchema(), DepthSchema()]
+        schemas: List[Schema] = [CameraSchema(), RGBSchema(), DepthSchema()]
         if enable_pointcloud:
             schemas.append(PointCloudSchema())
         SharedMemoryReceiver.__init__(self, resolution, schemas, namespace)

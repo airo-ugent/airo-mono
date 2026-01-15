@@ -1,4 +1,4 @@
-from typing import Final
+from typing import Final, List
 
 try:
     import pyzed.sl as sl
@@ -25,7 +25,7 @@ from airo_camera_toolkit.cameras.multiprocess.schema import (
     StereoRGBSchema,
 )
 from airo_camera_toolkit.cameras.zed.zed import Zed, ZedSpatialMap
-from airo_camera_toolkit.interfaces import Camera, StereoRGBDCamera
+from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_typing import CameraResolutionType, HomogeneousMatrixType, PointCloud
 
 # Schemas and mixins are defined in this file, unlike more generic implementations, because they require Zed imports.
@@ -44,26 +44,21 @@ class CameraPoseMixin(Mixin):
             return self._camera_pose_camera_frame
 
 
-class CameraPoseSchema(Schema):
+class CameraPoseSchema(Schema[CameraPoseBuffer, Zed, CameraPoseMixin]):
     def __init__(self) -> None:
-        super().__init__("pose", CameraPoseBuffer)
+        super().__init__("pose")
 
-    def allocate_empty(self, resolution: CameraResolutionType) -> None:
-        self._buffer = CameraPoseBuffer(
+    def allocate(self, resolution: CameraResolutionType) -> CameraPoseBuffer:
+        return CameraPoseBuffer(
             camera_pose_world_frame=np.empty((4, 4), dtype=np.float32),
             camera_pose_camera_frame=np.empty((4, 4), dtype=np.float32),
         )
 
-    def fill_from_camera(self, camera: Camera) -> None:
-        self._assert_buffer_allocated()
-        assert isinstance(camera, Zed)  # for mypy
-        assert isinstance(self._buffer, CameraPoseBuffer)  # for mypy
+    def serialize(self, camera: Zed, buffer: CameraPoseBuffer) -> None:
+        buffer.camera_pose_world_frame = camera._retrieve_camera_pose(Zed.TrackingParams.REFERENCE_FRAME_WORLD)
+        buffer.camera_pose_camera_frame = camera._retrieve_camera_pose(Zed.TrackingParams.REFERENCE_FRAME_CAMERA)
 
-        self._buffer.camera_pose_world_frame = camera._retrieve_camera_pose(Zed.TrackingParams.REFERENCE_FRAME_WORLD)
-        self._buffer.camera_pose_camera_frame = camera._retrieve_camera_pose(Zed.TrackingParams.REFERENCE_FRAME_CAMERA)
-
-    def read_into_receiver(self, frame: CameraPoseBuffer, receiver: Mixin) -> None:
-        assert isinstance(receiver, CameraPoseMixin)  # for mypy
+    def deserialize(self, frame: CameraPoseBuffer, receiver: CameraPoseMixin) -> None:
         receiver._camera_pose_world_frame = frame.camera_pose_world_frame
         receiver._camera_pose_camera_frame = frame.camera_pose_camera_frame
 
@@ -75,9 +70,9 @@ class SpatialMapMixin(Mixin):
         return self._spatial_map
 
 
-class SpatialMapSchema(Schema):
+class SpatialMapSchema(Schema[SpatialMapBuffer, Zed, SpatialMapMixin]):
     def __init__(self, max_chunks: int, max_points: int, refresh_interval: int):
-        super().__init__("spatial_map", SpatialMapBuffer)
+        super().__init__("spatial_map")
 
         self._max_chunks = max_chunks
         self._max_points = max_points
@@ -85,8 +80,8 @@ class SpatialMapSchema(Schema):
 
         self._frame_counter = -1
 
-    def allocate_empty(self, resolution: CameraResolutionType) -> None:
-        self._buffer = SpatialMapBuffer(
+    def allocate(self, resolution: CameraResolutionType) -> SpatialMapBuffer:
+        return SpatialMapBuffer(
             num_chunks=np.empty((1,), dtype=np.uint32),
             chunks_updated=np.empty((self._max_chunks), dtype=np.uint8),
             chunk_sizes=np.empty((self._max_chunks), dtype=np.uint32),
@@ -94,17 +89,13 @@ class SpatialMapSchema(Schema):
             point_colors=np.empty((self._max_points, 3), dtype=np.uint8),
         )
 
-    def fill_from_camera(self, camera: Camera) -> None:
-        self._assert_buffer_allocated()
-        assert isinstance(camera, Zed)  # for mypy
-        assert isinstance(self._buffer, SpatialMapBuffer)  # for mypy
-
+    def serialize(self, camera: Zed, buffer: SpatialMapBuffer) -> None:
         self._frame_counter += 1
 
         if self._frame_counter == 0:
             # First frame.
             # Write to buffers an empty spatial map.
-            self._buffer.num_chunks[0] = 0
+            buffer.num_chunks[0] = 0
             # Other data left uninitialized!
 
         # Request an update each frame; if one is pending, nothing happens (see ZED-sdk docs).
@@ -144,13 +135,13 @@ class SpatialMapSchema(Schema):
             )
 
         # Write to buffers.
-        self._buffer.num_chunks[0] = num_chunks
-        self._buffer.chunks_updated[:num_chunks] = np.array(chunks_updated)
-        self._buffer.chunk_sizes[:num_chunks] = np.array(chunk_sizes)
-        self._buffer.point_positions[: spatial_map.size, :] = np.array(point_positions)
-        self._buffer.point_colors[: spatial_map.size, :] = np.array(point_colors)
+        buffer.num_chunks[0] = num_chunks
+        buffer.chunks_updated[:num_chunks] = np.array(chunks_updated)
+        buffer.chunk_sizes[:num_chunks] = np.array(chunk_sizes)
+        buffer.point_positions[: spatial_map.size, :] = np.array(point_positions)
+        buffer.point_colors[: spatial_map.size, :] = np.array(point_colors)
 
-    def read_into_receiver(self, frame: SpatialMapBuffer, receiver: Mixin) -> None:
+    def deserialize(self, frame: SpatialMapBuffer, receiver: Mixin) -> None:
         # Reconstruct the ZedSpatialMap from shared memory.
         assert isinstance(receiver, SpatialMapMixin)  # for mypy
 
@@ -199,7 +190,7 @@ class MultiprocessZedPublisher(CameraPublisher):
         max_spatial_map_points: int = _DEFAULT_MAX_SPATIAL_MAP_POINTS,
         spatial_map_refresh_interval: int = 5,
     ) -> None:
-        schemas = [CameraSchema(), StereoRGBSchema(), DepthSchema()]
+        schemas: List[Schema] = [CameraSchema(), StereoRGBSchema(), DepthSchema()]
         if enable_pointcloud:
             schemas.append(PointCloudSchema())
 
@@ -233,7 +224,7 @@ class MultiprocessZedReceiver(
         max_spatial_map_chunks: int = _DEFAULT_MAX_SPATIAL_MAP_CHUNKS,
         max_spatial_map_points: int = _DEFAULT_MAX_SPATIAL_MAP_POINTS,
     ):
-        schemas = [CameraSchema(), StereoRGBSchema(), DepthSchema()]
+        schemas: List[Schema] = [CameraSchema(), StereoRGBSchema(), DepthSchema()]
         if enable_pointcloud:
             schemas.append(PointCloudSchema())
         if enable_positional_tracking:

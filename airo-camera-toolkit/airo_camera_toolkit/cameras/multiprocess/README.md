@@ -39,30 +39,21 @@ The **CameraPublisher** is a multiprocessing.Process that runs _grab_images() in
 
 On the receiving side, there is similarly a single **SharedMemoryReceiver** that implements the `Camera` interface. It is also configured with a list of schemas. In its _grab_images() method, it reads data for all configured schemas from shared memory and stores the latest buffers internally. Like the publisher, the receiver itself contains no RGB-, depth-, or point-cloud-specific logic.
 
-```python
-# [...]
-def _grab_images(self) -> None:
-        for s in self._schemas:
-            s.read_into_receiver(self._readers[s](), self)
-```
-
 To expose the received data through the familiar camera interfaces, the design uses [**mixins**](https://en.wikipedia.org/wiki/Mixin). Each schema has a corresponding mixin, such as RGBMixin, DepthMixin, or PointCloudMixin. A mixin provides the methods needed to access a specific type of data by reading from the buffers populated by the SharedMemoryReceiver. Mixins contain no transport logic; they only expose data that is already available.
-
-```python
-class Mixin(ABC):
-    pass
-
-class RGBMixin(Mixin, RGBCamera):
-    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
-        return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int()).image_in_numpy_format
-
-    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
-        return self._rgb_frame.rgb
-```
 
 By combining SharedMemoryReceiver with the appropriate mixins, the existing multiprocess camera classes can be reconstructed with minimal code. For example, an RGB receiver can be implemented by combining SharedMemoryReceiver, CameraMixin, and RGBMixin, and by passing CameraSchema and RGBSchema to the receiver constructor. The schemas determine which data is read from shared memory, while the mixins determine which camera interface methods are available.
 
 Extending this to RGB-D cameras is straightforward. A multiprocess RGB-D receiver is created by adding DepthSchema and DepthMixin. If point cloud support is desired, PointCloudSchema and PointCloudMixin can be added as well. Implementing a new camera variant is now largely a matter of selecting the appropriate schemas and mixins, rather than creating new publisher and receiver classes. This means that if you, for example, only want to transmit the depth map, or only the point cloud, this is trivial.
+
+```
+┌──────────────┐        Shared Memory        ┌──────────────────────┐
+│ Real Camera  │ ──▶ Buffer (NumPy arrays) ▶ │ SharedMemoryReceiver │
+└──────────────┘                             │ + Mixins             │
+      ▲                                      └─────────▲────────────┘
+      │                                                │
+CameraPublisher                                 Downstream code
+ (process)                                     (thinks it's a camera)
+```
 
 ## Usage
 See the  main function in [multiprocess_rgb_camera.py](./multiprocess_rgb_camera.py) for a simple example of how to use these classes with a ZED camera.

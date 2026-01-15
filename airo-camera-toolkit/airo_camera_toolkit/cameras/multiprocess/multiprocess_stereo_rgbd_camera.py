@@ -1,3 +1,5 @@
+from typing import List
+
 from airo_camera_toolkit.cameras.multiprocess.mixin import CameraMixin, DepthMixin, PointCloudMixin, StereoRGBMixin
 from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.receiver import SharedMemoryReceiver
@@ -5,6 +7,7 @@ from airo_camera_toolkit.cameras.multiprocess.schema import (
     CameraSchema,
     DepthSchema,
     PointCloudSchema,
+    Schema,
     StereoRGBSchema,
 )
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
@@ -19,7 +22,7 @@ class MultiprocessStereoRGBDCameraPublisher(CameraPublisher):
         shared_memory_namespace: str = "camera",
         enable_pointcloud: bool = True,
     ) -> None:
-        schemas = [CameraSchema(), StereoRGBSchema(), DepthSchema()]
+        schemas: List[Schema] = [CameraSchema(), StereoRGBSchema(), DepthSchema()]
         if enable_pointcloud:
             schemas.append(PointCloudSchema())
         super().__init__(camera_cls, camera_kwargs, schemas, shared_memory_namespace)
@@ -36,7 +39,7 @@ class MultiprocessStereoRGBDReceiver(StereoRGBMixin, CameraMixin, DepthMixin, Po
         resolution: CameraResolutionType,
         enable_pointcloud: bool = True,
     ):
-        schemas = [CameraSchema(), StereoRGBSchema(), DepthSchema()]
+        schemas: List[Schema] = [CameraSchema(), StereoRGBSchema(), DepthSchema()]
         if enable_pointcloud:
             schemas.append(PointCloudSchema())
         SharedMemoryReceiver.__init__(self, resolution, schemas, namespace)

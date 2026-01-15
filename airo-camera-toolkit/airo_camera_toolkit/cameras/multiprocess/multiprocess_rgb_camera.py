@@ -1,7 +1,9 @@
+from typing import List
+
 from airo_camera_toolkit.cameras.multiprocess.mixin import CameraMixin, RGBMixin
 from airo_camera_toolkit.cameras.multiprocess.publisher import CameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.receiver import SharedMemoryReceiver
-from airo_camera_toolkit.cameras.multiprocess.schema import CameraSchema, RGBSchema
+from airo_camera_toolkit.cameras.multiprocess.schema import CameraSchema, RGBSchema, Schema
 from airo_typing import CameraResolutionType
 
 
@@ -12,7 +14,7 @@ class MultiprocessRGBCameraPublisher(CameraPublisher):
         camera_kwargs: dict = {},
         shared_memory_namespace: str = "camera",
     ) -> None:
-        schemas = [CameraSchema(), RGBSchema()]
+        schemas: List[Schema] = [CameraSchema(), RGBSchema()]
         super().__init__(camera_cls, camera_kwargs, schemas, shared_memory_namespace)
 
 

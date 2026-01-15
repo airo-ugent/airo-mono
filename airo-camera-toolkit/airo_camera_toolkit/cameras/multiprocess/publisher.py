@@ -42,9 +42,10 @@ class CameraPublisher(Process):
         self._dp = DomainParticipant()
 
         self._writers = dict()
+        self._buffers = dict()
         for s in self._schemas:
-            s.allocate_empty(self._camera.resolution)
-            self._writers[s] = SMWriter(self._dp, f"{self._shared_memory_namespace}_{s.topic}", s.buffer)
+            self._buffers[s] = s.allocate(self._camera.resolution)
+            self._writers[s] = SMWriter(self._dp, f"{self._shared_memory_namespace}_{s.topic}", self._buffers[s])
 
     def stop(self) -> None:
         self.shutdown_event.set()
@@ -60,5 +61,7 @@ class CameraPublisher(Process):
             self._camera._grab_images()
 
             for schema in self._schemas:
-                schema.fill_from_camera(self._camera)
-                self._writers[schema](schema.buffer)
+                # Serialize camera data into the buffer.
+                schema.serialize(self._camera, self._buffers[schema])
+                # Write serialized buffer to shared memory.
+                self._writers[schema](self._buffers[schema])
