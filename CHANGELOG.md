@@ -8,6 +8,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- Multiprocess camera receivers now need to know the camera resolution in advance (in addition to the shared memory namespace). This is because of a simplification of the underlying code which also reduces DDS communication overhead.
 
 ### Added
 
