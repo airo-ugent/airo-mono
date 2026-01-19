@@ -2,213 +2,49 @@
 
 import multiprocessing
 import time
-from dataclasses import dataclass
 from typing import Any
 
-import cv2
 import numpy as np
+from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
+from airo_camera_toolkit.cameras.multiprocess.base_receiver import BaseCameraReceiver
+from airo_camera_toolkit.cameras.multiprocess.frame_data import RGBFrameBuffer
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl  # type: ignore
-from airo_ipc.cyclone_shm.patterns.ddsreader import DDSReader  # type: ignore
-from airo_ipc.cyclone_shm.patterns.ddswriter import DDSWriter  # type: ignore
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader  # type: ignore
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter  # type: ignore
-from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
-from cyclonedds.domain import DomainParticipant
-from cyclonedds.idl import IdlStruct
-from cyclonedds.util import duration
+from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType, NumpyIntImageType
 from loguru import logger
 
 
-@dataclass
-class FpsIdl(IdlStruct):
-    """This struct, sent with CycloneDDS, contains the FPS of the camera."""
+class MultiprocessRGBPublisher(BaseCameraPublisher):
+    """Publishes RGB camera data to shared memory blocks."""
 
-    fps: float
+    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
+        """Return RGB frame buffer template."""
+        return RGBFrameBuffer.template(width, height)
 
+    def _capture_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
+        """Capture RGB image and intrinsics."""
+        self._current_frame_id = frame_id
+        self._current_frame_timestamp = frame_timestamp
+        self._current_rgb_image = self._camera._retrieve_rgb_image_as_int()
+        self._current_intrinsics = self._camera.intrinsics_matrix()
 
-@dataclass
-class ResolutionIdl(IdlStruct):
-    """This struct, sent with CycloneDDS, contains the resolution of the camera."""
-
-    width: int
-    height: int
-
-
-@dataclass
-class RGBFrameBuffer(BaseIdl):  # type: ignore
-    """This struct, sent over shared memory, contains a timestamp, an RGB image, and the camera intrinsics."""
-
-    # Timestamp of the frame (seconds)
-    timestamp: np.ndarray
-    # Color image data (height x width x channels)
-    rgb: np.ndarray
-    # Intrinsic camera parameters (camera matrix)
-    intrinsics: np.ndarray
-
-    @staticmethod
-    def template(width: int, height: int) -> Any:
-        """Construct a new RGBFrameBuffer with shared memory backed arrays initialized with the given width and height."""
-        return RGBFrameBuffer(
-            timestamp=np.empty((1,), dtype=np.float64),
-            rgb=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics=np.empty((3, 3), dtype=np.float64),
+    def _write_frame_data(self) -> None:
+        """Write RGB frame data to shared memory."""
+        frame_data = RGBFrameBuffer(
+            frame_id=np.array([self._current_frame_id], dtype=np.uint64),
+            frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
+            rgb=self._current_rgb_image,
+            intrinsics=self._current_intrinsics,
         )
+        self._writer(frame_data)
 
 
-class MultiprocessRGBPublisher(multiprocessing.context.Process):
-    """Publishes the data of a camera that implements the RGBCamera interface to shared memory blocks."""
+class MultiprocessRGBReceiver(BaseCameraReceiver, RGBCamera):
+    """Receives RGB camera data from shared memory."""
 
-    def __init__(
-        self,
-        camera_cls: type,
-        camera_kwargs: dict = {},
-        shared_memory_namespace: str = "camera",
-    ):
-        """Instantiates the publisher. Note that the publisher (and its process) will not start until start() is called.
-
-        Args:
-            camera_cls (type): The class, e.g., Zed2i, that this publisher will instantiate.
-            camera_kwargs (dict, optional): The kwargs that will be passed to the camera_cls constructor.
-            shared_memory_namespace (str, optional): The string that will be used to prefix the shared memory blocks that this class will create.
-        """
-        super().__init__()
-
-        self._camera_cls = camera_cls
-        self._camera_kwargs = camera_kwargs
-        self._shared_memory_namespace = shared_memory_namespace
-
-        self.shutdown_event = multiprocessing.Event()
-
-    def _setup(self) -> None:
-        """Note: to be able to retrieve camera image from the Publisher process, the camera must be instantiated in the
-        Publisher process. For this reason, we do not instantiate the camera in __init__ but, here instead."""
-
-        # Initialize the DDS domain participant.
-        self._dp = DomainParticipant()
-        self._resolution_writer = DDSWriter(self._dp, f"{self._shared_memory_namespace}_resolution", ResolutionIdl)
-        self._fps_writer = DDSWriter(self._dp, f"{self._shared_memory_namespace}_fps", FpsIdl)
-
-        # Instantiate the camera.
-        logger.info(f"Instantiating a {self._camera_cls.__name__} camera.")
-        self._camera = self._camera_cls(**self._camera_kwargs)
-        if not isinstance(self._camera, RGBCamera):  # Check whether user passed a valid camera class
-            raise TypeError(f"camera_cls must be a subclass of RGBCamera, but is {self._camera_cls.__name__}")
-        logger.info(f"Successfully instantiated a {self._camera_cls.__name__} camera.")
-
-        self._setup_sm_writer()  # Overwritten in base classes.
-
-    def _setup_sm_writer(self) -> None:
-        # Create the shared memory writer.
-        self._writer = SMWriter(
-            domain_participant=self._dp,
-            topic_name=self._shared_memory_namespace,
-            idl_dataclass=RGBFrameBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
-        )
-
-    def stop(self) -> None:
-        self.shutdown_event.set()
-
-    def run(self) -> None:
-        """Main loop of the process, runs until the process is terminated."""
-
-        logger.info(f"{self.__class__.__name__} process started.")
-        self._setup()
-        assert isinstance(self._camera, RGBCamera)  # Just to make mypy happy, already checked in _setup()
-        logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
-
-        try:
-            while not self.shutdown_event.is_set():
-                self._resolution_writer(
-                    ResolutionIdl(width=self._camera.resolution[0], height=self._camera.resolution[1])
-                )
-                self._fps_writer(FpsIdl(fps=self._camera.fps))
-
-                self._camera._grab_images()
-                timestamp = time.time()
-                image = self._camera._retrieve_rgb_image_as_int()
-
-                frame_data = RGBFrameBuffer(
-                    timestamp=np.array([timestamp], dtype=np.float64),
-                    rgb=image,
-                    intrinsics=self._camera.intrinsics_matrix(),
-                )
-
-                self._writer(frame_data)
-        except Exception as e:
-            logger.error(f"Error in {self.__class__.__name__}: {e}")
-        finally:
-            logger.info(f"{self.__class__.__name__} process terminated.")
-
-
-class MultiprocessRGBReceiver(RGBCamera):
-    """Implements the RGB camera interface for a camera that is running in a different process, to be used with the Publisher class."""
-
-    def __init__(
-        self,
-        shared_memory_namespace: str,
-    ) -> None:
-        super().__init__()
-
-        self._shared_memory_namespace = shared_memory_namespace
-
-        # Initialize the DDS domain participant.
-        self._dp = DomainParticipant()
-        self._resolution = self._read_resolution(shared_memory_namespace)
-
-        # Overwritten in base class.
-        self._setup_sm_reader(self._resolution)
-
-    def _setup_sm_reader(self, resolution: CameraResolutionType) -> None:
-        # Create the shared memory reader.
-        self._reader = SMReader(
-            domain_participant=self._dp,
-            topic_name=self._shared_memory_namespace,
-            idl_dataclass=RGBFrameBuffer.template(resolution[0], resolution[1]),
-        )
-
-        # Initialize an empty frame.
-        self._last_frame = RGBFrameBuffer.template(resolution[0], resolution[1])
-
-        self._fps = self._read_fps(self._shared_memory_namespace)
-
-        self._grab_images()
-
-    def _read_fps(self, shared_memory_namespace: str) -> int:
-        logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
-        fps_reader = DDSReader(self._dp, f"{shared_memory_namespace}_fps", FpsIdl)
-        try:
-            fps = fps_reader.reader.read_one(timeout=duration(seconds=10))
-            logger.info(f"Camera FPS: {fps}")
-        except StopIteration:
-            raise TimeoutError("Timeout while waiting for the FPS message.")
-        return int(fps.fps)
-
-    def _read_resolution(self, shared_memory_namespace: str) -> CameraResolutionType:
-        logger.info(f"Reading resolution from {shared_memory_namespace}_resolution")
-        resolution_reader = DDSReader(self._dp, f"{shared_memory_namespace}_resolution", ResolutionIdl)
-        try:
-            resolution = resolution_reader.reader.read_one(timeout=duration(seconds=10))
-            logger.info(f"Camera resolution: {resolution}")
-        except StopIteration:
-            raise TimeoutError("Timeout while waiting for the resolution message.")
-        return resolution.width, resolution.height
-
-    @property
-    def fps(self) -> int:
-        """The frames per second of the camera."""
-        return self._fps
-
-    @property
-    def resolution(self) -> CameraResolutionType:
-        return self._resolution
-
-    def get_current_timestamp(self) -> float:
-        return self._last_frame.timestamp.item()
-
-    def _grab_images(self) -> None:
-        self._last_frame = self._reader()
+    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
+        """Return RGB frame buffer template."""
+        return RGBFrameBuffer.template(width, height)
 
     def _retrieve_rgb_image(self) -> NumpyFloatImageType:
         image = self._retrieve_rgb_image_as_int()
@@ -229,6 +65,7 @@ if __name__ == "__main__":
     camera_fps = 15
     namespace = "camera"
 
+    import cv2  # type:ignore
     from airo_camera_toolkit.cameras.zed.zed import Zed
 
     multiprocessing.set_start_method("spawn", force=True)
