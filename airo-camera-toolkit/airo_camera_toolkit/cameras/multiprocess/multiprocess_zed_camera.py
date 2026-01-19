@@ -69,7 +69,7 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
             self._spatial_map_chunks_updated = np.zeros(self.max_spatial_map_chunks, dtype=np.bool_)
             self._spatial_map_chunk_sizes = np.zeros(self.max_spatial_map_chunks, dtype=np.int32)
             self._spatial_map_point_positions = np.zeros((self.max_spatial_map_points, 3), dtype=np.float32)
-            self._spatial_map_point_colors = np.zeros((self.max_spatial_map_points, 4), dtype=np.uint8)
+            self._spatial_map_point_colors = np.zeros((self.max_spatial_map_points, 3), dtype=np.uint8)
 
     def _setup_additional_writers(self) -> None:
         """Set up point cloud and spatial map writers if enabled."""
@@ -134,9 +134,9 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
         frame_data = ZedFrameBuffer(
             frame_id=np.array([self._current_frame_id], dtype=np.uint64),
             frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-            rgb_left=self._current_rgb_left,
+            rgb=self._current_rgb_left,
             rgb_right=self._current_rgb_right,
-            intrinsics_left=self._intrinsics_left,
+            intrinsics=self._intrinsics_left,
             intrinsics_right=self._intrinsics_right,
             pose_right_in_left=self._pose_right_in_left,
             depth=self._current_depth_map,
@@ -258,7 +258,7 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         """Retrieve RGB image as integer array."""
         if view == StereoRGBDCamera.LEFT_RGB:
-            return self._last_frame.rgb_left
+            return self._last_frame.rgb
         else:
             return self._last_frame.rgb_right
 
@@ -270,7 +270,7 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
     def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> np.ndarray:
         """Get camera intrinsics matrix."""
         if view == StereoRGBDCamera.LEFT_RGB:
-            return self._last_frame.intrinsics_left
+            return self._last_frame.intrinsics
         else:
             return self._last_frame.intrinsics_right
 

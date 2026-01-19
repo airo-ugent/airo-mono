@@ -189,5 +189,5 @@ class SpatialMapBuffer(BaseIdl):  # type: ignore
             chunks_updated=np.empty((max_chunks,), dtype=np.bool_),
             chunk_sizes=np.empty((max_chunks,), dtype=np.int32),
             point_positions=np.empty((max_points, 3), dtype=np.float32),
-            point_colors=np.empty((max_points, 4), dtype=np.uint8),
+            point_colors=np.empty((max_points, 3), dtype=np.uint8),
         )

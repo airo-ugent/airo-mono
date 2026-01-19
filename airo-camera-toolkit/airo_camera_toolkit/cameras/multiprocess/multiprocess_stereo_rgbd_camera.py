@@ -106,9 +106,9 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
         frame_data = StereoRGBDFrameBuffer(
             frame_id=np.array([self._current_frame_id], dtype=np.uint64),
             frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-            rgb_left=self._current_rgb_left,
+            rgb=self._current_rgb_left,
             rgb_right=self._current_rgb_right,
-            intrinsics_left=self._intrinsics_left,
+            intrinsics=self._intrinsics_left,
             intrinsics_right=self._intrinsics_right,
             pose_right_in_left=self._pose_right_in_left,
             depth=self._current_depth_map,
@@ -160,7 +160,7 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
 
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         if view == StereoRGBDCamera.LEFT_RGB:
-            return self._last_frame.rgb_left
+            return self._last_frame.rgb
         else:
             return self._last_frame.rgb_right
 
@@ -170,7 +170,7 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
 
     def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> CameraIntrinsicsMatrixType:
         if view == StereoRGBDCamera.LEFT_RGB:
-            return self._last_frame.intrinsics_left
+            return self._last_frame.intrinsics
         else:
             return self._last_frame.intrinsics_right
 
