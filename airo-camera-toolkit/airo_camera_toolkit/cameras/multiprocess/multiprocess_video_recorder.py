@@ -8,7 +8,6 @@ from typing import Optional
 import cv2  # type:ignore
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
-from airo_typing import CameraResolutionType
 from loguru import logger
 
 
@@ -16,7 +15,6 @@ class MultiprocessVideoRecorder(SpawnProcess):
     def __init__(
         self,
         shared_memory_namespace: str,
-        resolution: CameraResolutionType,
         video_path: Optional[str] = None,
         image_transform: Optional[ImageTransform] = None,
         fill_missing_frames: bool = True,
@@ -24,7 +22,6 @@ class MultiprocessVideoRecorder(SpawnProcess):
         super().__init__(daemon=True)
 
         self._shared_memory_namespace = shared_memory_namespace
-        self._resolution = resolution
         self._image_transform = image_transform
         self.recording_finished_event = multiprocessing.get_context("spawn").Event()
         self.shutdown_event = multiprocessing.get_context("spawn").Event()
