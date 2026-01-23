@@ -111,3 +111,11 @@ class MultiprocessVideoRecorder(SpawnProcess):
         logger.error(
             "Video recording did not stop, end of video might be lost/corrupted. This seems to happen when RAM is full."
         )
+
+
+if __name__ == "__main__":
+    """Records 10 seconds of video. Assumes there's being published to the "camera" namespace."""
+    recorder = MultiprocessVideoRecorder("camera")
+    recorder.start()
+    time.sleep(10)
+    recorder.stop()
