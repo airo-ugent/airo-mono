@@ -12,6 +12,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 
 ### Changed
+- Refactored `airo_camera_toolkit.cameras.multiprocess` to reduce code duplication. This should not have any impact on code using this module, as there are no breaking changes.
 
 ### Fixed
 
