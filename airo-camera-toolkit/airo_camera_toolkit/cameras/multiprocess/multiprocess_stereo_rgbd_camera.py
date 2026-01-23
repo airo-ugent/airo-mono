@@ -196,7 +196,7 @@ if __name__ == "__main__":
     """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
-    import cv2  # type:ignore
+    import cv2
     from airo_camera_toolkit.cameras.zed.zed import Zed
 
     multiprocessing.set_start_method("spawn", force=True)

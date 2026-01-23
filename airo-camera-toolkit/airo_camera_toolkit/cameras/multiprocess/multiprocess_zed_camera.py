@@ -347,7 +347,7 @@ if __name__ == "__main__":
     """example of how to use the MultiprocessRGBDPublisher and MultiprocessRGBDReceiver.
     You can also use the MultiprocessRGBDReceiver in a different process (e.g. in a different python script)
     """
-    import cv2  # type:ignore
+    import cv2
     import rerun as rr
 
     def camera_to_rerun(points_cam: np.ndarray) -> np.ndarray:

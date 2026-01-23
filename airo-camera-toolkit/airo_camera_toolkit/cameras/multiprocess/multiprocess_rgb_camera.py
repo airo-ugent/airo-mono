@@ -65,7 +65,7 @@ if __name__ == "__main__":
     camera_fps = 15
     namespace = "camera"
 
-    import cv2  # type:ignore
+    import cv2
     from airo_camera_toolkit.cameras.zed.zed import Zed
 
     multiprocessing.set_start_method("spawn", force=True)

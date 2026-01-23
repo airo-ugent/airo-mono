@@ -5,7 +5,7 @@ import time
 from multiprocessing.context import SpawnProcess
 from typing import Optional
 
-import cv2  # type:ignore
+import cv2
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 from loguru import logger
