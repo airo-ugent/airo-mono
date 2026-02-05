@@ -1,5 +1,6 @@
 """Base class for multiprocess camera receivers."""
 
+import time
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -20,15 +21,17 @@ class BaseCameraReceiver(RGBCamera, ABC):
     - _grab_additional_data(): Read additional data (e.g., point clouds, depth maps)
     """
 
-    def __init__(self, shared_memory_namespace: str):
+    def __init__(self, shared_memory_namespace: str, block_until_new_frame: bool = True) -> None:
         """Initialize the camera receiver.
 
         Args:
             shared_memory_namespace: Prefix for shared memory blocks to read from
+            block_until_new_frame: Whether to block until a new frame is available
         """
         super().__init__()
 
         self._shared_memory_namespace = shared_memory_namespace
+        self._block_until_new_frame = block_until_new_frame
 
         # Initialize the DDS domain participant
         self._dp = DomainParticipant()
@@ -56,6 +59,13 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
         # Initialize an empty frame
         self._last_frame = frame_buffer_template
+
+        if self._block_until_new_frame:
+            # If blocking is enabled, the frame_buffer_template must have a timestamp
+            if not hasattr(frame_buffer_template, "frame_timestamp"):
+                raise ValueError(
+                    "Blocking until new frame is enabled, but frame buffer template has no 'frame_timestamp'"
+                )
 
     def _setup_additional_readers(self, resolution: CameraResolutionType) -> None:
         """Set up additional shared memory readers (e.g., for optional data).
@@ -101,7 +111,19 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     def _grab_images(self) -> None:
         """Read the latest frame from shared memory."""
-        self._last_frame = self._reader()
+        previous_timestamp = self._last_frame.frame_timestamp.item()
+
+        # Block until we get a frame with a newer timestamp
+        if self._block_until_new_frame:
+            while True:
+                self._last_frame = self._reader()
+                current_timestamp = self._last_frame.frame_timestamp.item()
+                if current_timestamp > previous_timestamp:
+                    break
+                time.sleep(0.001)  # Sleep briefly to avoid busy waiting
+        else:
+            self._last_frame = self._reader()
+
         self._grab_additional_data()
 
     def _grab_additional_data(self) -> None:
