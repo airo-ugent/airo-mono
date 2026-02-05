@@ -77,7 +77,8 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Read the camera FPS from shared memory."""
         logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
         fps_reader = SMReader(self._dp, f"{shared_memory_namespace}_fps", FpsIdl.template())
-        fps_data: FpsIdl = fps_reader()
+        fps_data = fps_reader()
+        assert isinstance(fps_data, FpsIdl)  # for mypy
         fps = int(fps_data.fps.item())
         logger.info(f"Camera FPS: {fps}")
         return fps
@@ -86,7 +87,8 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Read the camera resolution from shared memory."""
         logger.info(f"Reading resolution from {shared_memory_namespace}_resolution")
         resolution_reader = SMReader(self._dp, f"{shared_memory_namespace}_resolution", ResolutionIdl.template())
-        resolution_data: ResolutionIdl = resolution_reader()
+        resolution_data = resolution_reader()
+        assert isinstance(resolution_data, ResolutionIdl)  # for mypy
         resolution = (int(resolution_data.resolution[0]), int(resolution_data.resolution[1]))
         logger.info(f"Camera resolution: {resolution}")
         return resolution
