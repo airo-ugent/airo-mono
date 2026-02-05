@@ -11,8 +11,8 @@ from airo_camera_toolkit.cameras.multiprocess.base_receiver import BaseCameraRec
 from airo_camera_toolkit.cameras.multiprocess.frame_data import PointCloudBuffer, StereoRGBDFrameBuffer
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader  # type: ignore
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
+from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     CameraResolutionType,

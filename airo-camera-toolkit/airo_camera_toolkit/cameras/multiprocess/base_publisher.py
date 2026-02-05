@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, ResolutionIdl
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
 from cyclonedds.domain import DomainParticipant
 from loguru import logger
 

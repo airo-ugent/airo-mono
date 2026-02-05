@@ -6,7 +6,7 @@ from typing import Any
 
 from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, ResolutionIdl
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader  # type: ignore
+from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
 from airo_typing import CameraResolutionType
 from cyclonedds.domain import DomainParticipant
 from loguru import logger
@@ -77,7 +77,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Read the camera FPS from shared memory."""
         logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
         fps_reader = SMReader(self._dp, f"{shared_memory_namespace}_fps", FpsIdl.template())
-        fps_data = fps_reader()
+        fps_data: FpsIdl = fps_reader()
         fps = int(fps_data.fps.item())
         logger.info(f"Camera FPS: {fps}")
         return fps
@@ -86,7 +86,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Read the camera resolution from shared memory."""
         logger.info(f"Reading resolution from {shared_memory_namespace}_resolution")
         resolution_reader = SMReader(self._dp, f"{shared_memory_namespace}_resolution", ResolutionIdl.template())
-        resolution_data = resolution_reader()
+        resolution_data: ResolutionIdl = resolution_reader()
         resolution = (int(resolution_data.resolution[0]), int(resolution_data.resolution[1]))
         logger.info(f"Camera resolution: {resolution}")
         return resolution

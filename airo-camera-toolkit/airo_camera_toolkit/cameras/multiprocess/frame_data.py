@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl  # type: ignore
+from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
 
 
 @dataclass
-class FpsIdl(BaseIdl):  # type: ignore
+class FpsIdl(BaseIdl):
     """This struct, sent over shared memory, contains the FPS of the camera."""
 
     fps: np.ndarray
@@ -20,7 +20,7 @@ class FpsIdl(BaseIdl):  # type: ignore
 
 
 @dataclass
-class ResolutionIdl(BaseIdl):  # type: ignore
+class ResolutionIdl(BaseIdl):
     """This struct, sent over shared memory, contains the resolution of the camera."""
 
     resolution: np.ndarray
@@ -32,7 +32,7 @@ class ResolutionIdl(BaseIdl):  # type: ignore
 
 
 @dataclass
-class BaseFrameBuffer(BaseIdl):  # type: ignore
+class BaseFrameBuffer(BaseIdl):
     """Base frame buffer containing timestamp and frame ID for synchronization."""
 
     # Frame ID for synchronization (monotonically increasing)
@@ -111,7 +111,7 @@ class StereoRGBDFrameBuffer(RGBDFrameBuffer):
 
 
 @dataclass
-class PointCloudBuffer(BaseIdl):  # type: ignore
+class PointCloudBuffer(BaseIdl):
     """Buffer containing point cloud data."""
 
     # Frame ID for synchronization
@@ -162,7 +162,7 @@ class ZedFrameBuffer(StereoRGBDFrameBuffer):
 
 
 @dataclass
-class SpatialMapBuffer(BaseIdl):  # type: ignore
+class SpatialMapBuffer(BaseIdl):
     """Buffer containing spatial map data from Zed camera."""
 
     # Frame ID for synchronization
