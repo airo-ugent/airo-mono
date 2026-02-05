@@ -17,8 +17,6 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     Subclasses should implement:
     - _get_frame_buffer_template(): Return the appropriate frame buffer template
-    - _setup_additional_readers(): Set up any additional shared memory readers
-    - _grab_additional_data(): Read additional data (e.g., point clouds, depth maps)
     """
 
     def __init__(self, shared_memory_namespace: str, block_until_new_frame: bool = True) -> None:
@@ -42,7 +40,6 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
         # Set up shared memory readers
         self._setup_frame_reader(self._resolution)
-        self._setup_additional_readers(self._resolution)
 
         # Grab first frame
         self._grab_images()
@@ -67,12 +64,6 @@ class BaseCameraReceiver(RGBCamera, ABC):
                     "Blocking until new frame is enabled, but frame buffer template has no 'frame_timestamp'"
                 )
 
-    def _setup_additional_readers(self, resolution: CameraResolutionType) -> None:
-        """Set up additional shared memory readers (e.g., for optional data).
-
-        Override in subclasses if needed.
-        """
-
     def _read_fps(self, shared_memory_namespace: str) -> int:
         """Read the camera FPS from shared memory."""
         logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
@@ -89,7 +80,10 @@ class BaseCameraReceiver(RGBCamera, ABC):
         resolution_reader = SMReader(self._dp, f"{shared_memory_namespace}_resolution", ResolutionIdl.template())
         resolution_data = resolution_reader()
         assert isinstance(resolution_data, ResolutionIdl)  # for mypy
-        resolution = (int(resolution_data.resolution[0]), int(resolution_data.resolution[1]))
+        resolution = (
+            int(resolution_data.resolution[0]),
+            int(resolution_data.resolution[1]),
+        )
         logger.info(f"Camera resolution: {resolution}")
         return resolution
 
@@ -125,14 +119,6 @@ class BaseCameraReceiver(RGBCamera, ABC):
                 time.sleep(0.001)  # Sleep briefly to avoid busy waiting
         else:
             self._last_frame = self._reader()
-
-        self._grab_additional_data()
-
-    def _grab_additional_data(self) -> None:
-        """Read additional data (e.g., point clouds, depth maps).
-
-        Override in subclasses if needed.
-        """
 
     @abstractmethod
     def _get_frame_buffer_template(self, width: int, height: int) -> Any:

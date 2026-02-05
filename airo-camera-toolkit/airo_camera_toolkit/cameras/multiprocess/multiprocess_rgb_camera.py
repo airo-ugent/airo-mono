@@ -21,8 +21,8 @@ class MultiprocessRGBPublisher(BaseCameraPublisher):
         """Return RGB frame buffer template."""
         return RGBFrameBuffer.template(width, height)
 
-    def _capture_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
-        """Capture RGB image and intrinsics."""
+    def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
+        """Retrieve RGB image and intrinsics."""
         self._current_frame_id = frame_id
         self._current_frame_timestamp = frame_timestamp
         self._current_rgb_image = self._camera._retrieve_rgb_image_as_int()

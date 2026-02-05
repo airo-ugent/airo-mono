@@ -84,6 +84,33 @@ class RGBDFrameBuffer(RGBFrameBuffer):
 
 
 @dataclass
+class RGBDFrameBufferWithPointCloud(RGBDFrameBuffer):
+    """Frame buffer containing RGB-D data along with point cloud data."""
+
+    # Point cloud positions (N x 3)
+    point_cloud_positions: np.ndarray
+    # Point cloud colors (N x 3)
+    point_cloud_colors: np.ndarray
+    # Number of valid points in the point cloud
+    num_valid_points: np.ndarray
+
+    @staticmethod
+    def template(width: int, height: int) -> Any:
+        """Construct a new RGBDFrameBufferWithPointCloud with shared memory backed arrays."""
+        return RGBDFrameBufferWithPointCloud(
+            frame_id=np.empty((1,), dtype=np.uint64),
+            frame_timestamp=np.empty((1,), dtype=np.float64),
+            rgb=np.empty((height, width, 3), dtype=np.uint8),
+            intrinsics=np.empty((3, 3), dtype=np.float64),
+            depth_image=np.empty((height, width, 3), dtype=np.uint8),
+            depth=np.empty((height, width), dtype=np.float32),
+            point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
+            point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
+            num_valid_points=np.empty((1,), dtype=np.int32),
+        )
+
+
+@dataclass
 class StereoRGBDFrameBuffer(RGBDFrameBuffer):
     """Frame buffer containing stereo RGB-D data (left + right cameras)."""
 
@@ -111,29 +138,32 @@ class StereoRGBDFrameBuffer(RGBDFrameBuffer):
 
 
 @dataclass
-class PointCloudBuffer(BaseIdl):
-    """Buffer containing point cloud data."""
+class StereoRGBDFrameBufferWithPointCloud(StereoRGBDFrameBuffer):
+    """Frame buffer containing stereo RGB-D data along with point cloud data."""
 
-    # Frame ID for synchronization
-    frame_id: np.ndarray
-    # Timestamp of the point cloud
-    frame_timestamp: np.ndarray
-    # Point cloud positions (height * width x 3)
+    # Point cloud positions (N x 3)
     point_cloud_positions: np.ndarray
-    # Point cloud colors (height * width x 3)
+    # Point cloud colors (N x 3)
     point_cloud_colors: np.ndarray
-    # Valid point cloud points (scalar), for sparse point clouds
-    point_cloud_valid: np.ndarray
+    # Number of valid points in the point cloud
+    num_valid_points: np.ndarray
 
     @staticmethod
     def template(width: int, height: int) -> Any:
-        """Construct a new PointCloudBuffer with shared memory backed arrays."""
-        return PointCloudBuffer(
+        """Construct a new StereoRGBDFrameBufferWithPointCloud with shared memory backed arrays."""
+        return StereoRGBDFrameBufferWithPointCloud(
             frame_id=np.empty((1,), dtype=np.uint64),
             frame_timestamp=np.empty((1,), dtype=np.float64),
+            rgb=np.empty((height, width, 3), dtype=np.uint8),
+            intrinsics=np.empty((3, 3), dtype=np.float64),
+            depth_image=np.empty((height, width, 3), dtype=np.uint8),
+            depth=np.empty((height, width), dtype=np.float32),
+            rgb_right=np.empty((height, width, 3), dtype=np.uint8),
+            intrinsics_right=np.empty((3, 3), dtype=np.float64),
+            pose_right_in_left=np.empty((4, 4), dtype=np.float64),
             point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
             point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
-            point_cloud_valid=np.empty((1,), dtype=np.int32),
+            num_valid_points=np.empty((1,), dtype=np.int32),
         )
 
 
@@ -158,6 +188,33 @@ class ZedFrameBuffer(StereoRGBDFrameBuffer):
             intrinsics_right=np.empty((3, 3), dtype=np.float64),
             pose_right_in_left=np.empty((4, 4), dtype=np.float64),
             camera_pose=np.empty((4, 4), dtype=np.float64),
+        )
+
+
+@dataclass
+class PointCloudBuffer(BaseIdl):
+    """Buffer containing point cloud data."""
+
+    # Frame ID for synchronization
+    frame_id: np.ndarray
+    # Timestamp of the point cloud
+    frame_timestamp: np.ndarray
+    # Point cloud positions (height * width x 3)
+    point_cloud_positions: np.ndarray
+    # Point cloud colors (height * width x 3)
+    point_cloud_colors: np.ndarray
+    # Valid point cloud points (scalar), for sparse point clouds
+    point_cloud_valid: np.ndarray
+
+    @staticmethod
+    def template(width: int, height: int) -> Any:
+        """Construct a new PointCloudBuffer with shared memory backed arrays."""
+        return PointCloudBuffer(
+            frame_id=np.empty((1,), dtype=np.uint64),
+            frame_timestamp=np.empty((1,), dtype=np.float64),
+            point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
+            point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
+            point_cloud_valid=np.empty((1,), dtype=np.int32),
         )
 
 

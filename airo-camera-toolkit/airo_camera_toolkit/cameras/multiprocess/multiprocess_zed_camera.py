@@ -63,17 +63,6 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
                 (self._camera.resolution[0] * self._camera.resolution[1], 3),
                 dtype=np.uint8,
             )
-
-        if self.enable_spatial_mapping:
-            # Initialize buffers for spatial map data
-            self._spatial_map_chunks_updated = np.zeros(self.max_spatial_map_chunks, dtype=np.bool_)
-            self._spatial_map_chunk_sizes = np.zeros(self.max_spatial_map_chunks, dtype=np.int32)
-            self._spatial_map_point_positions = np.zeros((self.max_spatial_map_points, 3), dtype=np.float32)
-            self._spatial_map_point_colors = np.zeros((self.max_spatial_map_points, 3), dtype=np.uint8)
-
-    def _setup_additional_writers(self) -> None:
-        """Set up point cloud and spatial map writers if enabled."""
-        if self.enable_pointcloud:
             self._pcd_writer = SMWriter(
                 domain_participant=self._dp,
                 topic_name=f"{self._shared_memory_namespace}_pcd",
@@ -81,14 +70,19 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
             )
 
         if self.enable_spatial_mapping:
+            # Initialize buffers for spatial map data
+            self._spatial_map_chunks_updated = np.zeros(self.max_spatial_map_chunks, dtype=np.bool_)
+            self._spatial_map_chunk_sizes = np.zeros(self.max_spatial_map_chunks, dtype=np.int32)
+            self._spatial_map_point_positions = np.zeros((self.max_spatial_map_points, 3), dtype=np.float32)
+            self._spatial_map_point_colors = np.zeros((self.max_spatial_map_points, 3), dtype=np.uint8)
             self._spatial_map_writer = SMWriter(
                 domain_participant=self._dp,
                 topic_name=f"{self._shared_memory_namespace}_spatial_map",
                 idl_dataclass=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
-    def _capture_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
-        """Capture Zed stereo RGB-D data, pose, point cloud, and optionally spatial map."""
+    def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
+        """Retrieve Zed stereo RGB-D data, pose, point cloud, and optionally spatial map."""
         self._current_frame_id = frame_id
         self._current_frame_timestamp = frame_timestamp
 
@@ -223,12 +217,9 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
 
         super().__init__(shared_memory_namespace)
 
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return Zed frame buffer template."""
-        return ZedFrameBuffer.template(width, height)
+    def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
+        super()._setup_frame_reader(resolution)
 
-    def _setup_additional_readers(self, resolution: CameraResolutionType) -> None:
-        """Set up point cloud and spatial map readers if enabled."""
         if self.enable_pointcloud:
             self._reader_pcd = SMReader(
                 domain_participant=self._dp,
@@ -247,13 +238,9 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
                 self.max_spatial_map_chunks, self.max_spatial_map_points
             )
 
-    def _grab_additional_data(self) -> None:
-        """Read point cloud and spatial map if enabled."""
-        if self.enable_pointcloud:
-            self._last_pcd_frame = self._reader_pcd()
-
-        if self.enable_spatial_mapping:
-            self._last_spatial_map_frame = self._reader_spatial_map()
+    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
+        """Return Zed frame buffer template."""
+        return ZedFrameBuffer.template(width, height)
 
     def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         """Retrieve RGB image as integer array."""
@@ -286,6 +273,7 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         """Retrieve colored point cloud."""
         if not self.enable_pointcloud:
             raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
+        self._last_pcd_frame = self._reader_pcd()
         num_points = self._last_pcd_frame.point_cloud_valid.item()
         positions = self._last_pcd_frame.point_cloud_positions[:num_points]
         colors = self._last_pcd_frame.point_cloud_colors[:num_points]
@@ -307,6 +295,8 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         """
         if not self.enable_spatial_mapping:
             raise RuntimeError("Cannot retrieve spatial map when it is not enabled.")
+
+        self._last_spatial_map_frame = self._reader_spatial_map()
 
         # Get the last spatial map frame from shared memory
         buf = self._last_spatial_map_frame
@@ -435,10 +425,10 @@ if __name__ == "__main__":
         # Retrieve images and data from shared memory
         image = receiver.get_rgb_image_as_int()
         image_right = receiver._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
-        depth_map = receiver.get_depth_map()
-        depth_image = receiver.get_depth_image()
+        depth_map = receiver._retrieve_depth_map()
+        depth_image = receiver._retrieve_depth_image()
         # confidence_map = receiver._retrieve_confidence_map()
-        point_cloud = receiver.get_colored_point_cloud()
+        point_cloud = receiver._retrieve_colored_point_cloud()
 
         image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
@@ -460,7 +450,10 @@ if __name__ == "__main__":
                 point_cloud.colors[np.isnan(point_cloud.colors)] = 0
             rr.log(
                 "World/point_cloud",
-                rr.Points3D(positions=camera_to_rerun(point_cloud.points), colors=point_cloud.colors),
+                rr.Points3D(
+                    positions=camera_to_rerun(point_cloud.points),
+                    colors=point_cloud.colors,
+                ),
             )
 
         # If enabled, log spatial map to rerun
@@ -468,7 +461,10 @@ if __name__ == "__main__":
             full_pointcloud = spatial_map.full_pointcloud
             rr.log(
                 "World/spatial_map",
-                rr.Points3D(positions=camera_to_rerun(full_pointcloud.points), colors=full_pointcloud.colors),
+                rr.Points3D(
+                    positions=camera_to_rerun(full_pointcloud.points),
+                    colors=full_pointcloud.colors,
+                ),
             )
 
         # Visualize camera pose in Rerun

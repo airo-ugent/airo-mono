@@ -18,7 +18,6 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
     Subclasses should implement:
     - _get_frame_buffer_template(): Return the appropriate frame buffer template
-    - _setup_additional_writers(): Set up any additional shared memory writers
     - _capture_frame_data(): Capture all data for a single frame
     - _write_frame_data(): Write captured data to shared memory
     """
@@ -53,7 +52,9 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         # Initialize DDS domain participant
         self._dp = DomainParticipant()
         self._resolution_writer = SMWriter(
-            self._dp, f"{self._shared_memory_namespace}_resolution", ResolutionIdl.template()
+            self._dp,
+            f"{self._shared_memory_namespace}_resolution",
+            ResolutionIdl.template(),
         )
         self._fps_writer = SMWriter(self._dp, f"{self._shared_memory_namespace}_fps", FpsIdl.template())
 
@@ -68,7 +69,6 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
         # Set up shared memory writers
         self._setup_frame_writer()
-        self._setup_additional_writers()
 
     def _setup_frame_writer(self) -> None:
         """Set up the main frame data writer."""
@@ -80,17 +80,14 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             idl_dataclass=frame_buffer_template,
         )
 
-    def _setup_additional_writers(self) -> None:
-        """Set up additional shared memory writers (e.g., for optional data).
-
-        Override in subclasses if needed.
-        """
-
     def _publish_metadata(self) -> None:
         """Publish camera metadata (resolution and FPS)."""
         self._resolution_writer(
             ResolutionIdl(
-                resolution=np.array([self._camera.resolution[0], self._camera.resolution[1]], dtype=np.int32),
+                resolution=np.array(
+                    [self._camera.resolution[0], self._camera.resolution[1]],
+                    dtype=np.int32,
+                ),
             )
         )
         self._fps_writer(FpsIdl(fps=np.array([self._camera.fps], dtype=np.float64)))
@@ -121,7 +118,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
                 frame_id = self._next_frame_id()
 
                 # Capture and write frame data
-                self._capture_frame_data(frame_id, frame_timestamp)
+                self._retrieve_frame_data(frame_id, frame_timestamp)
                 self._write_frame_data()
 
         except Exception as e:
@@ -143,11 +140,14 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         """
 
     @abstractmethod
-    def _capture_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
-        """Capture all data for the current frame.
+    def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
+        """Retrieve all data for the current frame.
 
         This method should retrieve all necessary data from the camera and store it
         in instance variables for later writing.
+
+        **Important**: The method should NOT call functions that start with `get_`, because that will
+        trigger a new frame capture. Instead, it should call only functions that start with `_retrieve_`
 
         Args:
             frame_id: Monotonically increasing frame identifier
