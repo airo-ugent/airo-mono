@@ -23,8 +23,8 @@ class MultiprocessVideoRecorder(SpawnProcess):
 
         self._shared_memory_namespace = shared_memory_namespace
         self._image_transform = image_transform
-        self.recording_finished_event = multiprocessing.Event()
-        self.shutdown_event = multiprocessing.Event()
+        self.recording_finished_event = multiprocessing.get_context("spawn").Event()
+        self.shutdown_event = multiprocessing.get_context("spawn").Event()
         self.fill_missing_frames = fill_missing_frames
 
         if video_path is None:
@@ -46,8 +46,7 @@ class MultiprocessVideoRecorder(SpawnProcess):
         camera_fps = receiver.fps
         camera_period = 1 / camera_fps
 
-        width, height = receiver.resolution
-        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", camera_fps, (width, height))
+        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", camera_fps)
 
         logger.info(f"Recording video to {self._video_path}")
 
@@ -56,6 +55,7 @@ class MultiprocessVideoRecorder(SpawnProcess):
         n_consecutive_frames_dropped = 0
 
         while not self.shutdown_event.is_set():
+            _ = receiver.get_rgb_image_as_int()
             timestamp_receiver = receiver.get_current_timestamp()
 
             if timestamp_receiver <= timestamp_prev_frame:

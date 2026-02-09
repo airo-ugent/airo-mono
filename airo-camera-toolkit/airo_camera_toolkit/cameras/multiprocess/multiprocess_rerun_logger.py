@@ -108,6 +108,8 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn", force=True)
+
     rerun_logger = MultiprocessRGBDRerunLogger("camera")
     rerun_logger.start()
     time.sleep(10)
