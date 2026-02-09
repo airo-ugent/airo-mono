@@ -18,8 +18,8 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
     Subclasses should implement:
     - _get_frame_buffer_template(): Return the appropriate frame buffer template
-    - _capture_frame_data(): Capture all data for a single frame
-    - _write_frame_data(): Write captured data to shared memory
+    - _retrieve_frame_data(): Retrieve all data for a single frame
+    - _write_frame_data(): Write retrieved data to shared memory
     """
 
     def __init__(
@@ -117,7 +117,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
                 frame_timestamp = time.time()
                 frame_id = self._next_frame_id()
 
-                # Capture and write frame data
+                # Retrieve and write frame data
                 self._retrieve_frame_data(frame_id, frame_timestamp)
                 self._write_frame_data()
 
