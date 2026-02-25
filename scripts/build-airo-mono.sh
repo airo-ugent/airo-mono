@@ -28,6 +28,31 @@ if [[ $CHOICE != "y" ]]; then
   exit 0
 fi
 
+read -rp "Did you update the version number in the CITATION.cff file? (y/n): " CHOICE
+if [[ $CHOICE != "y" ]]; then
+  echo "Quitting without building."
+  exit 0
+fi
+
+# Check for local changes.
+if [[ -n $(git status --porcelain) ]]; then
+  echo "You have local changes. Please commit or stash them before running this script."
+  exit 1
+fi
+
+# Remove previous build artifacts.
+echo "Clear the dist/ directories in each package before building?"
+echo "The following directories will be permanently deleted:"
+for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
+  echo " - ${package}/dist"
+done
+read -rp "Permanently delete the above directories? (y/n): " CHOICE
+if [[ $CHOICE == "y" ]]; then
+  for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
+    rm -rf "${package}/dist"
+  done
+fi
+
 # Loop over the packages and run `python -m build` in each package directory to build the package.
 for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
   cd "${package}" || exit 1

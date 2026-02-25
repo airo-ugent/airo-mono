@@ -9,5 +9,5 @@ authors:
   given-names: "Mathieu"
 title: "airo-mono: ready-to-use python packages to accelerate the development of robotic manipulation systems"
 url: "https://github.com/airo-ugent/airo-mono"
-date-released: 2025-7-2
-version: 2025.7.0
+date-released: 2026-01-14
+version: 2026.1.0
