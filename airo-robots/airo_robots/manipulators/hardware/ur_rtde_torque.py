@@ -28,7 +28,7 @@ robot = URrtde("10.42.0.162", URrtde.UR3E_CONFIG,initial_joint_configuration=np.
 robot.enable_torque_control()
 
     while True:
-        robot.target_pos = np.array(your_joint_configuration)
+        robot.target_pos = np.array(target_joint_configuration)
         #don't move too much in every step!
 """
 
