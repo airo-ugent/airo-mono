@@ -20,6 +20,19 @@ RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
 
 
+"""
+How to use:
+
+from airo_robots.manipulators.hardware.ur_rtde_torque import URrtdeTorque as URrtde
+robot = URrtde("10.42.0.162", URrtde.UR3E_CONFIG,initial_joint_configuration=np.array([-1.58, - 1.74, - 0.71, - 1.51 , 1.47,  3.109]))
+robot.enable_torque_control()
+
+    while True:
+        robot.target_pos = np.array(your_joint_configuration)
+        #don't move too much in every step!
+"""
+
+
 # Max log entries: ~3 minutes at 500Hz
 MAX_LOG_ENTRIES = 90000
 
