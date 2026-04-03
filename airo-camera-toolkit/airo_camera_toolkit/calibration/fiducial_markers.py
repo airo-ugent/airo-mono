@@ -126,6 +126,9 @@ def get_pose_of_charuco_board(
     charuco_corners = charuco_corners_detection_result.corners
     charuco_ids = charuco_corners_detection_result.ids
 
+    if len(charuco_ids) < 4:
+        return None
+
     # Use matchImagePoints to get the object and image points
     obj_points, img_points = charuco_board.matchImagePoints(charuco_corners, charuco_ids)  # type: ignore  # mypy does not accept these types, but they are correct
     if obj_points is None or img_points is None:
@@ -133,7 +136,7 @@ def get_pose_of_charuco_board(
 
     # Use solvePnP for pose estimation
     success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, dist_coeffs)  # type: ignore  # mypy does not accept these types, but they are correct
-    if not success or rvec is None or tvec is None:
+    if (rvec is None and tvec is None) or not success:
         return None
     # combine the rvec and tvec into a single pose matrix
     charuco_pose_in_camera_frame = SE3Container.from_rotation_vector_and_translation(
@@ -155,8 +158,8 @@ def detect_charuco_board(
         image: An image that might contain a charuco board.
         camera_matrix: The intrinsics of the camera that took the image.
         dist_coeffs: The distortion coefficients of the camera that took the image.
-        aruco_markers: The dictionary from OpenCV that specifies the aruco marker parameters.
-        charuco_board: The dictionary from OpenCV that specifies the charuco board parameters.
+        aruco_dict: The dictionary from OpenCV that specifies the aruco marker parameters.
+        charuco_board: The CharucoBoardType from OpenCV that specifies the charuco board parameters.
 
     Returns:
         Optional[HomogeneousMatrixType]: The pose of the charuco board in the camera frame, if it was detected.
@@ -272,6 +275,8 @@ if __name__ == "__main__":
             charuco_board = aruco.CharucoBoard(
                 (charuco_x_count, charuco_y_count), charuco_tile_size, aruco_marker_size, aruco_dict
             )
+        else:
+            charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
 
         camera = discover_camera(camera_brand, camera_serial_number)
 

@@ -15,6 +15,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Refactored `airo_camera_toolkit.cameras.multiprocess` to reduce code duplication. This should not have any impact on code using this module, as there are no breaking changes.
 
 ### Fixed
+- Fixed crash during camera calibration when the board was not fully visible ([#188](https://github.com/airo-ugent/airo-mono/issues/188)).
 
 ### Removed
 
