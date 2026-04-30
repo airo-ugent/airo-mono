@@ -118,10 +118,8 @@ class ImageConverter:
 
     @property
     def image_in_opencv_format(self) -> OpenCVIntImageType:
-        image = self._image_in_numpy_float_format[:, :, ::-1]
         # can take up to a few ms.
-        image *= 255.0
-        return image.astype(np.uint8)
+        return (self._image_in_numpy_float_format[:, :, ::-1] * 255.0).astype(np.uint8)
 
     @property
     def image_in_torch_format(self) -> TorchFloatImageType:

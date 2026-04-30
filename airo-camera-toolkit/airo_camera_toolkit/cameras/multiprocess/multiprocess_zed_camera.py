@@ -87,12 +87,12 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
         self._current_frame_timestamp = frame_timestamp
 
         # Capture left and right images
-        self._current_rgb_left = self._camera.get_rgb_image_as_int()
+        self._current_rgb_left = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.LEFT_RGB)
         self._current_rgb_right = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
 
         # Capture depth data
-        self._current_depth_map = self._camera.get_depth_map()
-        self._current_depth_image = self._camera.get_depth_image()
+        self._current_depth_map = self._camera._retrieve_depth_map()
+        self._current_depth_image = self._camera._retrieve_depth_image()
 
         # Capture camera pose if tracking is enabled
         if self.enable_positional_tracking:
@@ -182,7 +182,10 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
         self._spatial_map_chunks_updated[:num_chunks] = np.array(chunks_updated)
         self._spatial_map_chunk_sizes[:num_chunks] = np.array(chunk_sizes)
         self._spatial_map_point_positions[: self._current_spatial_map.size, :] = np.array(point_positions)
-        self._spatial_map_point_colors[: self._current_spatial_map.size, :] = np.array(point_colors)
+        if point_colors is not None:
+            self._spatial_map_point_colors[: self._current_spatial_map.size, :] = np.array(point_colors)
+        else:
+            self._spatial_map_point_colors[: self._current_spatial_map.size, :] = 0
 
         # Write spatial map buffer
         spatial_map_data = SpatialMapBuffer(

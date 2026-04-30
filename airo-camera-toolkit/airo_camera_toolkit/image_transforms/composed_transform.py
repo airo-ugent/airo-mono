@@ -28,7 +28,6 @@ class ComposedTransform(ImageTransform):
     def transform_point(self, point: ImagePointType) -> ImagePointType:
         for transform in self.transforms:
             point = transform.transform_point(point)
-            print(point)
         return point
 
     def reverse_transform_point(self, point: ImagePointType) -> ImagePointType:

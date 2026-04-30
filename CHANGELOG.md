@@ -16,6 +16,13 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Fixed
 - Fixed crash during camera calibration when the board was not fully visible ([#188](https://github.com/airo-ugent/airo-mono/issues/188)).
+- Fixed `ImageConverter.image_in_opencv_format` mutating the internal float image buffer in place, which corrupted the values returned by subsequent calls to any of the `image_in_*` properties.
+- Fixed `open3d_to_point_cloud` silently dropping custom attributes when converting back to a `PointCloud`.
+- Fixed `"Haraud"` typo in `cv2_CALIBRATION_METHODS` (now `"Horaud"`), which propagated into result filenames and method-selection keys.
+- Fixed `get_poses_of_aruco_markers` crashing with `AttributeError` when `cv2.aruco.estimatePoseSingleMarkers` returns exactly one of `rvecs`/`tvecs` as `None` (the guard used `and` instead of `or`).
+- Fixed frame desync in `MultiprocessZedPublisher`: the left RGB and depth maps were read via the high-level `get_*` methods, which call `_grab_images()` again and so returned data from a different ZED capture than the right RGB and the recorded frame metadata.
+- Fixed `MultiprocessZedPublisher._write_spatial_map` crashing when the spatial map's full point cloud has no colors (`colors is None`); the buffer is now zero-filled in that case, mirroring the per-frame point-cloud handling.
+- Removed a stray `print(point)` left inside `ComposedTransform.transform_point`.
 
 ### Removed
 
