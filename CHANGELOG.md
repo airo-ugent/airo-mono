@@ -11,6 +11,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Added
 - Added a public, explicit camera API ([#187](https://github.com/airo-ugent/airo-mono/issues/187)): call `grab_images()` once to capture a frame, then any number of `retrieve_*` calls (`retrieve_rgb_image`, `retrieve_rgb_image_as_int`, `retrieve_depth_map`, `retrieve_depth_image`, `retrieve_confidence_map`, `retrieve_colored_point_cloud`) to read fields from that same captured frame. All retrievals between two `grab_images()` calls are guaranteed to come from the same capture, so synchronized multi-modal data (e.g. an RGB + depth pair) is straightforward. The Zed-specific `retrieve_camera_pose`, `request_spatial_map_update`, and `retrieve_spatial_map` are likewise public.
+- Calling any `retrieve_*` method before the first `grab_images()` now raises a uniform `RuntimeError` across all camera implementations (previously the failure mode was per-implementation: `AttributeError` on RealSense/OpenCV, possibly silent garbage data on ZED).
 
 ### Changed
 - Refactored `airo_camera_toolkit.cameras.multiprocess` to reduce code duplication. This should not have any impact on code using this module, as there are no breaking changes.

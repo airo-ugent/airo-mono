@@ -208,8 +208,6 @@ class Realsense(RGBDCamera):
         return ImageConverter.from_numpy_int_format(image).image_in_numpy_format
 
     def retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
-        if not isinstance(self._composite_frame, rs.composite_frame):
-            raise RuntimeError("grab_images must be called before retrieving images")
         color_frame = self._composite_frame.get_color_frame()
         image: NumpyIntImageType = np.asanyarray(color_frame.get_data())
         return image
@@ -238,8 +236,6 @@ class Realsense(RGBDCamera):
         # Compute confidence map based on the disparity between the two IR images.
         if not self._confidence_enabled:
             raise RuntimeError("Cannot retrieve confidence data if confidence is disabled")
-        if not isinstance(self._composite_frame, rs.composite_frame):
-            raise RuntimeError("grab_images must be called before retrieving images")
         ir1_frame = self._infrared_frame_1
         ir2_frame = self._infrared_frame_2
 

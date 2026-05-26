@@ -1,4 +1,6 @@
 import abc
+from functools import wraps
+from typing import Any, Callable
 
 import cv2
 import numpy as np
@@ -17,6 +19,35 @@ from loguru import logger
 from typing_extensions import deprecated
 
 
+def _wrap_grab_images(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a subclass's grab_images so it sets ``self._grabbed = True`` after running."""
+
+    @wraps(func)
+    def wrapper(self: "Camera", *args: Any, **kwargs: Any) -> Any:
+        result = func(self, *args, **kwargs)
+        self._grabbed = True
+        return result
+
+    return wrapper
+
+
+def _wrap_retrieve(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a ``retrieve_*`` method so it asserts ``grab_images`` was called first."""
+
+    method_name = func.__name__
+
+    @wraps(func)
+    def wrapper(self: "Camera", *args: Any, **kwargs: Any) -> Any:
+        if not self._grabbed:
+            raise RuntimeError(
+                f"{method_name}() requires a prior call to grab_images(). "
+                "Capture a frame with camera.grab_images() first, then read fields with camera.retrieve_*()."
+            )
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
+
 class Camera(abc.ABC):
     """Base class for all cameras.
 
@@ -31,6 +62,11 @@ class Camera(abc.ABC):
     return data from the same frame, so you can read e.g. a synchronized RGB +
     depth pair without ambiguity. Calling :meth:`grab_images` again overwrites
     the buffer with a new frame.
+
+    Calling any ``retrieve_*`` method before the first ``grab_images()`` raises
+    :class:`RuntimeError`. This is enforced uniformly across all subclasses: the
+    base class auto-wraps each subclass's ``grab_images`` (to mark the buffer
+    populated) and each ``retrieve_*`` method (to assert the buffer is populated).
 
     We use the right-handed, y-down convention for the camera frame:
     - origin is at the camera lens center
@@ -48,6 +84,23 @@ class Camera(abc.ABC):
     so to get the value of the pixel at (u,v) you need to do image[v,u] and the shape of the numpy array is (height, width)
     cf https://scikit-image.org/docs/stable/user_guide/numpy_images.html#numpy-indexing
     """
+
+    # Whether grab_images() has ever been called on this instance.
+    # Class-level default so subclasses don't need to call super().__init__.
+    _grabbed: bool = False
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Wrap any grab_images / retrieve_* that this subclass defines directly.
+        # Abstract methods are skipped; they raise NotImplementedError on call,
+        # and wrapping them would interfere with ABC's abstract-method machinery.
+        for name, attr in list(cls.__dict__.items()):
+            if not callable(attr) or getattr(attr, "__isabstractmethod__", False):
+                continue
+            if name == "grab_images":
+                setattr(cls, name, _wrap_grab_images(attr))
+            elif name.startswith("retrieve_"):
+                setattr(cls, name, _wrap_retrieve(attr))
 
     @abc.abstractmethod
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
