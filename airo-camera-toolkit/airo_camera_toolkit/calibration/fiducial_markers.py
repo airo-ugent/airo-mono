@@ -309,7 +309,8 @@ if __name__ == "__main__":
 
         print("press Q to quit")
         while True:
-            image_rgb = camera.get_rgb_image_as_int()
+            camera.grab_images()
+            image_rgb = camera.retrieve_rgb_image_as_int()
             image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
             intrinsics = camera.intrinsics_matrix()
 

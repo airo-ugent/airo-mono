@@ -113,7 +113,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
                 self._publish_metadata()
 
                 # Capture frame with timestamp
-                self._camera._grab_images()
+                self._camera.grab_images()
                 frame_timestamp = time.time()
                 frame_id = self._next_frame_id()
 
@@ -147,7 +147,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         in instance variables for later writing.
 
         **Important**: The method should NOT call functions that start with `get_`, because that will
-        trigger a new frame capture. Instead, it should call only functions that start with `_retrieve_`
+        trigger a new frame capture. Instead, it should call only functions that start with `retrieve_`
 
         Args:
             frame_id: Monotonically increasing frame identifier

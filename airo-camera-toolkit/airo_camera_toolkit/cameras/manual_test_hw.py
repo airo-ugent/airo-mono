@@ -22,7 +22,8 @@ def manual_test_camera(camera: Camera) -> None:
 
 
 def manual_test_rgb_camera(camera: RGBCamera) -> None:
-    image = camera.get_rgb_image()
+    camera.grab_images()
+    image = camera.retrieve_rgb_image()
     plt.imshow(image)
     print(
         """
@@ -33,7 +34,7 @@ def manual_test_rgb_camera(camera: RGBCamera) -> None:
     )
     plt.show()
 
-    int_image = camera.get_rgb_image_as_int()
+    int_image = camera.retrieve_rgb_image_as_int()
     plt.imshow(int_image)
     print(
         """
@@ -44,7 +45,8 @@ def manual_test_rgb_camera(camera: RGBCamera) -> None:
 
 
 def manual_test_depth_camera(camera: DepthCamera) -> None:
-    dept_image = camera.get_depth_image()
+    camera.grab_images()
+    dept_image = camera.retrieve_depth_image()
     plt.imshow(dept_image)
     print(
         """
@@ -55,7 +57,7 @@ def manual_test_depth_camera(camera: DepthCamera) -> None:
     )
     plt.show()
 
-    depth_map = camera.get_depth_map()
+    depth_map = camera.retrieve_depth_map()
     with np.printoptions(precision=3, suppress=True):
         print(f"{depth_map=}")
     print(f"{depth_map.shape=}")
@@ -72,7 +74,8 @@ def manual_test_stereo_rgbd_camera(camera: StereoRGBDCamera) -> None:
     input(
         "The pose of the right view in the left view should be as expected: a translation along the X-axis with the camera disparity distance. Press a key if all seems fine."
     )
-    image = camera.get_rgb_image(view=camera.RIGHT_RGB)
+    camera.grab_images()
+    image = camera.retrieve_rgb_image(view=camera.RIGHT_RGB)
     plt.imshow(image)
     print(
         """
@@ -103,21 +106,23 @@ def profile(func: Callable, *args: Any, **kwargs: Any) -> None:
 
 
 def profile_rgb_throughput(camera: RGBCamera) -> None:
-    """profile the throughput of the get_rgb_image() function"""
+    """profile the throughput of grab_images() + retrieve_rgb_image()"""
 
     def get_100_images() -> None:
         for _ in range(100):
-            camera.get_rgb_image()
+            camera.grab_images()
+            camera.retrieve_rgb_image()
 
     profile(get_100_images)
 
 
 def profile_rgbd_throughput(camera: RGBDCamera) -> None:
-    """profile the throughput of the get_rgb_image() and _retrieve_depth_maps() functions"""
+    """profile the throughput of grab_images() + retrieve_rgb_image() + retrieve_depth_map()"""
 
     def get_100_images() -> None:
         for _ in range(100):
-            camera.get_rgb_image()
-            camera._retrieve_depth_map()
+            camera.grab_images()
+            camera.retrieve_rgb_image()
+            camera.retrieve_depth_map()
 
     profile(get_100_images)

@@ -151,7 +151,7 @@ class Realsense(RGBDCamera):
     def resolution(self) -> CameraResolutionType:
         return self._resolution
 
-    def _grab_images(self) -> None:
+    def grab_images(self) -> None:
         self._composite_frame = self.pipeline.wait_for_frames()
 
         if not self._depth_enabled:
@@ -203,25 +203,25 @@ class Realsense(RGBDCamera):
         colors = color_image[y, x]  # shape (N, 3)
         return PointCloud(vertices, colors)
 
-    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
-        image = self._retrieve_rgb_image_as_int()
+    def retrieve_rgb_image(self) -> NumpyFloatImageType:
+        image = self.retrieve_rgb_image_as_int()
         return ImageConverter.from_numpy_int_format(image).image_in_numpy_format
 
-    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+    def retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
         if not isinstance(self._composite_frame, rs.composite_frame):
-            raise RuntimeError("_grab_images must be called before retrieving images")
+            raise RuntimeError("grab_images must be called before retrieving images")
         color_frame = self._composite_frame.get_color_frame()
         image: NumpyIntImageType = np.asanyarray(color_frame.get_data())
         return image
 
-    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+    def retrieve_depth_map(self) -> NumpyDepthMapType:
         if not self._depth_enabled:
             raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         frame = self._depth_frame
         image = np.asanyarray(frame.get_data()).astype(np.float32)
         return image * self.depth_factor
 
-    def _retrieve_depth_image(self) -> NumpyIntImageType:
+    def retrieve_depth_image(self) -> NumpyIntImageType:
         if not self._depth_enabled:
             raise RuntimeError("Cannot retrieve depth data if depth is disabled")
         frame = self._depth_frame
@@ -229,17 +229,17 @@ class Realsense(RGBDCamera):
         image = np.asanyarray(frame_colorized.get_data())  # this is uint8 with 3 channels
         return image
 
-    def _retrieve_colored_point_cloud(self) -> PointCloud:
+    def retrieve_colored_point_cloud(self) -> PointCloud:
         if not self._pointcloud_enabled:
             raise RuntimeError("Cannot retrieve point cloud if point cloud is disabled")
         return self._point_cloud
 
-    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
+    def retrieve_confidence_map(self) -> NumpyConfidenceMapType:
         # Compute confidence map based on the disparity between the two IR images.
         if not self._confidence_enabled:
             raise RuntimeError("Cannot retrieve confidence data if confidence is disabled")
         if not isinstance(self._composite_frame, rs.composite_frame):
-            raise RuntimeError("_grab_images must be called before retrieving images")
+            raise RuntimeError("grab_images must be called before retrieving images")
         ir1_frame = self._infrared_frame_1
         ir2_frame = self._infrared_frame_2
 
@@ -298,10 +298,11 @@ if __name__ == "__main__":
     cv2.namedWindow("RealSense Depth Map", cv2.WINDOW_NORMAL)
 
     while True:
-        color_image = camera.get_rgb_image_as_int()
+        camera.grab_images()
+        color_image = camera.retrieve_rgb_image_as_int()
         color_image = ImageConverter.from_numpy_int_format(color_image).image_in_opencv_format
-        depth_image = camera._retrieve_depth_image()
-        depth_map = camera._retrieve_depth_map()
+        depth_image = camera.retrieve_depth_image()
+        depth_map = camera.retrieve_depth_map()
 
         cv2.imshow("RealSense RGB", color_image)
         cv2.imshow("RealSense Depth Image", depth_image)

@@ -91,7 +91,8 @@ camera = Zed()
 robot = URrtde(ip_address=robot_ip_address)
 gripper = Robotiq2F85(ip_address=robot_ip_address)
 
-image = camera.get_rgb_image()
+camera.grab_images()
+image = camera.retrieve_rgb_image()
 grasp_pose = select_grasp_pose(image)  # example: user provides grasp pose
 robot.move_linear_to_tcp_pose(grasp_pose).wait()
 gripper.close().wait()

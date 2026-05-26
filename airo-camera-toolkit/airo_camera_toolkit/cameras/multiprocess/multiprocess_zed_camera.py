@@ -87,22 +87,22 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
         self._current_frame_timestamp = frame_timestamp
 
         # Capture left and right images
-        self._current_rgb_left = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.LEFT_RGB)
-        self._current_rgb_right = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+        self._current_rgb_left = self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.LEFT_RGB)
+        self._current_rgb_right = self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
 
         # Capture depth data
-        self._current_depth_map = self._camera._retrieve_depth_map()
-        self._current_depth_image = self._camera._retrieve_depth_image()
+        self._current_depth_map = self._camera.retrieve_depth_map()
+        self._current_depth_image = self._camera.retrieve_depth_image()
 
         # Capture camera pose if tracking is enabled
         if self.enable_positional_tracking:
-            self._current_camera_pose = self._camera._retrieve_camera_pose()
+            self._current_camera_pose = self._camera.retrieve_camera_pose()
         else:
             self._current_camera_pose = np.eye(4, dtype=np.float64)
 
         # Capture point cloud if enabled
         if self.enable_pointcloud:
-            point_cloud = self._camera._retrieve_colored_point_cloud()
+            point_cloud = self._camera.retrieve_colored_point_cloud()
 
             # Handle sparse point clouds
             self._pcd_pos_buf.fill(np.nan)
@@ -119,8 +119,8 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
         self._current_spatial_map: Optional[ZedSpatialMap] = None
         if self.enable_spatial_mapping and frame_id % self.map_refresh_interval == 0:
             assert isinstance(self._camera, Zed)
-            self._camera._request_spatial_map_update()
-            self._current_spatial_map = self._camera._retrieve_spatial_map()
+            self._camera.request_spatial_map_update()
+            self._current_spatial_map = self._camera.retrieve_spatial_map()
 
     def _write_frame_data(self) -> None:
         """Write Zed frame data, point cloud, and spatial map to shared memory."""
@@ -245,7 +245,7 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         """Return Zed frame buffer template."""
         return ZedFrameBuffer.template(width, height)
 
-    def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
+    def retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         """Retrieve RGB image as integer array."""
         if view == StereoRGBDCamera.LEFT_RGB:
             return self._last_frame.rgb
@@ -264,15 +264,15 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         else:
             return self._last_frame.intrinsics_right
 
-    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+    def retrieve_depth_map(self) -> NumpyDepthMapType:
         """Retrieve depth map from frame buffer."""
         return self._last_frame.depth
 
-    def _retrieve_depth_image(self) -> NumpyIntImageType:
+    def retrieve_depth_image(self) -> NumpyIntImageType:
         """Retrieve depth image from frame buffer."""
         return self._last_frame.depth_image
 
-    def _retrieve_colored_point_cloud(self) -> PointCloud:
+    def retrieve_colored_point_cloud(self) -> PointCloud:
         """Retrieve colored point cloud."""
         if not self.enable_pointcloud:
             raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
@@ -282,13 +282,13 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         colors = self._last_pcd_frame.point_cloud_colors[:num_points]
         return PointCloud(positions, colors)
 
-    def _retrieve_camera_pose(self) -> np.ndarray:
+    def retrieve_camera_pose(self) -> np.ndarray:
         """Returns the 4x4 global pose matrix of the camera if tracking is enabled."""
         if not self.enable_positional_tracking:
             raise RuntimeError("Cannot retrieve camera pose when positional tracking is not enabled.")
         return self._last_frame.camera_pose
 
-    def _retrieve_spatial_map(self) -> ZedSpatialMap:
+    def retrieve_spatial_map(self) -> ZedSpatialMap:
         """
         Reconstructs the spatial map from the shared memory buffer.
 
@@ -384,7 +384,7 @@ if __name__ == "__main__":
     #     logger.warning("Waiting for receiver to be ready...")
     #     time.sleep(1.0)
 
-    receiver._grab_images()
+    receiver.grab_images()
 
     with np.printoptions(precision=3, suppress=True):
         print("Intrinsics left:\n", receiver.intrinsics_matrix())
@@ -426,18 +426,19 @@ if __name__ == "__main__":
         time_current = time.time()
 
         # Retrieve images and data from shared memory
-        image = receiver.get_rgb_image_as_int()
-        image_right = receiver._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
-        depth_map = receiver._retrieve_depth_map()
-        depth_image = receiver._retrieve_depth_image()
-        # confidence_map = receiver._retrieve_confidence_map()
-        point_cloud = receiver._retrieve_colored_point_cloud()
+        receiver.grab_images()
+        image = receiver.retrieve_rgb_image_as_int()
+        image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+        depth_map = receiver.retrieve_depth_map()
+        depth_image = receiver.retrieve_depth_image()
+        # confidence_map = receiver.retrieve_confidence_map()
+        point_cloud = receiver.retrieve_colored_point_cloud()
 
         image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
 
-        spatial_map = receiver._retrieve_spatial_map()
-        pose_matrix = receiver._retrieve_camera_pose()
+        spatial_map = receiver.retrieve_spatial_map()
+        pose_matrix = receiver.retrieve_camera_pose()
 
         # Visualize images using OpenCV
         cv2.imshow("RGB Image", image_bgr)
