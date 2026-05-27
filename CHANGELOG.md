@@ -10,14 +10,12 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 
 ### Added
-- Added a public, explicit camera API ([#187](https://github.com/airo-ugent/airo-mono/issues/187)): call `grab_images()` once to capture a frame, then any number of `retrieve_*` calls (`retrieve_rgb_image`, `retrieve_rgb_image_as_int`, `retrieve_depth_map`, `retrieve_depth_image`, `retrieve_confidence_map`, `retrieve_colored_point_cloud`) to read fields from that same captured frame. All retrievals between two `grab_images()` calls are guaranteed to come from the same capture, so synchronized multi-modal data (e.g. an RGB + depth pair) is straightforward. The Zed-specific `retrieve_camera_pose`, `request_spatial_map_update`, and `retrieve_spatial_map` are likewise public.
-- Calling any `retrieve_*` method before the first `grab_images()` now raises a uniform `RuntimeError` across all camera implementations (previously the failure mode was per-implementation: `AttributeError` on RealSense/OpenCV, possibly silent garbage data on ZED).
 
 ### Changed
 - Refactored `airo_camera_toolkit.cameras.multiprocess` to reduce code duplication. This should not have any impact on code using this module, as there are no breaking changes.
-- Deprecated the `get_rgb_image`, `get_rgb_image_as_int`, `get_depth_map`, `get_depth_image`, `get_confidence_map`, and `get_colored_point_cloud` convenience methods on the camera interfaces. Each of these methods captures its own frame internally, so chaining them silently returned data from different frames. The new `grab_images()` + `retrieve_*()` API removes that footgun. The deprecated methods still work but emit a `DeprecationWarning`.
+- Rewrote camera API to be more explicit about the difference between `get_*()` and`_retrieve_*` ([#187](https://github.com/airo-ugent/airo-mono/issues/187)). `get_*()` methods (e.g., `get_rgb_image()`) have been deprecated, instead, users must now explicitly call `grab_images()` and `retrieve_rgb_image()`. This reduces the chance of bugs occurring if a user of the camera toolkit doesn't know that `get_*()` waits for a new camera frame. Such bugs occurred commonly in user code, but also in the camera toolkit itself (see fixes below).
 - Deprecated the previously-internal `_grab_images` and `_retrieve_*` names (and the Zed-specific `_retrieve_camera_pose` / `_request_spatial_map_update` / `_retrieve_spatial_map`). Calls still work via `@deprecated` compatibility wrappers.
-- Fixed a frame-synchronization bug in `MultiprocessRGBDRerunLogger`: it logged RGB and depth from two different ZED captures because it called `get_rgb_image()` followed by `get_depth_image()`. It now grabs once per loop iteration and retrieves both fields from the same frame.
+- Calling any `retrieve_*` method before the first `grab_images()` now raises a uniform `RuntimeError` across all camera implementations.
 
 ### Fixed
 - Fixed crash during camera calibration when the board was not fully visible ([#188](https://github.com/airo-ugent/airo-mono/issues/188)).
@@ -26,10 +24,11 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Fixed `"Haraud"` typo in `cv2_CALIBRATION_METHODS` (now `"Horaud"`), which propagated into result filenames and method-selection keys.
 - Fixed `get_poses_of_aruco_markers` crashing with `AttributeError` when `cv2.aruco.estimatePoseSingleMarkers` returns exactly one of `rvecs`/`tvecs` as `None` (the guard used `and` instead of `or`).
 - Fixed frame desync in `MultiprocessZedPublisher`: the left RGB and depth maps were read via the high-level `get_*` methods, which call `_grab_images()` again and so returned data from a different ZED capture than the right RGB and the recorded frame metadata.
+- Fixed a similar frame desync in `MultiprocessRGBDRerunLogger`.
 - Fixed `MultiprocessZedPublisher._write_spatial_map` crashing when the spatial map's full point cloud has no colors (`colors is None`); the buffer is now zero-filled in that case, mirroring the per-frame point-cloud handling.
-- Removed a stray `print(point)` left inside `ComposedTransform.transform_point`.
 
 ### Removed
+- Removed a stray `print(point)` left inside `ComposedTransform.transform_point`. This should have no functional impact.
 
 ## 2026.1.0
 
