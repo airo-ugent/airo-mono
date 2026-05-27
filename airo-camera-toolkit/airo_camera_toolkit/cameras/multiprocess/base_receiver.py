@@ -42,7 +42,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self._setup_frame_reader(self._resolution)
 
         # Grab first frame
-        self._grab_images()
+        self.grab_images()
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         """Set up the main frame data reader."""
@@ -105,7 +105,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Get the frame ID of the current frame."""
         return self._last_frame.frame_id.item()
 
-    def _grab_images(self) -> None:
+    def grab_images(self) -> None:
         """Read the latest frame from shared memory."""
         previous_timestamp = self._last_frame.frame_timestamp.item()
 

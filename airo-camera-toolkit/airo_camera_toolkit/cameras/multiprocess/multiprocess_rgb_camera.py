@@ -25,7 +25,7 @@ class MultiprocessRGBPublisher(BaseCameraPublisher):
         """Retrieve RGB image and intrinsics."""
         self._current_frame_id = frame_id
         self._current_frame_timestamp = frame_timestamp
-        self._current_rgb_image = self._camera._retrieve_rgb_image_as_int()
+        self._current_rgb_image = self._camera.retrieve_rgb_image_as_int()
         self._current_intrinsics = self._camera.intrinsics_matrix()
 
     def _write_frame_data(self) -> None:
@@ -46,12 +46,12 @@ class MultiprocessRGBReceiver(BaseCameraReceiver, RGBCamera):
         """Return RGB frame buffer template."""
         return RGBFrameBuffer.template(width, height)
 
-    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
-        image = self._retrieve_rgb_image_as_int()
+    def retrieve_rgb_image(self) -> NumpyFloatImageType:
+        image = self.retrieve_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image).image_in_numpy_format
         return image
 
-    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+    def retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
         return self._last_frame.rgb
 
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
@@ -89,7 +89,8 @@ if __name__ == "__main__":
         time_previous = time_current
         time_current = time.time()
 
-        image_rgb = receiver.get_rgb_image_as_int()
+        receiver.grab_images()
+        image_rgb = receiver.retrieve_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
         cv2.imshow(namespace, image)
         key = cv2.waitKey(10)

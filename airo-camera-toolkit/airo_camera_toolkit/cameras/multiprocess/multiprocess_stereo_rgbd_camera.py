@@ -72,16 +72,16 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
         self._current_frame_timestamp = frame_timestamp
 
         # Capture left and right images
-        self._current_rgb_left = self._camera._retrieve_rgb_image_as_int()
-        self._current_rgb_right = self._camera._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+        self._current_rgb_left = self._camera.retrieve_rgb_image_as_int()
+        self._current_rgb_right = self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
 
         # Capture depth data
-        self._current_depth_map = self._camera._retrieve_depth_map()
-        self._current_depth_image = self._camera._retrieve_depth_image()
+        self._current_depth_map = self._camera.retrieve_depth_map()
+        self._current_depth_image = self._camera.retrieve_depth_image()
 
         # Capture point cloud if enabled
         if self.enable_pointcloud:
-            point_cloud = self._camera._retrieve_colored_point_cloud()
+            point_cloud = self._camera.retrieve_colored_point_cloud()
 
             # Handle sparse point clouds
             self._pcd_pos_buf.fill(np.nan)
@@ -144,10 +144,10 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
         else:
             return StereoRGBDFrameBuffer.template(width, height)
 
-    def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
-        return ImageConverter.from_numpy_int_format(self._retrieve_rgb_image_as_int(view=view)).image_in_numpy_format
+    def retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
+        return ImageConverter.from_numpy_int_format(self.retrieve_rgb_image_as_int(view=view)).image_in_numpy_format
 
-    def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
+    def retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         if view == StereoRGBDCamera.LEFT_RGB:
             return self._last_frame.rgb
         else:
@@ -163,15 +163,15 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
         else:
             return self._last_frame.intrinsics_right
 
-    def _retrieve_depth_map(self) -> NumpyIntImageType:
+    def retrieve_depth_map(self) -> NumpyIntImageType:
         """Retrieve depth map from frame buffer."""
         return self._last_frame.depth
 
-    def _retrieve_depth_image(self) -> NumpyIntImageType:
+    def retrieve_depth_image(self) -> NumpyIntImageType:
         """Retrieve depth image from frame buffer."""
         return self._last_frame.depth_image
 
-    def _retrieve_colored_point_cloud(self) -> PointCloud:
+    def retrieve_colored_point_cloud(self) -> PointCloud:
         if not self.enable_pointcloud:
             raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
         num_points = self._last_frame.num_valid_points.item()
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     #     logger.warning("Waiting for receiver to be ready...")
     #     time.sleep(1.0)
 
-    receiver._grab_images()
+    receiver.grab_images()
 
     with np.printoptions(precision=3, suppress=True):
         print("Intrinsics left:\n", receiver.intrinsics_matrix())
@@ -238,12 +238,13 @@ if __name__ == "__main__":
         time_previous = time_current
         time_current = time.time()
 
-        image = receiver.get_rgb_image_as_int()
-        image_right = receiver._retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
-        depth_map = receiver._retrieve_depth_map()
-        depth_image = receiver._retrieve_depth_image()
-        # confidence_map = receiver._retrieve_confidence_map()
-        point_cloud = receiver._retrieve_colored_point_cloud()
+        receiver.grab_images()
+        image = receiver.retrieve_rgb_image_as_int()
+        image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+        depth_map = receiver.retrieve_depth_map()
+        depth_image = receiver.retrieve_depth_image()
+        # confidence_map = receiver.retrieve_confidence_map()
+        point_cloud = receiver.retrieve_colored_point_cloud()
 
         image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)

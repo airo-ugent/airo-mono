@@ -77,7 +77,8 @@ def do_camera_robot_calibration(
 
     while True:
         # Live visualization of board detection
-        image_rgb = camera.get_rgb_image_as_int()
+        camera.grab_images()
+        image_rgb = camera.retrieve_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
         detect_and_visualize_charuco_pose(image, intrinsics, aruco_dict, charuco_board)
         tcp_pose = robot.get_tcp_pose()

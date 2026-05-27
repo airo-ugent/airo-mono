@@ -54,13 +54,13 @@ class MultiprocessRGBDPublisher(BaseCameraPublisher):
         """Retrieve RGB-D data and optionally point cloud."""
         self._current_frame_id = frame_id
         self._current_frame_timestamp = frame_timestamp
-        self._current_rgb_image = self._camera._retrieve_rgb_image_as_int()
-        self._current_depth_map = self._camera._retrieve_depth_map()
-        self._current_depth_image = self._camera._retrieve_depth_image()
+        self._current_rgb_image = self._camera.retrieve_rgb_image_as_int()
+        self._current_depth_map = self._camera.retrieve_depth_map()
+        self._current_depth_image = self._camera.retrieve_depth_image()
         self._current_intrinsics = self._camera.intrinsics_matrix()
 
         if self.enable_pointcloud:
-            point_cloud = self._camera._retrieve_colored_point_cloud()
+            point_cloud = self._camera.retrieve_colored_point_cloud()
 
             # Handle sparse point clouds by filling buffer with NaN
             self._pcd_pos_buf.fill(np.nan)
@@ -117,13 +117,13 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         else:
             return RGBDFrameBuffer.template(width, height)
 
-    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+    def retrieve_depth_map(self) -> NumpyDepthMapType:
         return self._last_frame.depth
 
-    def _retrieve_depth_image(self) -> NumpyIntImageType:
+    def retrieve_depth_image(self) -> NumpyIntImageType:
         return self._last_frame.depth_image
 
-    def _retrieve_colored_point_cloud(self) -> PointCloud:
+    def retrieve_colored_point_cloud(self) -> PointCloud:
         if not self.enable_pointcloud:
             raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
         num_points = self._last_frame.num_valid_points.item()
@@ -166,10 +166,11 @@ if __name__ == "__main__":
         time_previous = time_current
         time_current = time.time()
 
-        pcd = receiver.get_colored_point_cloud()
-        depth_image = receiver._retrieve_depth_map()
+        receiver.grab_images()
+        pcd = receiver.retrieve_colored_point_cloud()
+        depth_image = receiver.retrieve_depth_map()
 
-        image_rgb = receiver._retrieve_rgb_image_as_int()
+        image_rgb = receiver.retrieve_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
         cv2.imshow("RGB", image)
         cv2.imshow("DEPTH", depth_image)

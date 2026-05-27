@@ -35,6 +35,7 @@ from airo_typing import (
     OpenCVIntImageType,
     PointCloud,
 )
+from typing_extensions import deprecated
 
 
 @dataclass(frozen=True)
@@ -540,7 +541,7 @@ class Zed(StereoRGBDCamera):
         self.camera_runtime_params.depth_enabled = value
         self._zed_runtime_params.enable_depth = value
 
-    def _grab_images(self) -> None:
+    def grab_images(self) -> None:
         """grabs (and waits for) the latest image(s) from the camera, rectifies them and computes the depth information (based on the depth mode setting)"""
         # this is a blocking call
         # https://www.stereolabs.com/docs/api/python/classpyzed_1_1sl_1_1Camera.html#a2338c15f49b5f132df373a06bd281822
@@ -549,14 +550,14 @@ class Zed(StereoRGBDCamera):
         if error_code != sl.ERROR_CODE.SUCCESS:
             raise RuntimeError("Could not grab new camera frame")
 
-    def _retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
-        image = self._retrieve_rgb_image_as_int(view)
+    def retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
+        image = self.retrieve_rgb_image_as_int(view)
         # convert from int to float image
         # this can take up ~ ms for larger images (can impact FPS)
         image = ImageConverter.from_numpy_int_format(image).image_in_numpy_format
         return image
 
-    def _retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
+    def retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         if view not in StereoRGBDCamera._VIEWS:
             raise ValueError(f"view must be one of {self._VIEWS}, but was {view}")
         image_bgra: OpenCVIntImageType
@@ -570,7 +571,7 @@ class Zed(StereoRGBDCamera):
         image = cv2.cvtColor(image_bgra, cv2.COLOR_BGRA2RGB)
         return image
 
-    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+    def retrieve_depth_map(self) -> NumpyDepthMapType:
         if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
             raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
         if not self.camera_runtime_params.depth_enabled:
@@ -579,7 +580,7 @@ class Zed(StereoRGBDCamera):
         depth_map = self.depth_matrix.get_data()
         return depth_map
 
-    def _retrieve_depth_image(self) -> NumpyIntImageType:
+    def retrieve_depth_image(self) -> NumpyIntImageType:
         if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
             raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
         if not self.camera_runtime_params.depth_enabled:
@@ -590,7 +591,7 @@ class Zed(StereoRGBDCamera):
         image = cv2.cvtColor(image_bgra, cv2.COLOR_BGRA2RGB)
         return image
 
-    def _retrieve_colored_point_cloud(self) -> PointCloud:
+    def retrieve_colored_point_cloud(self) -> PointCloud:
         if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
             raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
         if not self.camera_runtime_params.depth_enabled:
@@ -608,11 +609,11 @@ class Zed(StereoRGBDCamera):
         # For example, in shared memory transport with airo-ipc, non-contiguous arrays incur a cost.
         # See also: https://github.com/airo-ugent/airo-mono/issues/177 for discussion and benchmarks.
         positions = cv2.cvtColor(point_cloud_XYZ_, cv2.COLOR_BGRA2BGR).reshape(-1, 3)
-        colors = self._retrieve_rgb_image_as_int().reshape(-1, 3)
+        colors = self.retrieve_rgb_image_as_int().reshape(-1, 3)
 
         return PointCloud(positions, colors)
 
-    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
+    def retrieve_confidence_map(self) -> NumpyConfidenceMapType:
         self.camera.retrieve_measure(self.confidence_matrix, sl.MEASURE.CONFIDENCE)
         zed_confidence_map = self.confidence_matrix.get_data()  # single channel float32 image
         # The ZED confidence map is in the range [0, 100], where 0 is the highest confidence and 100 the lowest.
@@ -621,7 +622,7 @@ class Zed(StereoRGBDCamera):
         confidence_map = 1 - zed_confidence_map / 100.0
         return confidence_map
 
-    def _retrieve_camera_pose(
+    def retrieve_camera_pose(
         self, coordinate_frame: sl.REFERENCE_FRAME = TrackingParams.REFERENCE_FRAME_WORLD
     ) -> HomogeneousMatrixType:
         """
@@ -643,7 +644,7 @@ class Zed(StereoRGBDCamera):
         pose_np = pose_transform.m
         return pose_np
 
-    def _request_spatial_map_update(self) -> None:
+    def request_spatial_map_update(self) -> None:
         """
         Request a the spatial map update process in a non-blocking thread from the spatial mapping process.
         This function will trigger the generation of a mesh without blocking the program.
@@ -653,7 +654,7 @@ class Zed(StereoRGBDCamera):
             raise RuntimeError("Cannot request spatial map update if spatial mapping is not enabled.")
         self.camera.request_spatial_map_async()
 
-    def _retrieve_spatial_map(self) -> ZedSpatialMap:
+    def retrieve_spatial_map(self) -> ZedSpatialMap:
         """
         Retrieves the current spatial map from the camera as a list of point clouds with update status.
         Returns:
@@ -701,14 +702,22 @@ class Zed(StereoRGBDCamera):
 
         return ZedSpatialMap(chunks, chunks_updated)
 
-    def get_colored_point_cloud(self) -> PointCloud:
-        if self.camera_init_params.depth_mode == self.InitParams.NONE_DEPTH_MODE:
-            raise RuntimeError("Cannot retrieve depth data if depth mode is NONE")
-        if not self.camera_runtime_params.depth_enabled:
-            raise RuntimeError("Cannot retrieve depth data if depth is disabled")
+    @deprecated("Use retrieve_camera_pose() instead.")
+    def _retrieve_camera_pose(
+        self, coordinate_frame: sl.REFERENCE_FRAME = TrackingParams.REFERENCE_FRAME_WORLD
+    ) -> HomogeneousMatrixType:
+        """Deprecated alias for :meth:`retrieve_camera_pose`."""
+        return self.retrieve_camera_pose(coordinate_frame)
 
-        self._grab_images()
-        return self._retrieve_colored_point_cloud()
+    @deprecated("Use request_spatial_map_update() instead.")
+    def _request_spatial_map_update(self) -> None:
+        """Deprecated alias for :meth:`request_spatial_map_update`."""
+        return self.request_spatial_map_update()
+
+    @deprecated("Use retrieve_spatial_map() instead.")
+    def _retrieve_spatial_map(self) -> ZedSpatialMap:
+        """Deprecated alias for :meth:`retrieve_spatial_map`."""
+        return self.retrieve_spatial_map()
 
     @staticmethod
     def list_camera_serial_numbers() -> List[str]:
@@ -741,7 +750,8 @@ def _test_zed_implementation() -> None:
     input("each camera connected to the pc should be listed, press enter to continue")
 
     with Zed(depth_mode=Zed.InitParams.NEURAL_DEPTH_MODE) as zed:
-        print(zed.get_colored_point_cloud().points)  # TODO: test the point_cloud more explicity?
+        zed.grab_images()
+        print(zed.retrieve_colored_point_cloud().points)  # TODO: test the point_cloud more explicity?
         manual_test_stereo_rgbd_camera(zed)
 
     # profile rgb throughput, should be at 60FPS, i.e. 0.017s
@@ -761,14 +771,14 @@ def _test_zed_implementation() -> None:
         camera_mapping_params=mapping_params,
     ) as zed:
         for _ in range(20):  # grab 20 frames
-            zed._grab_images()
-            pose = zed._retrieve_camera_pose()
+            zed.grab_images()
+            pose = zed.retrieve_camera_pose()
 
             print(f"Current pose:\n{pose}")
-            zed._request_spatial_map_update()
+            zed.request_spatial_map_update()
             time.sleep(0.1)  # wait a bit before next grab
 
-            spatial_map = zed._retrieve_spatial_map()
+            spatial_map = zed.retrieve_spatial_map()
             if not spatial_map:
                 logger.warning("Spatial map is empty.")
 

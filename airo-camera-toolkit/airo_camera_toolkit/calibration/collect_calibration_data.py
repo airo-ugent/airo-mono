@@ -65,7 +65,8 @@ def save_calibration_sample(
     ROBOT_STOP_WAIT_TIME = 0.5
     time.sleep(ROBOT_STOP_WAIT_TIME)
 
-    image_rgb = camera.get_rgb_image_as_int()
+    camera.grab_images()
+    image_rgb = camera.retrieve_rgb_image_as_int()
     image_bgr = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
 
     tcp_pose = robot.get_tcp_pose()
@@ -120,7 +121,8 @@ def collect_calibration_data(robot: PositionManipulator, camera: RGBCamera, cali
 
     while True:
         # Live visualization of board detection
-        image_rgb = camera.get_rgb_image_as_int()
+        camera.grab_images()
+        image_rgb = camera.retrieve_rgb_image_as_int()
         image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
         detect_and_visualize_charuco_pose(image, intrinsics)
         cv2.imshow(window_name, image)

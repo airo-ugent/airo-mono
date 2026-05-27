@@ -24,7 +24,7 @@ from loguru import logger
 cv2_CALIBRATION_METHODS = {
     "Tsai": cv2.CALIB_HAND_EYE_TSAI,
     "Park": cv2.CALIB_HAND_EYE_PARK,
-    "Haraud": cv2.CALIB_HAND_EYE_HORAUD,
+    "Horaud": cv2.CALIB_HAND_EYE_HORAUD,
     "Andreff": cv2.CALIB_HAND_EYE_ANDREFF,
     "Daniilidis": cv2.CALIB_HAND_EYE_DANIILIDIS,
 }
@@ -275,13 +275,15 @@ def compute_calibration_all_methods(
     tcp_poses_in_base = [
         tcp_poses_in_base[i] for i, board_pose in enumerate(board_poses_in_camera) if board_pose is not None
     ]
-    board_poses_in_camera: List[HomogeneousMatrixType] = [  # type: ignore
+    detected_board_poses_in_camera: List[HomogeneousMatrixType] = [
         board_pose for board_pose in board_poses_in_camera if board_pose is not None
     ]
-    logger.info(f"Board poses were detected in {len(board_poses_in_camera)} of the calibration samples.")
+    logger.info(f"Board poses were detected in {len(detected_board_poses_in_camera)} of the calibration samples.")
 
     for name, method in cv2_CALIBRATION_METHODS.items():
-        camera_pose, calibration_error = compute_calibration(board_poses_in_camera, tcp_poses_in_base, mode, method)  # type: ignore
+        camera_pose, calibration_error = compute_calibration(
+            detected_board_poses_in_camera, tcp_poses_in_base, mode, method
+        )
         if calibration_error is None:
             calibration_error = np.inf
 
@@ -308,7 +310,16 @@ def compute_calibration_all_methods(
 
         # Write residual error on image
         error_str = f"{name}: {calibration_error:.4f}"
-        cv2.putText(image, error_str, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
+        cv2.putText(
+            image,
+            error_str,
+            (10, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            2,
+            (0, 255, 0),
+            2,
+            cv2.LINE_AA,
+        )
         cv2.imwrite(os.path.join(results_dir, f"base_pose_in_camera_{name}.jpg"), image)
 
     return calibration_result_poses, calibration_errors
@@ -316,7 +327,7 @@ def compute_calibration_all_methods(
 
 def load_calibration_data(
     calibration_dir: str,
-) -> Tuple[List[OpenCVIntImageType], List[HomogeneousMatrixType], CameraIntrinsicsMatrixType, CameraResolutionType]:
+) -> Tuple[List[OpenCVIntImageType], List[HomogeneousMatrixType], CameraIntrinsicsMatrixType, CameraResolutionType,]:
     """Function to load calibration samples and camera parameters from a "data" directory in a calibration_dir
 
     Args:
@@ -338,7 +349,12 @@ def load_calibration_data(
     image_paths = sorted(glob.glob(os.path.join(data_dir, "image_*.png")))
     pose_paths = sorted(glob.glob(os.path.join(data_dir, "tcp_pose_*.json")))
 
-    images = [cv2.imread(image_path) for image_path in image_paths]
+    images = []
+    for image_path in image_paths:
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image from {image_path}")
+        images.append(image)
     tcp_poses = []
     for filepath in pose_paths:
         with open(filepath, "r") as f:
