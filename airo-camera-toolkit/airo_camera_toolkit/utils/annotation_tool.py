@@ -337,6 +337,8 @@ if __name__ == "__main__":
         }
 
         image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image from {image_path}")
         annotations = get_manual_annotations(image, annotation_spec)
 
         pp = pprint.PrettyPrinter(indent=4)

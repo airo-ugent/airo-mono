@@ -275,15 +275,15 @@ def compute_calibration_all_methods(
     tcp_poses_in_base = [
         tcp_poses_in_base[i] for i, board_pose in enumerate(board_poses_in_camera) if board_pose is not None
     ]
-    board_poses_in_camera: List[HomogeneousMatrixType] = [  # type: ignore
+    detected_board_poses_in_camera: List[HomogeneousMatrixType] = [
         board_pose for board_pose in board_poses_in_camera if board_pose is not None
     ]
-    logger.info(f"Board poses were detected in {len(board_poses_in_camera)} of the calibration samples.")
+    logger.info(f"Board poses were detected in {len(detected_board_poses_in_camera)} of the calibration samples.")
 
     for name, method in cv2_CALIBRATION_METHODS.items():
         camera_pose, calibration_error = compute_calibration(
-            board_poses_in_camera, tcp_poses_in_base, mode, method
-        )  # type: ignore
+            detected_board_poses_in_camera, tcp_poses_in_base, mode, method
+        )
         if calibration_error is None:
             calibration_error = np.inf
 
@@ -349,7 +349,12 @@ def load_calibration_data(
     image_paths = sorted(glob.glob(os.path.join(data_dir, "image_*.png")))
     pose_paths = sorted(glob.glob(os.path.join(data_dir, "tcp_pose_*.json")))
 
-    images = [cv2.imread(image_path) for image_path in image_paths]
+    images = []
+    for image_path in image_paths:
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image from {image_path}")
+        images.append(image)
     tcp_poses = []
     for filepath in pose_paths:
         with open(filepath, "r") as f:

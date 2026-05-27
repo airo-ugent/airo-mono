@@ -141,8 +141,8 @@ def get_pose_of_charuco_board(
 
     # Use solvePnP for pose estimation
     success, rvec, tvec = cv2.solvePnP(
-        obj_points, img_points, camera_matrix, dist_coeffs
-    )  # type: ignore  # mypy does not accept these types, but they are correct
+        obj_points, img_points, camera_matrix, dist_coeffs  # type: ignore[arg-type]  # dist_coeffs may be None, which OpenCV accepts
+    )
     if (rvec is None and tvec is None) or not success:
         return None
     # combine the rvec and tvec into a single pose matrix
