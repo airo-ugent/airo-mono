@@ -10,6 +10,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 
 ### Added
+- Added easier imports for airo-camera-toolkit cameras. Now, instead of `from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture` you can just write `from airo_camera_toolkit.cameras import OpenCVVideoCapture`. Based on [PEP 562](https://peps.python.org/pep-0562/). Fixes the old issue [#122](https://github.com/airo-ugent/airo-mono/issues/122).
 
 ### Changed
 
