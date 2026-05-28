@@ -1,0 +1,38 @@
+[project]
+name = "airo-camera-toolkit"
+version = "2026.5.0"
+description = "Interfaces and common functionality to work with RGB(D) cameras for robotic manipulation at the Ghent University AI and Robotics Lab"
+authors = [{ name = "Thomas Lips", email = "thomas.lips@ugent.be" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.0",
+    # opencv-contrib-python provides cv2.ximgproc (used by the RealSense disparity pipeline) on top of the
+    # main OpenCV API. opencv-python-headless is excluded via [tool.uv] override-dependencies in the root
+    # pyproject.toml so it doesn't collide with contrib on the cv2/cv2.abi3.so file.
+    "opencv-contrib-python==4.10.0.84",
+    "matplotlib",
+    "rerun-sdk>=0.23.4",
+    "click",
+    "open3d",
+    "loguru",
+    "airo-ipc>=0.1.0",
+    "airo-typing>=2026.1.0",
+    "airo-spatial-algebra>=2026.1.0",
+    "airo-dataset-tools>=2026.1.0",
+]
+
+[project.optional-dependencies]
+hand-eye-calibration = ["airo-robots"]
+
+[project.scripts]
+airo-camera-toolkit = "airo_camera_toolkit.cli:cli"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+exclude = ["test"]
+
+[tool.setuptools.package-data]
+airo_camera_toolkit = ["py.typed"]

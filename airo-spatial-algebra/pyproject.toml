@@ -1,0 +1,22 @@
+[project]
+name = "airo-spatial-algebra"
+version = "2026.5.0"
+description = "Code for working with SE3 poses, transforms... for robotic manipulation at the Ghent University AI and Robotics Lab"
+authors = [{ name = "Thomas Lips", email = "thomas.lips@ugent.be" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.0",
+    "scipy",
+    "spatialmath-python",
+    "airo-typing>=2026.01.0",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+exclude = ["test"]
+
+[tool.setuptools.package-data]
+airo_spatial_algebra = ["py.typed"]

@@ -1,0 +1,55 @@
+[project]
+name = "airo-mono"
+version = "2026.5.0"
+description = "Monorepo with airo Python packages for robotic manipulation at the Ghent University AI and Robotics Lab"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "airo-camera-toolkit",
+    "airo-dataset-tools",
+    "airo-robots",
+    "airo-spatial-algebra",
+    "airo-typing",
+    # Optional hardware/visualisation extras that aren't required by any package but are commonly used.
+    "ffmpegcv>=0.3.18",
+    "pyrealsense2>=2.56.5.9235",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "mypy",
+    "pytest",
+    "pytest-xdist",  # multi-core
+    "pytest-cov",    # coverage
+    "nbmake",        # pytest notebook
+    "build",         # build distributions
+    "bump-my-version",  # version bumping
+    "twine",         # upload to pypi
+    "notebook",
+]
+
+[tool.uv]
+# opencv-python-headless and opencv-contrib-python both ship `cv2/cv2.abi3.so` at the
+# same path, so they collide on disk. We need contrib (for cv2.ximgproc, used by the
+# RealSense disparity pipeline); the headless variant is only pulled in transitively
+# by albumentations/fiftyone, which work fine against contrib. Drop it from resolution.
+override-dependencies = [
+    "opencv-python-headless ; sys_platform == 'never'",
+]
+
+[tool.uv.workspace]
+members = [
+    "airo-camera-toolkit",
+    "airo-dataset-tools",
+    "airo-robots",
+    "airo-spatial-algebra",
+    "airo-typing",
+]
+
+[tool.uv.sources]
+airo-camera-toolkit = { workspace = true }
+airo-dataset-tools = { workspace = true }
+airo-robots = { workspace = true }
+airo-spatial-algebra = { workspace = true }
+airo-typing = { workspace = true }

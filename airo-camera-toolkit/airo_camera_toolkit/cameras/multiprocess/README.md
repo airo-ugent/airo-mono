@@ -47,16 +47,9 @@ Finally create a `MultiprocessRGBRerunLogger` with the namespace of the publishe
 A RGBD variant of this class is also available.
 
 ### Video Recording
-To enable video recording install FFMPEG 6.0 and the python package [ffmpegcv](https://github.com/chenxinfeng4/ffmpegcv), this can be done via conda:
+To enable video recording you need FFMPEG 6.0 (with x265) installed at the system level, plus the [ffmpegcv](https://github.com/chenxinfeng4/ffmpegcv) Python package.
 
-```yaml
-dependencies:
-  - ffmpeg=6.0.0
-  - x265 # not 100% if this need to be installed separately
-  - pip
-  pip:
-    - ffmpegcv
-```
+`ffmpegcv` is already declared as a dependency in the root `pyproject.toml`, so `uv sync` will install it. For the FFMPEG/x265 system libraries, install them via your OS package manager (e.g. `apt install ffmpeg libx265-dev` on Debian/Ubuntu).
 To start recording RGB videos from a `MultiprocessRGBPublisher` create a `MultiprocessRGBVideoRecorder` with the namespace of the publisher, and start it, as in the main function of [multiprocess_video_recorder.py](./multiprocess_video_recorder.py).
 Note that realtime video-encoding is computationally expensive, recording at 30 fps on laptops is not always possible.
 The video recorder will try to keep up with the framerate, but will drop frames if it can't.

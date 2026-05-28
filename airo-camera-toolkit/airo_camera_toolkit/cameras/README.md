@@ -23,6 +23,5 @@ Each camera implementation can be run as a script and will execute the relevant 
 
 For example, to test your ZED installation:
 ```
-conda activate airo-mono
-python3 zed.py
+uv run python zed.py
 ```

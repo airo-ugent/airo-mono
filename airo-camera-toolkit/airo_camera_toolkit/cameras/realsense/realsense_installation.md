@@ -12,17 +12,16 @@ realsense-viewer
 ## 2. pyrealsense2
 Now we need to install the python bindings for the librealsense2 SDK.
 
-For this, you can simply run the following command in your **conda environment**:
+`pyrealsense2` is already declared as a dependency of the `airo-mono` workspace, so running `uv sync` at the repo root will install it. To install it ad-hoc into another environment:
 ```
-pip install pyrealsense2
+uv pip install pyrealsense2
 ```
 
 ### 3. airo_camera_toolkit
 Now We will test whether our `airo_camera_toolkit can access the Realsense cameras.
 In this directory run:
 ```
-conda activate airo-mono
-python realsense.py
+uv run python realsense.py
 ```
 Complete the prompts. If everything looks normal, congrats, you successfully completed the installation! :tada:
 

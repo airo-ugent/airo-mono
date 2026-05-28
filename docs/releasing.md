@@ -16,8 +16,8 @@ You can find instruction on how to use this script at the top of the file, also 
 This script is used to build and publish the AIRO mono packages.
 
 Usage:
-1. Make sure to update version numbers in ALL setup.py files before running this script.
-2. Install the dev-requirements.txt file using pip: `pip install -r dev-requirements.txt`.
+1. Make sure to update version numbers in ALL package pyproject.toml files before running this script.
+2. Sync the workspace: `uv sync` (installs the `build` and `twine` dev tools used below).
 3. Make sure you have access to the PyPI projects and have your PyPI API tokens ready.
 4. Run this script from airo-mono's root directory as `./scripts/build-airo-mono.sh`.
 5. Follow the prompts to build and publish the packages.

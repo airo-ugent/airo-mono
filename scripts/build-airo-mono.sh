@@ -3,8 +3,8 @@
 # This script is used to build and publish the AIRO mono packages.
 #
 # Usage:
-# 1. Make sure to update version numbers in ALL setup.py files before running this script.
-# 2. Install the dev-requirements.txt file using pip: `pip install -r dev-requirements.txt`.
+# 1. Make sure to update version numbers in ALL package pyproject.toml files before running this script.
+# 2. Sync the workspace: `uv sync` (installs the `build` and `twine` dev tools used below).
 # 3. Make sure you have access to the PyPI projects and have your PyPI API tokens ready.
 # 4. Run this script from airo-mono's root directory as `./scripts/build-airo-mono.sh`.
 # 5. Follow the prompts to build and publish the packages.
@@ -22,7 +22,7 @@ if [[ ! -d "airo-camera-toolkit" || ! -d "airo-dataset-tools" || ! -d "airo-robo
 fi
 
 # Check if the user has done what is needed before publishing.
-read -rp "Did you update the version number in ALL setup.py files? (y/n): " CHOICE
+read -rp "Did you update the version number in ALL package pyproject.toml files? (y/n): " CHOICE
 if [[ $CHOICE != "y" ]]; then
   echo "Quitting without building."
   exit 0
@@ -57,7 +57,7 @@ fi
 for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
   cd "${package}" || exit 1
   echo "Building package: ${package}"
-  python -m build
+  uv run python -m build
   echo "Done"
   cd ..
 done
@@ -73,7 +73,7 @@ fi
 for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
   cd "${package}" || exit 1
   echo "Publishing package: ${package}"
-  twine upload dist/*
+  uv run twine upload dist/*
   echo "Done"
   cd ..
 done

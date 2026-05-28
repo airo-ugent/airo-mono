@@ -1,0 +1,23 @@
+[project]
+name = "airo-robots"
+version = "2026.5.0"
+description = "Interfaces, hardware implementations of those interfaces and other functionalities to control robot manipulators and grippers at the Ghent University AI and Robotics Lab"
+authors = [{ name = "Thomas Lips", email = "thomas.lips@ugent.be" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.0",
+    "ur-rtde>=1.5.7",  # cf https://github.com/airo-ugent/airo-mono/issues/52
+    "click",
+    "airo-typing>=2026.1.0",
+    "airo-spatial-algebra>=2026.1.0",
+    "airo-tulip>=0.4.0",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+
+[tool.setuptools.package-data]
+airo_robots = ["py.typed"]

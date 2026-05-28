@@ -1,0 +1,17 @@
+[project]
+name = "airo-typing"
+version = "2026.5.0"
+description = "Python type definitions for use in the python packages at the Ghent University AI and Robotics Lab"
+authors = [{ name = "Thomas Lips", email = "thomas.lips@ugent.be" }]
+requires-python = ">=3.10"
+dependencies = ["numpy>=2.0"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+exclude = ["test"]
+
+[tool.setuptools.package-data]
+airo_typing = ["py.typed"]

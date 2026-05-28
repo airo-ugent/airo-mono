@@ -16,11 +16,11 @@ airo-camera-toolkit/
 ```
 
 ## Installation
-The `airo_camera_toolkit` package can be installed with pip by running (from this directory):
+This package is a member of the `airo-mono` uv workspace, so it is installed automatically when you run `uv sync` at the repo root (see the root [README](../README.md)). To install it standalone in another environment:
 ```
-pip install .
+uv pip install .
 ```
-This will already allow you to use the hardare-independent functionality of this package, e.g. image conversion and projection.
+This will already allow you to use the hardware-independent functionality of this package, e.g. image conversion and projection.
 Depending on the hardware you are using, you might need to complete additional installation.
 Instructions can be found in the following files:
 * [ZED Installation](airo_camera_toolkit/cameras/zed/installation.md)
@@ -28,7 +28,7 @@ Instructions can be found in the following files:
 
 Additionally, to ensure you have `airo-robots` installed for the hand-eye calibration, install the extra dependencies:
 ```
-pip install .[hand-eye-calibration]
+uv pip install '.[hand-eye-calibration]'
 ```
 
 ## Getting started with cameras
