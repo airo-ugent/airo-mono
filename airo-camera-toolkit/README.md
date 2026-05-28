@@ -34,7 +34,7 @@ uv pip install '.[hand-eye-calibration]'
 ## Getting started with cameras
 Camera can be accessed by instantiating the corresponding class:, e.g. for a ZED camera:
 ```python
-from airo_camera_toolkit.cameras.zed import Zed
+from airo_camera_toolkit.cameras import Zed
 from airo_camera_toolkit.utils import ImageConverter
 import cv2
 

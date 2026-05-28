@@ -84,6 +84,12 @@ dependencies = [
 hand-eye-calibration = [
     { name = "airo-robots" },
 ]
+realsense = [
+    { name = "pyrealsense2" },
+]
+recording = [
+    { name = "ffmpegcv" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -93,14 +99,16 @@ requires-dist = [
     { name = "airo-spatial-algebra", editable = "airo-spatial-algebra" },
     { name = "airo-typing", editable = "airo-typing" },
     { name = "click" },
+    { name = "ffmpegcv", marker = "extra == 'recording'", specifier = ">=0.3.18" },
     { name = "loguru" },
     { name = "matplotlib" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "open3d" },
     { name = "opencv-contrib-python", specifier = "==4.10.0.84" },
+    { name = "pyrealsense2", marker = "extra == 'realsense'", specifier = ">=2.56.5.9235" },
     { name = "rerun-sdk", specifier = ">=0.23.4" },
 ]
-provides-extras = ["hand-eye-calibration"]
+provides-extras = ["hand-eye-calibration", "realsense", "recording"]
 
 [[package]]
 name = "airo-dataset-tools"
@@ -165,8 +173,6 @@ dependencies = [
     { name = "airo-robots" },
     { name = "airo-spatial-algebra" },
     { name = "airo-typing" },
-    { name = "ffmpegcv" },
-    { name = "pyrealsense2" },
 ]
 
 [package.dev-dependencies]
@@ -190,8 +196,6 @@ requires-dist = [
     { name = "airo-robots", editable = "airo-robots" },
     { name = "airo-spatial-algebra", editable = "airo-spatial-algebra" },
     { name = "airo-typing", editable = "airo-typing" },
-    { name = "ffmpegcv", specifier = ">=0.3.18" },
-    { name = "pyrealsense2", specifier = ">=2.56.5.9235" },
 ]
 
 [package.metadata.requires-dev]
@@ -3644,7 +3648,7 @@ version = "4.13.0.92"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.11' and sys_platform != 'darwin' and sys_platform != 'linux')" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.11' and sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.11' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')" },
 ]
 
 [[package]]

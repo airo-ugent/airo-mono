@@ -23,6 +23,10 @@ dependencies = [
 
 [project.optional-dependencies]
 hand-eye-calibration = ["airo-robots"]
+realsense = ["pyrealsense2>=2.56.5.9235"]
+recording = ["ffmpegcv>=0.3.18"]
+# Note: ZED support requires installing the ZED SDK (and the `pyzed` Python bindings it
+# bundles). pyzed is not on PyPI. See airo_camera_toolkit/cameras/zed/installation.md.
 
 [project.scripts]
 airo-camera-toolkit = "airo_camera_toolkit.cli:cli"

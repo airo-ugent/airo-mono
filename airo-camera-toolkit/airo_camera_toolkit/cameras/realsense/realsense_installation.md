@@ -12,13 +12,23 @@ realsense-viewer
 ## 2. pyrealsense2
 Now we need to install the python bindings for the librealsense2 SDK.
 
-`pyrealsense2` is already declared as a dependency of the `airo-mono` workspace, so running `uv sync` at the repo root will install it. To install it ad-hoc into another environment:
+`pyrealsense2` is exposed as the `realsense` extra on `airo-camera-toolkit` so users who don't have a RealSense camera don't pay the install cost. To pull it in for the workspace, sync with the extra enabled:
 ```
-uv pip install pyrealsense2
+uv sync --extra realsense
+```
+Or install ad-hoc into another environment:
+```
+uv pip install 'airo-camera-toolkit[realsense]'
 ```
 
 ### 3. airo_camera_toolkit
 Now We will test whether our `airo_camera_toolkit can access the Realsense cameras.
+You can either use the deep import path or the top-level alias from the `cameras` package — both work the same:
+```python
+from airo_camera_toolkit.cameras import Realsense  # lazy: only loads pyrealsense2 on access
+# or:
+from airo_camera_toolkit.cameras.realsense.realsense import Realsense
+```
 In this directory run:
 ```
 uv run python realsense.py

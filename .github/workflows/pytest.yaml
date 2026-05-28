@@ -23,7 +23,7 @@ jobs:
       with:
         enable-cache: true
     - name: Install workspace
-      run: uv sync --python ${{ matrix.python-version }} --all-packages
+      run: uv sync --python ${{ matrix.python-version }} --all-packages --all-extras
     - name: Run Tests
       run: uv run pytest ${{matrix.package}}/
     - name: Run Notebooks

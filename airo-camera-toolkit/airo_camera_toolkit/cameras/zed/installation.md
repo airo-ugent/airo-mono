@@ -43,6 +43,14 @@ If you get a segmentation fault and your CPU has a built-in GPU, have a look [he
 
 ### 3.3 airo_camera_toolkit
 Now We will test whether our `airo_camera_toolkit can access the ZED cameras.
+
+> **Note:** `pyzed` is not on PyPI and is not part of any `airo-camera-toolkit` extra — it ships with the ZED SDK and was installed by the SDK setup (or by `get_python_api.py`) into the active venv. The `cameras` package uses a lazy import so that `airo_camera_toolkit` still imports cleanly on machines without `pyzed`; the underlying module only loads when you actually access the class:
+> ```python
+> from airo_camera_toolkit.cameras import Zed, Zed2i  # lazy: only loads pyzed on access
+> # or, if you prefer the deep path:
+> from airo_camera_toolkit.cameras.zed.zed import Zed
+> ```
+
 In this directory run:
 ```
 uv run python zed.py

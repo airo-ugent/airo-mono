@@ -21,6 +21,6 @@ jobs:
       with:
         enable-cache: true
     - name: Install workspace
-      run: uv sync --python 3.11 --all-packages
+      run: uv sync --python 3.11 --all-packages --all-extras
     - name: Run type checker
       run: uv run mypy ${{matrix.package}}/
