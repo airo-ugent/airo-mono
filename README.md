@@ -227,25 +227,10 @@ For convenient access to specific functions, we provide command-line interfaces 
 
 ### Versioning & Releasing 🏷️
 
-As a first step towards PyPI releases of the `airo-mono` packages, we have already started versioning them.
-Read more about it in [docs/versioning.md](docs/versioning.md).
+Read more about it versioning in [docs/versioning.md](docs/versioning.md) and about releasing in [docs/releasing.md](docs/releasing.md).
 
 ### Design choices ✏️
 - **Minimalism:** Before coding, explore existing libraries. Less code means easier maintenance.
 - **Properties:** Employ Python properties ([@property](https://docs.python.org/3/howto/descriptor.html#properties)) for getters/setters. This enhances user interaction and unlocks powerful code patterns.
 - **Logging**: Use [loguru](https://loguru.readthedocs.io/en/stable/) for structured debugging instead of print statements.
 - **Output Data:** Favor native datatypes or NumPy arrays for easy compatibility. For more complex data, use dataclasses as in [airo-typing](airo-typing).
-
-#### Management of local dependencies in a Monorepo
-> **TODO:** simplify this explanation and move it to the setup or installation section.
-
-An issue with using a monorepo is that you want to have packages declare their local dependencies as well. But before you publish your packages or if you want to test unreleased code (as usually), this creates an issue: where should pip find these local package? Though there exist more advanced package managers such as Poetry, ([more background on package and dependency management in python](https://ealizadeh.com/blog/guide-to-python-env-pkg-dependency-using-conda-poetry/)
-) that can handle this, we have opted to stick with pip to keep the barier for new developers lower.
-
-
-This implies we simply add local dependencies in the setup file as regular dependencies, but we have to make sure pip can find the dependencies when installing the packages. There are two options to do so:
-1. You make sure that the local dependencies are installed before installing the package, either by running the pip install commands along the dependency tree, or by running all installs in a single pip commamd: `pip install <pkg1>  <pkg2> <pkg3>`
-2. you create distributions for the packages upfront and then tell pip where to find them (because they won't be on PyPI, which is where pip searches by default): `pip install --find-link https:// or /path/to/distributions/dir`
-
-
-Initially, we used a direct link to point to the path of the dependencies, but this created some issues and hence we now use this easier approach. see [#91](https://github.com/airo-ugent/airo-mono/issues/91) for more details.
