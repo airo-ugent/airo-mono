@@ -12,6 +12,18 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 
 ### Changed
+
+### Fixed
+
+### Removed
+
+## 2026.5.0
+
+### Breaking changes
+
+### Added
+
+### Changed
 - Refactored `airo_camera_toolkit.cameras.multiprocess` to reduce code duplication. This should not have any impact on code using this module, as there are no breaking changes.
 - Rewrote camera API to be more explicit about the difference between `get_*()` and`_retrieve_*` ([#187](https://github.com/airo-ugent/airo-mono/issues/187)). `get_*()` methods (e.g., `get_rgb_image()`) have been deprecated, instead, users must now explicitly call `grab_images()` and `retrieve_rgb_image()`. This reduces the chance of bugs occurring if a user of the camera toolkit doesn't know that `get_*()` waits for a new camera frame. Such bugs occurred commonly in user code, but also in the camera toolkit itself (see fixes below).
 - Deprecated the previously-internal `_grab_images` and `_retrieve_*` names (and the Zed-specific `_retrieve_camera_pose` / `_request_spatial_map_update` / `_retrieve_spatial_map`). Calls still work via `@deprecated` compatibility wrappers.
