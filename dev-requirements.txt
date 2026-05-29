@@ -1,0 +1,13 @@
+# Keep in sync with the `dev` dependency-group in pyproject.toml.
+# uv users get these via `uv sync`; conda users install them with
+#     pip install -r dev-requirements.txt
+pre-commit
+mypy
+pytest
+pytest-xdist     # multi-core
+pytest-cov       # coverage
+nbmake           # pytest notebook
+build            # build distributions
+bump-my-version  # version bumping
+twine            # upload to pypi
+notebook

@@ -49,7 +49,13 @@ A RGBD variant of this class is also available.
 ### Video Recording
 To enable video recording you need FFMPEG 6.0 (with x265) installed at the system level, plus the [ffmpegcv](https://github.com/chenxinfeng4/ffmpegcv) Python package.
 
-`ffmpegcv` is already declared as a dependency in the root `pyproject.toml`, so `uv sync` will install it. For the FFMPEG/x265 system libraries, install them via your OS package manager (e.g. `apt install ffmpeg libx265-dev` on Debian/Ubuntu).
+`ffmpegcv` is declared as the `recording` optional dependency of `airo-camera-toolkit`. Install it inside your active environment with one of:
+```
+uv sync --extra recording                      # uv workspace
+pip install ffmpegcv                           # conda env (or any other venv)
+conda install -c conda-forge ffmpeg x265       # alternative system-level install for conda users
+```
+For the FFMPEG/x265 system libraries (needed by `ffmpegcv` at runtime), install them via your OS package manager (e.g. `apt install ffmpeg libx265-dev` on Debian/Ubuntu, or `brew install ffmpeg x265` on macOS), or via conda-forge as shown above.
 To start recording RGB videos from a `MultiprocessRGBPublisher` create a `MultiprocessRGBVideoRecorder` with the namespace of the publisher, and start it, as in the main function of [multiprocess_video_recorder.py](./multiprocess_video_recorder.py).
 Note that realtime video-encoding is computationally expensive, recording at 30 fps on laptops is not always possible.
 The video recorder will try to keep up with the framerate, but will drop frames if it can't.

@@ -4,7 +4,9 @@
 #
 # Usage:
 # 1. Make sure to update version numbers in ALL package pyproject.toml files before running this script.
-# 2. Sync the workspace: `uv sync` (installs the `build` and `twine` dev tools used below).
+# 2. Set up a dev environment with the `build` and `twine` tools available on PATH:
+#    - uv:    `uv sync`, then `source .venv/bin/activate`
+#    - conda: `conda activate airo-mono && pip install -r dev-requirements.txt`
 # 3. Make sure you have access to the PyPI projects and have your PyPI API tokens ready.
 # 4. Run this script from airo-mono's root directory as `./scripts/build-airo-mono.sh`.
 # 5. Follow the prompts to build and publish the packages.
@@ -57,7 +59,7 @@ fi
 for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
   cd "${package}" || exit 1
   echo "Building package: ${package}"
-  uv run python -m build
+  python -m build
   echo "Done"
   cd ..
 done
@@ -73,7 +75,7 @@ fi
 for package in airo-camera-toolkit airo-dataset-tools airo-robots airo-spatial-algebra airo-typing; do
   cd "${package}" || exit 1
   echo "Publishing package: ${package}"
-  uv run twine upload dist/*
+  twine upload dist/*
   echo "Done"
   cd ..
 done

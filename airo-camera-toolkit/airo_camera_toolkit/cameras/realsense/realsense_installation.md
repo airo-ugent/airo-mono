@@ -29,9 +29,9 @@ from airo_camera_toolkit.cameras import Realsense  # lazy: only loads pyrealsens
 # or:
 from airo_camera_toolkit.cameras.realsense.realsense import Realsense
 ```
-In this directory run:
+With your environment active (`.venv` or `airo-mono` conda env), in this directory run:
 ```
-uv run python realsense.py
+python realsense.py
 ```
 Complete the prompts. If everything looks normal, congrats, you successfully completed the installation! :tada:
 

@@ -4,15 +4,14 @@ This file will get you started with the ZED2i cameras.
 ## 1. ZED SDK
 The first step is to install the ZED SDK (version 5.0 or higher), before installing:
 * Ensure you have **nvidia-drivers** installed, check with `nvidia-smi`. The installer will automatically install a CUDA 11.X+ version is you do not have it.
-* During the setup, you will be asked whether the **Python API** should be installed. Make sure to **activate** the venv you want to use with the ZED cameras (e.g. the workspace's `.venv` created by `uv sync`). (You can also answer `no` and install the Python package later.)
+* During the setup, you will be asked whether the **Python API** should be installed. Make sure to **activate** the environment you want to use with the ZED cameras (the workspace's `.venv` created by `uv sync`, or a conda env). (You can also answer `no` and install the Python package later.)
 * You can say `no` to the AI-model stuff.
 
 Now follow this [ZED Installation Guide](https://www.stereolabs.com/docs/installation/linux/).
 You only need to complete the first part `Download and Install the ZED SDK`.
 
- > If you did not install the Python API during the SDK setup, you can install it now (from the repo root, with the workspace `.venv` active):
+ > If you did not install the Python API during the SDK setup, you can install it now with your env active (`.venv` or `airo-mono` conda env):
 > ```
-> source .venv/bin/activate
 > python /usr/local/zed/get_python_api.py
 >```
 >If this fails, install the dependencies from the [ZED Python API Installation](https://www.stereolabs.com/docs/app-development/python/install/).
@@ -51,9 +50,9 @@ Now We will test whether our `airo_camera_toolkit can access the ZED cameras.
 > from airo_camera_toolkit.cameras.zed.zed import Zed
 > ```
 
-In this directory run:
+With your environment active (`.venv` or `airo-mono` conda env), in this directory run:
 ```
-uv run python zed.py
+python zed.py
 ```
 Complete the prompts. If everything looks normal, congrats, you successfully completed the installation! :tada:
 

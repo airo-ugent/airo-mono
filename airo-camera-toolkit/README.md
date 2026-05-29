@@ -16,9 +16,10 @@ airo-camera-toolkit/
 ```
 
 ## Installation
-This package is a member of the `airo-mono` uv workspace, so it is installed automatically when you run `uv sync` at the repo root (see the root [README](../README.md)). To install it standalone in another environment:
+This package is a member of the `airo-mono` uv workspace, so it is installed automatically when you run `uv sync` at the repo root (see the root [README](../README.md)). It is also installed in editable mode by the `environment.yaml` conda recipe. To install it standalone into another environment:
 ```
-uv pip install .
+pip install .          # plain pip / conda env
+uv pip install .       # uv-managed env
 ```
 This will already allow you to use the hardware-independent functionality of this package, e.g. image conversion and projection.
 Depending on the hardware you are using, you might need to complete additional installation.
@@ -28,7 +29,7 @@ Instructions can be found in the following files:
 
 Additionally, to ensure you have `airo-robots` installed for the hand-eye calibration, install the extra dependencies:
 ```
-uv pip install '.[hand-eye-calibration]'
+pip install '.[hand-eye-calibration]'
 ```
 
 ## Getting started with cameras

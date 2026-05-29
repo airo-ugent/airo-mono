@@ -21,7 +21,7 @@ Furthermore, there is code for testing the hardware implementations: `manual_tes
 But since this requires attaching a physical camera, these are 'user tests' which should be done manually by developers/users.
 Each camera implementation can be run as a script and will execute the relevant tests, providing instructions on what to look out for.
 
-For example, to test your ZED installation:
+For example, to test your ZED installation (with your `.venv` or `airo-mono` conda env active):
 ```
-uv run python zed.py
+python zed.py
 ```

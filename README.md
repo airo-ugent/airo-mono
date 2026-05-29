@@ -19,6 +19,8 @@ Want to learn more about our vision? Check out the in-depth explanation [here](d
 - [Installation](#installation-)
   - [Option 1: Installation from PyPI](#option-1-installation-from-pypi-)
   - [Option 2: Local clone](#option-2-local-clone-)
+    - [2.1 uv method (recommended)](#21-uv-method-recommended)
+    - [2.2 Conda method](#22-conda-method)
   - [Option 3: Git submodule](#option-3-git-submodule-)
 - [Developer guide](#developer-guide-)
   - [Setup](#setup)
@@ -120,7 +122,10 @@ pip install airo-camera-toolkit airo-dataset-tools airo-robots
 
 ### Option 2: Local clone 📥
 
-We use [uv](https://docs.astral.sh/uv/) to manage the development environment. Install it first (see the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)), then:
+We support two ways to set up a local development environment. **uv is recommended** but conda is also supported.
+
+#### 2.1 uv method (recommended)
+Install [uv](https://docs.astral.sh/uv/) (see the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)), then:
 
 ```bash
 git clone https://github.com/airo-ugent/airo-mono.git
@@ -128,7 +133,22 @@ cd airo-mono
 uv sync
 ```
 
-This creates a `.venv` with all packages installed in editable mode (uv resolves the local airo-* packages via the workspace declared in [`pyproject.toml`](pyproject.toml)). Activate it with `source .venv/bin/activate`, or prefix commands with `uv run` (e.g. `uv run pytest`).
+This creates a `.venv` with all packages installed in editable mode. Activate it with `source .venv/bin/activate`, or prefix commands with `uv run` (e.g. `uv run pytest`).
+
+To pull in optional hardware extras: `uv sync --extra realsense --extra recording` (see `[project.optional-dependencies]` in `airo-camera-toolkit/pyproject.toml`).
+
+#### 2.2 Conda method
+Make sure you have a version of conda e.g. [miniconda](https://docs.anaconda.com/free/miniconda/) installed. To make the conda environment creation faster, we recommend configuring the [libmamba solver](https://www.anaconda.com/blog/a-faster-conda-for-a-growing-community) first.
+
+Then run:
+```bash
+git clone https://github.com/airo-ugent/airo-mono.git
+cd airo-mono
+conda env create -f environment.yaml
+conda activate airo-mono
+pip install -r dev-requirements.txt   # if you want the dev tools
+```
+This creates a conda environment called `airo-mono` with all packages installed in editable mode. Note that `environment.yaml` and `dev-requirements.txt` are kept in sync with the uv `[project]` and `[dependency-groups] dev` tables in `pyproject.toml`.
 
 ### Option 3: Git submodule 🚇
 You can add this repo as a submodule and install the relevant packages afterwards with regular pip commands. This allows to seamlessly make contributions to this repo whilst working on your own project or if you want to pin on a specific version.
@@ -144,11 +164,11 @@ More about submodules can be found [here](https://git-scm.com/book/en/v2/Git-Too
 
 ## Developer guide 🛠️
 ### Setup
-After running `uv sync` (see the [installation section](#option-2-local-clone-)), install the pre-commit hooks:
+After setting up your environment (see [Option 2: Local clone](#option-2-local-clone-)), install the pre-commit hooks:
 ```
-uv run pre-commit install
+pre-commit install   # or: uv run pre-commit install
 ```
-Dev tools (mypy, pytest, pre-commit, build, twine, ...) are declared in the `dev` dependency group in [`pyproject.toml`](pyproject.toml) and installed automatically by `uv sync`.
+Dev tools (mypy, pytest, pre-commit, build, twine, ...) are declared in the `dev` dependency group in [`pyproject.toml`](pyproject.toml) (installed by `uv sync`) and mirrored in `dev-requirements.txt` (installed by `pip install -r dev-requirements.txt` for conda users).
 
 ### Coding style 👮
 We use [pre-commit](https://pre-commit.com/) to automatically enforce coding standards before every commit.
@@ -198,7 +218,7 @@ airo-package/
 ```
 2. **Integrate with CI:** update the CI workflow matrices to include your package.
 3. **Update Documentation:**  add your package to this README
-4. **Installation:** add the package to the `[tool.uv.workspace] members` and `[tool.uv.sources]` tables in the root [`pyproject.toml`](pyproject.toml), and to `scripts/build-airo-mono.sh`.
+4. **Installation:** add the package to the `[tool.uv.workspace] members` and `[tool.uv.sources]` tables in the root [`pyproject.toml`](pyproject.toml), to the `pip:` list in `environment.yaml`, and to `scripts/build-airo-mono.sh`.
 
 ### Command Line Interfaces 💻
 For convenient access to specific functions, we provide command-line interfaces (CLIs). This lets you quickly perform tasks like visualizing COCO datasets or starting hand-eye calibration without the need to write Python scripts to change arguments (e.g., changing a data path or robot IP address).
