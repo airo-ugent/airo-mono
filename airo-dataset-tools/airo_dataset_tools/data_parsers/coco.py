@@ -154,6 +154,10 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
         for v in self.keypoints[2::3]:
             if v > 0:
                 labeled_keypoints += 1
+
+        if self.num_keypoints is None:
+            self.num_keypoints = labeled_keypoints
+
         if labeled_keypoints != self.num_keypoints:
             raise ValueError(
                 f"num_keypoints {self.num_keypoints} does not match number of labeled of keypoints {labeled_keypoints} for annotation {self.id}"
