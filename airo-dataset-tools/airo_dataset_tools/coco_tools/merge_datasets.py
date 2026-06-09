@@ -1,5 +1,6 @@
 """merge 2 coco datasets into one"""
 
+import glob
 import json
 import pathlib
 import shutil
@@ -79,14 +80,19 @@ def merge_coco_image_folders(dataset1_base_dir: str, dataset2_base_dir: str, tar
 
     # find all images in the base dirs
     # iteratively search for all images in the base dirs and subdirs
-    import glob 
-    dataset1_image_paths = [pathlib.Path(image_path) for image_path in glob.glob(str(dataset1_base_dir_path / "**" / "*"), recursive=True)]
-    dataset2_image_paths = [pathlib.Path(image_path) for image_path in glob.glob(str(dataset2_base_dir_path / "**" / "*"), recursive=True)]
-
-    print(len(dataset1_image_paths), len(dataset2_image_paths))
+    dataset1_image_paths = [
+        pathlib.Path(image_path) for image_path in glob.glob(str(dataset1_base_dir_path / "**" / "*"), recursive=True)
+    ]
+    dataset2_image_paths = [
+        pathlib.Path(image_path) for image_path in glob.glob(str(dataset2_base_dir_path / "**" / "*"), recursive=True)
+    ]
     # remove all non image files
-    dataset1_image_paths = [image_path for image_path in dataset1_image_paths if image_path.suffix in [".jpg", ".jpeg", ".png"]]
-    dataset2_image_paths = [image_path for image_path in dataset2_image_paths if image_path.suffix in [".jpg", ".jpeg", ".png"]]
+    dataset1_image_paths = [
+        image_path for image_path in dataset1_image_paths if image_path.suffix in [".jpg", ".jpeg", ".png"]
+    ]
+    dataset2_image_paths = [
+        image_path for image_path in dataset2_image_paths if image_path.suffix in [".jpg", ".jpeg", ".png"]
+    ]
 
     target_image_dir = target_dir_path
     target_image_dir.mkdir(parents=True, exist_ok=True)
@@ -96,16 +102,20 @@ def merge_coco_image_folders(dataset1_base_dir: str, dataset2_base_dir: str, tar
     ):
         # ensure directory exists
         if not (target_image_dir / image_path.relative_to(dataset1_base_dir_path)).parent.exists():
-            (target_image_dir / image_path.relative_to(dataset1_base_dir_path)).parent.mkdir(parents=True, exist_ok=True)
+            (target_image_dir / image_path.relative_to(dataset1_base_dir_path)).parent.mkdir(
+                parents=True, exist_ok=True
+            )
 
         shutil.copy(image_path, target_image_dir / image_path.relative_to(dataset1_base_dir_path))
 
     for image_path in tqdm.tqdm(
         dataset2_image_paths, desc=f"copying images from {dataset2_base_dir_path.name} to {target_dir_path}"
-    ):        # ensure directory exists
+    ):
         if not (target_image_dir / image_path.relative_to(dataset2_base_dir_path)).parent.exists():
-            (target_image_dir / image_path.relative_to(dataset2_base_dir_path)).parent.mkdir(parents=True, exist_ok=True)
-            
+            (target_image_dir / image_path.relative_to(dataset2_base_dir_path)).parent.mkdir(
+                parents=True, exist_ok=True
+            )
+
         if not (target_image_dir / image_path.relative_to(dataset2_base_dir_path)).exists():
             shutil.copy(image_path, target_image_dir / image_path.relative_to(dataset2_base_dir_path))
 
@@ -121,10 +131,8 @@ def merge_coco_datasets(json_path_1: str, json_path_2: str, target_json_path: st
     # take image path from coco, first dir after parent dir of json is the base image dir
     # load the jsons
 
-
-    image_path_1 = pathlib.Path(json_path_1).parent 
-    image_path_2 = pathlib.Path(json_path_2).parent 
-    print(image_path_1, image_path_2)
+    image_path_1 = pathlib.Path(json_path_1).parent
+    image_path_2 = pathlib.Path(json_path_2).parent
 
     merge_coco_image_folders(str(image_path_1), str(image_path_2), str(pathlib.Path(target_json_path).parent))
 

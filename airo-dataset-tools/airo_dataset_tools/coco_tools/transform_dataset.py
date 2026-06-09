@@ -52,7 +52,6 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
 
     # check if seg masks are not empty arrays
     for annotation in coco_dataset.annotations:
-        print(annotation.segmentation)
         if isinstance(annotation.segmentation, list) and len(annotation.segmentation) == 0:
             print("Empty segmentation mask found. Skipping segmentation transformation.")
             transform_segmentation = False
