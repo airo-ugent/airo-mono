@@ -96,29 +96,36 @@ class BinarySegmentationMask:
         self.bitmap = bitmap
 
     @classmethod
+    def from_polygon(cls, polygon: List[Polygon], width: int, height: int) -> BinarySegmentationMask:
+        """Create a BinarySegmentationMask from a list of COCO polygons."""
+        rles = mask.frPyObjects(polygon, height, width)
+        rle = mask.merge(rles)
+        return cls(mask.decode(rle))
+
+    @classmethod
+    def from_rle_dict(cls, rle_dict: RLEDict, width: int, height: int) -> BinarySegmentationMask:
+        """Create a BinarySegmentationMask from a COCO RLE dict (compressed or uncompressed)."""
+        if isinstance(rle_dict["counts"], list):
+            rle = mask.frPyObjects(rle_dict, height, width)
+        else:
+            rle = rle_dict
+        return cls(mask.decode(rle))
+
+    @classmethod
+    def from_bitmap(cls, bitmap: np.ndarray) -> BinarySegmentationMask:
+        """Create a BinarySegmentationMask from a binary numpy array."""
+        return cls(bitmap)
+
+    @classmethod
     def from_coco_segmentation_mask(
         cls, segmentation: Segmentation, width: int, height: int
     ) -> BinarySegmentationMask:
-        """Convert a coco segmentation mask to a bitmap. based on coco"""
-
-        # convert to encoded RLE if required
+        """Convert a coco segmentation mask to a bitmap."""
         if isinstance(segmentation, list):
-            # polygon [list[list[float]]]
-            rles = mask.frPyObjects(segmentation, height, width)
-            rle = mask.merge(rles)
+            return cls.from_polygon(segmentation, width, height)
         elif isinstance(segmentation, dict):
-            if isinstance(segmentation["counts"], list):
-                # uncompressed RLE
-                rle = mask.frPyObjects(segmentation, height, width)
-            else:
-                # encoded RLE
-                rle = segmentation
-
-        # decode encoded RLE to bitmap
-        else:
-            raise ValueError("segmentation must be a valid coco segmentation mask")
-        bitmap = mask.decode(rle)
-        return BinarySegmentationMask(bitmap)
+            return cls.from_rle_dict(segmentation, width, height)
+        raise ValueError("segmentation must be a valid coco segmentation mask")
 
     @property
     def area(self) -> float:
