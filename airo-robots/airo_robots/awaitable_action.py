@@ -1,6 +1,8 @@
 import enum
+import inspect
 import time
 import warnings
+from types import FrameType
 from typing import Callable, Optional
 
 
@@ -42,6 +44,12 @@ class AwaitableAction:
         self._default_timeout = default_timeout
         self._default_sleep_resolution = default_sleep_resolution
 
+        # The below values are stored to give better warnings when a timeout occurs.
+        # They store the file and line where this AwaitableAction was created.
+        frame = _get_previous_frame()
+        self._created_file = frame.f_code.co_filename
+        self._created_line = frame.f_lineno
+
     def wait(self, timeout: Optional[float] = None, sleep_resolution: Optional[float] = None) -> ACTION_STATUS_ENUM:
         """Busy waiting until the termination condition returns true, or until timeout.
 
@@ -66,9 +74,10 @@ class AwaitableAction:
         # the result of some measurements.
         sleep_resolution = sleep_resolution or self._default_sleep_resolution
         timeout = timeout or self._default_timeout
-        assert (
-            sleep_resolution > 0.001
-        ), "sleep resolution must be at least 1 ms, otherwise the relative error of a sleep becomes too large to be meaningful"
+        if sleep_resolution <= 0.001:
+            raise ValueError(
+                "sleep resolution must be at least 1 ms, otherwise the relative error of a sleep becomes too large to be meaningful"
+            )
         if not self.status == ACTION_STATUS_ENUM.EXECUTING:
             return self.status
         while True:
@@ -78,8 +87,25 @@ class AwaitableAction:
                 self.status = ACTION_STATUS_ENUM.SUCCEEDED
                 return self.status
             if timeout < 0:
-                warnings.warn("Action timed out. Make sure this was expected.")
+                prev_frame = _get_previous_frame()
+                warnings.warn(
+                    f"""Action timed out. Make sure this was expected.
+    This AwaitableAction was created at:
+        {self._created_file}:{self._created_line}.
+    `wait` was called from:
+        {prev_frame.f_code.co_filename}:{prev_frame.f_lineno}."""
+                )
+
                 return ACTION_STATUS_ENUM.TIMEOUT
 
     def is_done(self) -> bool:
         return self.status == ACTION_STATUS_ENUM.SUCCEEDED
+
+
+def _get_previous_frame() -> FrameType:
+    """Returns the frame of the caller of the function that calls this function."""
+    frame = inspect.currentframe()
+    assert frame is not None  # for mypy
+    frame = frame.f_back
+    assert frame is not None  # for mypy
+    return frame

@@ -278,7 +278,7 @@ class AnnotationWindow:
         window_name = "Annotation window"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(window_name, 1280, 720)
-        cv2.setMouseCallback(window_name, self.mouse_callback)  # type: ignore[attr-defined] # cv2 4.8 misses attribute
+        cv2.setMouseCallback(window_name, self.mouse_callback)
 
         while True:
             image = self.original_image.copy()
@@ -337,6 +337,8 @@ if __name__ == "__main__":
         }
 
         image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image from {image_path}")
         annotations = get_manual_annotations(image, annotation_spec)
 
         pp = pprint.PrettyPrinter(indent=4)

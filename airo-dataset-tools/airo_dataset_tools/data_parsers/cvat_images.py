@@ -98,7 +98,8 @@ class Point(AnnotationItem):
     @field_validator("points")
     @classmethod
     def has_two_coordinates(cls, v: str) -> str:
-        assert len(v.split(",")) == 2, "each point must be a single 2D coordinate for the AIRO flow."
+        if len(v.split(",")) != 2:
+            raise ValueError("each point must be a single 2D coordinate for the AIRO flow.")
         return v
 
 

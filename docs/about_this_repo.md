@@ -24,7 +24,7 @@ ROS 2 is a great tool but makes it hard to create clean code (duplication of lau
 As it is such a generic framework, ROS also comes with a steep learning curve, and we have quite some short-term (student) projects where we don't want the student spending 50% of the project on learning ROS in order to simply move a robot from A to B.
 Furthermore, we also want to be able to use our code in static/dynamic simulations, and setting up an entire ros stack for the simulated hardware is sometimes too much overhead.
 
-Therefore we opted to provide 'framework-agnostic code' in the form of python packages. This is not a provably right choice, it is driven by (limited) personal experience.
+Therefore we opted to provide 'framework-agnostic code' in the form of python packages. This is not a provably right choice, it is driven by personal experience.
 
 It is important to keep an eye on the scope of this repo, to avoid reinventing the wheel too much. Once you have complex use cases, you should definitely consider using ROS 2 and the frameworks built on top of it, or similar frameworks such as Drake. As we provide our code in barebone python, you can easily wrap our code in a ROS node and be on your way.
 

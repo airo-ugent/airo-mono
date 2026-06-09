@@ -45,7 +45,7 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
         print("not transforming keypoints due to pydantic validation error")
         print(e)
         transform_keypoints = False
-    
+
     # check if bboxes and masks are present
     transform_bbox = all(annotation.bbox is not None for annotation in coco_dataset.annotations)
     transform_segmentation = all(annotation.segmentation is not None for annotation in coco_dataset.annotations)
@@ -57,7 +57,7 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
             print("Empty segmentation mask found. Skipping segmentation transformation.")
             transform_segmentation = False
             break
-    
+
     print(f"Transforming keypoints = {transform_keypoints}")
     print(f"Transforming bbox = {transform_bbox}")
     print(f"Transforming segmentation = {transform_segmentation}")
@@ -97,7 +97,8 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
         all_masks = []
         for annotation in annotations:
             if transform_keypoints:
-                assert isinstance(annotation, CocoKeypointAnnotation)
+                if not isinstance(annotation, CocoKeypointAnnotation):
+                    raise TypeError("coco_dataset must be a CocoKeypointsDataset if transform_keypoints is True")
                 all_keypoints_xy.extend(annotation.keypoints)
                 # convert coco keypoints to list of (x,y) keypoints
 
@@ -116,7 +117,7 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
             if transform_segmentation:
                 # convert segmentation to binary mask
                 mask = annotation.segmentation
-                assert mask is not None
+                assert mask is not None  # for mypy
                 bitmap = BinarySegmentationMask.from_coco_segmentation_mask(
                     mask, coco_image.width, coco_image.height
                 ).bitmap
@@ -162,7 +163,8 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
             all_transformed_masks = transformed["masks"]
         for annotation in annotations:
             if transform_keypoints:
-                assert isinstance(annotation, CocoKeypointAnnotation)
+                if not isinstance(annotation, CocoKeypointAnnotation):
+                    raise TypeError("coco_dataset must be a CocoKeypointsDataset if transform_keypoints is True")
                 transformed_keypoints = all_transformed_keypoints_xy[: len(annotation.keypoints) // 3]
                 all_transformed_keypoints_xy = all_transformed_keypoints_xy[len(annotation.keypoints) // 3 :]
 

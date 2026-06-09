@@ -46,11 +46,16 @@ class OpenCVVideoCapture(RGBCamera):
 
         self._intrinsics_matrix = intrinsics_matrix
 
-        self.fps = self.video_capture.get(cv2.CAP_PROP_FPS)
+        self._fps = int(self.video_capture.get(cv2.CAP_PROP_FPS))
         self._resolution = (
             math.floor(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
             math.floor(self.video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT)),
         )
+
+    @property
+    def fps(self) -> int:
+        """The frames per second of the camera."""
+        return self._fps
 
     @property
     def resolution(self) -> CameraResolutionType:
@@ -77,17 +82,17 @@ class OpenCVVideoCapture(RGBCamera):
             )
         return self._intrinsics_matrix
 
-    def _grab_images(self) -> None:
+    def grab_images(self) -> None:
         ret, image = self.video_capture.read()
         if not ret:  # When streaming a video, we will at some point reach the end.
             raise EOFError("Can't receive frame (stream end?). Exiting...")
 
         self._frame = image
 
-    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
+    def retrieve_rgb_image(self) -> NumpyFloatImageType:
         return ImageConverter.from_opencv_format(self._frame).image_in_numpy_format
 
-    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+    def retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
         return ImageConverter.from_opencv_format(self._frame).image_in_numpy_int_format
 
 
@@ -106,7 +111,8 @@ if __name__ == "__main__":
     cv2.namedWindow("OpenCV Webcam RGB", cv2.WINDOW_NORMAL)
 
     while True:
-        color_image = camera.get_rgb_image_as_int()
+        camera.grab_images()
+        color_image = camera.retrieve_rgb_image_as_int()
         color_image = ImageConverter.from_numpy_int_format(color_image).image_in_opencv_format
 
         cv2.imshow("OpenCV Webcam RGB", color_image)

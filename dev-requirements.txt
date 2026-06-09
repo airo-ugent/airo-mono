@@ -6,3 +6,4 @@ pytest-cov # coverage
 nbmake # pytest notebook
 build  # build distributions
 bump-my-version # version bumping
+twine  # upload to pypi

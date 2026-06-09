@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [airo-typing,airo-spatial-algebra,airo-camera-toolkit, airo-robots, airo-teleop,airo-dataset-tools] #TODO: autodiscover?
+        package: [airo-typing,airo-spatial-algebra,airo-camera-toolkit, airo-robots,airo-dataset-tools] #TODO: autodiscover?
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
@@ -25,6 +25,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel
         pip install mypy
-        pip install airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ airo-teleop/ airo-dataset-tools/
+        pip install airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/  airo-dataset-tools/
     - name: Run type checker
       run: mypy ${{matrix.package}}/
