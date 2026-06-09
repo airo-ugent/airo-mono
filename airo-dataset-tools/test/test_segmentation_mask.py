@@ -57,6 +57,52 @@ def test_coco_segmentation_loading():
             assert segmentation_mask.bitmap.shape == (height, width)
 
 
+def test_from_polygon():
+    # Polygon round-trip is inherently lossy; test that from_polygon produces a valid mask
+    polygon = [[1.0, 1.0, 1.0, 9.0, 9.0, 9.0, 9.0, 1.0]]  # rectangle
+    result = BinarySegmentationMask.from_polygon(polygon, width=10, height=10)
+    assert isinstance(result, BinarySegmentationMask)
+    assert result.bitmap.shape == (10, 10)
+    assert result.area > 0
+
+
+def test_from_compressed_rle():
+    bitmap = np.zeros((10, 10))
+    bitmap[0, 0] = 1
+    bitmap[1, 1:3] = 1
+    segmentation_mask = BinarySegmentationMask(bitmap)
+
+    compressed_rle = segmentation_mask.as_compressed_rle
+    reconstructed = BinarySegmentationMask.from_rle_dict(compressed_rle, width=10, height=10)
+    assert np.array_equal(reconstructed.bitmap, bitmap)
+
+
+def test_from_uncompressed_rle():
+    bitmap = np.zeros((10, 10))
+    bitmap[2, 2:5] = 1
+    bitmap[3, 2:5] = 1
+
+    # Derive uncompressed RLE from the bitmap (column-major / Fortran order)
+    flat = np.asfortranarray(bitmap.astype(np.uint8)).flatten(order="F")
+    counts = []
+    for val, group in __import__("itertools").groupby(flat):
+        counts.append(sum(1 for _ in group))
+    # COCO uncompressed RLE must start with the count of zeros
+    if flat[0] != 0:
+        counts.insert(0, 0)
+    uncompressed_rle = {"counts": counts, "size": [10, 10]}
+
+    reconstructed = BinarySegmentationMask.from_rle_dict(uncompressed_rle, width=10, height=10)
+    assert np.array_equal(reconstructed.bitmap, bitmap)
+
+
+def test_from_bitmap():
+    bitmap = np.zeros((10, 10))
+    bitmap[4:6, 4:6] = 1
+    reconstructed = BinarySegmentationMask.from_bitmap(bitmap)
+    assert np.array_equal(reconstructed.bitmap, bitmap)
+
+
 if __name__ == "__main__":
     test_encoded_rle_creation()
     test_coco_segmentation_loading()
