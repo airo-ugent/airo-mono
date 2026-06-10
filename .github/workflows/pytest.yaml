@@ -7,6 +7,11 @@ on:
       - main
       - ci-dev
 
+# Cancel superseded runs on the same PR branch; never cancel pushes (run_id is unique).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   tests:
     name: Run Unit Tests
@@ -19,35 +24,46 @@ jobs:
         package: [airo-typing,airo-spatial-algebra, airo-camera-toolkit, airo-robots, airo-dataset-tools] #TODO: autodiscover?
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-        cache-dependency-path: |
-            **/setup.py
-            **/requirements*.txt
+    - uses: astral-sh/setup-uv@v4
+      with:
+        # Cache uv's wheel download/build cache so venv rebuilds (on a setup.py
+        # change) don't re-download heavy deps like open3d/opencv/rerun-sdk.
+        enable-cache: true
+        cache-dependency-glob: "**/setup.py"
+        # When the venv cache hits, the install step is skipped and uv never
+        # runs, so its cache dir is absent — don't fail the post-step on that.
+        ignore-nothing-to-cache: true
 
-    - name: Install package
+    - uses: actions/cache@v4
+      id: cache-venv
+      with:
+        path: .venv
+        key: venv-pytest-${{ matrix.python-version }}-${{ hashFiles('**/setup.py') }}
+
+    - name: Install packages
+      if: steps.cache-venv.outputs.cache-hit != 'true'
       run: |
-        python -m pip install --upgrade pip
-        pip install wheel setuptools
-        pip install "pytest<8.0.0"
-        pip install airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ airo-dataset-tools/
+        uv venv .venv --python ${{ matrix.python-version }}
+        uv pip install --python .venv/bin/python pytest nbmake
+        uv pip install --python .venv/bin/python airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ airo-dataset-tools/
+
     - name: Run Tests
-      run: pytest ${{matrix.package}}/
+      run: .venv/bin/pytest ${{ matrix.package }}/
+
     - name: Run Notebooks
-      # cannot use glob patter because that fails if no notebooks are found (in which case the glob pattern is empty.)
+      # cannot use glob pattern because that fails if no notebooks are found (in which case the glob pattern is empty.)
       # so cannot do something like pytest --nbmake ${{matrix.package}}/**/*.ipynb
       # and we also don't want to re-execute all regular tests (pytest --nbmake .)
       # so manually iterate over all files and run pytest --nbmake on each one.
 
       # don't forget to enable glob! https://github.com/orgs/community/discussions/25638
       run: |
-        pip install nbmake
-        python -m ipykernel install --user --name airo-mono
+        .venv/bin/python -m ipykernel install --user --name airo-mono
         shopt -s globstar nullglob
         echo "Testing notebooks..."
-        for nb in ${{matrix.package}}/**/*.ipynb; do
-          pytest --nbmake $nb;
+        for nb in ${{ matrix.package }}/**/*.ipynb; do
+          .venv/bin/pytest --nbmake "$nb";
         done
