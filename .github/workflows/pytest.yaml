@@ -34,7 +34,11 @@ jobs:
         pip install wheel setuptools
         pip install "pytest<8.0.0"
         pip install airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ "airo-dataset-tools/[augmentations]"
-        pip install --force-reinstall opencv-contrib-python==4.10.0.84
+        # albumentations (via [augmentations]) and fiftyone (via [fiftyone]) both pull in
+        # opencv-python-headless, which conflicts with opencv-contrib-python — whichever is
+        # installed last overwrites the cv2 namespace. Force-reinstall contrib so it wins.
+        OPENCV_VERSION=$(grep -oP 'opencv-contrib-python==\K[^\s"]+' airo-dataset-tools/setup.py)
+        pip install --force-reinstall "opencv-contrib-python==$OPENCV_VERSION"
     - name: Run Tests
       run: pytest ${{matrix.package}}/
     - name: Run Notebooks
