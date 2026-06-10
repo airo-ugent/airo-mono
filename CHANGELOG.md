@@ -8,11 +8,16 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
 
 ### Added
+- `airo-dataset-tools`: `merge_coco_datasets` now supports nested image subdirectories — images are copied to the target preserving their relative directory structure.
+- `airo-dataset-tools`: `CocoKeypointAnnotation` now auto-fills `num_keypoints` when the field is absent or `None` in the source data.
+- `airo-dataset-tools`: `apply_transform_to_coco_dataset` now gracefully skips segmentation transformation when an annotation has an empty segmentation list (`[]`).
 - Added easier imports for airo-camera-toolkit cameras. Now, instead of `from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture` you can just write `from airo_camera_toolkit.cameras import OpenCVVideoCapture`. Based on [PEP 562](https://peps.python.org/pep-0562/). Fixes the old issue [#122](https://github.com/airo-ugent/airo-mono/issues/122).
 
 ### Changed
+- `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
 
 ### Fixed
 

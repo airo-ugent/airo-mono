@@ -44,8 +44,9 @@ class CharucoCornerDetectionResult(ArucoMarkerDetectionResult):
 
 def detect_aruco_markers(image: OpenCVIntImageType, dictionary: ArucoDictType) -> Optional[ArucoMarkerDetectionResult]:
     """Detect markers from `aruco_dict` dictionary in the `image`."""
-    marker_corners, marker_ids, _ = aruco.detectMarkers(image, dictionary)
-    if marker_corners is None or marker_ids is None:
+    detector = aruco.ArucoDetector(dictionary)
+    marker_corners, marker_ids, _ = detector.detectMarkers(image)
+    if not marker_corners or marker_ids is None:
         return None
     marker_corners_array = np.stack(marker_corners)
     marker_corners_array = refine_corner_detection(image, marker_corners_array)
@@ -59,12 +60,8 @@ def detect_charuco_corners(
     charuco_board: CharucoBoardType,
 ) -> Optional[CharucoCornerDetectionResult]:
     """Detect CharuCo corners in the image using the detected markers in `markers_detection_result`."""
-    nb_corners, charuco_corners, charuco_ids = aruco.interpolateCornersCharuco(
-        markerCorners=markers_detection_result.corners,  # type: ignore # typed as Seq but accepts np.ndarray
-        markerIds=markers_detection_result.ids,
-        image=image,
-        board=charuco_board,
-    )
+    charuco_detector = aruco.CharucoDetector(charuco_board)
+    charuco_corners, charuco_ids, _, _ = charuco_detector.detectBoard(image)
     if charuco_corners is None or charuco_ids is None:
         return None
     charuco_corners = refine_corner_detection(image, charuco_corners)
@@ -99,23 +96,20 @@ def get_poses_of_aruco_markers(
     dist_coeffs: Optional[np.ndarray] = None,
 ) -> Optional[List[HomogeneousMatrixType]]:
     """Get the poses of the detected markers in `markers_detection_result`."""
-    rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
-        corners=markers_detection_result.corners,  # type: ignore # typed as Seq but accepts np.ndarray
-        markerLength=marker_size,
-        cameraMatrix=camera_matrix,
-        distCoeffs=dist_coeffs,
-    )
-    if rvecs is None or tvecs is None:
-        return None
-    elif rvecs.shape != tvecs.shape:
-        raise ValueError("rvecs and tvecs should have the same shape. Do you have multiple markers with the same ID?")
+    # Object points for a single marker (top-left, top-right, bottom-right, bottom-left)
+    half = marker_size / 2
+    obj_points = np.array([[-half, half, 0], [half, half, 0], [half, -half, 0], [-half, -half, 0]], dtype=np.float32)
 
-    # combine the rvecs and tvecs into a single pose matrix
-    marker_poses_in_camera_frame = [
-        SE3Container.from_rotation_vector_and_translation(rvec[0], tvec).homogeneous_matrix
-        for rvec, tvec in zip(rvecs, tvecs)
-    ]
-    return marker_poses_in_camera_frame
+    _dist = dist_coeffs if dist_coeffs is not None else np.zeros((4, 1), dtype=np.float32)
+    marker_poses_in_camera_frame = []
+    for corner in markers_detection_result.corners:
+        success, rvec, tvec = cv2.solvePnP(obj_points, corner[0], camera_matrix, _dist)
+        if not success:
+            continue
+        pose = SE3Container.from_rotation_vector_and_translation(rvec.flatten(), tvec.flatten()).homogeneous_matrix
+        marker_poses_in_camera_frame.append(pose)
+
+    return marker_poses_in_camera_frame if marker_poses_in_camera_frame else None
 
 
 def get_pose_of_charuco_board(
@@ -139,10 +133,8 @@ def get_pose_of_charuco_board(
     if obj_points is None or img_points is None:
         return None
 
-    # Use solvePnP for pose estimation
-    success, rvec, tvec = cv2.solvePnP(
-        obj_points, img_points, camera_matrix, dist_coeffs  # type: ignore[arg-type]  # dist_coeffs may be None, which OpenCV accepts
-    )
+    _dist = dist_coeffs if dist_coeffs is not None else np.zeros((4, 1), dtype=np.float32)
+    success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, _dist)
     if (rvec is None and tvec is None) or not success:
         return None
     # combine the rvec and tvec into a single pose matrix

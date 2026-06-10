@@ -12,12 +12,14 @@ setuptools.setup(
     install_requires=[
         "numpy>=2.0",
         "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
-        "opencv-contrib-python==4.10.0.84",  # See airo-camera-toolkit setup.py for explanation
-        "opencv-python-headless==4.10.0.84",  # See airo-camera-toolkit setup.py for explanation
+        # opencv-contrib-python and opencv-python-headless both install a cv2 module and conflict
+        # with each other — whichever is installed last wins. fiftyone (in the [fiftyone] extra)
+        # pulls in opencv-python-headless. To ensure contrib wins after installing the extra, run:
+        #   pip install --force-reinstall opencv-contrib-python==4.10.0.84
+        "opencv-contrib-python==4.10.0.84",
         "pycocotools",
         "xmltodict",
         "tqdm",
-        "fiftyone",  # visualization
         "Pillow",
         "types-Pillow",
         "albumentations",
@@ -25,6 +27,9 @@ setuptools.setup(
         "airo-typing>=2026.1.0",
         "airo-spatial-algebra>=2026.1.0",
     ],
+    extras_require={
+        "fiftyone": ["fiftyone"],
+    },
     packages=setuptools.find_packages(exclude=["test"]),
     entry_points={
         "console_scripts": [
