@@ -1,6 +1,12 @@
 from typing import Any
 
-import albumentations as A
+try:
+    import albumentations as A
+except ImportError as e:
+    raise ImportError(
+        "albumentations is required for this module. Install it with: "
+        'pip install "airo-dataset-tools[augmentations]"'
+    ) from e
 import numpy as np
 from PIL import Image
 
