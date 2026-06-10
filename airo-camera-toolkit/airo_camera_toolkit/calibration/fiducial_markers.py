@@ -100,9 +100,10 @@ def get_poses_of_aruco_markers(
     half = marker_size / 2
     obj_points = np.array([[-half, half, 0], [half, half, 0], [half, -half, 0], [-half, -half, 0]], dtype=np.float32)
 
+    _dist = dist_coeffs if dist_coeffs is not None else np.zeros((4, 1), dtype=np.float32)
     marker_poses_in_camera_frame = []
     for corner in markers_detection_result.corners:
-        success, rvec, tvec = cv2.solvePnP(obj_points, corner[0], camera_matrix, dist_coeffs)  # type: ignore[arg-type]  # dist_coeffs may be None, which OpenCV accepts
+        success, rvec, tvec = cv2.solvePnP(obj_points, corner[0], camera_matrix, _dist)
         if not success:
             continue
         pose = SE3Container.from_rotation_vector_and_translation(rvec.flatten(), tvec.flatten()).homogeneous_matrix
@@ -132,10 +133,8 @@ def get_pose_of_charuco_board(
     if obj_points is None or img_points is None:
         return None
 
-    # Use solvePnP for pose estimation
-    success, rvec, tvec = cv2.solvePnP(
-        obj_points, img_points, camera_matrix, dist_coeffs  # type: ignore[arg-type]  # dist_coeffs may be None, which OpenCV accepts
-    )
+    _dist = dist_coeffs if dist_coeffs is not None else np.zeros((4, 1), dtype=np.float32)
+    success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, _dist)
     if (rvec is None and tvec is None) or not success:
         return None
     # combine the rvec and tvec into a single pose matrix
