@@ -48,7 +48,7 @@ jobs:
       run: |
         uv venv .venv --python ${{ matrix.python-version }}
         uv pip install --python .venv/bin/python pytest nbmake
-        uv pip install --python .venv/bin/python airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ airo-dataset-tools/
+        uv pip install --python .venv/bin/python airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ "airo-dataset-tools/[augmentations]"
 
     - name: Run Tests
       run: .venv/bin/pytest ${{ matrix.package }}/
