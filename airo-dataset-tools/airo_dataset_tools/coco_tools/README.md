@@ -7,7 +7,7 @@ Overview of the functionality:
 * [COCO](#dataset-loading) dataset loading
 * COCO dataset creation (e.g. with synthetic data or CVAT)
 * [CVAT labeling workflow](../../airo_dataset_tools/cvat_labeling/readme.md)
-* [FiftyOne visualisation](#fiftyone-visualisation) (see CLI)
+* [FiftyOne visualisation](#fiftyone-visualisation)* [FiftyOne visualisation](see CLI, requires the `[fiftyone]` extra — see [installation note](../../README.md#fiftyone-installation))
 * [Merging datasets](#merging-datasets) — combine two COCO datasets into one, see [merge_datasets.py](merge_datasets.py)
 * [Splitting datasets](#splitting-datasets) — split a dataset into train/val/test subsets, see [split_dataset.py](split_dataset.py)
 * [Applying transforms](#applying-transforms) — resize, flip, etc. via Albumentations, see [transform_dataset.py](transform_dataset.py)
