@@ -33,7 +33,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install wheel setuptools
         pip install "pytest<8.0.0"
-        pip install airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ airo-dataset-tools/
+        pip install airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ "airo-dataset-tools/[augmentations]"
     - name: Run Tests
       run: pytest ${{matrix.package}}/
     - name: Run Notebooks
