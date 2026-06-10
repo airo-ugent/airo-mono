@@ -8,6 +8,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
 
 ### Added
 - `airo-dataset-tools`: `merge_coco_datasets` now supports nested image subdirectories — images are copied to the target preserving their relative directory structure.
@@ -17,7 +18,6 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Changed
 - `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
-- `airo-dataset-tools`: moved `fiftyone` from a default dependency to an optional one (`pip install airo-dataset-tools[fiftyone]`). `fiftyone` installs `opencv-python-headless`, which conflicts with `opencv-contrib-python` by overwriting the `cv2` module. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for the recommended install procedure.
 
 ### Fixed
 
