@@ -14,17 +14,22 @@ Python monorepo for robot manipulation tooling from the [AIRO lab](https://airo.
 
 ## Setup
 
+Use `uv` to create a local `.venv` inside the repo — this keeps the environment in the project folder, which works well with sandbox path restrictions.
+
 ```bash
-conda env create -f environment.yaml   # Python 3.10; installs all packages in editable mode
-pip install -r dev-requirements.txt    # pre-commit, mypy, pytest, build, twine, etc.
+uv venv --python 3.10            # creates .venv/ in the repo root
+uv pip install -e airo-typing/ airo-spatial-algebra/ airo-robots/ airo-camera-toolkit/ airo-dataset-tools/
+uv pip install -r dev-requirements.txt
 pre-commit install
 ```
 
-To install a single package in editable mode (without conda):
+To install a single package:
 
 ```bash
-pip install -e airo-robots/
+uv pip install -e airo-robots/
 ```
+
+The human-oriented full setup (conda + all packages) is documented in `README.md`.
 
 ## Development Workflow
 
