@@ -7,7 +7,7 @@ Overview of the functionality:
 * [COCO](#dataset-loading) dataset loading
 * COCO dataset creation (e.g. with synthetic data or CVAT)
 * [CVAT labeling workflow](../../airo_dataset_tools/cvat_labeling/readme.md)
-* FiftyOne visualisation (see CLI)
+* FiftyOne visualisation (see CLI, requires the `[fiftyone]` extra — see [installation note](../../README.md#fiftyone-installation))
 * Applying Albumentation transforms (e.g. resizing, flipping,...) to a COCO Keypoints dataset and its annotations, see [transform_dataset.py](transform_dataset.py)
 * Converting COCO instances to YOLO format, see [coco_instances_to_yolo.py](coco_instances_to_yolo.py)
 
