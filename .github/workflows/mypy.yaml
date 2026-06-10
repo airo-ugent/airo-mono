@@ -7,6 +7,11 @@ on:
       - main
       - ci-dev
 
+# Cancel superseded runs on the same PR branch; never cancel pushes (run_id is unique).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   mypy:
     name: Run MyPy
@@ -21,6 +26,11 @@ jobs:
       with:
         python-version: '3.11'
     - uses: astral-sh/setup-uv@v4
+      with:
+        # Cache uv's wheel download/build cache so venv rebuilds (on a setup.py
+        # change) don't re-download heavy deps like open3d/opencv/rerun-sdk.
+        enable-cache: true
+        cache-dependency-glob: "**/setup.py"
 
     - uses: actions/cache@v4
       id: cache-venv

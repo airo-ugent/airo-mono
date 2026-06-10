@@ -2,6 +2,11 @@ name: Format
 
 on: push # run always
 
+# Cancel superseded runs on the same PR branch; never cancel pushes (run_id is unique).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   pre-commit:
     name: Format
