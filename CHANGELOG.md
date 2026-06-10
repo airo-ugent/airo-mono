@@ -11,6 +11,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
 
 ### Added
+- Added `CLAUDE.md` with repo overview, setup instructions, coding conventions, and development workflow guidelines for Claude Code.
 - `airo-dataset-tools`: `merge_coco_datasets` now supports nested image subdirectories — images are copied to the target preserving their relative directory structure.
 - `airo-dataset-tools`: `CocoKeypointAnnotation` now auto-fills `num_keypoints` when the field is absent or `None` in the source data.
 - `airo-dataset-tools`: `apply_transform_to_coco_dataset` now gracefully skips segmentation transformation when an annotation has an empty segmentation list (`[]`).
