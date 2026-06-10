@@ -34,6 +34,7 @@ jobs:
         pip install wheel setuptools
         pip install "pytest<8.0.0"
         pip install airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ "airo-dataset-tools/[augmentations]"
+        pip install --force-reinstall opencv-contrib-python==4.10.0.84
     - name: Run Tests
       run: pytest ${{matrix.package}}/
     - name: Run Notebooks
