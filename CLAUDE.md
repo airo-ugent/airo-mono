@@ -26,6 +26,33 @@ To install a single package in editable mode (without conda):
 pip install -e airo-robots/
 ```
 
+## Development Workflow
+
+### Commits
+
+Pre-commit hooks must pass on every commit. If not already installed:
+
+```bash
+pre-commit install
+```
+
+Never bypass hooks with `--no-verify`. If a hook fails, fix the issue and commit again.
+
+### Features & PRs
+
+Before opening or marking a PR ready:
+
+1. Run tests for every package touched by the change:
+   ```bash
+   make pytest airo-robots/          # repeat for each affected package
+   ```
+2. Update `CHANGELOG.md` under the `## Unreleased` section. Use the appropriate sub-section (`Added`, `Changed`, `Fixed`, `Removed`, `Breaking changes`) and prefix the entry with the package name, e.g.:
+   ```
+   - `airo-robots`: Added support for UR20.
+   ```
+
+---
+
 ## Running Tests
 
 ```bash
