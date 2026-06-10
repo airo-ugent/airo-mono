@@ -16,6 +16,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Added easier imports for airo-camera-toolkit cameras. Now, instead of `from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture` you can just write `from airo_camera_toolkit.cameras import OpenCVVideoCapture`. Based on [PEP 562](https://peps.python.org/pep-0562/). Fixes the old issue [#122](https://github.com/airo-ugent/airo-mono/issues/122).
 
 ### Changed
+- `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
+- `airo-dataset-tools`: moved `fiftyone` from a default dependency to an optional one (`pip install airo-dataset-tools[fiftyone]`). `fiftyone` installs `opencv-python-headless`, which conflicts with `opencv-contrib-python` by overwriting the `cv2` module. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for the recommended install procedure.
 
 ### Fixed
 
