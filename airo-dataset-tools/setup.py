@@ -13,8 +13,9 @@ setuptools.setup(
         "numpy>=2.0",
         "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
         # opencv-contrib-python and opencv-python-headless both install a cv2 module and conflict
-        # with each other — whichever is installed last wins. fiftyone (in the [fiftyone] extra)
-        # pulls in opencv-python-headless. To ensure contrib wins after installing the extra, run:
+        # with each other — whichever is installed last wins. Both fiftyone (in the [fiftyone]
+        # extra) and albumentations (in the [augmentations] extra) pull in opencv-python-headless.
+        # To ensure contrib wins after installing either extra, run:
         #   pip install --force-reinstall opencv-contrib-python==4.10.0.84
         "opencv-contrib-python==4.10.0.84",
         "pycocotools",
@@ -22,12 +23,12 @@ setuptools.setup(
         "tqdm",
         "Pillow",
         "types-Pillow",
-        "albumentations",
         "click",
         "airo-typing>=2026.1.0",
         "airo-spatial-algebra>=2026.1.0",
     ],
     extras_require={
+        "augmentations": ["albumentations"],
         "fiftyone": ["fiftyone"],
     },
     packages=setuptools.find_packages(exclude=["test"]),

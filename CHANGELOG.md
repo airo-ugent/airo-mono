@@ -9,6 +9,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Breaking changes
 - `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
+- `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
 
 ### Added
 - Added `CLAUDE.md` with repo overview, setup instructions, coding conventions, and development workflow guidelines for Claude Code.

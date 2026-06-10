@@ -2,7 +2,13 @@ import json
 import os
 from typing import Any, Callable, List, Optional
 
-import albumentations as A
+try:
+    import albumentations as A
+except ImportError as e:
+    raise ImportError(
+        "albumentations is required for this module. Install it with: "
+        'pip install "airo-dataset-tools[augmentations]"'
+    ) from e
 import cv2
 import numpy as np
 import tqdm
