@@ -102,7 +102,7 @@ def get_poses_of_aruco_markers(
 
     marker_poses_in_camera_frame = []
     for corner in markers_detection_result.corners:
-        success, rvec, tvec = cv2.solvePnP(obj_points, corner[0], camera_matrix, dist_coeffs)
+        success, rvec, tvec = cv2.solvePnP(obj_points, corner[0], camera_matrix, dist_coeffs)  # type: ignore[arg-type]  # dist_coeffs may be None, which OpenCV accepts
         if not success:
             continue
         pose = SE3Container.from_rotation_vector_and_translation(rvec.flatten(), tvec.flatten()).homogeneous_matrix
