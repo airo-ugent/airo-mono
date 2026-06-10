@@ -49,6 +49,11 @@ jobs:
         uv venv .venv --python ${{ matrix.python-version }}
         uv pip install --python .venv/bin/python pytest nbmake
         uv pip install --python .venv/bin/python airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ "airo-dataset-tools/[augmentations]"
+        # albumentations (via [augmentations]) and fiftyone (via [fiftyone]) both pull in
+        # opencv-python-headless, which conflicts with opencv-contrib-python — whichever is
+        # installed last overwrites the cv2 namespace. Force-reinstall contrib so it wins.
+        OPENCV_VERSION=$(grep -oP 'opencv-contrib-python==\K[^\s"]+' airo-dataset-tools/setup.py)
+        uv pip install --python .venv/bin/python --force-reinstall "opencv-contrib-python==$OPENCV_VERSION"
 
     - name: Run Tests
       run: .venv/bin/pytest ${{ matrix.package }}/
