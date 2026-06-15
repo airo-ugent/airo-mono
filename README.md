@@ -19,8 +19,9 @@ Want to learn more about our vision? Check out the in-depth explanation [here](d
 - [Installation](#installation-)
   - [Option 1: Installation from PyPI](#option-1-installation-from-pypi-)
   - [Option 2: Local clone](#option-2-local-clone-)
-    - [2.1 Conda method](#21-conda-method)
-    - [2.2 Pip method](#22-pip-method)
+    - [2.1 uv method (recommended)](#21-uv-method-recommended)
+    - [2.2 Conda method](#22-conda-method)
+    - [2.3 Pip method](#23-pip-method)
   - [Option 3: Git submodule](#option-3-git-submodule-)
 - [Developer guide](#developer-guide-)
   - [Setup](#setup)
@@ -122,7 +123,19 @@ pip install airo-camera-toolkit airo-dataset-tools airo-robots
 
 ### Option 2: Local clone 📥
 
-#### 2.1 Conda method
+#### 2.1 uv method (recommended)
+We recommend [uv](https://docs.astral.sh/uv/) for fast, reproducible environments. uv is optional: the conda and pip methods below remain fully supported.
+
+Make sure you have [uv installed](https://docs.astral.sh/uv/getting-started/installation/), then run:
+```bash
+git clone https://github.com/airo-ugent/airo-mono.git
+cd airo-mono
+uv venv
+source .venv/bin/activate
+uv pip install -e airo-robots -e airo-dataset-tools -e airo-camera-toolkit
+```
+
+#### 2.2 Conda method
 Make sure you have a version of conda e.g. [miniconda](https://docs.anaconda.com/free/miniconda/) installed.
 To make the conda environment creation faster, we recommend configuring the [libmamba solver](https://www.anaconda.com/blog/a-faster-conda-for-a-growing-community) first.
 
@@ -134,8 +147,8 @@ conda env create -f environment.yaml
 ```
 This will create a conda environment called `airo-mono` with all packages installed. You can activate the environment with `conda activate airo-mono`.
 
-#### 2.2 Pip method
-While we prefer using conda, you can also install the packages simply with pip:
+#### 2.3 Pip method
+You can also install the packages directly with pip:
 
 ```bash
 git clone https://github.com/airo-ugent/airo-mono.git
@@ -157,11 +170,12 @@ More about submodules can be found [here](https://git-scm.com/book/en/v2/Git-Too
 
 ## Developer guide 🛠️
 ### Setup
-Create and activate the conda environment, then run:
+Create and activate your environment (uv, conda, or pip; see [Installation](#installation-)), then run:
 ```
 pip install -r dev-requirements.txt
 pre-commit install
 ```
+When using uv, you can prefix these with `uv pip` as you prefer (e.g. `uv pip install -r dev-requirements.txt`).
 
 ### Coding style 👮
 We use [pre-commit](https://pre-commit.com/) to automatically enforce coding standards before every commit.
