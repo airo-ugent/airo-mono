@@ -8,6 +8,7 @@ The following combinations of hardware and communication options are currently i
 | Hardware | Communication | Implementation |
 |----------|:----------|----------------|
 | UR robots | RTDE | [ur_rtde.py](airo_robots/manipulators/hardware/ur_rtde.py) |
+| RealMan robots | RealMan Python API | [realman.py](airo_robots/manipulators/hardware/realman.py) |
 | Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
 
 Each hardware implementation module will have a `__main__` codeblock that runs the tests for that hardware implementation. This is useful to check if the hardware is connected correctly and the implementation is working as expected. But it is also the place to be to get an idea of how to use the implementation.
@@ -31,6 +32,12 @@ robot.do_new_action(new_action)
 See [below](#notes-on-the-different-types-of-interfaces-for-hardware-interaction) for a lengthier discussion of (async) hardware interactions and why the interface is implemented like this.
 ## Installation
 You can simply pip install this package. Note that some hardware implementations have additional dependencies, which are for now included in the setup.py but might be separated later on.
+
+RealMan support uses the manufacturer's optional Python SDK:
+
+```bash
+pip install "airo-robots[realman]"
+```
 ## Structure
 a more detailled overview of the structure and content of this package:
 
@@ -42,6 +49,7 @@ airo_robots/
         bimanual_position_manipulator.py    # base class for bimanual manipulators
         hardware/                           # contains the implementations of the inferfaces
             manual_gripper_testing.py       # code for manually testing hw implementations
+            realman.py                      # implementation for RealMan robots over the official Python API
             ur_rtde.py                      # implementation of the interfaces for UR robots over the RTDE interface
 
     grippers/

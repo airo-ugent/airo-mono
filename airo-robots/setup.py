@@ -19,4 +19,5 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(),
     package_data={"airo_robots": ["py.typed"]},
+    extras_require={"realman": ["Robotic_Arm"]},
 )
