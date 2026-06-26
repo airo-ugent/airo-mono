@@ -22,6 +22,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
 
 ### Fixed
+- `airo-camera-toolkit`: `get_pose_of_charuco_board` now returns `None` instead of crashing when fewer than 6 charuco corners are detected (OpenCV's DLT algorithm requires at least 6 point correspondences). Fixes [#199](https://github.com/airo-ugent/airo-mono/issues/199).
 
 ### Removed
 
