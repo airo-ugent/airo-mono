@@ -12,6 +12,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
 
 ### Added
+- `airo-robots`: Added `RealmanControl.get_wrench`, which reads the RealMan end-effector six-axis force/torque sensor as a `[Fx, Fy, Fz, Mx, My, Mz]` numpy wrench (returns the tool/payload gravity-compensated external wrench by default, or the raw reading with `compensated=False`).
 - `airo-robots`: Added `RealmanControl`, a `PositionManipulator` implementation for RealMan robots using the official Python API.
 - Added `CLAUDE.md` with repo overview, setup instructions, coding conventions, and development workflow guidelines for Claude Code.
 - `airo-dataset-tools`: `merge_coco_datasets` now supports nested image subdirectories — images are copied to the target preserving their relative directory structure.
@@ -20,9 +21,13 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Added easier imports for airo-camera-toolkit cameras. Now, instead of `from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture` you can just write `from airo_camera_toolkit.cameras import OpenCVVideoCapture`. Based on [PEP 562](https://peps.python.org/pep-0562/). Fixes the old issue [#122](https://github.com/airo-ugent/airo-mono/issues/122).
 
 ### Changed
+- `airo-robots`: `RealmanControl.inverse_kinematics` now logs an actionable warning when a solve fails — it decodes the RealMan SDK result code (unreachable / over a joint limit / invalid orientation) and, for six-DOF arms, uses the all-solutions solver to report whether solutions exist but exceed a joint limit (naming the blocking joint) instead of only returning `None`.
 - `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
 
 ### Fixed
+- `airo-robots`: fixed the RealMan unit tests, which all errored in `RealmanControl.__init__` because the `FakeRealmanRobot` test double lacked `rm_set_avoid_singularity_mode`. Added a regression test asserting `move_to_tcp_pose` / `move_linear_to_tcp_pose` raise `RobotConfigurationException` when the controller reports no IK solution.
+- `airo-camera-toolkit`: `save_calibration_sample` no longer crashes for non-UR robots — it previously called UR-specific `robot.rtde_control.endTeachMode()`/`teachMode()` directly, so pressing `S` during `hand-eye-calibration` with `--robot_type realman` raised `AttributeError`. Teach mode start/stop is now dispatched per robot type and shared with `hand_eye_calibration.py`.
+- `airo-camera-toolkit`: the `hand-eye-calibration` CLI command now actually exposes `--robot_type`. The handler accepted a `robot_type` parameter (to select `ur` or `realman`), but no matching `@click.option` was declared, so the value was unreachable from the CLI and always defaulted to `ur`.
 
 ### Removed
 

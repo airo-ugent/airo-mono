@@ -23,6 +23,18 @@ class FakeRealmanRobot:
         self.pose = np.zeros(6)
         self.last_call: tuple[Any, ...] = ()
         self.closed = False
+        # Error code returned by rm_algo_inverse_kinematics; non-zero simulates an
+        # unreachable pose (no IK solution).
+        self.inverse_kinematics_error_code = 0
+        # All-solutions solver fake: the solutions it returns, each a list of joint
+        # angles in degrees. The diagnostics check these against the joint limits
+        # reported by rm_get_joint_min_pos / rm_get_joint_max_pos ([-180, 180] deg).
+        self.inverse_kinematics_all_solutions: list[list[float]] = []
+        # Six-axis force sensor fake: raw reading (includes the tool weight) and the
+        # gravity-compensated external wrench, each [Fx, Fy, Fz, Mx, My, Mz].
+        self.raw_force_data = np.zeros(6)
+        self.external_force_data = np.zeros(6)
+        self.force_data_error_code = 0
 
     def rm_create_robot_arm(self, ip_address: str, port: int) -> Any:
         self.last_connection = (ip_address, port)
@@ -46,11 +58,23 @@ class FakeRealmanRobot:
     def rm_get_arm_event_call_back(self, callback: Callable[[Any], None]) -> None:
         self.callback = callback
 
+    def rm_set_avoid_singularity_mode(self, mode: int) -> int:
+        self.avoid_singularity_mode = mode
+        return 0
+
     def rm_get_joint_degree(self) -> tuple[int, list[float]]:
         return 0, self.joints_degrees.tolist()
 
     def rm_get_current_arm_state(self) -> tuple[int, dict[str, list[float]]]:
         return 0, {"pose": self.pose.tolist()}
+
+    def rm_get_force_data(self) -> tuple[int, dict[str, list[float]]]:
+        return self.force_data_error_code, {
+            "force_data": self.raw_force_data.tolist(),
+            "zero_force_data": self.external_force_data.tolist(),
+            "work_zero_force_data": self.external_force_data.tolist(),
+            "tool_zero_force_data": self.external_force_data.tolist(),
+        }
 
     def rm_movej(self, joints: list[float], speed: int, radius: int, connect: int, block: int) -> int:
         self.last_call = ("rm_movej", joints, speed, radius, connect, block)
@@ -80,7 +104,16 @@ class FakeRealmanRobot:
 
     def rm_algo_inverse_kinematics(self, params: FakeInverseKinematicsParameters) -> tuple[int, list[float]]:
         self.last_inverse_kinematics_parameters = params
-        return 0, params.near
+        return self.inverse_kinematics_error_code, params.near
+
+    def rm_algo_inverse_kinematics_all(self, params: FakeInverseKinematicsParameters) -> SimpleNamespace:
+        self.last_inverse_kinematics_all_parameters = params
+        q_solve = [list(solution) + [0.0] * (8 - len(solution)) for solution in self.inverse_kinematics_all_solutions]
+        while len(q_solve) < 8:
+            q_solve.append([0.0] * 8)
+        return SimpleNamespace(
+            result=0, num=len(self.inverse_kinematics_all_solutions), q_ref=[0.0] * 8, q_solve=q_solve
+        )
 
     def rm_algo_forward_kinematics(self, joints: list[float], flag: int) -> list[float]:
         self.last_forward_kinematics_call = (joints, flag)
@@ -170,6 +203,46 @@ def test_kinematics_convert_joint_angles(robot: realman.RealmanControl) -> None:
     assert pose[:3, 3] == pytest.approx([0.1, 0.2, 0.3])
 
 
+def test_unreachable_pose_moves_raise(robot: realman.RealmanControl) -> None:
+    from airo_robots.exceptions import RobotConfigurationException
+
+    robot.robot.inverse_kinematics_error_code = 1  # simulate IK failure / unreachable pose
+
+    with pytest.raises(RobotConfigurationException):
+        robot.move_to_tcp_pose(np.eye(4))
+    with pytest.raises(RobotConfigurationException):
+        robot.move_linear_to_tcp_pose(np.eye(4))
+
+    # No motion command should have been sent to the controller.
+    assert robot.robot.last_call == ()
+
+
+def test_inverse_kinematics_failure_diagnostics(robot: realman.RealmanControl) -> None:
+    # The fake controller reports joint limits of [-180, 180] deg (= [-pi, pi] rad).
+    params = FakeInverseKinematicsParameters([0.0] * 6, [0.0] * 6, 1)
+
+    # No analytical solutions -> the target is out of reach.
+    robot.robot.inverse_kinematics_all_solutions = []
+    assert "out of reach" in robot._diagnose_ik_failure(params)
+
+    # Solutions exist but every one drives a joint past its limit (J1 at 200 deg,
+    # J3 at 300 deg) -> reachable position, orientation outside the joint range.
+    robot.robot.inverse_kinematics_all_solutions = [
+        [200.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 300.0, 0.0, 0.0, 0.0],
+    ]
+    message = robot._diagnose_ik_failure(params)
+    assert "joint limit" in message
+    assert "J1" in message and "J3" in message
+
+    # At least one solution within the joint limits -> reachable; seeded-solver issue.
+    robot.robot.inverse_kinematics_all_solutions = [
+        [200.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    ]
+    assert "within the joint limits" in robot._diagnose_ik_failure(params)
+
+
 def test_joint_limits_and_close(robot: realman.RealmanControl) -> None:
     assert robot._is_joint_configuration_reachable(np.zeros(6))
     assert not robot._is_joint_configuration_reachable(np.full(6, 2 * np.pi))
@@ -178,3 +251,18 @@ def test_joint_limits_and_close(robot: realman.RealmanControl) -> None:
     robot.close()
     assert robot.robot.closed
     robot.close()
+
+
+def test_get_wrench_returns_compensated_or_raw_reading(robot: realman.RealmanControl) -> None:
+    robot.robot.raw_force_data = np.asarray([1.0, 2.0, 9.81, 0.1, 0.2, 0.3])
+    robot.robot.external_force_data = np.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+    # By default the gravity-compensated external wrench is returned.
+    assert robot.get_wrench() == pytest.approx(robot.robot.external_force_data)
+    assert robot.get_wrench(compensated=False) == pytest.approx(robot.robot.raw_force_data)
+
+
+def test_get_wrench_raises_without_force_sensor(robot: realman.RealmanControl) -> None:
+    robot.robot.force_data_error_code = 1
+    with pytest.raises(RuntimeError, match="rm_get_force_data"):
+        robot.get_wrench()

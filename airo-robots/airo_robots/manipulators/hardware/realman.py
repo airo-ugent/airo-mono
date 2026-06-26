@@ -17,6 +17,18 @@ from loguru import logger
 RealmanPoseType = np.ndarray
 """A RealMan pose ``[x, y, z, rx, ry, rz]`` in metres and radians."""
 
+WrenchType = np.ndarray
+"""A wrench ``[Fx, Fy, Fz, Mx, My, Mz]`` in newtons and newton-metres."""
+
+# Decoded result codes returned by ``rm_algo_inverse_kinematics`` (see the RealMan
+# SDK ``rm_robot_interface.rm_algo_inverse_kinematics`` docstring). Used to give an
+# actionable reason when inverse kinematics fails instead of a bare ``None``.
+_IK_RESULT_MESSAGES = {
+    1: "no solution found (target unreachable or all solutions exceed the joint limits)",
+    -1: "the reference joint configuration was empty or already exceeds the joint limits",
+    -2: "the target pose orientation is not a valid (unit) quaternion",
+}
+
 
 def _import_realman_api() -> ModuleType:
     """Import the optional RealMan SDK with an actionable error message."""
@@ -132,6 +144,41 @@ class RealmanControl(PositionManipulator):
         state = self._get_api_value("rm_get_current_arm_state")
         return self._convert_realman_pose_to_homogeneous_pose(np.asarray(state["pose"], dtype=float))
 
+    def get_wrench(self, compensated: bool = True) -> WrenchType:
+        """Get the end-effector six-axis force/torque reading.
+
+        Returns the wrench measured by the RealMan integrated force sensor as
+        ``[Fx, Fy, Fz, Mx, My, Mz]`` (newtons and newton-metres) in the sensor
+        frame. The sensor frame coincides with the tool frame at the zero pose:
+        +Z points out along the flange and the axes follow the right-hand rule.
+
+        Args:
+            compensated: If ``True`` (default), return the *external* wrench with
+                the static load of the mounted tool/payload removed (the
+                controller's gravity-compensated ``zero_force_data``), so a still
+                robot holding a constant payload reads near zero. If ``False``,
+                return the raw ``force_data`` that still includes the tool's own
+                weight.
+
+        Raises:
+            RuntimeError: If the controller call fails, e.g. because the
+                connected robot has no six-axis force sensor.
+        """
+        error_code, force = self.robot.rm_get_force_data()
+        if error_code != 0:
+            raise RuntimeError(
+                f"RealMan API call rm_get_force_data failed with error code {error_code}. "
+                f"The connected end-effector (force_type={self.force_type!r}) may not have a "
+                "six-axis force sensor."
+            )
+        key = "zero_force_data" if compensated else "force_data"
+        wrench = np.asarray(force[key], dtype=float)
+        if wrench.shape != (6,):
+            raise RuntimeError(
+                f"RealMan controller returned {key} with shape {wrench.shape}; expected (6,)."
+            )
+        return wrench
+
     def move_linear_to_tcp_pose(
         self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
     ) -> AwaitableAction:
@@ -222,7 +269,23 @@ class RealmanControl(PositionManipulator):
         tcp_pose: HomogeneousMatrixType,
         joint_configuration_near: Optional[JointConfigurationType] = None,
     ) -> Optional[JointConfigurationType]:
-        """Solve inverse kinematics, returning radians or ``None`` on failure."""
+        """Solve inverse kinematics for a TCP pose.
+
+        The RealMan SDK solver is seeded with ``joint_configuration_near`` (the
+        current configuration by default) and returns a single solution near that
+        seed. When it fails, the SDK's result code is decoded and logged as a
+        warning so callers can tell *why* a pose was rejected (unreachable / over a
+        joint limit / invalid orientation) rather than only seeing ``None``.
+
+        Args:
+            tcp_pose: target TCP pose as a row-major homogeneous matrix (metres).
+            joint_configuration_near: seed configuration in radians; defaults to the
+                current joint configuration.
+
+        Returns:
+            The solution joint configuration in radians, or ``None`` if the solver
+            reported a failure (the reason is logged at warning level).
+        """
         if joint_configuration_near is None:
             joint_configuration_near = self.get_joint_configuration()
         near = np.asarray(joint_configuration_near, dtype=float)
@@ -233,8 +296,72 @@ class RealmanControl(PositionManipulator):
         params = self._api.rm_inverse_kinematics_params_t(np.degrees(near).tolist(), pose.tolist(), 1)
         error_code, solution_degrees = self.robot.rm_algo_inverse_kinematics(params)
         if error_code != 0:
+            reason = _IK_RESULT_MESSAGES.get(error_code, "unknown error code")
+            logger.warning(
+                f"Inverse kinematics failed (code {error_code}: {reason}) for TCP pose "
+                f"position {pose[:3].round(3).tolist()} m, orientation (rx, ry, rz) "
+                f"{pose[3:].round(3).tolist()} rad.{self._diagnose_ik_failure(params)}"
+            )
             return None
         return np.radians(np.asarray(solution_degrees, dtype=float))
+
+    def _diagnose_ik_failure(self, params: Any) -> str:
+        """Best-effort extra detail for a failed IK solve (six-DOF arms only).
+
+        The single-solution solver only reports *that* it failed. This queries the
+        SDK's all-solutions solver to distinguish two very different causes: the
+        target being out of reach (no analytical solution exists) versus the
+        position being reachable while this particular orientation drives a joint
+        past its limit (solutions exist but every one is out of range). The latter
+        also names the blocking joint(s).
+
+        The returned solutions are checked against the controller's own reported
+        joint limits (the same limits used by :meth:`_is_joint_configuration_reachable`)
+        rather than the SDK's joint-limit helper, so the diagnosis stays consistent
+        and does not depend on optional SDK algorithm calls.
+
+        Args:
+            params: the populated ``rm_inverse_kinematics_params_t`` passed to the
+                single-solution solver.
+
+        Returns:
+            A leading-space sentence to append to the failure log, or an empty
+            string when no extra detail is available (e.g. not a six-DOF arm, or
+            the all-solutions solver is unavailable).
+        """
+        if self.dof != 6:
+            return ""
+        try:
+            all_solutions = self.robot.rm_algo_inverse_kinematics_all(params)
+            num_solutions = int(all_solutions.num)
+            solutions_degrees = [list(all_solutions.q_solve[index])[: self.dof] for index in range(num_solutions)]
+        except Exception as exception:  # the all-solutions algorithm is optional / SDK-version dependent
+            logger.debug(f"Could not query the all-solutions IK solver for diagnostics: {exception!r}")
+            return ""
+
+        if num_solutions <= 0:
+            return " No analytical solution exists: the target pose is out of reach."
+
+        blocking_joints: set[int] = set()
+        for solution_degrees in solutions_degrees:
+            solution = np.radians(np.asarray(solution_degrees, dtype=float))
+            if self._is_joint_configuration_reachable(solution):
+                return (
+                    f" {num_solutions} analytical solution(s) exist within the joint limits, so the pose "
+                    "is reachable; the seeded solver did not converge from the current configuration "
+                    "(retry with a different `joint_configuration_near` seed)."
+                )
+            over_limit = np.nonzero((solution < self._joint_lower_limits) | (solution > self._joint_upper_limits))[0]
+            blocking_joints.update(int(joint_index) + 1 for joint_index in over_limit)
+
+        if blocking_joints:
+            joints = ", ".join(f"J{joint}" for joint in sorted(blocking_joints))
+            return (
+                f" {num_solutions} analytical solution(s) exist but each exceeds a joint limit "
+                f"(blocking joint(s): {joints}): the position is reachable, but this orientation is "
+                "outside the joint range."
+            )
+        return f" {num_solutions} analytical solution(s) found."
 
     def forward_kinematics(self, joint_configuration: JointConfigurationType) -> HomogeneousMatrixType:
         """Calculate the TCP pose for a joint configuration."""

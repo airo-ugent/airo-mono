@@ -12,9 +12,30 @@ from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
 from airo_dataset_tools.data_parsers.pose import Pose
+from airo_robots.manipulators.hardware.realman import RealmanControl
 from airo_robots.manipulators.hardware.ur_rtde import URrtde
 from airo_robots.manipulators.position_manipulator import PositionManipulator
 from airo_typing import HomogeneousMatrixType, OpenCVIntImageType
+
+
+def _start_teach_mode(robot: PositionManipulator) -> None:
+    """Enable freedrive/drag-teach mode on a supported robot."""
+    if isinstance(robot, URrtde):
+        robot.rtde_control.teachMode()
+    elif isinstance(robot, RealmanControl):
+        robot.robot.rm_start_drag_teach(0)
+    else:
+        raise NotImplementedError(f"Teach mode not supported for robot of type {type(robot).__name__}.")
+
+
+def _stop_teach_mode(robot: PositionManipulator) -> None:
+    """Disable freedrive/drag-teach mode on a supported robot."""
+    if isinstance(robot, URrtde):
+        robot.rtde_control.endTeachMode()
+    elif isinstance(robot, RealmanControl):
+        robot.robot.rm_stop_drag_teach()
+    else:
+        raise NotImplementedError(f"Teach mode not supported for robot of type {type(robot).__name__}.")
 
 
 def create_calibration_data_dir(calibration_dir: Optional[str] = None) -> str:
@@ -45,7 +66,7 @@ def create_calibration_data_dir(calibration_dir: Optional[str] = None) -> str:
 
 
 def save_calibration_sample(
-    sample_index: int, robot: URrtde, camera: RGBCamera, data_dir: str
+    sample_index: int, robot: PositionManipulator, camera: RGBCamera, data_dir: str
 ) -> Tuple[HomogeneousMatrixType, OpenCVIntImageType]:
     """Collect a single calibration sample and save to the data_dir.
     A calibration data sample consists of an image and a TCP pose.
@@ -60,7 +81,7 @@ def save_calibration_sample(
         If charuco board detection is succesful, the TCP pose and the image, else None.
     """
     # Stop freedrive so robot is completely still at moment of the image capture
-    robot.rtde_control.endTeachMode()
+    _stop_teach_mode(robot)
 
     ROBOT_STOP_WAIT_TIME = 0.5
     time.sleep(ROBOT_STOP_WAIT_TIME)
@@ -83,7 +104,7 @@ def save_calibration_sample(
     with open(tcp_pose_filepath, "w") as f:
         json.dump(pose.model_dump(), f, indent=4)
 
-    robot.rtde_control.teachMode()
+    _start_teach_mode(robot)
 
     return tcp_pose, image_bgr
 
