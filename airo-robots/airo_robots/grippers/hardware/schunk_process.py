@@ -1,7 +1,7 @@
 import logging
 import multiprocessing as mp
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
 from typing import Any, Dict, Optional
 
@@ -23,7 +23,7 @@ class GripperCommand:
     """Command sent to the gripper process"""
 
     cmd_type: str
-    params: Dict[str, Any] = {}
+    params: Dict[str, Any] = field(default_factory=dict)
 
 
 # values obtained from https://schunk.com/be/nl/grijpsystemen/parallelgrijper/egk/egk-40-mb-m-b/p/000000000001491762
@@ -350,7 +350,7 @@ class SchunkGripperProcess(ParallelPositionGripper):
 if __name__ == "__main__":
     # Example usage
     # PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:13.3:1.0-port0,12,115200,8E1"
-    PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:1:1.0-port0,11,115200,8E1"
+    PORT = "/dev/serial/by-path/pci-0000:00:14.0-usb-0:1:1.0-port0,12,115200,8E1"
     gripper = SchunkGripperProcess(usb_interface=PORT)
 
     try:
