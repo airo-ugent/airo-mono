@@ -134,7 +134,10 @@ def get_pose_of_charuco_board(
         return None
 
     _dist = dist_coeffs if dist_coeffs is not None else np.zeros((4, 1), dtype=np.float32)
-    success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, _dist)
+    try:
+        success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, _dist)
+    except cv2.error:
+        return None
     if (rvec is None and tvec is None) or not success:
         return None
     # combine the rvec and tvec into a single pose matrix
