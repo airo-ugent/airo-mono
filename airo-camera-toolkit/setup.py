@@ -17,7 +17,7 @@ setuptools.setup(
         "click",
         "open3d",
         "loguru",
-        "zenoh",
+        "eclipse-zenoh",
         "airo-typing>=2026.1.0",
         "airo-spatial-algebra>=2026.1.0",
         "airo-dataset-tools>=2026.1.0",

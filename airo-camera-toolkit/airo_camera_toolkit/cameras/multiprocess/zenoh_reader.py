@@ -57,7 +57,7 @@ class ZenohReader:
 
     def _callback(self, sample: zenoh.Sample) -> None:
         with self._lock:
-            self._latest_bytes = bytes(sample.payload)
+            self._latest_bytes = sample.payload.to_bytes()
 
     def _wait_for_writer(
         self,
