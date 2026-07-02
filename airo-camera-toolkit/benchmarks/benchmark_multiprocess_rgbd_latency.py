@@ -37,7 +37,6 @@ from __future__ import annotations
 import argparse
 import multiprocessing
 import time
-from typing import List
 
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import (
@@ -111,6 +110,25 @@ class MockFullHDRGBDCamera(RGBDCamera):
 # ---------------------------------------------------------------------------
 
 
+def _receiver_worker(namespace: str, duration: float, result_queue: multiprocessing.Queue) -> None:
+    """Runs in its own subprocess: connects receiver, collects latency samples."""
+    import time
+
+    receiver = MultiprocessRGBDReceiver(namespace, enable_pointcloud=False)
+
+    latencies_ms = []
+    t_start = time.time()
+
+    while time.time() - t_start < duration:
+        receiver.grab_images()
+        t_received = time.time()
+        latency_ms = (t_received - receiver.get_current_timestamp()) * 1000.0
+        latencies_ms.append(latency_ms)
+
+    elapsed = time.time() - t_start
+    result_queue.put((latencies_ms, elapsed))
+
+
 def run_benchmark(duration: float, namespace: str, fps: float) -> None:
     multiprocessing.set_start_method("spawn", force=True)
 
@@ -141,24 +159,21 @@ def run_benchmark(duration: float, namespace: str, fps: float) -> None:
     )
     publisher.start()
 
+    result_queue: multiprocessing.Queue = multiprocessing.Queue()
+    receiver_proc = multiprocessing.Process(
+        target=_receiver_worker,
+        args=(namespace, duration, result_queue),
+    )
     print("Waiting for receiver to connect...")
-    receiver = MultiprocessRGBDReceiver(namespace, enable_pointcloud=False)
-    print("Connected. Collecting latency samples...\n")
-
-    latencies_ms: List[float] = []
     t_start = time.time()
-    frames_received = 0
-
-    while time.time() - t_start < duration:
-        receiver.grab_images()
-        t_received = time.time()
-        latency_ms = (t_received - receiver.get_current_timestamp()) * 1000.0
-        latencies_ms.append(latency_ms)
-        frames_received += 1
-
+    receiver_proc.start()
+    receiver_proc.join()
     elapsed = time.time() - t_start
+
     publisher.stop()
     publisher.join(timeout=5)
+
+    latencies_ms, elapsed = result_queue.get()
 
     # ---------------------------------------------------------------------------
     # Statistics
@@ -166,9 +181,9 @@ def run_benchmark(duration: float, namespace: str, fps: float) -> None:
     a = np.array(latencies_ms)
 
     print(f"{'─' * 60}")
-    print(f"  Results  ({frames_received} frames over {elapsed:.1f} s)")
+    print(f"  Results  ({len(a)} frames over {elapsed:.1f} s)")
     print(f"{'─' * 60}")
-    print(f"  Achieved FPS  : {frames_received / elapsed:.1f}")
+    print(f"  Achieved FPS  : {len(a) / elapsed:.1f}")
     print("  Latency (ms):")
     print(f"    mean        : {a.mean():.2f}")
     print(f"    std         : {a.std():.2f}")
