@@ -16,7 +16,10 @@ def serialize_frame(obj: Any) -> bytes:
     The schema (field order, shapes, dtypes) must be agreed upon by both sides
     via the corresponding ``template()`` classmethod.
     """
-    return b"".join(getattr(obj, f.name).tobytes() for f in dataclasses.fields(obj))
+    parts = [getattr(obj, f.name).ravel().view(np.uint8) for f in dataclasses.fields(obj)]
+    flat = np.empty(sum(p.nbytes for p in parts), dtype=np.uint8)
+    np.concatenate(parts, out=flat)
+    return bytes(flat)
 
 
 def deserialize_frame(template: T, data: bytes) -> T:

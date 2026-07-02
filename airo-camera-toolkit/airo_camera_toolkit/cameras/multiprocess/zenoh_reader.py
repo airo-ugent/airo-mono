@@ -46,18 +46,30 @@ class ZenohReader:
     ) -> None:
         self._template = template
         self._latest_bytes: Optional[bytes] = None
+        self._frame_count: int = 0
         self._lock = threading.Lock()
 
         self._subscriber = session.declare_subscriber(key_expr, self._callback)
         self._wait_for_writer(key_expr, timeout=timeout, warn_every=warn_every)
         atexit.register(self.stop)
 
+    @property
+    def frame_count(self) -> int:
+        """Number of messages received so far (monotonically increasing)."""
+        with self._lock:
+            return self._frame_count
+
     # ------------------------------------------------------------------
     # Internal helpers
 
     def _callback(self, sample: zenoh.Sample) -> None:
+        # Copy payload to local bytes BEFORE acquiring the lock.
+        # This keeps the lock acquisition brief and avoids blocking __call__
+        # while the SHM-to-bytes copy is in progress.
+        data = sample.payload.to_bytes()
         with self._lock:
-            self._latest_bytes = sample.payload.to_bytes()
+            self._latest_bytes = data
+            self._frame_count += 1
 
     def _wait_for_writer(
         self,
@@ -99,7 +111,10 @@ class ZenohReader:
         with self._lock:
             if self._latest_bytes is None:
                 raise WaitingForFirstMessageException("No data received yet — was the publisher started?")
-            return deserialize_frame(self._template, self._latest_bytes)
+            data = self._latest_bytes
+        # Deserialize outside the lock so the Zenoh callback can update
+        # _latest_bytes concurrently without blocking here.
+        return deserialize_frame(self._template, data)
 
     def stop(self) -> None:
         """Undeclare the subscriber and release its resources."""

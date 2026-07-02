@@ -112,18 +112,13 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     def grab_images(self) -> None:
         """Read the latest frame from shared memory."""
-        previous_timestamp = self._last_frame.frame_timestamp.item()
-
-        # Block until we get a frame with a newer timestamp
+        # Block until a new message arrives (compare frame counter, not timestamp).
+        # This avoids the expensive deserialization on every poll iteration.
         if self._block_until_new_frame:
-            while True:
-                self._last_frame = self._reader()
-                current_timestamp = self._last_frame.frame_timestamp.item()
-                if current_timestamp > previous_timestamp:
-                    break
-                time.sleep(0.001)  # Sleep briefly to avoid busy waiting
-        else:
-            self._last_frame = self._reader()
+            previous_count = self._reader.frame_count
+            while self._reader.frame_count == previous_count:
+                time.sleep(0.001)
+        self._last_frame = self._reader()
 
     @abstractmethod
     def _get_frame_buffer_template(self, width: int, height: int) -> Any:
