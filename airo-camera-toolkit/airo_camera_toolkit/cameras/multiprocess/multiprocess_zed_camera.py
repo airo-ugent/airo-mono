@@ -9,10 +9,10 @@ import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.frame_data import PointCloudBuffer, SpatialMapBuffer, ZedFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera import MultiprocessStereoRGBDReceiver
+from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import ZenohReader
+from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.cameras.zed.zed import Zed, ZedSpatialMap
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
 from airo_typing import CameraResolutionType, HomogeneousMatrixType, NumpyDepthMapType, NumpyIntImageType, PointCloud
 
 logger = loguru.logger
@@ -63,10 +63,10 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
                 (self._camera.resolution[0] * self._camera.resolution[1], 3),
                 dtype=np.uint8,
             )
-            self._pcd_writer = SMWriter(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_pcd",
-                idl_dataclass=PointCloudBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
+            self._pcd_writer = ZenohWriter(
+                session=self._session,
+                key_expr=f"{self._shared_memory_namespace}_pcd",
+                template=PointCloudBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
             )
 
         if self.enable_spatial_mapping:
@@ -75,10 +75,10 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
             self._spatial_map_chunk_sizes = np.zeros(self.max_spatial_map_chunks, dtype=np.int32)
             self._spatial_map_point_positions = np.zeros((self.max_spatial_map_points, 3), dtype=np.float32)
             self._spatial_map_point_colors = np.zeros((self.max_spatial_map_points, 3), dtype=np.uint8)
-            self._spatial_map_writer = SMWriter(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_spatial_map",
-                idl_dataclass=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+            self._spatial_map_writer = ZenohWriter(
+                session=self._session,
+                key_expr=f"{self._shared_memory_namespace}_spatial_map",
+                template=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
     def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
@@ -224,18 +224,18 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         super()._setup_frame_reader(resolution)
 
         if self.enable_pointcloud:
-            self._reader_pcd = SMReader(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_pcd",
-                idl_dataclass=PointCloudBuffer.template(resolution[0], resolution[1]),
+            self._reader_pcd = ZenohReader(
+                session=self._session,
+                key_expr=f"{self._shared_memory_namespace}_pcd",
+                template=PointCloudBuffer.template(resolution[0], resolution[1]),
             )
             self._last_pcd_frame = PointCloudBuffer.template(resolution[0], resolution[1])
 
         if self.enable_spatial_mapping:
-            self._reader_spatial_map = SMReader(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_spatial_map",
-                idl_dataclass=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+            self._reader_spatial_map = ZenohReader(
+                session=self._session,
+                key_expr=f"{self._shared_memory_namespace}_spatial_map",
+                template=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
             self._last_spatial_map_frame = SpatialMapBuffer.template(
                 self.max_spatial_map_chunks, self.max_spatial_map_points

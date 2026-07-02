@@ -4,11 +4,12 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+import zenoh
+from airo_camera_toolkit.cameras.multiprocess.base_publisher import _make_zenoh_config
 from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, ResolutionIdl
+from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import ZenohReader
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
 from airo_typing import CameraResolutionType
-from cyclonedds.domain import DomainParticipant
 from loguru import logger
 
 
@@ -31,8 +32,8 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self._shared_memory_namespace = shared_memory_namespace
         self._block_until_new_frame = block_until_new_frame
 
-        # Initialize the DDS domain participant
-        self._dp = DomainParticipant()
+        # Open a Zenoh session for receiving
+        self._session = zenoh.open(_make_zenoh_config())
 
         # Read static camera information
         self._resolution = self._read_resolution(shared_memory_namespace)
@@ -48,10 +49,10 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Set up the main frame data reader."""
         frame_buffer_template = self._get_frame_buffer_template(resolution[0], resolution[1])
 
-        self._reader = SMReader(
-            domain_participant=self._dp,
-            topic_name=self._shared_memory_namespace,
-            idl_dataclass=frame_buffer_template,
+        self._reader = ZenohReader(
+            session=self._session,
+            key_expr=self._shared_memory_namespace,
+            template=frame_buffer_template,
         )
 
         # Initialize an empty frame
@@ -67,8 +68,9 @@ class BaseCameraReceiver(RGBCamera, ABC):
     def _read_fps(self, shared_memory_namespace: str) -> int:
         """Read the camera FPS from shared memory."""
         logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
-        fps_reader = SMReader(self._dp, f"{shared_memory_namespace}_fps", FpsIdl.template())
+        fps_reader = ZenohReader(self._session, f"{shared_memory_namespace}_fps", FpsIdl.template())
         fps_data = fps_reader()
+        fps_reader.stop()
         assert isinstance(fps_data, FpsIdl)  # for mypy
         fps = int(fps_data.fps.item())
         logger.info(f"Camera FPS: {fps}")
@@ -77,8 +79,11 @@ class BaseCameraReceiver(RGBCamera, ABC):
     def _read_resolution(self, shared_memory_namespace: str) -> CameraResolutionType:
         """Read the camera resolution from shared memory."""
         logger.info(f"Reading resolution from {shared_memory_namespace}_resolution")
-        resolution_reader = SMReader(self._dp, f"{shared_memory_namespace}_resolution", ResolutionIdl.template())
+        resolution_reader = ZenohReader(
+            self._session, f"{shared_memory_namespace}_resolution", ResolutionIdl.template()
+        )
         resolution_data = resolution_reader()
+        resolution_reader.stop()
         assert isinstance(resolution_data, ResolutionIdl)  # for mypy
         resolution = (
             int(resolution_data.resolution[0]),
