@@ -112,6 +112,8 @@ Probably the best way to learn what `airo-mono` has to offer, is to look at the 
 | 👕 [`cloth-competition`](https://github.com/Victorlouisdg/cloth-competition) | airo-mono is the backbone of the [ICRA 2024 Cloth Competition](https://airo.ugent.be/cloth_competition/) 🏆! |
 | 🧪 [ITF World 2024](https://airo.ugent.be/news/itf2024/) | airo-mono powered our demo at ITF World 2024 |
 
+**Your project here?** [Contact us](mailto:mathieu.decoster@ugent.be).
+
 ## Installation 🔧
 
 ### Option 1: Installation from PyPI 📦
