@@ -6,6 +6,7 @@ import click
 from airo_camera_toolkit.calibration.fiducial_markers import AIRO_DEFAULT_ARUCO_DICT, AIRO_DEFAULT_CHARUCO_BOARD
 from airo_camera_toolkit.calibration.hand_eye_calibration import do_camera_robot_calibration
 from airo_camera_toolkit.cameras.camera_discovery import click_camera_options, discover_camera
+from airo_robots.manipulators.position_manipulator import PositionManipulator
 
 
 @click.group()
@@ -45,7 +46,7 @@ def hand_eye_calibration(
 
     aruco_dict = AIRO_DEFAULT_ARUCO_DICT
     charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
-    robot = None
+    robot: Optional[PositionManipulator] = None
     if robot_type == "ur":
         from airo_robots.manipulators.hardware.ur_rtde import URrtde
 
