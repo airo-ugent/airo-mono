@@ -123,7 +123,7 @@ def get_pose_of_charuco_board(
     charuco_corners = charuco_corners_detection_result.corners
     charuco_ids = charuco_corners_detection_result.ids
 
-    if len(charuco_ids) < 4:
+    if len(charuco_ids) < 6:
         return None
 
     # Use matchImagePoints to get the object and image points
