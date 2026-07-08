@@ -26,7 +26,6 @@ def hand_eye_calibration(
     calibration_dir: Optional[str] = None,
     camera_brand: Optional[str] = None,
     camera_serial_number: Optional[str] = None,
-
 ) -> None:
     """Do hand-eye calibration with a UR robot. Will open camera stream and visualize the detected board
     pose. Press S to capture pose, press Q to finish. Make sure the detections look good (corners/contours are
@@ -46,16 +45,20 @@ def hand_eye_calibration(
 
     aruco_dict = AIRO_DEFAULT_ARUCO_DICT
     charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
-    robot=None
+    robot = None
     if robot_type == "ur":
         from airo_robots.manipulators.hardware.ur_rtde import URrtde
+
         robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
     elif robot_type == "realman":
         from airo_robots.manipulators.hardware.realman import RealmanControl
+
         robot = RealmanControl(robot_ip)
     else:
-        raise NotImplementedError(f"Robot type {robot_type} is not supported yet. Only 'ur' and 'realman' are supported.")
-    
+        raise NotImplementedError(
+            f"Robot type {robot_type} is not supported yet. Only 'ur' and 'realman' are supported."
+        )
+
     camera = discover_camera(camera_brand, camera_serial_number)
     do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot, calibration_dir)
 

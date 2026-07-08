@@ -171,9 +171,7 @@ class RealmanControl(PositionManipulator):
         key = "zero_force_data" if compensated else "force_data"
         wrench = np.asarray(force[key], dtype=float)
         if wrench.shape != (6,):
-            raise RuntimeError(
-                f"RealMan controller returned {key} with shape {wrench.shape}; expected (6,)."
-            )
+            raise RuntimeError(f"RealMan controller returned {key} with shape {wrench.shape}; expected (6,).")
         return wrench
 
     def move_linear_to_tcp_pose(
