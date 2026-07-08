@@ -12,30 +12,8 @@ from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
 from airo_dataset_tools.data_parsers.pose import Pose
-from airo_robots.manipulators.hardware.realman import RealmanControl
-from airo_robots.manipulators.hardware.ur_rtde import URrtde
 from airo_robots.manipulators.position_manipulator import PositionManipulator
 from airo_typing import HomogeneousMatrixType, OpenCVIntImageType
-
-
-def _start_teach_mode(robot: PositionManipulator) -> None:
-    """Enable freedrive/drag-teach mode on a supported robot."""
-    if isinstance(robot, URrtde):
-        robot.rtde_control.teachMode()
-    elif isinstance(robot, RealmanControl):
-        robot.robot.rm_start_drag_teach(0)
-    else:
-        raise NotImplementedError(f"Teach mode not supported for robot of type {type(robot).__name__}.")
-
-
-def _stop_teach_mode(robot: PositionManipulator) -> None:
-    """Disable freedrive/drag-teach mode on a supported robot."""
-    if isinstance(robot, URrtde):
-        robot.rtde_control.endTeachMode()
-    elif isinstance(robot, RealmanControl):
-        robot.robot.rm_stop_drag_teach()
-    else:
-        raise NotImplementedError(f"Teach mode not supported for robot of type {type(robot).__name__}.")
 
 
 def create_calibration_data_dir(calibration_dir: Optional[str] = None) -> str:
@@ -81,7 +59,7 @@ def save_calibration_sample(
         If charuco board detection is succesful, the TCP pose and the image, else None.
     """
     # Stop freedrive so robot is completely still at moment of the image capture
-    _stop_teach_mode(robot)
+    robot.stop_freedrive()
 
     ROBOT_STOP_WAIT_TIME = 0.5
     time.sleep(ROBOT_STOP_WAIT_TIME)
@@ -104,7 +82,7 @@ def save_calibration_sample(
     with open(tcp_pose_filepath, "w") as f:
         json.dump(pose.model_dump(), f, indent=4)
 
-    _start_teach_mode(robot)
+    robot.start_freedrive()
 
     return tcp_pose, image_bgr
 
@@ -136,8 +114,7 @@ def collect_calibration_data(robot: PositionManipulator, camera: RGBCamera, cali
     window_name = "Calibration data collection"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
-    # For now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
-    robot.rtde_control.teachMode()  # type: ignore
+    robot.start_freedrive()
     sample_index = 0
 
     while True:
@@ -150,11 +127,11 @@ def collect_calibration_data(robot: PositionManipulator, camera: RGBCamera, cali
 
         key = cv2.waitKey(1)
         if key == ord("q"):
-            robot.rtde_control.endTeachMode()  # type: ignore
+            robot.stop_freedrive()
             break
 
         if key == ord("s"):
-            save_calibration_sample(sample_index, robot, camera, data_dir)  # type: ignore
+            save_calibration_sample(sample_index, robot, camera, data_dir)
             sample_index += 1
             logger.info(f"Saved {sample_index} sample(s).")
 

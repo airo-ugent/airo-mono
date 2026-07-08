@@ -267,6 +267,12 @@ class URrtde(PositionManipulator):
     def _is_joint_configuration_reachable(self, joint_configuration: JointConfigurationType) -> bool:
         return self.rtde_control.isJointsWithinSafetyLimits(joint_configuration)
 
+    def start_freedrive(self) -> None:
+        self.rtde_control.teachMode()
+
+    def stop_freedrive(self) -> None:
+        self.rtde_control.endTeachMode()
+
     @staticmethod
     def _convert_rotvec_pose_to_homogeneous_pose(ur_pose: RotVecPoseType) -> HomogeneousMatrixType:
         return SE3Container.from_rotation_vector_and_translation(ur_pose[3:], ur_pose[:3]).homogeneous_matrix

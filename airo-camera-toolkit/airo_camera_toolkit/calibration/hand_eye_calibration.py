@@ -5,8 +5,6 @@ from typing import List, Optional
 
 import cv2
 from airo_camera_toolkit.calibration.collect_calibration_data import (
-    _start_teach_mode,
-    _stop_teach_mode,
     create_calibration_data_dir,
     save_calibration_sample,
 )
@@ -65,9 +63,7 @@ def do_camera_robot_calibration(
     window_name = "Hand-eye calibration"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
-    # For now, the robot is assumed to be a UR or RealMan robot, as we make use of the teach mode functions.
-    # TODO: make this more generic by providing a teach mode function in the PositionManipulator interface?
-    _start_teach_mode(robot)
+    robot.start_freedrive()
 
     MIN_POSES = 3
     tcp_poses_in_base: List[HomogeneousMatrixType] = []
@@ -86,7 +82,7 @@ def do_camera_robot_calibration(
 
         key = cv2.waitKey(1)
         if key == ord("q"):
-            _stop_teach_mode(robot)
+            robot.stop_freedrive()
             break
 
         if key == ord("s"):

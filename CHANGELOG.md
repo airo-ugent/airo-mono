@@ -12,6 +12,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
 
 ### Added
+- `airo-robots`: Added `PositionManipulator.start_freedrive`/`stop_freedrive` (a.k.a. teach mode / drag teach), implemented for `URrtde` and `RealmanControl`. The default implementation raises `NotImplementedError` for robots that don't support it.
 - `airo-robots`: Added `RealmanControl.get_wrench`, which reads the RealMan end-effector six-axis force/torque sensor as a `[Fx, Fy, Fz, Mx, My, Mz]` numpy wrench (returns the tool/payload gravity-compensated external wrench by default, or the raw reading with `compensated=False`).
 - `airo-robots`: Added `RealmanControl`, a `PositionManipulator` implementation for RealMan robots using the official Python API.
 - Added `CLAUDE.md` with repo overview, setup instructions, coding conventions, and development workflow guidelines for Claude Code.
@@ -21,6 +22,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Added easier imports for airo-camera-toolkit cameras. Now, instead of `from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture` you can just write `from airo_camera_toolkit.cameras import OpenCVVideoCapture`. Based on [PEP 562](https://peps.python.org/pep-0562/). Fixes the old issue [#122](https://github.com/airo-ugent/airo-mono/issues/122).
 
 ### Changed
+- `airo-camera-toolkit`: calibration code (`collect_calibration_data.py`, `hand_eye_calibration.py`) now calls `robot.start_freedrive()`/`robot.stop_freedrive()` instead of an `isinstance`-based dispatch that reached into `URrtde`/`RealmanControl` internals — also fixes `rm_start_drag_teach`/`rm_stop_drag_teach` error codes being silently discarded, and migrates `collect_calibration_data()`, which had been left calling `robot.rtde_control.teachMode()` directly.
 - `airo-robots`: `RealmanControl.inverse_kinematics` now logs an actionable warning when a solve fails — it decodes the RealMan SDK result code (unreachable / over a joint limit / invalid orientation) and, for six-DOF arms, uses the all-solutions solver to report whether solutions exist but exceed a joint limit (naming the blocking joint) instead of only returning `None`.
 - `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
 

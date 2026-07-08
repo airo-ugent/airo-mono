@@ -379,6 +379,12 @@ class RealmanControl(PositionManipulator):
             and np.all(joint_configuration_array <= self._joint_upper_limits)
         )
 
+    def start_freedrive(self) -> None:
+        self._raise_for_error(self.robot.rm_start_drag_teach(0), "rm_start_drag_teach")
+
+    def stop_freedrive(self) -> None:
+        self._raise_for_error(self.robot.rm_stop_drag_teach(), "rm_stop_drag_teach")
+
     def _get_api_value(self, method_name: str) -> Any:
         error_code, value = getattr(self.robot, method_name)()
         self._raise_for_error(error_code, method_name)
