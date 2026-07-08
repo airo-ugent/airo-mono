@@ -11,14 +11,11 @@ from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers import ParallelPositionGripper
 from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, PositionManipulator
 from airo_spatial_algebra import SE3Container
-from airo_typing import HomogeneousMatrixType, JointConfigurationType
+from airo_typing import HomogeneousMatrixType, JointConfigurationType, WrenchType
 from loguru import logger
 
 RealmanPoseType = np.ndarray
 """A RealMan pose ``[x, y, z, rx, ry, rz]`` in metres and radians."""
-
-WrenchType = np.ndarray
-"""A wrench ``[Fx, Fy, Fz, Mx, My, Mz]`` in newtons and newton-metres."""
 
 # Decoded result codes returned by ``rm_algo_inverse_kinematics`` (see the RealMan
 # SDK ``rm_robot_interface.rm_algo_inverse_kinematics`` docstring). Used to give an
