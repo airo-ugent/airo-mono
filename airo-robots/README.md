@@ -33,7 +33,16 @@ robot.do_new_action(new_action)
 
 See [below](#notes-on-the-different-types-of-interfaces-for-hardware-interaction) for a lengthier discussion of (async) hardware interactions and why the interface is implemented like this.
 ## Installation
-You can simply pip install this package. Note that some hardware implementations have additional dependencies, which are for now included in the setup.py but might be separated later on.
+You can simply pip install this package. The vendor SDKs for the hardware implementations are not installed by default; they are declared as optional extras in `setup.py`. Install the extra(s) for the hardware you use:
+
+```shell
+pip install "airo-robots[ur]"       # UR robots (ur-rtde)
+pip install "airo-robots[realman]"  # RealMan robots (Robotic_Arm)
+pip install "airo-robots[schunk]"   # Schunk EGK40 gripper (bkstools)
+pip install "airo-robots[kelo]"     # KELO mobile platform (airo-tulip)
+```
+
+Extras can be combined, e.g., `pip install "airo-robots[ur,schunk]"`. The Robotiq 2F-85 gripper communicates over a plain TCP API and does not require an extra. If you instantiate a hardware class without its SDK installed, it will raise an `ImportError` that points you to the right extra.
 
 ## Structure
 a more detailled overview of the structure and content of this package:
