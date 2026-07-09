@@ -19,7 +19,7 @@ setuptools.setup(
     package_data={"airo_robots": ["py.typed"]},
     extras_require={
         "realman": ["Robotic_Arm"],
-        "ur": ["ur-rtde>=1.5.7"],  # cf https://github.com/airo-ugent/airo-mono/issues/52
+        "ur": ["ur-rtde>=1.6.0"],  # cf https://github.com/airo-ugent/airo-mono/issues/52
         "schunk": ["bkstools"],
         "kelo": ["airo-tulip>=0.4.0"],
     },

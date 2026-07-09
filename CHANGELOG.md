@@ -13,6 +13,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-robots`: `airo-tulip` is no longer installed by default. Use `pip install "airo-robots[kelo]"` to include it.
 
 ### Added
+- `airo-robots`: Added `URrtdeTorque`, a subclass of `URrtde` that adds a joint-space torque control mode for UR e-series robots. Call `enable_torque_control()` to start a dedicated 500 Hz PD control process and set targets via the `target_joint_configuration` property; call `disable_torque_control()` to return to regular position control. The PD gains are tuned for a UR3e and can be overridden via the constructor. Requires `ur-rtde >= 1.6.0`, so that `airo-robots` dependency has been changed accordingly. See the [torque control guide](airo-robots/airo_robots/manipulators/hardware/universal_robots_torque_control.md) for usage, safety notes and tuning tips.
+- `airo-robots`: Added an optional `max_joint_torques` field to `ManipulatorSpecs` (in Nm, used as safety limits by `URrtdeTorque`).
 - `airo-robots`: Added `PositionManipulator.start_freedrive`/`stop_freedrive` (a.k.a. teach mode / drag teach), implemented for `URrtde` and `RealmanControl`. The default implementation raises `NotImplementedError` for robots that don't support it.
 - `airo-robots`: Added `RealmanControl.get_wrench`, which reads the RealMan end-effector six-axis force/torque sensor as a `[Fx, Fy, Fz, Mx, My, Mz]` numpy wrench (returns the tool/payload gravity-compensated external wrench by default, or the raw reading with `compensated=False`).
 - `airo-robots`: Added `RealmanControl`, a `PositionManipulator` implementation for RealMan robots using the official Python API.
