@@ -15,11 +15,13 @@ class FakeInverseKinematicsParameters:
 
 
 class FakeRealmanRobot:
-    def __init__(self, mode: int) -> None:
+    def __init__(self, mode: int, dof: int = 6, model: str = "RM_65") -> None:
         self.mode = mode
+        self.dof = dof
+        self.model = model
         self.handle = SimpleNamespace(id=1)
         self.callback: Optional[Callable[[Any], None]] = None
-        self.joints_degrees = np.zeros(6)
+        self.joints_degrees = np.zeros(dof)
         self.pose = np.zeros(6)
         self.last_call: tuple[Any, ...] = ()
         self.closed = False
@@ -41,19 +43,19 @@ class FakeRealmanRobot:
         return self.handle
 
     def rm_get_robot_info(self) -> tuple[int, dict[str, Any]]:
-        return 0, {"arm_dof": 6, "arm_model": "RM_65", "force_type": "B"}
+        return 0, {"arm_dof": self.dof, "arm_model": self.model, "force_type": "B"}
 
     def rm_get_joint_max_speed(self) -> tuple[int, list[float]]:
-        return 0, [180.0] * 6
+        return 0, [180.0] * self.dof
 
     def rm_get_arm_max_line_speed(self) -> tuple[int, float]:
         return 0, 0.25
 
     def rm_get_joint_min_pos(self) -> tuple[int, list[float]]:
-        return 0, [-180.0] * 6
+        return 0, [-180.0] * self.dof
 
     def rm_get_joint_max_pos(self) -> tuple[int, list[float]]:
-        return 0, [180.0] * 6
+        return 0, [180.0] * self.dof
 
     def rm_get_arm_event_call_back(self, callback: Callable[[Any], None]) -> None:
         self.callback = callback
@@ -136,16 +138,25 @@ class FakeRealmanRobot:
         )
 
 
-@pytest.fixture
-def robot(monkeypatch: pytest.MonkeyPatch) -> realman.RealmanControl:
+def _make_robot(monkeypatch: pytest.MonkeyPatch, dof: int = 6, model: str = "RM_65") -> realman.RealmanControl:
     fake_api = SimpleNamespace(
-        RoboticArm=FakeRealmanRobot,
+        RoboticArm=lambda mode: FakeRealmanRobot(mode, dof=dof, model=model),
         rm_thread_mode_e=SimpleNamespace(RM_TRIPLE_MODE_E=3),
         rm_event_callback_ptr=lambda callback: callback,
         rm_inverse_kinematics_params_t=FakeInverseKinematicsParameters,
     )
     monkeypatch.setattr(realman, "_import_realman_api", lambda: fake_api)
     return realman.RealmanControl("192.168.1.18")
+
+
+@pytest.fixture
+def robot(monkeypatch: pytest.MonkeyPatch) -> realman.RealmanControl:
+    return _make_robot(monkeypatch)
+
+
+@pytest.fixture
+def robot_7dof(monkeypatch: pytest.MonkeyPatch) -> realman.RealmanControl:
+    return _make_robot(monkeypatch, dof=7, model="RM_75")
 
 
 def test_controller_metadata_and_state_use_airo_units(robot: realman.RealmanControl) -> None:
@@ -241,6 +252,36 @@ def test_inverse_kinematics_failure_diagnostics(robot: realman.RealmanControl) -
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     ]
     assert "within the joint limits" in robot._diagnose_ik_failure(params)
+
+
+def test_seven_dof_arm_uses_its_own_dof_everywhere(robot_7dof: realman.RealmanControl) -> None:
+    assert robot_7dof.dof == 7
+    assert robot_7dof.model == "RM_75"
+    assert robot_7dof.manipulator_specs.max_joint_speeds == pytest.approx([np.pi] * 7)
+
+    robot_7dof.robot.joints_degrees = np.asarray([0.0, 30.0, -90.0, 0.0, 45.0, 90.0, 180.0])
+    assert robot_7dof.get_joint_configuration() == pytest.approx(np.radians(robot_7dof.robot.joints_degrees))
+
+    joint_target = np.radians(np.asarray([10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0]))
+    action = robot_7dof.move_to_joint_configuration(joint_target, joint_speed=np.pi / 2)
+    assert robot_7dof.robot.last_call == ("rm_movej", pytest.approx(np.degrees(joint_target)), 50, 0, 0, 0)
+    assert action.is_action_done()
+
+    robot_7dof.servo_to_joint_configuration(joint_target, 0.01)
+    assert robot_7dof.robot.last_call == ("rm_movej_canfd", pytest.approx(np.degrees(joint_target)), True)
+
+    with pytest.raises(ValueError):
+        robot_7dof.servo_to_joint_configuration(np.zeros(6), 0.01)
+
+    assert robot_7dof._is_joint_configuration_reachable(np.zeros(7))
+    assert not robot_7dof._is_joint_configuration_reachable(np.zeros(6))
+
+
+def test_diagnose_ik_failure_is_a_noop_for_non_six_dof_arms(robot_7dof: realman.RealmanControl) -> None:
+    # The all-solutions diagnostics are only implemented for six-DOF arms; a
+    # seven-DOF arm should get no extra detail rather than an incorrect one.
+    params = FakeInverseKinematicsParameters([0.0] * 7, [0.0] * 6, 1)
+    assert robot_7dof._diagnose_ik_failure(params) == ""
 
 
 def test_joint_limits_and_close(robot: realman.RealmanControl) -> None:
