@@ -5,9 +5,15 @@ from threading import Thread
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.drives.mobile_robot import CompliantLevel, MobileRobot
-from airo_tulip.api.client import KELORobile as KELORobileClient  # type: ignore
-from airo_tulip.hardware.platform_driver import PlatformDriverType  # type: ignore
 from airo_typing import Vector3DType
+
+try:
+    from airo_tulip.api.client import KELORobile as KELORobileClient  # type: ignore
+    from airo_tulip.hardware.platform_driver import PlatformDriverType  # type: ignore
+except ImportError as exception:
+    raise ImportError(
+        'KELORobile requires airo-tulip. Install it with `pip install "airo-robots[kelo]"`.'
+    ) from exception
 
 
 class KELORobile(MobileRobot):

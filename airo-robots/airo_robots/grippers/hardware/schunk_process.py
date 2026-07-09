@@ -8,8 +8,14 @@ from typing import Any, Dict, Optional
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
-from bkstools.bks_lib.bks_module import BKSModule
-from pyschunk.generated.generated_enums import eCmdCode
+
+try:
+    from bkstools.bks_lib.bks_module import BKSModule
+    from pyschunk.generated.generated_enums import eCmdCode
+except ImportError as exception:
+    raise ImportError(
+        'SchunkGripperProcess requires the Schunk SDK. Install it with `pip install "airo-robots[schunk]"`.'
+    ) from exception
 
 logger = logging.getLogger(__name__)
 

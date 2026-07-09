@@ -10,8 +10,14 @@ from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, Posi
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType, JointConfigurationType
 from loguru import logger
-from rtde_control import RTDEControlInterface
-from rtde_receive import RTDEReceiveInterface
+
+try:
+    from rtde_control import RTDEControlInterface
+    from rtde_receive import RTDEReceiveInterface
+except ImportError as exception:
+    raise ImportError(
+        'URrtde requires the ur-rtde library. Install it with `pip install "airo-robots[ur]"`.'
+    ) from exception
 
 RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""

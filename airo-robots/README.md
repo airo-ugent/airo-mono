@@ -9,7 +9,9 @@ The following combinations of hardware and communication options are currently i
 |----------|:----------|----------------|
 | UR robots | RTDE | [ur_rtde.py](airo_robots/manipulators/hardware/ur_rtde.py) |
 | RealMan robots | RealMan Python API | [realman.py](airo_robots/manipulators/hardware/realman.py) |
+|Schunk EGK gripper | Modbus-USB converter | [schunk_process.py](airo_robots/grippers/hardware/schunk_process.py) |
 | Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
+| KELO Robile platform | airo-tulip API | [kelo_robile.py](airo_robots/drives/hardware/kelo_robile.py) |
 
 Each hardware implementation module will have a `__main__` codeblock that runs the tests for that hardware implementation. This is useful to check if the hardware is connected correctly and the implementation is working as expected. But it is also the place to be to get an idea of how to use the implementation.
 
@@ -33,11 +35,6 @@ See [below](#notes-on-the-different-types-of-interfaces-for-hardware-interaction
 ## Installation
 You can simply pip install this package. Note that some hardware implementations have additional dependencies, which are for now included in the setup.py but might be separated later on.
 
-RealMan support uses the manufacturer's optional Python SDK:
-
-```bash
-pip install "airo-robots[realman]"
-```
 ## Structure
 a more detailled overview of the structure and content of this package:
 
