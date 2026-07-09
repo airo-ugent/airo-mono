@@ -39,7 +39,7 @@ def manual_test_ik_fk(robot: PositionManipulator) -> None:
         np.array([0, np.pi, 0.0001]), np.array([0, -0.3, 0.2])
     ).homogeneous_matrix
     joint_config = robot.inverse_kinematics(pose)
-    print(joint_config)
+    print(f"IK solution from robot controller: {joint_config}")
     if joint_config is None:
 
         print("IK failed unexpectedly")
