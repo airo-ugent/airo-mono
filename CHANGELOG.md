@@ -34,6 +34,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-camera-toolkit`: `save_calibration_sample` no longer crashes for non-UR robots — it previously called UR-specific `robot.rtde_control.endTeachMode()`/`teachMode()` directly, so pressing `S` during `hand-eye-calibration` with `--robot_type realman` raised `AttributeError`. Teach mode start/stop is now dispatched per robot type and shared with `hand_eye_calibration.py`.
 - `airo-camera-toolkit`: the `hand-eye-calibration` CLI command now actually exposes `--robot_type`. The handler accepted a `robot_type` parameter (to select `ur` or `realman`), but no matching `@click.option` was declared, so the value was unreachable from the CLI and always defaulted to `ur`.
 - `airo-camera-toolkit`: `get_pose_of_charuco_board` now returns `None` instead of crashing when fewer than 6 charuco corners are detected (OpenCV's DLT algorithm requires at least 6 point correspondences). Fixes [#199](https://github.com/airo-ugent/airo-mono/issues/199).
+- `airo-camera-toolkit`: `draw_frame_on_image` no longer crashes with `ValueError: bad argument to constructor` when the rotation part of the pose has drifted slightly off SO(3) due to floating-point error (e.g. after the chained matrix inversions/multiplications in hand-eye calibration's `draw_base_pose_on_image`).
 
 ### Removed
 
