@@ -11,12 +11,16 @@ setuptools.setup(
     author_email="thomas.lips@ugent.be",
     install_requires=[
         "numpy>=2.0",
-        "ur-rtde>=1.5.7",  # cf https://github.com/airo-ugent/airo-mono/issues/52
         "click",
         "airo-typing>=2026.1.0",
         "airo-spatial-algebra>=2026.1.0",
-        "airo-tulip>=0.4.0",
     ],
     packages=setuptools.find_packages(),
     package_data={"airo_robots": ["py.typed"]},
+    extras_require={
+        "realman": ["Robotic_Arm"],
+        "ur": ["ur-rtde>=1.5.7"],  # cf https://github.com/airo-ugent/airo-mono/issues/52
+        "schunk": ["bkstools"],
+        "kelo": ["airo-tulip>=0.4.0"],
+    },
 )

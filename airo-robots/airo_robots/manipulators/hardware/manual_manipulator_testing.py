@@ -23,7 +23,7 @@ def manual_test_servo(robot: PositionManipulator, control_freq: int = 500, linea
     action.wait()
     pose = np.copy(start_pose)
     for i in range(8 * control_freq):
-        direction = np.array([1.0, 0.0, -1.0])
+        direction = np.array([1.0, 0.0, 0.0])
         direction /= np.linalg.norm(direction)
         if (i // control_freq) % 2:
             pose[:3, 3] += direction * linear_speed / control_freq
@@ -39,7 +39,9 @@ def manual_test_ik_fk(robot: PositionManipulator) -> None:
         np.array([0, np.pi, 0.0001]), np.array([0, -0.3, 0.2])
     ).homogeneous_matrix
     joint_config = robot.inverse_kinematics(pose)
-    if not joint_config:
+    print(f"IK solution from robot controller: {joint_config}")
+    if joint_config is None:
+
         print("IK failed unexpectedly")
         return
 

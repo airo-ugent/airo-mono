@@ -41,7 +41,11 @@ jobs:
       id: cache-venv
       with:
         path: .venv
-        key: venv-pytest-${{ matrix.python-version }}-${{ hashFiles('**/setup.py') }}
+        # Includes source files, not just setup.py, so a change to any package's code
+        # (not only its dependencies) invalidates this venv and gets reinstalled.
+        # The separate uv wheel cache above is still keyed on setup.py only, so this
+        # doesn't reintroduce heavy dependency re-downloads on every source change.
+        key: venv-pytest-${{ matrix.python-version }}-${{ hashFiles('**/setup.py', '**/*.py') }}
 
     - name: Install packages
       if: steps.cache-venv.outputs.cache-hit != 'true'

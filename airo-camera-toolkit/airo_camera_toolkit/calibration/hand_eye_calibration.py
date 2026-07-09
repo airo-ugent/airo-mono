@@ -20,7 +20,6 @@ from airo_camera_toolkit.calibration.fiducial_markers import (
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_dataset_tools.data_parsers.camera_intrinsics import CameraIntrinsics
-from airo_robots.manipulators.hardware.ur_rtde import URrtde
 from airo_robots.manipulators.position_manipulator import PositionManipulator
 from airo_typing import HomogeneousMatrixType, OpenCVIntImageType
 from loguru import logger
@@ -64,11 +63,7 @@ def do_camera_robot_calibration(
     window_name = "Hand-eye calibration"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
-    # For now, the robot is assumed to be a UR robot with RTDE interface, as we make use of the teach mode functions.
-    # TODO: make this more generic by providing a teach mode function in the PositionManipulator interface?
-    if not isinstance(robot, URrtde):
-        raise NotImplementedError("Only UR robots are supported for now.")
-    robot.rtde_control.teachMode()
+    robot.start_freedrive()
 
     MIN_POSES = 3
     tcp_poses_in_base: List[HomogeneousMatrixType] = []
@@ -87,7 +82,7 @@ def do_camera_robot_calibration(
 
         key = cv2.waitKey(1)
         if key == ord("q"):
-            robot.rtde_control.endTeachMode()
+            robot.stop_freedrive()
             break
 
         if key == ord("s"):

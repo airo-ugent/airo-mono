@@ -78,7 +78,7 @@ if __name__ == "__main__":
     print("pip install airo-drake==0.0.5 ur_analytic_ik")
 
     import click
-    from airo_robots.manipulators import URrtde
+    from airo_robots.manipulators.hardware.ur_rtde import URrtde
 
     @click.command()
     @click.option("--ip_address", help="IP address of the UR robot")

@@ -11,6 +11,7 @@ from typing import List, Optional
 import cv2
 import numpy as np
 from airo_spatial_algebra import SE3Container
+from airo_spatial_algebra.se3 import normalize_so3_matrix
 from airo_typing import CameraIntrinsicsMatrixType, HomogeneousMatrixType, OpenCVIntImageType
 from cv2 import aruco
 
@@ -187,6 +188,10 @@ def draw_frame_on_image(
     camera_matrix: CameraIntrinsicsMatrixType,
 ) -> OpenCVIntImageType:
     """Draws a 2D projection of a frame on the image. Be careful when interpreting this visually, it is often hard to estimate the true 3D direction of an axis' 2D projection."""
+    # the rotation part can drift slightly off SO(3) after chained inversions/multiplications (e.g. in
+    # draw_base_pose_on_image), which makes SE3Container reject the matrix; normalize to fix this.
+    frame_pose_in_camera = frame_pose_in_camera.copy()
+    frame_pose_in_camera[:3, :3] = normalize_so3_matrix(frame_pose_in_camera[:3, :3])
     charuco_se3 = SE3Container.from_homogeneous_matrix(frame_pose_in_camera)
     rvec = charuco_se3.orientation_as_rotation_vector
     tvec = charuco_se3.translation

@@ -17,7 +17,7 @@ Python monorepo for robot manipulation tooling from the [AIRO lab](https://airo.
 Use `uv` to create a local `.venv` inside the repo — this keeps the environment in the project folder, which works well with sandbox path restrictions.
 
 ```bash
-uv venv --python 3.10            # creates .venv/ in the repo root
+uv venv --python 3.12            # creates .venv/ in the repo root
 uv pip install -e airo-typing/ airo-spatial-algebra/ airo-robots/ airo-camera-toolkit/ airo-dataset-tools/
 uv pip install -r dev-requirements.txt
 pre-commit install
