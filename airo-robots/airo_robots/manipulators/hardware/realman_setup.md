@@ -43,7 +43,7 @@ You can set the force threshold of the safety system, see https://develop.realma
 Note that this is different from the certified system in a UR robot, more freedom, less safety guarantees.
 
 ### freedrive
-To freedrive the robot, keep pressing the green button on the wrist of the robot, and then move it around. 
+To freedrive the robot, keep pressing the green button on the wrist of the robot, and then move it around.
 
 
 ## Testing

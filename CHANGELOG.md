@@ -30,7 +30,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
 
 ### Fixed
-- CI: the mypy/pytest venv cache was keyed only on `**/setup.py`, so a change to a package's own source files (without touching its `setup.py`) let CI silently type-check/test against a stale installed copy of sibling packages. Broadened the cache key to also hash `**/*.py`. 
+- CI: the mypy/pytest venv cache was keyed only on `**/setup.py`, so a change to a package's own source files (without touching its `setup.py`) let CI silently type-check/test against a stale installed copy of sibling packages. Broadened the cache key to also hash `**/*.py`.
 
 - `airo-camera-toolkit`: `save_calibration_sample` no longer crashes for non-UR robots — it previously called UR-specific `robot.rtde_control.endTeachMode()`/`teachMode()` directly, so pressing `S` during `hand-eye-calibration` with `--robot_type realman` raised `AttributeError`. Teach mode start/stop is now dispatched per robot type and shared with `hand_eye_calibration.py`.
 - `airo-camera-toolkit`: the `hand-eye-calibration` CLI command now actually exposes `--robot_type`. The handler accepted a `robot_type` parameter (to select `ur` or `realman`), but no matching `@click.option` was declared, so the value was unreachable from the CLI and always defaulted to `ur`.
