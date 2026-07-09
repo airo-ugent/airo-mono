@@ -45,9 +45,10 @@ class URrtde(PositionManipulator):
     MANIPULATOR_SPECS = {
         # https://www.universal-robots.com/media/240787/ur3_us.pdf
         # https://www.universal-robots.com/media/1827367/05_2023_collective_data-sheet.pdf
-        URModels.UR3: ManipulatorSpecs([np.pi] * 3 + [2 * np.pi] * 3, 1.0),
-        URModels.UR3e: ManipulatorSpecs([np.pi] * 3 + [2 * np.pi] * 3, 1.0),
-        URModels.UR5e: ManipulatorSpecs([np.pi] * 6, 1.0),
+        # Torque values: https://www.universal-robots.com/articles/ur/robot-care-maintenance/max-joint-torques-cb3-and-e-series/
+        URModels.UR3: ManipulatorSpecs([np.pi] * 3 + [2 * np.pi] * 3, 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0]),
+        URModels.UR3e: ManipulatorSpecs([np.pi] * 3 + [2 * np.pi] * 3, 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0]),
+        URModels.UR5e: ManipulatorSpecs([np.pi] * 6, 1.0, [150.0, 150.0, 150.0, 28.0, 28.0, 28.0]),
     }
 
     # For backward compatibility

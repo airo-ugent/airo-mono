@@ -12,13 +12,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
 
 ### Added
-- **Torque Control Support**: Added a `torque_mode` flag to `ur_rtde` (default: `False`).
-
-    - When enabled, it launches process `_torque_worker` (500Hz) to compute and control robot torque using PD control.
-
-    - Set the `target_pos` (joint configuration) in the 'URrtde' class to control robot pose.
-
-    - **Important**: Users must tune the PD parameters before use to ensure stability.
+- `airo-robots`: Added `URrtdeTorque`, a subclass of `URrtde` that adds a joint-space torque control mode for UR e-series robots. Call `enable_torque_control()` to start a dedicated 500 Hz PD control process and set targets via the `target_joint_configuration` property; call `disable_torque_control()` to return to regular position control. The PD gains are tuned for a UR3e and can be overridden via the constructor. Requires `ur-rtde >= 1.6.0`, so that `airo-robots` dependency has been changed accordingly. See the [torque control guide](airo-robots/airo_robots/manipulators/hardware/universal_robots_torque_control.md) for usage, safety notes and tuning tips.
+- `airo-robots`: Added an optional `max_joint_torques` field to `ManipulatorSpecs` (in Nm, used as safety limits by `URrtdeTorque`).
 - Added `CLAUDE.md` with repo overview, setup instructions, coding conventions, and development workflow guidelines for Claude Code.
 - `airo-dataset-tools`: `merge_coco_datasets` now supports nested image subdirectories — images are copied to the target preserving their relative directory structure.
 - `airo-dataset-tools`: `CocoKeypointAnnotation` now auto-fills `num_keypoints` when the field is absent or `None` in the source data.
