@@ -19,6 +19,7 @@ different payload, validate and tune the gains (`kp` and `kd` constructor argume
 
 See universal_robots_torque_control.md (in this directory) for a full guide with safety notes and tuning tips.
 """
+
 import atexit
 import time
 from dataclasses import dataclass
@@ -214,9 +215,9 @@ class URrtdeTorque(URrtde):
     WARNING: the default gains were tuned on a UR3e. Validate them on your robot and payload before relying on them.
     """
 
-    DEFAULT_KP = np.array([120.0, 120.0, 100.0, 30.0, 30.0, 30.0])
+    DEFAULT_KP = np.array([12.0, 12.0, 10.0, 3.0, 3.0, 3.0])
     """Default proportional gains [Nm/rad], tuned on a UR3e."""
-    DEFAULT_KD = np.array([12.0, 12.0, 10.0, 2.4, 2.0, 1.0])
+    DEFAULT_KD = np.array([4.0, 4.0, 3.0, 0.8, 0.6, 0.3])
     """Default derivative gains [Nm/(rad/s)], tuned on a UR3e."""
 
     def __init__(
@@ -371,7 +372,9 @@ class URrtdeTorque(URrtde):
         return super().move_linear_to_tcp_pose(tcp_pose, linear_speed)
 
     def move_to_joint_configuration(
-        self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
+        self,
+        joint_configuration: JointConfigurationType,
+        joint_speed: Optional[float] = None,
     ) -> AwaitableAction:
         self._assert_torque_control_inactive("move_to_joint_configuration")
         return super().move_to_joint_configuration(joint_configuration, joint_speed)
@@ -391,7 +394,9 @@ class URrtdeTorque(URrtde):
         super().execute_trajectory(joint_trajectory, sampling_frequency)
 
     def inverse_kinematics(
-        self, tcp_pose: HomogeneousMatrixType, joint_configuration_guess: Optional[JointConfigurationType] = None
+        self,
+        tcp_pose: HomogeneousMatrixType,
+        joint_configuration_guess: Optional[JointConfigurationType] = None,
     ) -> JointConfigurationType:
         self._assert_torque_control_inactive("inverse_kinematics")
         return super().inverse_kinematics(tcp_pose, joint_configuration_guess)
