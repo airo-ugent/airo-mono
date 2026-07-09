@@ -59,4 +59,4 @@ def open3d_to_point_cloud(
             continue
         attributes[attribute_name] = array.numpy()
 
-    return PointCloud(points, colors)
+    return PointCloud(points, colors, attributes=attributes if attributes else None)

@@ -19,8 +19,9 @@ Want to learn more about our vision? Check out the in-depth explanation [here](d
 - [Installation](#installation-)
   - [Option 1: Installation from PyPI](#option-1-installation-from-pypi-)
   - [Option 2: Local clone](#option-2-local-clone-)
-    - [2.1 Conda method](#21-conda-method)
-    - [2.2 Pip method](#22-pip-method)
+    - [2.1 uv method (recommended)](#21-uv-method-recommended)
+    - [2.2 Conda method](#22-conda-method)
+    - [2.3 Pip method](#23-pip-method)
   - [Option 3: Git submodule](#option-3-git-submodule-)
 - [Developer guide](#developer-guide-)
   - [Setup](#setup)
@@ -44,7 +45,6 @@ The airo-mono repository employs a monorepo structure, offering multiple Python 
 | 🏗️ [`airo-dataset-tools`](airo-dataset-tools)     | Creating, loading, and manipulating datasets              | @victorlouisdg |
 | 🤖 [`airo-robots`](airo-robots)                   | Simple interfaces for controlling robot arms and grippers | @tlpss         |
 | 📐 [`airo-spatial-algebra`](airo-spatial-algebra) | Transforms and SE3 pose conversions                       | @tlpss         |
-| 🎮 [`airo-teleop`](airo-teleop)                   | Intuitive teleoperation of robot arms                     | @tlpss         |
 | 🛡️ [`airo-typing`](airo-typing)                   | Type definitions and conventions                          | @tlpss         |
 
 **Detailed Information:** Each package contains its own dedicated README outlining:
@@ -67,11 +67,13 @@ Repositories that follow the same style as `airo-mono` packages, but are not par
 | Repository                                                      | Description                            |
 |-----------------------------------------------------------------| -------------------------------------- |
 | 🎥 [`airo-blender`](https://github.com/airo-ugent/airo-blender) | Synthetic data generation with Blender |
-| 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
 | 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                 |
-| 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
-| 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip)     | Driver for the KELO mobile robot platform |
 | 🔛 [`airo-ipc`](https://github.com/airo-ugent/airo-ipc)         | Inter-process communication library |
+| 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
+| 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
+| 🎮 [`airo-teleop`](https://github.com/airo-ugent/airo-teleop/)  | Intuitive teleoperation of robot arms     |
+| 🚗 [`airo-tulip`](https://github.com/airo-ugent/airo-tulip)     | Driver for the KELO mobile robot platform |
+| 🦾 [`ur-analytic-ik`](https://github.com/Victorlouisdg/ur-analytic-ik)     | Analytic IK calculations for UR manipulators |
 
 ### Usage & Philosophy 📖
 We believe in *keep simple things simple*. Starting a new project is as simple as:
@@ -90,7 +92,8 @@ camera = Zed()
 robot = URrtde(ip_address=robot_ip_address)
 gripper = Robotiq2F85(ip_address=robot_ip_address)
 
-image = camera.get_rgb_image()
+camera.grab_images()
+image = camera.retrieve_rgb_image()
 grasp_pose = select_grasp_pose(image)  # example: user provides grasp pose
 robot.move_linear_to_tcp_pose(grasp_pose).wait()
 gripper.close().wait()
@@ -104,9 +107,12 @@ Probably the best way to learn what `airo-mono` has to offer, is to look at the 
 
 | Project                                                                     | Description                                                                                                 |
 | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| 🍹 [ITF World 2025](https://airo.ugent.be/itfworld/) | airo-mono powered our demos at ITF World 2025 |
+| 🧩 [ITF World 2026](https://airo.ugent.be/news/202605_itf/) | airo-mono powered our demos at ITF World 2026 |
+| 🍹 [ITF World 2025](https://airo.ugent.be/news/202505_itf/) | airo-mono powered our demos at ITF World 2025 |
 | 👕 [`cloth-competition`](https://github.com/Victorlouisdg/cloth-competition) | airo-mono is the backbone of the [ICRA 2024 Cloth Competition](https://airo.ugent.be/cloth_competition/) 🏆! |
 | 🧪 [ITF World 2024](https://airo.ugent.be/news/itf2024/) | airo-mono powered our demo at ITF World 2024 |
+
+**Your project here?** [Contact us](mailto:mathieu.decoster@ugent.be).
 
 ## Installation 🔧
 
@@ -119,7 +125,19 @@ pip install airo-camera-toolkit airo-dataset-tools airo-robots
 
 ### Option 2: Local clone 📥
 
-#### 2.1 Conda method
+#### 2.1 uv method (recommended)
+We recommend [uv](https://docs.astral.sh/uv/) for fast, reproducible environments. uv is optional: the conda and pip methods below remain fully supported.
+
+Make sure you have [uv installed](https://docs.astral.sh/uv/getting-started/installation/), then run:
+```bash
+git clone https://github.com/airo-ugent/airo-mono.git
+cd airo-mono
+uv venv
+source .venv/bin/activate
+uv pip install -e airo-robots -e airo-dataset-tools -e airo-camera-toolkit
+```
+
+#### 2.2 Conda method
 Make sure you have a version of conda e.g. [miniconda](https://docs.anaconda.com/free/miniconda/) installed.
 To make the conda environment creation faster, we recommend configuring the [libmamba solver](https://www.anaconda.com/blog/a-faster-conda-for-a-growing-community) first.
 
@@ -131,8 +149,8 @@ conda env create -f environment.yaml
 ```
 This will create a conda environment called `airo-mono` with all packages installed. You can activate the environment with `conda activate airo-mono`.
 
-#### 2.2 Pip method
-While we prefer using conda, you can also install the packages simply with pip:
+#### 2.3 Pip method
+You can also install the packages directly with pip:
 
 ```bash
 git clone https://github.com/airo-ugent/airo-mono.git
@@ -154,11 +172,12 @@ More about submodules can be found [here](https://git-scm.com/book/en/v2/Git-Too
 
 ## Developer guide 🛠️
 ### Setup
-Create and activate the conda environment, then run:
+Create and activate your environment (uv, conda, or pip; see [Installation](#installation-)), then run:
 ```
 pip install -r dev-requirements.txt
 pre-commit install
 ```
+When using uv, you can prefix these with `uv pip` as you prefer (e.g. `uv pip install -r dev-requirements.txt`).
 
 ### Coding style 👮
 We use [pre-commit](https://pre-commit.com/) to automatically enforce coding standards before every commit.
@@ -224,25 +243,10 @@ For convenient access to specific functions, we provide command-line interfaces 
 
 ### Versioning & Releasing 🏷️
 
-As a first step towards PyPI releases of the `airo-mono` packages, we have already started versioning them.
-Read more about it in [docs/versioning.md](docs/versioning.md).
+Read more about it versioning in [docs/versioning.md](docs/versioning.md) and about releasing in [docs/releasing.md](docs/releasing.md).
 
 ### Design choices ✏️
 - **Minimalism:** Before coding, explore existing libraries. Less code means easier maintenance.
 - **Properties:** Employ Python properties ([@property](https://docs.python.org/3/howto/descriptor.html#properties)) for getters/setters. This enhances user interaction and unlocks powerful code patterns.
 - **Logging**: Use [loguru](https://loguru.readthedocs.io/en/stable/) for structured debugging instead of print statements.
 - **Output Data:** Favor native datatypes or NumPy arrays for easy compatibility. For more complex data, use dataclasses as in [airo-typing](airo-typing).
-
-#### Management of local dependencies in a Monorepo
-> **TODO:** simplify this explanation and move it to the setup or installation section.
-
-An issue with using a monorepo is that you want to have packages declare their local dependencies as well. But before you publish your packages or if you want to test unreleased code (as usually), this creates an issue: where should pip find these local package? Though there exist more advanced package managers such as Poetry, ([more background on package and dependency management in python](https://ealizadeh.com/blog/guide-to-python-env-pkg-dependency-using-conda-poetry/)
-) that can handle this, we have opted to stick with pip to keep the barier for new developers lower.
-
-
-This implies we simply add local dependencies in the setup file as regular dependencies, but we have to make sure pip can find the dependencies when installing the packages. There are two options to do so:
-1. You make sure that the local dependencies are installed before installing the package, either by running the pip install commands along the dependency tree, or by running all installs in a single pip commamd: `pip install <pkg1>  <pkg2> <pkg3>`
-2. you create distributions for the packages upfront and then tell pip where to find them (because they won't be on PyPI, which is where pip searches by default): `pip install --find-link https:// or /path/to/distributions/dir`
-
-
-Initially, we used a direct link to point to the path of the dependencies, but this created some issues and hence we now use this easier approach. see [#91](https://github.com/airo-ugent/airo-mono/issues/91) for more details.

@@ -1,4 +1,6 @@
 import abc
+from functools import wraps
+from typing import Any, Callable
 
 import cv2
 import numpy as np
@@ -14,10 +16,57 @@ from airo_typing import (
     PointCloud,
 )
 from loguru import logger
+from typing_extensions import deprecated
+
+
+def _wrap_grab_images(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a subclass's grab_images so it sets ``self._grabbed = True`` after running."""
+
+    @wraps(func)
+    def wrapper(self: "Camera", *args: Any, **kwargs: Any) -> Any:
+        result = func(self, *args, **kwargs)
+        self._grabbed = True
+        return result
+
+    return wrapper
+
+
+def _wrap_retrieve(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a ``retrieve_*`` method so it asserts ``grab_images`` was called first."""
+
+    method_name = func.__name__
+
+    @wraps(func)
+    def wrapper(self: "Camera", *args: Any, **kwargs: Any) -> Any:
+        if not self._grabbed:
+            raise RuntimeError(
+                f"{method_name}() requires a prior call to grab_images(). "
+                "Capture a frame with camera.grab_images() first, then read fields with camera.retrieve_*()."
+            )
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Camera(abc.ABC):
-    """Base class for all cameras
+    """Base class for all cameras.
+
+    Capture and retrieval are explicit and decoupled:
+
+    - Call :meth:`grab_images` once to capture the latest frame from the camera
+      into an internal buffer.
+    - Call any number of ``retrieve_*`` methods afterwards to read individual
+      fields (RGB, depth, point cloud, ...) from that same captured frame.
+
+    All ``retrieve_*`` calls between two ``grab_images`` calls are guaranteed to
+    return data from the same frame, so you can read e.g. a synchronized RGB +
+    depth pair without ambiguity. Calling :meth:`grab_images` again overwrites
+    the buffer with a new frame.
+
+    Calling any ``retrieve_*`` method before the first ``grab_images()`` raises
+    :class:`RuntimeError`. This is enforced uniformly across all subclasses: the
+    base class auto-wraps each subclass's ``grab_images`` (to mark the buffer
+    populated) and each ``retrieve_*`` method (to assert the buffer is populated).
 
     We use the right-handed, y-down convention for the camera frame:
     - origin is at the camera lens center
@@ -36,6 +85,23 @@ class Camera(abc.ABC):
     cf https://scikit-image.org/docs/stable/user_guide/numpy_images.html#numpy-indexing
     """
 
+    # Whether grab_images() has ever been called on this instance.
+    # Class-level default so subclasses don't need to call super().__init__.
+    _grabbed: bool = False
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        # Wrap any grab_images / retrieve_* that this subclass defines directly.
+        # Abstract methods are skipped; they raise NotImplementedError on call,
+        # and wrapping them would interfere with ABC's abstract-method machinery.
+        for name, attr in list(cls.__dict__.items()):
+            if not callable(attr) or getattr(attr, "__isabstractmethod__", False):
+                continue
+            if name == "grab_images":
+                setattr(cls, name, _wrap_grab_images(attr))
+            elif name.startswith("retrieve_"):
+                setattr(cls, name, _wrap_retrieve(attr))
+
     @abc.abstractmethod
     def intrinsics_matrix(self) -> CameraIntrinsicsMatrixType:
         """returns the intrinsics matrix of the camera:
@@ -49,9 +115,18 @@ class Camera(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _grab_images(self) -> None:
-        """Transfer the latest camera data (RGB, stereo RGB, depth) from the camera to a memory buffer."""
+    def grab_images(self) -> None:
+        """Capture the latest frame from the camera into an internal buffer.
+
+        Call this once per frame. All subsequent ``retrieve_*`` calls return
+        data from this captured frame until ``grab_images`` is called again.
+        """
         raise NotImplementedError
+
+    @deprecated("Use the public grab_images() instead.")
+    def _grab_images(self) -> None:
+        """Deprecated alias for :meth:`grab_images`."""
+        return self.grab_images()
 
 
 class RGBCamera(Camera, abc.ABC):
@@ -69,121 +144,167 @@ class RGBCamera(Camera, abc.ABC):
         """The frames per second of the camera."""
         raise NotImplementedError
 
-    def get_rgb_image(self) -> NumpyFloatImageType:
-        """Get a new RGB image from the camera."""
-        self._grab_images()
-        return self._retrieve_rgb_image()
-
-    def get_rgb_image_as_int(self) -> NumpyIntImageType:
-        """Get a new RGB image from the camera as uint8.
-        This is faster to retrieve as images are typically stored as ints in the buffer.
-        It is also more compact, so recommended for communication."""
-        self._grab_images()
-        return self._retrieve_rgb_image_as_int()
-
     @abc.abstractmethod
-    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
-        """Returns the current RGB image in the memory buffer."""
-        raise NotImplementedError
+    def retrieve_rgb_image(self) -> NumpyFloatImageType:
+        """Return the RGB image from the most recently captured frame.
 
-    @abc.abstractmethod
-    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
-        """Returns the current RGB image in the memory buffer as uint8.
-        This is typically the format in which it is stored in memory.
-        Returning it directly avoids the overhead of converting it to floats first, which is what _retrieve_rgb_image() does.
+        Requires a prior call to :meth:`grab_images`.
         """
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+        """Return the RGB image from the most recently captured frame as uint8.
+
+        This is typically the format in which the image is stored in the
+        camera's memory buffer. Returning it directly avoids the overhead of
+        converting it to floats first, which is what :meth:`retrieve_rgb_image`
+        does.
+
+        Requires a prior call to :meth:`grab_images`.
+        """
+        raise NotImplementedError
+
+    @deprecated("Use grab_images() then retrieve_rgb_image() instead so capture and retrieval are explicit.")
+    def get_rgb_image(self) -> NumpyFloatImageType:
+        """Deprecated: use :meth:`grab_images` + :meth:`retrieve_rgb_image`."""
+        self.grab_images()
+        return self.retrieve_rgb_image()
+
+    @deprecated("Use grab_images() then retrieve_rgb_image_as_int() instead so capture and retrieval are explicit.")
+    def get_rgb_image_as_int(self) -> NumpyIntImageType:
+        """Deprecated: use :meth:`grab_images` + :meth:`retrieve_rgb_image_as_int`."""
+        self.grab_images()
+        return self.retrieve_rgb_image_as_int()
+
+    @deprecated("Use retrieve_rgb_image() instead.")
+    def _retrieve_rgb_image(self) -> NumpyFloatImageType:
+        """Deprecated alias for :meth:`retrieve_rgb_image`."""
+        return self.retrieve_rgb_image()
+
+    @deprecated("Use retrieve_rgb_image_as_int() instead.")
+    def _retrieve_rgb_image_as_int(self) -> NumpyIntImageType:
+        """Deprecated alias for :meth:`retrieve_rgb_image_as_int`."""
+        return self.retrieve_rgb_image_as_int()
 
 
 class DepthCamera(Camera, abc.ABC):
     """Base class for all depth cameras"""
 
-    def get_depth_map(self) -> NumpyDepthMapType:
-        """Get the latest depth map of the camera.
-        The depth map is a 2D array of floats, that provide the estimated z-coordinate in the camera frame
-        of that point on the image plane (pixel).
+    @abc.abstractmethod
+    def retrieve_depth_map(self) -> NumpyDepthMapType:
+        """Return the depth map from the most recently captured frame.
 
-        Returns:
-            np.ndarray: _description_
+        The depth map is a 2D array of floats that provide the estimated
+        z-coordinate in the camera frame of that point on the image plane
+        (pixel).
+
+        Requires a prior call to :meth:`grab_images`.
         """
-        self._grab_images()
-        return self._retrieve_depth_map()
-
-    def get_depth_image(self) -> NumpyIntImageType:
-        """an 8-bit (int) quantization of the latest depth map, which can be used for visualization"""
-        self._grab_images()
-        return self._retrieve_depth_image()
-
-    @abc.abstractmethod
-    def _retrieve_depth_map(self) -> NumpyDepthMapType:
-        """Returns the current depth map in the memory buffer."""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _retrieve_depth_image(self) -> NumpyIntImageType:
-        """Returns the current depth image in the memory buffer."""
+    def retrieve_depth_image(self) -> NumpyIntImageType:
+        """Return an 8-bit (int) quantization of the depth map from the most
+        recently captured frame, which can be used for visualization.
+
+        Requires a prior call to :meth:`grab_images`.
+        """
         raise NotImplementedError
 
-    def get_confidence_map(self) -> NumpyConfidenceMapType:
-        """Get a confidence map for the depth map.
+    def retrieve_confidence_map(self) -> NumpyConfidenceMapType:
+        """Return a confidence map for the depth map of the most recently
+        captured frame.
 
-        The confidence map is a 2D array of floats, that provide a measure of confidence in the depth estimate for each pixel.
-        The values are between 0 and 1, where 1 indicates high confidence and 0 indicates low confidence.
+        The confidence map is a 2D array of floats that provide a measure of
+        confidence in the depth estimate for each pixel. The values are between
+        0 and 1, where 1 indicates high confidence and 0 indicates low
+        confidence.
 
-        Note that not all stereo depth cameras provide a confidence map. We provide a default (naive) implementation.
-        It computes a confidence map based on depth discontinuities using OpenCV's Canny edge detection.
-        This is based on the assumption that depth estimates are less reliable at depth discontinuities.
+        Not all stereo depth cameras provide a confidence map. The default
+        (naive) implementation computes one from depth discontinuities using
+        OpenCV's Canny edge detection (depth estimates are assumed less
+        reliable at depth discontinuities). Child classes may override this for
+        a more accurate confidence map; for example:
 
-        Child classes can override this method to provide a more accurate confidence map if available.
-        For example:
-        - StereoRGBDCamera provides a confidence map based on disparity between left and right RGB images using OpenCV's SGBM algorithm implementation.
-        - Realsense provides a confidence map based on disparity between left and right infrared images using OpenCV's SGBM algorithm implementation.
-        - ZED provides a confidence map based on the camera's internal confidence measure.
+        - StereoRGBDCamera uses disparity between left and right RGB images
+          via OpenCV's SGBM algorithm.
+        - Realsense uses disparity between left and right infrared images
+          via OpenCV's SGBM algorithm.
+        - ZED uses the camera's internal confidence measure.
 
         See also: https://github.com/opencv/opencv_contrib/blob/master/modules/ximgproc/samples/disparity_filtering.cpp
 
+        Requires a prior call to :meth:`grab_images`.
+
         Returns:
-            np.ndarray: the confidence map, a single channel float image of the same resolution as the depth map, with values between 0 and 1
+            np.ndarray: the confidence map, a single channel float image of the
+            same resolution as the depth map, with values between 0 and 1.
         """
-        self._grab_images()
-        return self._retrieve_confidence_map()
-
-    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
-        """Returns a default confidence map for the depth map."""
-
-        # This is a very basic implementation, based on depth discontinuities using OpenCV's Canny edge detection.
-        depth_map = self._retrieve_depth_map()
+        depth_map = self.retrieve_depth_map()
         depth_map_uint8 = np.empty_like(depth_map, dtype=np.uint8)
         depth_map_uint8 = cv2.normalize(depth_map, depth_map_uint8, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         edges = cv2.Canny(depth_map_uint8, 100, 200)
         confidence_map = 1.0 - (edges / 255.0)  # edges are 255, so invert to get confidence
         return confidence_map
 
+    @deprecated("Use grab_images() then retrieve_depth_map() instead so capture and retrieval are explicit.")
+    def get_depth_map(self) -> NumpyDepthMapType:
+        """Deprecated: use :meth:`grab_images` + :meth:`retrieve_depth_map`."""
+        self.grab_images()
+        return self.retrieve_depth_map()
+
+    @deprecated("Use grab_images() then retrieve_depth_image() instead so capture and retrieval are explicit.")
+    def get_depth_image(self) -> NumpyIntImageType:
+        """Deprecated: use :meth:`grab_images` + :meth:`retrieve_depth_image`."""
+        self.grab_images()
+        return self.retrieve_depth_image()
+
+    @deprecated("Use grab_images() then retrieve_confidence_map() instead so capture and retrieval are explicit.")
+    def get_confidence_map(self) -> NumpyConfidenceMapType:
+        """Deprecated: use :meth:`grab_images` + :meth:`retrieve_confidence_map`."""
+        self.grab_images()
+        return self.retrieve_confidence_map()
+
+    @deprecated("Use retrieve_depth_map() instead.")
+    def _retrieve_depth_map(self) -> NumpyDepthMapType:
+        """Deprecated alias for :meth:`retrieve_depth_map`."""
+        return self.retrieve_depth_map()
+
+    @deprecated("Use retrieve_depth_image() instead.")
+    def _retrieve_depth_image(self) -> NumpyIntImageType:
+        """Deprecated alias for :meth:`retrieve_depth_image`."""
+        return self.retrieve_depth_image()
+
+    @deprecated("Use retrieve_confidence_map() instead.")
+    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
+        """Deprecated alias for :meth:`retrieve_confidence_map`."""
+        return self.retrieve_confidence_map()
+
 
 class RGBDCamera(RGBCamera, DepthCamera):
     """Base class for all RGBD cameras"""
 
-    def get_colored_point_cloud(self) -> PointCloud:
-        """Get the latest point cloud of the camera.
-        The point cloud contains the estimated position in the camera frame of points on the image plane (pixels).
-        Each point also has a color associated with it, which is the color of the corresponding pixel in the RGB image.
+    def retrieve_colored_point_cloud(self) -> PointCloud:
+        """Return the colored point cloud from the most recently captured frame.
+
+        The point cloud contains the estimated position in the camera frame of
+        points on the image plane (pixels). Each point also has a color
+        associated with it, which is the color of the corresponding pixel in
+        the RGB image.
+
+        Default implementation uses the depth map and RGB with open3d's
+        ``create_from_rgbd_image()`` function. See:
+        https://www.open3d.org/docs/release/python_api/open3d.t.geometry.PointCloud.html#open3d.t.geometry.PointCloud.create_from_rgbd_image
+
+        Requires a prior call to :meth:`grab_images`.
 
         Returns:
-            PointCloud: the points (= positions) and colors
-        """
-
-        self._grab_images()
-        return self._retrieve_colored_point_cloud()
-
-    def _retrieve_colored_point_cloud(self) -> PointCloud:
-        """Returns the current point cloud in the memory buffer.
-
-        Default implementation uses the depth map and RGB with open3d's create_from_rgbd_image() function.
-        See: https://www.open3d.org/docs/release/python_api/open3d.t.geometry.PointCloud.html#open3d.t.geometry.PointCloud.create_from_rgbd_image
+            PointCloud: the points (= positions) and colors.
         """
         if not hasattr(self, "_logged_colored_point_cloud_warning"):
             logger.warning(
-                """You are using an RGBDCamera which does not override _retrieve_colored_point_cloud.
+                """You are using an RGBDCamera which does not override retrieve_colored_point_cloud.
             We will use a default implementation based on Open3D, which is quite slow (several milliseconds per frame).
             Consider impementing this method if your camera supports point cloud processing."""
             )
@@ -191,8 +312,8 @@ class RGBDCamera(RGBCamera, DepthCamera):
 
         import open3d as o3d
 
-        image_rgb_uint8 = self._retrieve_rgb_image_as_int()
-        depth_map = self._retrieve_depth_map()
+        image_rgb_uint8 = self.retrieve_rgb_image_as_int()
+        depth_map = self.retrieve_depth_map()
         intrinsics = self.intrinsics_matrix()
 
         # Convert airo-mono data types to open3d data types
@@ -211,6 +332,17 @@ class RGBDCamera(RGBCamera, DepthCamera):
         point_cloud = open3d_to_point_cloud(pcd)
         return point_cloud
 
+    @deprecated("Use grab_images() then retrieve_colored_point_cloud() instead so capture and retrieval are explicit.")
+    def get_colored_point_cloud(self) -> PointCloud:
+        """Deprecated: use :meth:`grab_images` + :meth:`retrieve_colored_point_cloud`."""
+        self.grab_images()
+        return self.retrieve_colored_point_cloud()
+
+    @deprecated("Use retrieve_colored_point_cloud() instead.")
+    def _retrieve_colored_point_cloud(self) -> PointCloud:
+        """Deprecated alias for :meth:`retrieve_colored_point_cloud`."""
+        return self.retrieve_colored_point_cloud()
+
 
 class StereoRGBDCamera(RGBDCamera):
     """Base class for all stereo RGBD cameras"""
@@ -219,20 +351,22 @@ class StereoRGBDCamera(RGBDCamera):
     RIGHT_RGB = "right"
     _VIEWS = (LEFT_RGB, RIGHT_RGB)
 
-    def get_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
-        self._grab_images()
-        return self._retrieve_rgb_image(view)
-
-    def get_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
-        self._grab_images()
-        return self._retrieve_rgb_image_as_int(view)
-
     @abc.abstractmethod
-    def _retrieve_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
+    def retrieve_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
+        """Return the RGB image from the most recently captured frame for the
+        given stereo view.
+
+        Requires a prior call to :meth:`grab_images`.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _retrieve_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
+    def retrieve_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
+        """Return the RGB image from the most recently captured frame for the
+        given stereo view, as uint8.
+
+        Requires a prior call to :meth:`grab_images`.
+        """
         raise NotImplementedError
 
     # TODO: check view argument value?
@@ -252,10 +386,15 @@ class StereoRGBDCamera(RGBDCamera):
         """
         raise NotImplementedError
 
-    def _retrieve_confidence_map(self) -> NumpyConfidenceMapType:
-        """Returns a confidence map for the depth map."""
+    def retrieve_confidence_map(self) -> NumpyConfidenceMapType:
+        """Return a confidence map for the depth map of the most recently
+        captured frame.
 
-        # Based on disparity between left and right RGB images using OpenCV's SGBM algorithm implementation.
+        Based on disparity between left and right RGB images using OpenCV's
+        SGBM algorithm implementation.
+
+        Requires a prior call to :meth:`grab_images`.
+        """
 
         # default values for SGBM according to OpenCV docs
         max_disp = 160  # must be divisible by 16
@@ -267,8 +406,8 @@ class StereoRGBDCamera(RGBDCamera):
         wls_sigma = 1.5
 
         # get the left and right images
-        left = self._retrieve_rgb_image_as_int(self.LEFT_RGB)
-        right = self._retrieve_rgb_image_as_int(self.RIGHT_RGB)
+        left = self.retrieve_rgb_image_as_int(self.LEFT_RGB)
+        right = self.retrieve_rgb_image_as_int(self.RIGHT_RGB)
 
         left_matcher = cv2.StereoSGBM.create(
             minDisparity=0,
@@ -289,3 +428,25 @@ class StereoRGBDCamera(RGBDCamera):
         confidence_map = wls_filter.getConfidenceMap()
 
         return confidence_map / 255.0
+
+    @deprecated("Use grab_images() then retrieve_rgb_image() instead so capture and retrieval are explicit.")
+    def get_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
+        """Deprecated: use :meth:`grab_images` + :meth:`retrieve_rgb_image`."""
+        self.grab_images()
+        return self.retrieve_rgb_image(view)
+
+    @deprecated("Use grab_images() then retrieve_rgb_image_as_int() instead so capture and retrieval are explicit.")
+    def get_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
+        """Deprecated: use :meth:`grab_images` + :meth:`retrieve_rgb_image_as_int`."""
+        self.grab_images()
+        return self.retrieve_rgb_image_as_int(view)
+
+    @deprecated("Use retrieve_rgb_image() instead.")
+    def _retrieve_rgb_image(self, view: str = LEFT_RGB) -> NumpyFloatImageType:
+        """Deprecated alias for :meth:`retrieve_rgb_image`."""
+        return self.retrieve_rgb_image(view)
+
+    @deprecated("Use retrieve_rgb_image_as_int() instead.")
+    def _retrieve_rgb_image_as_int(self, view: str = LEFT_RGB) -> NumpyIntImageType:
+        """Deprecated alias for :meth:`retrieve_rgb_image_as_int`."""
+        return self.retrieve_rgb_image_as_int(view)

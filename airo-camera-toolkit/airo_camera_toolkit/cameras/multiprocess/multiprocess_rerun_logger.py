@@ -32,7 +32,7 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
     def _log_rgb_image(self) -> None:
         import rerun as rr
 
-        image = self._receiver.get_rgb_image()
+        image = self._receiver.retrieve_rgb_image()
         # This randomly fails, just don't log an image if it does
         try:
             image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
@@ -55,6 +55,7 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
 
         while not self.shutdown_event.is_set():
+            self._receiver.grab_images()
             self._log_rgb_image()
 
     def stop(self) -> None:
@@ -85,7 +86,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         if not isinstance(self._receiver, MultiprocessRGBDReceiver):
             raise TypeError("Receiver is not a MultiprocessRGBDReceiver")
 
-        depth_image = self._receiver.get_depth_image()
+        depth_image = self._receiver.retrieve_depth_image()
         if self._image_transform is not None:
             depth_image = self._image_transform.transform_image(depth_image)
         rr.log(self._entity_path_depth, rr.Image(depth_image).compress(jpeg_quality=90))
@@ -100,6 +101,7 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace)
 
         while not self.shutdown_event.is_set():
+            self._receiver.grab_images()
             self._log_rgb_image()
             self._log_depth_image()
 
@@ -108,6 +110,8 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn", force=True)
+
     rerun_logger = MultiprocessRGBDRerunLogger("camera")
     rerun_logger.start()
     time.sleep(10)

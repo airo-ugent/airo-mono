@@ -41,12 +41,23 @@ import cv2
 camera = Zed(Zed.RESOLUTION_720, fps=30)
 
 while True:
-    image_rgb_float = camera.get_rgb_image()
+    camera.grab_images()
+    image_rgb_float = camera.retrieve_rgb_image()
     image_bgr = ImageConverter.from_numpy_format(image_rgb_float).image_in_opencv_format
     cv2.imshow("Image", image_bgr)
     key = cv2.waitKey(10)
     if key == ord('q'):
         break
+```
+
+Capture and retrieval are explicit and decoupled: call `grab_images()` once to capture
+a frame, then any number of `retrieve_*` calls to read individual fields (RGB, depth,
+point cloud, ...) from that *same* frame. This is the supported way to get synchronized
+multi-modal data, e.g. an RGB image and depth map taken at the same instant:
+```python
+camera.grab_images()  # Gets a new frame from the hardware at timestamp T.
+rgb = camera.retrieve_rgb_image_as_int()  # Read the frame from timestamp T.
+depth = camera.retrieve_depth_map()  # Read the frame from timestamp T.
 ```
 
 ## Hand-eye calibration
@@ -64,16 +75,17 @@ See [calibration/README.md](./airo_camera_toolkit/calibration/README.md) for mor
 ## Utils
 
 ### Image format conversion
-Camera by default return images as numpy 32-bit float RGB images with values between 0 to 1 through `get_rgb_image()`.
+Camera by default return images as numpy 32-bit float RGB images with values between 0 to 1 through `retrieve_rgb_image()`.
 This is most convenient for subsequent processing, e.g. with neural networks.
-For higher performance, 8-bit unsigned integer RGB images are also accessible through `get_rgb_image_as_int()`.
+For higher performance, 8-bit unsigned integer RGB images are also accessible through `retrieve_rgb_image_as_int()`.
 
 However, when using OpenCV, you will need conversion to BGR format.
 For this you can use the `ImageConverter` class:
 ```python
 from airo_camera_toolkit.utils import ImageConverter
 
-image_rgb_int = camera.get_rgb_image_as_int()
+camera.grab_images()
+image_rgb_int = camera.retrieve_rgb_image_as_int()
 image_bgr = ImageConverter.from_numpy_int_format(image_rgb_int).image_in_opencv_format
 ```
 

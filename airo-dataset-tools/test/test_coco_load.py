@@ -16,6 +16,7 @@ import pytest
 from airo_dataset_tools.data_parsers.coco import (
     CocoCategory,
     CocoInstancesDataset,
+    CocoKeypointAnnotation,
     CocoKeypointCategory,
     CocoKeypointsDataset,
 )
@@ -99,3 +100,24 @@ def test_coco_load_keypoints_no_bboxes():
         assert len(coco_keypoints.annotations) == 2
 
         assert isinstance(coco_keypoints.categories[0], CocoKeypointCategory)
+
+
+def test_coco_load_keypoints_without_num_keypoints():
+    """Test that CocoKeypointAnnotation auto-fills num_keypoints when absent or null."""
+    # Build a minimal keypoint annotation dict without num_keypoints
+    annotation_data = {
+        "id": 1,
+        "image_id": 1,
+        "category_id": 1,
+        # 3 keypoints: first two labeled (visibility=2), third not labeled (visibility=0)
+        "keypoints": [100.0, 50.0, 2.0, 200.0, 80.0, 2.0, 0.0, 0.0, 0.0],
+        # num_keypoints deliberately absent
+    }
+    annotation = CocoKeypointAnnotation(**annotation_data)
+    # Two keypoints have visibility > 0, so num_keypoints should be auto-filled to 2
+    assert annotation.num_keypoints == 2
+
+    # Also verify that passing num_keypoints=None explicitly is handled the same way
+    annotation_data_null = dict(annotation_data, num_keypoints=None)
+    annotation_null = CocoKeypointAnnotation(**annotation_data_null)
+    assert annotation_null.num_keypoints == 2

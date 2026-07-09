@@ -4,6 +4,7 @@ Use charuco whenever you can, as their checkerboard corners can be detected more
 This code is partially based on a codebase by Peter De Roovere (https://github.com/pderoovere),
 so part of the credit for this code goes to him.
 """
+
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -43,8 +44,9 @@ class CharucoCornerDetectionResult(ArucoMarkerDetectionResult):
 
 def detect_aruco_markers(image: OpenCVIntImageType, dictionary: ArucoDictType) -> Optional[ArucoMarkerDetectionResult]:
     """Detect markers from `aruco_dict` dictionary in the `image`."""
-    marker_corners, marker_ids, _ = aruco.detectMarkers(image, dictionary)
-    if marker_corners is None or marker_ids is None:
+    detector = aruco.ArucoDetector(dictionary)
+    marker_corners, marker_ids, _ = detector.detectMarkers(image)
+    if not marker_corners or marker_ids is None:
         return None
     marker_corners_array = np.stack(marker_corners)
     marker_corners_array = refine_corner_detection(image, marker_corners_array)
@@ -53,15 +55,13 @@ def detect_aruco_markers(image: OpenCVIntImageType, dictionary: ArucoDictType) -
 
 
 def detect_charuco_corners(
-    image: OpenCVIntImageType, markers_detection_result: ArucoMarkerDetectionResult, charuco_board: CharucoBoardType
+    image: OpenCVIntImageType,
+    markers_detection_result: ArucoMarkerDetectionResult,
+    charuco_board: CharucoBoardType,
 ) -> Optional[CharucoCornerDetectionResult]:
     """Detect CharuCo corners in the image using the detected markers in `markers_detection_result`."""
-    nb_corners, charuco_corners, charuco_ids = aruco.interpolateCornersCharuco(
-        markerCorners=markers_detection_result.corners,  # type: ignore # typed as Seq but accepts np.ndarray
-        markerIds=markers_detection_result.ids,
-        image=image,
-        board=charuco_board,
-    )
+    charuco_detector = aruco.CharucoDetector(charuco_board)
+    charuco_corners, charuco_ids, _, _ = charuco_detector.detectBoard(image)
     if charuco_corners is None or charuco_ids is None:
         return None
     charuco_corners = refine_corner_detection(image, charuco_corners)
@@ -96,23 +96,20 @@ def get_poses_of_aruco_markers(
     dist_coeffs: Optional[np.ndarray] = None,
 ) -> Optional[List[HomogeneousMatrixType]]:
     """Get the poses of the detected markers in `markers_detection_result`."""
-    rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
-        corners=markers_detection_result.corners,  # type: ignore # typed as Seq but accepts np.ndarray
-        markerLength=marker_size,
-        cameraMatrix=camera_matrix,
-        distCoeffs=dist_coeffs,
-    )
-    if rvecs is None and tvecs is None:
-        return None
-    elif rvecs.shape != tvecs.shape:
-        raise ValueError("rvecs and tvecs should have the same shape. Do you have multiple markers with the same ID?")
+    # Object points for a single marker (top-left, top-right, bottom-right, bottom-left)
+    half = marker_size / 2
+    obj_points = np.array([[-half, half, 0], [half, half, 0], [half, -half, 0], [-half, -half, 0]], dtype=np.float32)
 
-    # combine the rvecs and tvecs into a single pose matrix
-    marker_poses_in_camera_frame = [
-        SE3Container.from_rotation_vector_and_translation(rvec[0], tvec).homogeneous_matrix
-        for rvec, tvec in zip(rvecs, tvecs)
-    ]
-    return marker_poses_in_camera_frame
+    _dist = dist_coeffs if dist_coeffs is not None else np.zeros((4, 1), dtype=np.float32)
+    marker_poses_in_camera_frame = []
+    for corner in markers_detection_result.corners:
+        success, rvec, tvec = cv2.solvePnP(obj_points, corner[0], camera_matrix, _dist)
+        if not success:
+            continue
+        pose = SE3Container.from_rotation_vector_and_translation(rvec.flatten(), tvec.flatten()).homogeneous_matrix
+        marker_poses_in_camera_frame.append(pose)
+
+    return marker_poses_in_camera_frame if marker_poses_in_camera_frame else None
 
 
 def get_pose_of_charuco_board(
@@ -126,14 +123,19 @@ def get_pose_of_charuco_board(
     charuco_corners = charuco_corners_detection_result.corners
     charuco_ids = charuco_corners_detection_result.ids
 
+    if len(charuco_ids) < 6:
+        return None
+
     # Use matchImagePoints to get the object and image points
-    obj_points, img_points = charuco_board.matchImagePoints(charuco_corners, charuco_ids)  # type: ignore  # mypy does not accept these types, but they are correct
+    obj_points, img_points = charuco_board.matchImagePoints(
+        charuco_corners, charuco_ids
+    )  # type: ignore  # mypy does not accept these types, but they are correct
     if obj_points is None or img_points is None:
         return None
 
-    # Use solvePnP for pose estimation
-    success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, dist_coeffs)  # type: ignore  # mypy does not accept these types, but they are correct
-    if not success or rvec is None or tvec is None:
+    _dist = dist_coeffs if dist_coeffs is not None else np.zeros((4, 1), dtype=np.float32)
+    success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_matrix, _dist)
+    if (rvec is None and tvec is None) or not success:
         return None
     # combine the rvec and tvec into a single pose matrix
     charuco_pose_in_camera_frame = SE3Container.from_rotation_vector_and_translation(
@@ -155,8 +157,8 @@ def detect_charuco_board(
         image: An image that might contain a charuco board.
         camera_matrix: The intrinsics of the camera that took the image.
         dist_coeffs: The distortion coefficients of the camera that took the image.
-        aruco_markers: The dictionary from OpenCV that specifies the aruco marker parameters.
-        charuco_board: The dictionary from OpenCV that specifies the charuco board parameters.
+        aruco_dict: The dictionary from OpenCV that specifies the aruco marker parameters.
+        charuco_board: The CharucoBoardType from OpenCV that specifies the charuco board parameters.
 
     Returns:
         Optional[HomogeneousMatrixType]: The pose of the charuco board in the camera frame, if it was detected.
@@ -180,7 +182,9 @@ def detect_charuco_board(
 
 
 def draw_frame_on_image(
-    image: OpenCVIntImageType, frame_pose_in_camera: HomogeneousMatrixType, camera_matrix: CameraIntrinsicsMatrixType
+    image: OpenCVIntImageType,
+    frame_pose_in_camera: HomogeneousMatrixType,
+    camera_matrix: CameraIntrinsicsMatrixType,
 ) -> OpenCVIntImageType:
     """Draws a 2D projection of a frame on the image. Be careful when interpreting this visually, it is often hard to estimate the true 3D direction of an axis' 2D projection."""
     charuco_se3 = SE3Container.from_homogeneous_matrix(frame_pose_in_camera)
@@ -254,9 +258,21 @@ if __name__ == "__main__":
 
     @click.command()
     @click.option("--aruco_marker_size", default=0.031, help="Size of the aruco marker in meters")
-    @click.option("--charuco_x_count", default=7, help="Number of checkerboard tiles in the x direction")
-    @click.option("--charuco_y_count", default=5, help="Number of checkerboard tiles in the y direction")
-    @click.option("--charuco_tile_size", default=0.04, help="Size of the charuco checkerboard tiles in meters")
+    @click.option(
+        "--charuco_x_count",
+        default=7,
+        help="Number of checkerboard tiles in the x direction",
+    )
+    @click.option(
+        "--charuco_y_count",
+        default=5,
+        help="Number of checkerboard tiles in the y direction",
+    )
+    @click.option(
+        "--charuco_tile_size",
+        default=0.04,
+        help="Size of the charuco checkerboard tiles in meters",
+    )
     @click_camera_options
     def visualize_marker_detections_live(
         aruco_marker_size: float,
@@ -270,8 +286,13 @@ if __name__ == "__main__":
         # Only create a charuco board if all charuco related parameters were provided.
         if charuco_x_count is not None and charuco_y_count is not None and charuco_tile_size is not None:
             charuco_board = aruco.CharucoBoard(
-                (charuco_x_count, charuco_y_count), charuco_tile_size, aruco_marker_size, aruco_dict
+                (charuco_x_count, charuco_y_count),
+                charuco_tile_size,
+                aruco_marker_size,
+                aruco_dict,
             )
+        else:
+            charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
 
         camera = discover_camera(camera_brand, camera_serial_number)
 
@@ -280,12 +301,18 @@ if __name__ == "__main__":
 
         print("press Q to quit")
         while True:
-            image_rgb = camera.get_rgb_image_as_int()
+            camera.grab_images()
+            image_rgb = camera.retrieve_rgb_image_as_int()
             image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
             intrinsics = camera.intrinsics_matrix()
 
             detect_and_visualize_charuco_pose(
-                image, intrinsics, aruco_dict, charuco_board, draw_aruco_detection=True, draw_charuco_detection=True
+                image,
+                intrinsics,
+                aruco_dict,
+                charuco_board,
+                draw_aruco_detection=True,
+                draw_charuco_detection=True,
             )
 
             cv2.imshow(window_name, image)

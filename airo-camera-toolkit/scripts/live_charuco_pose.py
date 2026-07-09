@@ -10,7 +10,8 @@ window_name = "Charuco Pose"
 cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
 while True:
-    image = camera.get_rgb_image_as_int()
+    camera.grab_images()
+    image = camera.retrieve_rgb_image_as_int()
     image = ImageConverter.from_numpy_int_format(image).image_in_opencv_format
     pose = detect_charuco_board(image, intrinsics)
     if pose is not None:

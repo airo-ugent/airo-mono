@@ -5,26 +5,32 @@ import setuptools
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo-dataset-tools",
-    version="2025.11.0",
+    version="2026.5.0",
     author="Victor-Louis De Gusseme",
     author_email="victorlouisdg@gmail.com",
     description="Scripts for loading and converting datasets for the Ghent University AI and Robotics Lab",
     install_requires=[
         "numpy>=2.0",
         "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
-        "opencv-contrib-python==4.10.0.84",  # See airo-camera-toolkit setup.py for explanation
-        "opencv-python-headless==4.10.0.84",  # See airo-camera-toolkit setup.py for explanation
+        # opencv-contrib-python and opencv-python-headless both install a cv2 module and conflict
+        # with each other — whichever is installed last wins. Both fiftyone (in the [fiftyone]
+        # extra) and albumentations (in the [augmentations] extra) pull in opencv-python-headless.
+        # To ensure contrib wins after installing either extra, run:
+        #   pip install --force-reinstall opencv-contrib-python==4.10.0.84
+        "opencv-contrib-python==4.10.0.84",
         "pycocotools",
         "xmltodict",
         "tqdm",
-        "fiftyone",  # visualization
         "Pillow",
         "types-Pillow",
-        "albumentations",
         "click",
-        "airo-typing>=2025.11.0",
-        "airo-spatial-algebra>=2025.11.0",
+        "airo-typing>=2026.1.0",
+        "airo-spatial-algebra>=2026.1.0",
     ],
+    extras_require={
+        "augmentations": ["albumentations"],
+        "fiftyone": ["fiftyone"],
+    },
     packages=setuptools.find_packages(exclude=["test"]),
     entry_points={
         "console_scripts": [

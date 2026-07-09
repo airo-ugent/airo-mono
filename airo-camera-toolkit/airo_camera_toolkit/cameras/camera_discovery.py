@@ -101,7 +101,8 @@ if __name__ == "__main__":
 
         print("Press Q to quit.")
         while True:
-            image_rgb = camera.get_rgb_image_as_int()
+            camera.grab_images()
+            image_rgb = camera.retrieve_rgb_image_as_int()
             image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
             cv2.imshow(window_name, image)
             key = cv2.waitKey(1)

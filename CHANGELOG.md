@@ -8,10 +8,10 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
+- `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
 
 ### Added
-- Added `gc_disabled()` context manager to temporarily disable garbage collection for performance-critical sections.
-
 - **Torque Control Support**: Added a `torque_mode` flag to `ur_rtde` (default: `False`).
 
     - When enabled, it launches process `_torque_worker` (500Hz) to compute and control robot torque using PD control.
@@ -19,11 +19,73 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
     - Set the `target_pos` (joint configuration) in the 'URrtde' class to control robot pose.
 
     - **Important**: Users must tune the PD parameters before use to ensure stability.
+- Added `CLAUDE.md` with repo overview, setup instructions, coding conventions, and development workflow guidelines for Claude Code.
+- `airo-dataset-tools`: `merge_coco_datasets` now supports nested image subdirectories — images are copied to the target preserving their relative directory structure.
+- `airo-dataset-tools`: `CocoKeypointAnnotation` now auto-fills `num_keypoints` when the field is absent or `None` in the source data.
+- `airo-dataset-tools`: `apply_transform_to_coco_dataset` now gracefully skips segmentation transformation when an annotation has an empty segmentation list (`[]`).
+- Added easier imports for airo-camera-toolkit cameras. Now, instead of `from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture` you can just write `from airo_camera_toolkit.cameras import OpenCVVideoCapture`. Based on [PEP 562](https://peps.python.org/pep-0562/). Fixes the old issue [#122](https://github.com/airo-ugent/airo-mono/issues/122).
+
+### Changed
+- `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
+
+### Fixed
+- `airo-camera-toolkit`: `get_pose_of_charuco_board` now returns `None` instead of crashing when fewer than 6 charuco corners are detected (OpenCV's DLT algorithm requires at least 6 point correspondences). Fixes [#199](https://github.com/airo-ugent/airo-mono/issues/199).
+
+### Removed
+
+## 2026.5.0
+
+### Breaking changes
+
+### Added
+
+### Changed
+- Refactored `airo_camera_toolkit.cameras.multiprocess` to reduce code duplication. This should not have any impact on code using this module, as there are no breaking changes.
+- Rewrote camera API to be more explicit about the difference between `get_*()` and`_retrieve_*` ([#187](https://github.com/airo-ugent/airo-mono/issues/187)). `get_*()` methods (e.g., `get_rgb_image()`) have been deprecated, instead, users must now explicitly call `grab_images()` and `retrieve_rgb_image()`. This reduces the chance of bugs occurring if a user of the camera toolkit doesn't know that `get_*()` waits for a new camera frame. Such bugs occurred commonly in user code, but also in the camera toolkit itself (see fixes below).
+- Deprecated the previously-internal `_grab_images` and `_retrieve_*` names (and the Zed-specific `_retrieve_camera_pose` / `_request_spatial_map_update` / `_retrieve_spatial_map`). Calls still work via `@deprecated` compatibility wrappers.
+- Calling any `retrieve_*` method before the first `grab_images()` now raises a uniform `RuntimeError` across all camera implementations.
+
+### Fixed
+- Fixed crash during camera calibration when the board was not fully visible ([#188](https://github.com/airo-ugent/airo-mono/issues/188)).
+- Fixed `ImageConverter.image_in_opencv_format` mutating the internal float image buffer in place, which corrupted the values returned by subsequent calls to any of the `image_in_*` properties.
+- Fixed `open3d_to_point_cloud` silently dropping custom attributes when converting back to a `PointCloud`.
+- Fixed `"Haraud"` typo in `cv2_CALIBRATION_METHODS` (now `"Horaud"`), which propagated into result filenames and method-selection keys.
+- Fixed `get_poses_of_aruco_markers` crashing with `AttributeError` when `cv2.aruco.estimatePoseSingleMarkers` returns exactly one of `rvecs`/`tvecs` as `None` (the guard used `and` instead of `or`).
+- Fixed frame desync in `MultiprocessZedPublisher`: the left RGB and depth maps were read via the high-level `get_*` methods, which call `_grab_images()` again and so returned data from a different ZED capture than the right RGB and the recorded frame metadata.
+- Fixed a similar frame desync in `MultiprocessRGBDRerunLogger`.
+- Fixed `MultiprocessZedPublisher._write_spatial_map` crashing when the spatial map's full point cloud has no colors (`colors is None`); the buffer is now zero-filled in that case, mirroring the per-frame point-cloud handling.
+
+### Removed
+- Removed a stray `print(point)` left inside `ComposedTransform.transform_point`. This should have no functional impact.
+
+## 2026.1.0
+
+### Breaking changes
+- Code implementation for communicating with Schunk grippers has been changed to `SchunkGripperProcess`, `SchunkEGK40_USB` has been relegated to the schunk branch of this repo.
+- Default manipulator specs in `URrtde` class were wrong, they are now multiplied by π -> **caution**: your robot may suddenly move 3x faster if you didn't set joint speed yourself.
+- Old airo-teleop package was removed from the monorepo, in favor of a new [airo-teleop](https://github.com/airo-ugent/airo-teleop/), which is now considered a sister repository.
+- Changed the usage interface of the parameter constants in `zed.py`. These constants are now accessible through their respective dataclass (e.g., NEURAL_DEPTH_MODE -> InitParams.NEURAL_DEPTH_MODE).
+
+### Added
+- Added `gc_disabled()` context manager to temporarily disable garbage collection for performance-critical sections.
+- Added `get_model()` method to `URrtde` to automatically detect the UR model (UR3, UR3e, UR5e)
+- Added `_retrieve_camera_pose()` method to the `Zed` class in `zed.py` to retrieve the pose matrix of the camera.
+- Added `_request_spatial_map_update` and `_retrieve_spatial_map` methods to the `Zed` class in `zed.py` to respectively request and retrieve a spatial map update using VSLAM.
+- Added dataclasses for the different kinds of Zed parameters (init parameters, positional tracking and spatial mapping) and a `ZedSpatialMap` dataclass.
+- Added extra test code in the `__main__` block of `zed.py` to test the new methods.
+- Added a new file `multiprocess_zed_camera.py`, implementing ZED-specific publisher and receiver classes that extend the StereoRGBD publisher and receiver with tracking and spatial mapping data exchange over shared memory.
+
 ### Changed
 - Improved `execute_trajectory` reliability: we now temporarily disable the garbage collector in the hot loop to reduce latency using `gc_disabled()`.
 - Deprecated `AsyncExecutor`. It is a very thin wrapper around [`ThreadPoolExecutor(max_workers=1)`](https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Executor), which should be used instead.
+- `get_model()` (see Added) is now used in the URrtde constructor to automatically detect the UR model and set the manipulator specs appropriately.
+- Dropped support for Python 3.9 and added support for 3.12. This only has an impact on our CI workflow and should not impact you directly, but it does mean that airo-mono could stop working without any warning on Python 3.9 in the future.
+- Changed incorrect usages of the updated parameter constants in `zed.py` throughout the `airo-camera-toolkit` (see Breaking changes).
 
 ### Fixed
+- Multiprocess cameras will now get an initial frame upon initialization using `_grab_images`, to avoid premature reads of invalid data (e.g., calling `intrinsics_matrix()` before `get_rgb_image_as_int()` - the latter triggers `_grab_images`).
+- `MultiprocessRGBDPublisher` now correctly publishes the FPS.
+- `MultiprocessStereoRGBDPublisher` now correctly publishes the FPS.
 
 ### Removed
 
