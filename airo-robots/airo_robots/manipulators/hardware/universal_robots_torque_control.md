@@ -31,6 +31,9 @@ For ordinary point-to-point motions and trajectories, stick with the position-co
   (`TORQUE_LIMIT_SAFETY_FACTOR`), but clipping is a last resort, not a substitute for sane gains.
 * Set targets **close to the current configuration**. Large jumps are smoothed by the controller's reference
   trajectory generator, but small increments remain the safest way to command motion.
+* **Keep the configured payload truthful.** The UR controller compensates gravity internally using the *configured*
+  payload (mass and center of gravity). A wrong or stale payload
+  setting makes the arm drift toward gravity in compliant (low-gain) mode. When picking a heavy object, call `disable_torque_control()`, update the payload, and re-enable.
 
 ## Quickstart
 
