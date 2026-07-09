@@ -89,6 +89,17 @@ We support the following cameras:
 For RGB cameras, we support reading RGB images.
 For RGB-D cameras, we support reading RGB images and depth images, as well as retrieving colored point clouds.
 
+#### Installing camera SDKs
+
+Unlike the robot SDKs, the camera SDKs are not pip installable, so they cannot be provided as extras of
+`airo-camera-toolkit`: they require a system-wide SDK installation (and for the ZED, NVIDIA drivers and CUDA) before
+the Python bindings can be used. Follow the vendor-specific installation guides:
+
+- [ZED installation](airo-camera-toolkit/airo_camera_toolkit/cameras/zed/installation.md)
+- [RealSense installation](airo-camera-toolkit/airo_camera_toolkit/cameras/realsense/realsense_installation.md)
+
+USB webcams via OpenCV require no additional installation.
+
 #### Multiprocessing
 
 Often, you want to read camera images in a separate process, to control the robot and camera in parallel.
