@@ -6,6 +6,7 @@ import click
 from airo_camera_toolkit.calibration.fiducial_markers import AIRO_DEFAULT_ARUCO_DICT, AIRO_DEFAULT_CHARUCO_BOARD
 from airo_camera_toolkit.calibration.hand_eye_calibration import do_camera_robot_calibration
 from airo_camera_toolkit.cameras.camera_discovery import click_camera_options, discover_camera
+from airo_robots.manipulators.position_manipulator import PositionManipulator
 
 
 @click.group()
@@ -16,11 +17,13 @@ def cli() -> None:
 @cli.command(name="hand-eye-calibration")
 @click.option("--mode", default="eye_in_hand", help="eye_in_hand or eye_to_hand")
 @click.option("--robot_ip", default="10.42.0.162", help="robot ip address")
+@click.option("--robot_type", default="ur", help="robot type: 'ur' or 'realman'")
 @click.option("--calibration_dir", type=click.Path(exists=False), help="directory to save the calibration data to.")
 @click_camera_options
-def calibrate_with_ur(
+def hand_eye_calibration(
     mode: str,
     robot_ip: str,
+    robot_type: str = "ur",
     calibration_dir: Optional[str] = None,
     camera_brand: Optional[str] = None,
     camera_serial_number: Optional[str] = None,
@@ -40,12 +43,22 @@ def calibrate_with_ur(
         * If residual error is low but the visualization looks wrong, you might have use the wrong mode (eye_in_hand
         or eye_to_hand). Try rerunning the calibration with the compute_calibration.py script.
     """
-    from airo_robots.manipulators.hardware.ur_rtde import URrtde
 
     aruco_dict = AIRO_DEFAULT_ARUCO_DICT
     charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
+    robot: Optional[PositionManipulator] = None
+    if robot_type == "ur":
+        from airo_robots.manipulators.hardware.ur_rtde import URrtde
 
-    robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
+        robot = URrtde(robot_ip, URrtde.UR3_CONFIG)
+    elif robot_type == "realman":
+        from airo_robots.manipulators.hardware.realman import RealmanControl
+
+        robot = RealmanControl(robot_ip)
+    else:
+        raise NotImplementedError(
+            f"Robot type {robot_type} is not supported yet. Only 'ur' and 'realman' are supported."
+        )
 
     camera = discover_camera(camera_brand, camera_serial_number)
     do_camera_robot_calibration(mode, aruco_dict, charuco_board, camera, robot, calibration_dir)

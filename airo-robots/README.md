@@ -8,7 +8,10 @@ The following combinations of hardware and communication options are currently i
 | Hardware | Communication | Implementation |
 |----------|:----------|----------------|
 | UR robots | RTDE | [ur_rtde.py](airo_robots/manipulators/hardware/ur_rtde.py) |
+| RealMan robots | RealMan Python API | [realman.py](airo_robots/manipulators/hardware/realman.py) |
+|Schunk EGK gripper | Modbus-USB converter | [schunk_process.py](airo_robots/grippers/hardware/schunk_process.py) |
 | Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
+| KELO Robile platform | airo-tulip API | [kelo_robile.py](airo_robots/drives/hardware/kelo_robile.py) |
 
 Each hardware implementation module will have a `__main__` codeblock that runs the tests for that hardware implementation. This is useful to check if the hardware is connected correctly and the implementation is working as expected. But it is also the place to be to get an idea of how to use the implementation.
 
@@ -30,7 +33,17 @@ robot.do_new_action(new_action)
 
 See [below](#notes-on-the-different-types-of-interfaces-for-hardware-interaction) for a lengthier discussion of (async) hardware interactions and why the interface is implemented like this.
 ## Installation
-You can simply pip install this package. Note that some hardware implementations have additional dependencies, which are for now included in the setup.py but might be separated later on.
+You can simply pip install this package. The vendor SDKs for the hardware implementations are not installed by default; they are declared as optional extras in `setup.py`. Install the extra(s) for the hardware you use:
+
+```shell
+pip install "airo-robots[ur]"       # UR robots (ur-rtde)
+pip install "airo-robots[realman]"  # RealMan robots (Robotic_Arm)
+pip install "airo-robots[schunk]"   # Schunk EGK40 gripper (bkstools)
+pip install "airo-robots[kelo]"     # KELO mobile platform (airo-tulip)
+```
+
+Extras can be combined, e.g., `pip install "airo-robots[ur,schunk]"`. The Robotiq 2F-85 gripper communicates over a plain TCP API and does not require an extra. If you instantiate a hardware class without its SDK installed, it will raise an `ImportError` that points you to the right extra.
+
 ## Structure
 a more detailled overview of the structure and content of this package:
 
@@ -42,6 +55,7 @@ airo_robots/
         bimanual_position_manipulator.py    # base class for bimanual manipulators
         hardware/                           # contains the implementations of the inferfaces
             manual_gripper_testing.py       # code for manually testing hw implementations
+            realman.py                      # implementation for RealMan robots over the official Python API
             ur_rtde.py                      # implementation of the interfaces for UR robots over the RTDE interface
 
     grippers/

@@ -28,7 +28,7 @@ Complete the prompts. If everything looks normal, congrats, you successfully com
 
 ### 4. Camera details
 Realsense cameras offer a lot of possible resolutions and framerates.
-Use the [`realsense_scan_profiles.py`](./realsense_scan_profiles.py) script to print an outplut like this for your camera:
+Use the [`realsense_scan_profiles.py`](./realsense_scan_profiles.py) script to print an output like this for your camera:
 
 **D415**:
 ```python

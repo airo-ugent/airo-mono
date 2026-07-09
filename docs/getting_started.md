@@ -20,6 +20,7 @@ We support the following manipulators:
 
 - [UR-series cobots](https://www.universal-robots.com/) (based on the [
   `ur_rtde`](https://sdurobotics.gitlab.io/ur_rtde/) package)
+- [RealMan robot arms](https://www.realman-robotics.com/) (based on the official RealMan Python API)
 
 We support the following grippers:
 
@@ -28,7 +29,25 @@ We support the following grippers:
 
 We support the following wheeled mobile platforms:
 
-- [KELO](https://www.kelo-robotics.com/) (with the [`airo-tulip`](https://pypi.org/project/airo-tulip/) package)
+- [KELO](https://www.kelo-robotics.com/) (based on the [`airo-tulip`](https://pypi.org/project/airo-tulip/) package)
+
+#### Installing hardware SDKs
+
+The vendor SDKs for these devices are not installed with `airo-robots` by default. They are declared as optional
+extras in its `setup.py`, so you only install the dependencies for the hardware you actually use:
+
+```shell
+pip install "airo-robots[ur]"       # UR robots (ur-rtde)
+pip install "airo-robots[realman]"  # RealMan robots (Robotic_Arm)
+pip install "airo-robots[schunk]"   # Schunk EGK40 gripper (bkstools)
+pip install "airo-robots[kelo]"     # KELO mobile platform (airo-tulip)
+```
+
+You can combine extras, e.g., `pip install "airo-robots[ur,schunk]"`. The Robotiq 2F-85 gripper communicates over a
+plain TCP API and does not require an extra. If you instantiate a hardware class without its SDK installed, it will
+raise an `ImportError` that points you to the right extra.
+
+#### Asynchronous interaction
 
 Interaction with robots is performed with asynchronous communication. In many cases, you need to explicitly wait for
 operations to complete.
@@ -69,6 +88,17 @@ We support the following cameras:
 
 For RGB cameras, we support reading RGB images.
 For RGB-D cameras, we support reading RGB images and depth images, as well as retrieving colored point clouds.
+
+#### Installing camera SDKs
+
+Unlike the robot SDKs, the camera SDKs are not pip installable, so they cannot be provided as extras of
+`airo-camera-toolkit`: they require a system-wide SDK installation (and for the ZED, NVIDIA drivers and CUDA) before
+the Python bindings can be used. Follow the vendor-specific installation guides:
+
+- [ZED installation](airo-camera-toolkit/airo_camera_toolkit/cameras/zed/installation.md)
+- [RealSense installation](airo-camera-toolkit/airo_camera_toolkit/cameras/realsense/realsense_installation.md)
+
+USB webcams via OpenCV require no additional installation.
 
 #### Multiprocessing
 

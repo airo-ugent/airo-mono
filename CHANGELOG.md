@@ -10,10 +10,14 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Breaking changes
 - `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
 - `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
+- `airo-robots`: `airo-tulip` is no longer installed by default. Use `pip install "airo-robots[kelo]"` to include it.
 
 ### Added
 - `airo-robots`: Added `URrtdeTorque`, a subclass of `URrtde` that adds a joint-space torque control mode for UR e-series robots. Call `enable_torque_control()` to start a dedicated 500 Hz PD control process and set targets via the `target_joint_configuration` property; call `disable_torque_control()` to return to regular position control. The PD gains are tuned for a UR3e and can be overridden via the constructor. Requires `ur-rtde >= 1.6.0`, so that `airo-robots` dependency has been changed accordingly. See the [torque control guide](airo-robots/airo_robots/manipulators/hardware/universal_robots_torque_control.md) for usage, safety notes and tuning tips.
 - `airo-robots`: Added an optional `max_joint_torques` field to `ManipulatorSpecs` (in Nm, used as safety limits by `URrtdeTorque`).
+- `airo-robots`: Added `PositionManipulator.start_freedrive`/`stop_freedrive` (a.k.a. teach mode / drag teach), implemented for `URrtde` and `RealmanControl`. The default implementation raises `NotImplementedError` for robots that don't support it.
+- `airo-robots`: Added `RealmanControl.get_wrench`, which reads the RealMan end-effector six-axis force/torque sensor as a `[Fx, Fy, Fz, Mx, My, Mz]` numpy wrench (returns the tool/payload gravity-compensated external wrench by default, or the raw reading with `compensated=False`).
+- `airo-robots`: Added `RealmanControl`, a `PositionManipulator` implementation for RealMan robots using the official Python API.
 - Added `CLAUDE.md` with repo overview, setup instructions, coding conventions, and development workflow guidelines for Claude Code.
 - `airo-dataset-tools`: `merge_coco_datasets` now supports nested image subdirectories — images are copied to the target preserving their relative directory structure.
 - `airo-dataset-tools`: `CocoKeypointAnnotation` now auto-fills `num_keypoints` when the field is absent or `None` in the source data.
@@ -21,10 +25,19 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - Added easier imports for airo-camera-toolkit cameras. Now, instead of `from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture` you can just write `from airo_camera_toolkit.cameras import OpenCVVideoCapture`. Based on [PEP 562](https://peps.python.org/pep-0562/). Fixes the old issue [#122](https://github.com/airo-ugent/airo-mono/issues/122).
 
 ### Changed
+- `airo-robots`: `URrtde`, `SchunkGripperProcess`, and `KELORobile` now raise an actionable `ImportError` (pointing at the right `pip install "airo-robots[...]"` extra) when their optional hardware SDK is missing, matching the existing `RealmanControl` behavior.
+
+- `airo-camera-toolkit`: calibration code (`collect_calibration_data.py`, `hand_eye_calibration.py`) now calls `robot.start_freedrive()`/`robot.stop_freedrive()` instead of an `isinstance`-based dispatch that reached into `URrtde`/`RealmanControl` internals — also fixes `rm_start_drag_teach`/`rm_stop_drag_teach` error codes being silently discarded, and migrates `collect_calibration_data()`, which had been left calling `robot.rtde_control.teachMode()` directly.
+- `airo-robots`: `RealmanControl.inverse_kinematics` now logs an actionable warning when a solve fails — it decodes the RealMan SDK result code (unreachable / over a joint limit / invalid orientation) and, for six-DOF arms, uses the all-solutions solver to report whether solutions exist but exceed a joint limit (naming the blocking joint) instead of only returning `None`.
 - `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
 
 ### Fixed
+- CI: the mypy/pytest venv cache was keyed only on `**/setup.py`, so a change to a package's own source files (without touching its `setup.py`) let CI silently type-check/test against a stale installed copy of sibling packages. Broadened the cache key to also hash `**/*.py`.
+
+- `airo-camera-toolkit`: `save_calibration_sample` no longer crashes for non-UR robots — it previously called UR-specific `robot.rtde_control.endTeachMode()`/`teachMode()` directly, so pressing `S` during `hand-eye-calibration` with `--robot_type realman` raised `AttributeError`. Teach mode start/stop is now dispatched per robot type and shared with `hand_eye_calibration.py`.
+- `airo-camera-toolkit`: the `hand-eye-calibration` CLI command now actually exposes `--robot_type`. The handler accepted a `robot_type` parameter (to select `ur` or `realman`), but no matching `@click.option` was declared, so the value was unreachable from the CLI and always defaulted to `ur`.
 - `airo-camera-toolkit`: `get_pose_of_charuco_board` now returns `None` instead of crashing when fewer than 6 charuco corners are detected (OpenCV's DLT algorithm requires at least 6 point correspondences). Fixes [#199](https://github.com/airo-ugent/airo-mono/issues/199).
+- `airo-camera-toolkit`: `draw_frame_on_image` no longer crashes with `ValueError: bad argument to constructor` when the rotation part of the pose has drifted slightly off SO(3) due to floating-point error (e.g. after the chained matrix inversions/multiplications in hand-eye calibration's `draw_base_pose_on_image`).
 
 ### Removed
 

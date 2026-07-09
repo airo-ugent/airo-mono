@@ -238,6 +238,16 @@ class PositionManipulator(ABC):
             return False
         return self._is_joint_configuration_reachable(joint_configuration)
 
+    def start_freedrive(self) -> None:
+        """Put the robot in freedrive (a.k.a. teach mode / drag teach): a human can manually move the robot
+        by hand, e.g. to record poses for hand-eye calibration. Not all robots support this; the default
+        implementation raises, override in a hardware implementation that does."""
+        raise NotImplementedError(f"{type(self).__name__} does not support freedrive.")
+
+    def stop_freedrive(self) -> None:
+        """Take the robot out of freedrive, see `start_freedrive`."""
+        raise NotImplementedError(f"{type(self).__name__} does not support freedrive.")
+
     def execute_trajectory(
         self,
         joint_trajectory: SingleArmTrajectory,
