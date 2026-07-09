@@ -12,7 +12,7 @@ There a few things that make this difficult:
 * We also might want to log, visualize, save images or videos.
 * Parallellism in a [single Python process is tricky due to the GIL](https://stackoverflow.com/questions/18114285/what-are-the-differences-between-the-threading-and-multiprocessing-modules).
 
-To overcome these difficulties we used [airo-ipc](https://github.com/airo-ugent/airo-ipc) to create a solution where:
+To overcome these difficulties we use [Zenoh](https://zenoh.io/) to create a solution where:
 * Camera images can be retrieved, visualized, recorded, etc. without being blocked by user code (e.g. robot commands)
 * Robot commands can be sent at high frequency without having to retrieve images inbetween
 

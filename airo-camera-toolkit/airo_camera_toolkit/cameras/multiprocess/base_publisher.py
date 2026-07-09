@@ -6,11 +6,19 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import numpy as np
+import zenoh
 from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, ResolutionIdl
+from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
-from cyclonedds.domain import DomainParticipant
 from loguru import logger
+
+
+def _make_zenoh_config(shm: bool = True) -> zenoh.Config:
+    """Return a Zenoh configuration with shared memory transport optionally enabled."""
+    conf = zenoh.Config()
+    if shm:
+        conf.insert_json5("transport/shared_memory/enabled", "true")
+    return conf
 
 
 class BaseCameraPublisher(multiprocessing.context.Process, ABC):
@@ -45,18 +53,17 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         self._frame_id = 0
 
     def _setup(self) -> None:
-        """Initialize the camera and shared memory infrastructure.
+        """Initialize the camera and Zenoh publishing infrastructure.
 
         Note: Camera must be instantiated in the publisher process to retrieve images.
         """
-        # Initialize DDS domain participant
-        self._dp = DomainParticipant()
-        self._resolution_writer = SMWriter(
-            self._dp,
+        self._session = zenoh.open(_make_zenoh_config())
+        self._resolution_writer = ZenohWriter(
+            self._session,
             f"{self._shared_memory_namespace}_resolution",
             ResolutionIdl.template(),
         )
-        self._fps_writer = SMWriter(self._dp, f"{self._shared_memory_namespace}_fps", FpsIdl.template())
+        self._fps_writer = ZenohWriter(self._session, f"{self._shared_memory_namespace}_fps", FpsIdl.template())
 
         # Instantiate the camera
         logger.info(f"Instantiating a {self._camera_cls.__name__} camera.")
@@ -67,17 +74,17 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
         logger.info(f"Successfully instantiated a {self._camera_cls.__name__} camera.")
 
-        # Set up shared memory writers
+        # Set up frame writer
         self._setup_frame_writer()
 
     def _setup_frame_writer(self) -> None:
         """Set up the main frame data writer."""
         frame_buffer_template = self._get_frame_buffer_template(self._camera.resolution[0], self._camera.resolution[1])
 
-        self._writer = SMWriter(
-            domain_participant=self._dp,
-            topic_name=self._shared_memory_namespace,
-            idl_dataclass=frame_buffer_template,
+        self._writer = ZenohWriter(
+            session=self._session,
+            key_expr=self._shared_memory_namespace,
+            template=frame_buffer_template,
         )
 
     def _publish_metadata(self) -> None:
@@ -125,6 +132,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             logger.error(f"Error in {self.__class__.__name__}: {e}")
             raise
         finally:
+            self._session.close()
             logger.info(f"{self.__class__.__name__} process terminated.")
 
     @abstractmethod

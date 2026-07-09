@@ -1,38 +1,74 @@
-"""Data structures for frame buffers sent over shared memory."""
+"""Data structures for frame buffers used with Zenoh IPC."""
 
+import dataclasses
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
-from airo_ipc.cyclone_shm.idl_shared_memory.base_idl import BaseIdl
+
+T = TypeVar("T")
+
+
+def serialize_frame(obj: Any) -> bytes:
+    """Serialize a frame buffer dataclass to raw bytes.
+
+    All numpy fields are concatenated in dataclass field declaration order.
+    The schema (field order, shapes, dtypes) must be agreed upon by both sides
+    via the corresponding ``template()`` classmethod.
+    """
+    parts = [getattr(obj, f.name).ravel().view(np.uint8) for f in dataclasses.fields(obj)]
+    flat = np.empty(sum(p.nbytes for p in parts), dtype=np.uint8)
+    np.concatenate(parts, out=flat)
+    return bytes(flat)
+
+
+def deserialize_frame(template: T, data: bytes) -> T:
+    """Deserialize raw bytes back into a frame buffer dataclass instance.
+
+    Args:
+        template: A template instance (from ``FrameBuffer.template()``) that
+            defines the expected field shapes and dtypes.
+        data: Raw bytes produced by :func:`serialize_frame`.
+
+    Returns:
+        A new dataclass instance with numpy arrays filled from ``data``.
+    """
+    kwargs: dict = {}
+    offset = 0
+    for f in dataclasses.fields(template):  # type: ignore[arg-type]
+        arr: np.ndarray = getattr(template, f.name)
+        chunk = data[offset : offset + arr.nbytes]
+        kwargs[f.name] = np.frombuffer(chunk, dtype=arr.dtype).reshape(arr.shape).copy()
+        offset += arr.nbytes
+    return template.__class__(**kwargs)  # type: ignore[return-value]
 
 
 @dataclass
-class FpsIdl(BaseIdl):
-    """This struct, sent over shared memory, contains the FPS of the camera."""
+class FpsIdl:
+    """Frame rate metadata published alongside camera frames."""
 
     fps: np.ndarray
 
     @staticmethod
     def template() -> Any:
-        """Construct a new FpsIdl with shared memory backed arrays."""
+        """Construct a new FpsIdl template with pre-allocated arrays."""
         return FpsIdl(fps=np.empty((1,), dtype=np.float64))
 
 
 @dataclass
-class ResolutionIdl(BaseIdl):
-    """This struct, sent over shared memory, contains the resolution of the camera."""
+class ResolutionIdl:
+    """Resolution metadata published alongside camera frames."""
 
     resolution: np.ndarray
 
     @staticmethod
     def template() -> Any:
-        """Construct a new ResolutionIdl with shared memory backed arrays."""
+        """Construct a new ResolutionIdl template with pre-allocated arrays."""
         return ResolutionIdl(resolution=np.empty((2,), dtype=np.int32))
 
 
 @dataclass
-class BaseFrameBuffer(BaseIdl):
+class BaseFrameBuffer:
     """Base frame buffer containing timestamp and frame ID for synchronization."""
 
     # Frame ID for synchronization (monotonically increasing)
@@ -192,7 +228,7 @@ class ZedFrameBuffer(StereoRGBDFrameBuffer):
 
 
 @dataclass
-class PointCloudBuffer(BaseIdl):
+class PointCloudBuffer:
     """Buffer containing point cloud data."""
 
     # Frame ID for synchronization
@@ -219,7 +255,7 @@ class PointCloudBuffer(BaseIdl):
 
 
 @dataclass
-class SpatialMapBuffer(BaseIdl):
+class SpatialMapBuffer:
     """Buffer containing spatial map data from Zed camera."""
 
     # Frame ID for synchronization
