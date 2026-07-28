@@ -1,0 +1,82 @@
+# Publish to PyPI and create a GitHub release.
+# Triggered when a version-bump PR (from prepare-release) merges into main.
+name: Publish Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish to PyPI + GitHub
+    runs-on: ubuntu-latest
+    # Only run if this push contains a "Update version numbers" commit
+    if: |
+      contains(github.event.head_commit.message, 'Update version numbers for')
+    environment: pypi
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/setup.py"
+
+      - name: Install build tools
+        run: |
+          uv pip install --system build twine
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -oP 'version="?\K[0-9.]+' airo-typing/setup.py | head -1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build packages
+        run: |
+          for pkg in airo-typing airo-spatial-algebra airo-robots \
+                     airo-camera-toolkit airo-dataset-tools; do
+            cd "$pkg"
+            rm -rf dist/
+            python3 -m build
+            cd ..
+          done
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          for pkg in airo-typing airo-spatial-algebra airo-robots \
+                     airo-camera-toolkit airo-dataset-tools; do
+            twine upload "${pkg}/dist/*"
+          done
+
+      - name: Create GitHub tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BODY=$(sed -n "/^## $VERSION$/,/^## [0-9]/p" CHANGELOG.md | sed '$d')
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes "$BODY"
