@@ -5,7 +5,9 @@ All notable changes for the packages in the airo-mono repo are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 This project uses a [CalVer](https://calver.org/) versioning scheme with monthly releases, see [here](versioning.md)
 
-## Unreleased
+## 2026.7.0
+
+Released: 2026-07-28
 
 ### Breaking changes
 - `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
