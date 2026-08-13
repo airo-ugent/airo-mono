@@ -25,6 +25,7 @@ setuptools.setup(
         # controller's registers, so this extra covers Robotiq2F85Fanuc as well.
         "fanuc": ["airo-fanuc>=0.1.0"],
         "schunk": ["bkstools"],
+        "halberd": ["bleak>=0.22"],
         "kelo": ["airo-tulip>=0.4.0"],
     },
 )
