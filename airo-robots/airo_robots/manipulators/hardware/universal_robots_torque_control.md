@@ -103,11 +103,27 @@ robot = URrtdeTorque(
 )
 ```
 
+The constructor values are just the initial gains: `robot.kp` and `robot.kd` are also properties that can be read
+and updated at any time, including while torque control is active, so stiffness/damping can be adapted on the fly
+(e.g. going compliant before contact and stiff again afterwards):
+
+```python
+robot.kp = np.array([40.0, 40.0, 30.0, 10.0, 10.0, 10.0])  # softer, e.g. for contact-rich tasks
+...
+robot.kp = robot.DEFAULT_KP  # back to the default stiffness
+```
+
+To guard against an accidental torque step, a single `kp`/`kd` update is rejected (with a `ValueError`) if any
+joint's gain would change by more than `URrtdeTorque.MAX_GAIN_STEP_FACTOR` (50% by default) times that joint's
+default gain. For a bigger change, update the gains gradually in several smaller steps instead.
+
 Guidelines:
 
 * Increase `kp` for stiffer, more accurate tracking; decrease it for more compliance.
 * `kd` damps the motion. Too low → oscillation; too high → amplified velocity-measurement noise.
 * Tune one joint at a time, starting from the wrist (lowest inertia) and working towards the base.
+* Changing gains abruptly by a large amount can still cause a torque step; prefer smaller changes or ramping the
+  gains gradually if the robot is in contact with the environment.
 
 The controller itself is the `JointSpacePDController` dataclass in [ur_rtde_torque.py](ur_rtde_torque.py). It exposes
 further parameters (reference trajectory natural frequency and damping, velocity filter constant) and is pure Python

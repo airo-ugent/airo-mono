@@ -10,6 +10,9 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 - Documented the automated release workflow (`prepare-release.yaml` / `publish-release.yaml`, PyPI Trusted Publishing) in `docs/releasing.md`, and cross-referenced it from `docs/versioning.md`.
 
+### Changed
+- `airo-robots`: `URrtdeTorque` now exposes `kp`/`kd` as properties that can be read and updated at any time, including while torque control is active, so joint stiffness/damping can be adapted inside the control loop the same way `target_joint_configuration` already could. To prevent an accidental torque jump, a single update is rejected if any joint's gain would change by more than `MAX_GAIN_STEP_FACTOR` (50% by default) times that joint's default gain.
+
 ## 2026.8.0
 
 Released: 2026-08-17
