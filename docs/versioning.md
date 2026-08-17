@@ -21,6 +21,8 @@ This is slightly counter-intuitive but actually common practice (e.g. [Twisted](
 
 ## version bumping
 
+Version bumping is automated by the `prepare-release.yaml` GitHub Actions workflow — see [releasing](./releasing.md). The logic below is what that workflow implements; it's documented here for reference and for the manual fallback procedure.
+
 To create a new version, you simply bump the version number as follows:
 
 - take the year and month of the current day, e.g. 2024/01
