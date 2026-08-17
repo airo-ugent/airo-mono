@@ -17,6 +17,9 @@ jobs:
   prepare:
     name: Prepare release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     if: |
       github.event_name == 'workflow_dispatch' ||
       !contains(github.event.head_commit.message, 'Update version numbers for')
@@ -70,6 +73,8 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.next }}"
           BRANCH="release/$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add -A
           git diff --cached --quiet || git commit -m "Update version numbers for $VERSION"
