@@ -7,6 +7,10 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+## 2026.8.0
+
+Released: 2026-08-17
+
 ### Added
 - `airo-robots`: Added `Fanuc`, a `PositionManipulator` implementation for FANUC robots using the [airo-fanuc](https://github.com/airo-ugent/airo-fanuc) driver (Stream Motion + RMI), installed with `pip install "airo-robots[fanuc]"`. The driver does no kinematics, so every Cartesian and kinematics method raises `NotImplementedError` and points at a numerical solver on a FANUC URDF; joint-space control, `get_tcp_pose` and `execute_trajectory` are supported. See [fanuc_setup.md](airo-robots/airo_robots/manipulators/hardware/fanuc_setup.md).
 - `airo-robots`: Added `Robotiq2F85Fanuc`, a `ParallelPositionGripper` implementation for a Robotiq 2F-85 wired to a FANUC controller and actuated over the controller's registers. Only a few discrete openings and force classes are reachable, so `move` snaps a requested width to the nearest one, and everything needing feedback or a continuous setpoint raises `NotImplementedError`. See [fanuc_robotiq.md](airo-robots/airo_robots/grippers/hardware/fanuc_robotiq.md).
