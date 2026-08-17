@@ -57,7 +57,11 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.next }}"
           TODAY=$(date +%Y-%m-%d)
-          sed -i "s/^## Unreleased$/## $VERSION\n\nReleased: $TODAY/" CHANGELOG.md
+          if ! grep -q "^## Unreleased$" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## Unreleased' section to close - add one before merging this release."
+            exit 1
+          fi
+          sed -i "s/^## Unreleased$/## Unreleased\n\n## $VERSION\n\nReleased: $TODAY/" CHANGELOG.md
 
       - name: Create version-bump PR
         if: steps.version.outputs.skip != 'true'
