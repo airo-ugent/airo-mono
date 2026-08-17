@@ -7,6 +7,17 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+### Added
+- `airo-robots`: Added `Fanuc`, a `PositionManipulator` implementation for FANUC robots using the [airo-fanuc](https://github.com/airo-ugent/airo-fanuc) driver (Stream Motion + RMI), installed with `pip install "airo-robots[fanuc]"`. The driver does no kinematics, so every Cartesian and kinematics method raises `NotImplementedError` and points at a numerical solver on a FANUC URDF; joint-space control, `get_tcp_pose` and `execute_trajectory` are supported. See [fanuc_setup.md](airo-robots/airo_robots/manipulators/hardware/fanuc_setup.md).
+- `airo-robots`: Added `Robotiq2F85Fanuc`, a `ParallelPositionGripper` implementation for a Robotiq 2F-85 wired to a FANUC controller and actuated over the controller's registers. Only a few discrete openings and force classes are reachable, so `move` snaps a requested width to the nearest one, and everything needing feedback or a continuous setpoint raises `NotImplementedError`. See [fanuc_robotiq.md](airo-robots/airo_robots/grippers/hardware/fanuc_robotiq.md).
+
+### Fixed
+- `airo-robots`: `loguru` is now declared as a dependency. It was already imported by the shipped hardware implementations but only installed as a side effect of `airo-camera-toolkit`.
+
+## 2026.7.0
+
+Released: 2026-07-28
+
 ### Breaking changes
 - `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
 - `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
