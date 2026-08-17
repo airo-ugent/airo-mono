@@ -37,7 +37,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          uv pip install --system build twine
+          uv pip install --system build
 
       - name: Extract version
         id: version
@@ -47,23 +47,18 @@ jobs:
 
       - name: Build packages
         run: |
+          mkdir -p dist
           for pkg in airo-typing airo-spatial-algebra airo-robots \
                      airo-camera-toolkit airo-dataset-tools; do
-            cd "$pkg"
-            rm -rf dist/
-            python3 -m build
-            cd ..
+            (cd "$pkg" && rm -rf dist/ && python3 -m build)
+            cp "$pkg"/dist/* dist/
           done
 
+      # Uses PyPI Trusted Publishing (OIDC).
       - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          for pkg in airo-typing airo-spatial-algebra airo-robots \
-                     airo-camera-toolkit airo-dataset-tools; do
-            twine upload "${pkg}/dist/*"
-          done
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
 
       - name: Create GitHub tag
         run: |
