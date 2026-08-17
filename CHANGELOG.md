@@ -7,6 +7,10 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+## 2026.8.1
+
+Released: 2026-08-17
+
 ### Added
 - Documented the automated release workflow (`prepare-release.yaml` / `publish-release.yaml`, PyPI Trusted Publishing) in `docs/releasing.md`, and cross-referenced it from `docs/versioning.md`.
 
