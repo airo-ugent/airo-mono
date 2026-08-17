@@ -12,6 +12,7 @@ setuptools.setup(
     install_requires=[
         "numpy>=2.0",
         "click",
+        "loguru",
         "airo-typing>=2026.1.0",
         "airo-spatial-algebra>=2026.1.0",
     ],
@@ -19,7 +20,10 @@ setuptools.setup(
     package_data={"airo_robots": ["py.typed"]},
     extras_require={
         "realman": ["Robotic_Arm"],
-        "ur": ["ur-rtde>=1.5.7"],  # cf https://github.com/airo-ugent/airo-mono/issues/52
+        "ur": ["ur-rtde>=1.6.0"],  # cf https://github.com/airo-ugent/airo-mono/issues/52
+        # The FANUC driver also drives the Robotiq 2F-85 that is mounted on our FANUC, over the
+        # controller's registers, so this extra covers Robotiq2F85Fanuc as well.
+        "fanuc": ["airo-fanuc>=0.1.0"],
         "schunk": ["bkstools"],
         "kelo": ["airo-tulip>=0.4.0"],
     },
