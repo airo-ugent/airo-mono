@@ -7,6 +7,14 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+### Added
+- `airo-robots`: Added `Fanuc`, a `PositionManipulator` implementation for FANUC robots using the [airo-fanuc](https://github.com/airo-ugent/airo-fanuc) driver (Stream Motion + RMI), installed with `pip install "airo-robots[fanuc]"`. The driver does no kinematics, so every Cartesian and kinematics method raises `NotImplementedError` and points at a numerical solver on a FANUC URDF; joint-space control, `get_tcp_pose` and `execute_trajectory` are supported. See [fanuc_setup.md](airo-robots/airo_robots/manipulators/hardware/fanuc_setup.md).
+- `airo-robots`: Added `Robotiq2F85Fanuc`, a `ParallelPositionGripper` implementation for a Robotiq 2F-85 wired to a FANUC controller and actuated over the controller's registers. Only a few discrete openings and force classes are reachable, so `move` snaps a requested width to the nearest one, and everything needing feedback or a continuous setpoint raises `NotImplementedError`. See [fanuc_robotiq.md](airo-robots/airo_robots/grippers/hardware/fanuc_robotiq.md).
+- `airo-robots`: Added `URrtdeTorque`, a subclass of `URrtde` that adds a joint-space torque control mode for UR e-series robots. Call `enable_torque_control()` to start a dedicated 500 Hz PD control process and set targets via the `target_joint_configuration` property; call `disable_torque_control()` to return to regular position control. The PD gains are tuned for a UR3e and can be overridden via the constructor. Requires `ur-rtde >= 1.6.0`, so that `airo-robots` dependency has been changed accordingly. See the [torque control guide](airo-robots/airo_robots/manipulators/hardware/universal_robots_torque_control.md) for usage, safety notes and tuning tips.
+
+### Fixed
+- `airo-robots`: `loguru` is now declared as a dependency. It was already imported by the shipped hardware implementations but only installed as a side effect of `airo-camera-toolkit`.
+
 ## 2026.7.0
 
 Released: 2026-07-28
@@ -17,6 +25,7 @@ Released: 2026-07-28
 - `airo-robots`: `airo-tulip` is no longer installed by default. Use `pip install "airo-robots[kelo]"` to include it.
 
 ### Added
+- `airo-robots`: Added an optional `max_joint_torques` field to `ManipulatorSpecs` (in Nm, used as safety limits by `URrtdeTorque`).
 - `airo-robots`: Added `PositionManipulator.start_freedrive`/`stop_freedrive` (a.k.a. teach mode / drag teach), implemented for `URrtde` and `RealmanControl`. The default implementation raises `NotImplementedError` for robots that don't support it.
 - `airo-robots`: Added `RealmanControl.get_wrench`, which reads the RealMan end-effector six-axis force/torque sensor as a `[Fx, Fy, Fz, Mx, My, Mz]` numpy wrench (returns the tool/payload gravity-compensated external wrench by default, or the raw reading with `compensated=False`).
 - `airo-robots`: Added `RealmanControl`, a `PositionManipulator` implementation for RealMan robots using the official Python API.

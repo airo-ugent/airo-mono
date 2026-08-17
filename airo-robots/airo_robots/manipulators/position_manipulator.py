@@ -30,10 +30,12 @@ class ManipulatorSpecs:
     dof: the Degrees of freedom of the robot, can be used to verify the shape of joint configurations
     max_joint_speeds: list of max joint speeds in [rad/s]
     max_linear_speed: an (approximate) maximal linear speed [m/s], since it is hard to test for joint speed limitations on each interpolation step
+    max_joint_torques: optional list of max joint torques in [Nm], required for torque-controlled manipulators
     """
 
     max_joint_speeds: List[float]
     max_linear_speed: float
+    max_joint_torques: Optional[List[float]] = None
 
     @property
     def dof(self) -> int:
