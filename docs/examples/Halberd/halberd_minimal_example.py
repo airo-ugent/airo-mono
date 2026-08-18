@@ -14,9 +14,31 @@ Run with:
 import time
 
 from airo_robots.grippers import HalberdBLEGripper
+from airo_robots.grippers.hardware.halberd_ble.client import HalberdConnectionError
 
 GRIPPER_NAME = "gripper-left"  # the user-assigned name set in the sketch via gripper.begin()
 TOF_SENSOR_NAME = "tof"  # the sensor name declared in the sketch via gripper.configureSensor()
+
+
+def wait_for_first_sensor_reading(halberd: HalberdBLEGripper, sensor_name: str, timeout: float = 10.0) -> float:
+    """Block until the gripper streams its first sensor snapshot.
+
+    The firmware only notifies when a sensor value changes, so the first snapshot arrives
+    once the sketch reports a value that differs from the sensor minimum.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            return halberd.get_sensor(sensor_name)
+        except HalberdConnectionError as exc:
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"No sensor snapshot received within {timeout} s. Check that the sketch calls "
+                    f'gripper.reportSensor() from loop() and that the "{sensor_name}" sensor reports '
+                    "a value different from its declared minimum."
+                ) from exc
+            time.sleep(0.1)
+
 
 if __name__ == "__main__":
     # Discovery is optional (connect() scans internally), but shows what is in range.
@@ -42,19 +64,21 @@ if __name__ == "__main__":
     print(f"Object grasped: {gripper.is_an_object_grasped()}")
 
     # Read the time-of-flight sensor declared by the firmware. Sensor snapshots stream
-    # in automatically; get_sensor() simply returns the latest value.
+    # in automatically; get_sensor() simply returns the latest value. The first snapshot
+    # only arrives once the sketch reports a changed value, so wait for it explicitly.
     print(f"Sensors declared by the gripper: {gripper.sensors}")
+    wait_for_first_sensor_reading(gripper, TOF_SENSOR_NAME)
     for _ in range(10):
         distance = gripper.get_sensor(TOF_SENSOR_NAME)
         print(f"ToF distance: {distance * 1000:.0f} mm")
         time.sleep(0.5)
 
     # Example: close only when something is within reach of the fingers.
-    if gripper.get_sensor(TOF_SENSOR_NAME) < 0.10:
-        print("Object detected within 10 cm, grasping.")
+    if gripper.get_sensor(TOF_SENSOR_NAME) < 50:
+        print("Object detected within 50 mm, grasping.")
         gripper.close().wait()
     else:
-        print("Nothing within 10 cm, opening.")
+        print("Nothing within 50 mm, opening.")
         gripper.open().wait()
 
     gripper.disconnect()
