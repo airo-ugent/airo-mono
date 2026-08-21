@@ -56,7 +56,12 @@ if __name__ == "__main__":
     # Basic motion commands. Every motion returns an AwaitableAction; .wait() blocks
     # until the firmware reports DONE.
     gripper.open().wait()
+    # Wait a bit for the fingers to reach the open position before closing again.
+    time.sleep(3.0)
+
     gripper.close().wait()
+    # Wait a bit for the fingers to reach the closed position before opening again.
+    time.sleep(3.0)
 
     # Move to a specific opening (meters), with an explicit speed (m/s).
     gripper.move(0.04, speed=0.05).wait()
