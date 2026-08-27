@@ -13,6 +13,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Fixed
 - `airo-robots`: Restored the `POSE_FILENAMES` example configuration constant in `ur3_halberd_control.py` so the file parses cleanly and passes the Format workflow again.
 - `airo-robots`: Restored `HalberdBLEGripper` base-class initialization so descriptor-derived `gripper_specs`, width clipping, and open/close/move commands work again in the Halberd fake-gripper tests and CI.
+- `prepare-release.yaml`: The `Create version-bump PR` step no longer fails with a non-fast-forward push error when a `release/<version>` branch from a previous, abandoned run still exists on the remote. The branch is now force-pushed (it is owned entirely by this workflow) and PR creation is skipped if a matching PR is already open.
 
 ## 2026.8.0
 
