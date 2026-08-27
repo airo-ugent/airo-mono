@@ -13,7 +13,7 @@ from airo_robots.manipulators.hardware.ur_rtde import URrtde
 np.set_printoptions(precision=3, suppress=True)
 
 UR_IP_ADDRESS = "10.42.0.162"
-POSES_DIR = Path("airo-robots/airo_robots/grippers/hardware/halberd_ble/examples/poses")
+POSES_DIR = Path(__file__).resolve().parent / "poses"
 
 if __name__ == "__main__":
     POSES_DIR.mkdir(parents=True, exist_ok=True)
