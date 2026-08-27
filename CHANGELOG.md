@@ -10,6 +10,9 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Added
 - `airo-robots`: Added `HalberdBLEGripper`, a `ParallelPositionGripper` implementation for grippers built on the Dwengo Halberd (nRF52840) board running the `HalberdGripper` firmware library, controlled over Bluetooth Low Energy with the Airo Gripper Protocol. Also added `GenericHalberdGripper` for exotic (multi-axis) gripper designs. Firmware-declared sensor channels (force, pressure, ...) are streamed over a dedicated characteristic and exposed via `sensors`/`sensor_values`/`get_sensor(name)`. BLE support is installed with `pip install "airo-robots[halberd]"`. Grippers are identified by their user-assigned name and connecting fails loudly when multiple grippers share a name. See [halberd_ble.md](airo-robots/airo_robots/grippers/hardware/halberd_ble.md).
 
+### Fixed
+- `prepare-release.yaml`: The `Create version-bump PR` step no longer fails with a non-fast-forward push error when a `release/<version>` branch from a previous, abandoned run still exists on the remote. It now force-pushes and (re)creates the branch when there is no open PR for it, or when the open PR consists only of this workflow's own bot commits (so it's refreshed to pick up commits that landed on `main` while it was open); a PR containing any human commit is left untouched so manual edits are never clobbered.
+
 ## 2026.8.0
 
 Released: 2026-08-17
