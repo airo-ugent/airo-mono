@@ -76,7 +76,9 @@ class LiveSensorPlotter:
         self._figure, axes = plt.subplots(len(sensor_names), 1, figsize=(8, 5), sharex=True)
         self._figure.suptitle("Sensor measurements", fontsize=40, fontweight="bold")
         try:
-            self._figure.canvas.manager.window.wm_attributes("-zoomed", True)  # Tk on Linux: maximized
+            manager = self._figure.canvas.manager
+            if manager is not None:
+                manager.window.wm_attributes("-zoomed", True)  # type: ignore[union-attr]  # Tk on Linux: maximized
         except Exception:
             pass  # non-Tk backends: silently skip
         if len(sensor_names) == 1:
