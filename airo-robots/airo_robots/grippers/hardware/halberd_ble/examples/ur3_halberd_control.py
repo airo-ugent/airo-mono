@@ -25,6 +25,7 @@ HALBERD_GRIPPER_NAME = (
     "gripper-left-sensors"  # Make sure this matches the name set in the code running on Halberd via gripper.begin()
 )
 POSE_DIRECTORY = Path(__file__).resolve().parent / "poses"
+POSE_FILENAMES = [
     "pose1_uptop_2.npy",
     "pose2_looking_down.npy",
     "pose3_near_servo_2.npy",
