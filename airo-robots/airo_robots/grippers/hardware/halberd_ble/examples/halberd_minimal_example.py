@@ -79,7 +79,7 @@ if __name__ == "__main__":
         time.sleep(0.5)
 
     # Example: close only when something is within reach of the fingers.
-    if gripper.get_sensor(TOF_SENSOR_NAME) < 50:
+    if gripper.get_sensor(TOF_SENSOR_NAME) < 0.05:
         print("Object detected within 50 mm, grasping.")
         gripper.close().wait()
     else:
