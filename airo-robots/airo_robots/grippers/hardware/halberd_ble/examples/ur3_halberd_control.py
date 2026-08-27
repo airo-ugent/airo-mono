@@ -78,7 +78,7 @@ class LiveSensorPlotter:
         try:
             manager = self._figure.canvas.manager
             if manager is not None:
-                manager.window.wm_attributes("-zoomed", True)  # type: ignore[union-attr]  # Tk on Linux: maximized
+                manager.window.wm_attributes("-zoomed", True)  # type: ignore[attr-defined]  # Tk on Linux: maximized
         except Exception:
             pass  # non-Tk backends: silently skip
         if len(sensor_names) == 1:
