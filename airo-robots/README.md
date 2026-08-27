@@ -14,6 +14,7 @@ The following combinations of hardware and communication options are currently i
 | Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
 | Robotiq 2F85 gripper on a FANUC | airo-fanuc API (RMI registers + a teach-pendant program) | [robotiq_2f85_fanuc.py](airo_robots/grippers/hardware/robotiq_2f85_fanuc.py) |
 | KELO Robile platform | airo-tulip API | [kelo_robile.py](airo_robots/drives/hardware/kelo_robile.py) |
+| Halberd platform | AIRO gripper protocol (AGP) over BLE | [gripper.py](airo_robots/grippers/hardware/halberd_ble/gripper.py) |
 
 Each hardware implementation module will have a `__main__` codeblock that runs the tests for that hardware implementation. This is useful to check if the hardware is connected correctly and the implementation is working as expected. But it is also the place to be to get an idea of how to use the implementation.
 
