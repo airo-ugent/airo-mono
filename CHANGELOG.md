@@ -8,8 +8,14 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Added
-- Documented the automated release workflow (`prepare-release.yaml` / `publish-release.yaml`, PyPI Trusted Publishing) in `docs/releasing.md`, and cross-referenced it from `docs/versioning.md`.
 - `airo-robots`: Added `HalberdBLEGripper`, a `ParallelPositionGripper` implementation for grippers built on the Dwengo Halberd (nRF52840) board running the `HalberdGripper` firmware library, controlled over Bluetooth Low Energy with the Airo Gripper Protocol. Also added `GenericHalberdGripper` for exotic (multi-axis) gripper designs. Firmware-declared sensor channels (force, pressure, ...) are streamed over a dedicated characteristic and exposed via `sensors`/`sensor_values`/`get_sensor(name)`. BLE support is installed with `pip install "airo-robots[halberd]"`. Grippers are identified by their user-assigned name and connecting fails loudly when multiple grippers share a name. See [halberd_ble.md](airo-robots/airo_robots/grippers/hardware/halberd_ble.md).
+
+## 2026.8.0
+
+Released: 2026-08-17
+
+### Added
+- Documented the automated release workflow (`prepare-release.yaml` / `publish-release.yaml`, PyPI Trusted Publishing) in `docs/releasing.md`, and cross-referenced it from `docs/versioning.md`.
 - `airo-robots`: Added `Fanuc`, a `PositionManipulator` implementation for FANUC robots using the [airo-fanuc](https://github.com/airo-ugent/airo-fanuc) driver (Stream Motion + RMI), installed with `pip install "airo-robots[fanuc]"`. The driver does no kinematics, so every Cartesian and kinematics method raises `NotImplementedError` and points at a numerical solver on a FANUC URDF; joint-space control, `get_tcp_pose` and `execute_trajectory` are supported. See [fanuc_setup.md](airo-robots/airo_robots/manipulators/hardware/fanuc_setup.md).
 - `airo-robots`: Added `Robotiq2F85Fanuc`, a `ParallelPositionGripper` implementation for a Robotiq 2F-85 wired to a FANUC controller and actuated over the controller's registers. Only a few discrete openings and force classes are reachable, so `move` snaps a requested width to the nearest one, and everything needing feedback or a continuous setpoint raises `NotImplementedError`. See [fanuc_robotiq.md](airo-robots/airo_robots/grippers/hardware/fanuc_robotiq.md).
 - `airo-robots`: Added `URrtdeTorque`, a subclass of `URrtde` that adds a joint-space torque control mode for UR e-series robots. Call `enable_torque_control()` to start a dedicated 500 Hz PD control process and set targets via the `target_joint_configuration` property; call `disable_torque_control()` to return to regular position control. The PD gains are tuned for a UR3e and can be overridden via the constructor. Requires `ur-rtde >= 1.6.0`, so that `airo-robots` dependency has been changed accordingly. See the [torque control guide](airo-robots/airo_robots/manipulators/hardware/universal_robots_torque_control.md) for usage, safety notes and tuning tips.
