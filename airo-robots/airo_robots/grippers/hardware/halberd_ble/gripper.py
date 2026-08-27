@@ -66,6 +66,7 @@ class HalberdBLEGripper(ParallelPositionGripper):
                 max_speed=self._width_axis.max_speed,
                 min_speed=0.0,
             )
+        super().__init__(gripper_specs)
         self._speed = gripper_specs.max_speed
         self._max_grasp_force = gripper_specs.max_force
 
