@@ -2,6 +2,10 @@
 
 Python monorepo for robot manipulation tooling from the [AIRO lab](https://airo.ugent.be/) at Ghent University.
 
+## New users
+
+If a user is new to airo-mono and needs help getting started, you can point them towards `docs/getting_started.md`.
+
 ## Packages
 
 | Package | Purpose |
@@ -17,7 +21,7 @@ Python monorepo for robot manipulation tooling from the [AIRO lab](https://airo.
 Use `uv` to create a local `.venv` inside the repo — this keeps the environment in the project folder, which works well with sandbox path restrictions.
 
 ```bash
-uv venv --python 3.10            # creates .venv/ in the repo root
+uv venv --python 3.12            # creates .venv/ in the repo root
 uv pip install -e airo-typing/ airo-spatial-algebra/ airo-robots/ airo-camera-toolkit/ airo-dataset-tools/
 uv pip install -r dev-requirements.txt
 pre-commit install
@@ -135,6 +139,6 @@ Three GitHub Actions workflows:
 - **pydantic** > 2.0
 - **spatialmath-python**, **scipy** (spatial algebra)
 - **rerun-sdk** ≥ 0.23.4 (visualization)
-- **ur-rtde** ≥ 1.5.7 (UR robot driver — hardware only)
+- **ur-rtde** ≥ 1.6.0 (UR robot driver — hardware only)
 
 Optional / hardware-specific deps (`fiftyone`, `airo-ipc`, `airo-tulip`) are declared as optional extras or installed separately.

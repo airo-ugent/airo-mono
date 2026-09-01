@@ -1,7 +1,0 @@
-{
-    "python.testing.pytestArgs": [
-        "**/test/*.py",
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-}

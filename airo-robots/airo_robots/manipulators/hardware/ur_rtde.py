@@ -10,8 +10,14 @@ from airo_robots.manipulators.position_manipulator import ManipulatorSpecs, Posi
 from airo_spatial_algebra import SE3Container
 from airo_typing import HomogeneousMatrixType, JointConfigurationType
 from loguru import logger
-from rtde_control import RTDEControlInterface
-from rtde_receive import RTDEReceiveInterface
+
+try:
+    from rtde_control import RTDEControlInterface
+    from rtde_receive import RTDEReceiveInterface
+except ImportError as exception:
+    raise ImportError(
+        'URrtde requires the ur-rtde library. Install it with `pip install "airo-robots[ur]"`.'
+    ) from exception
 
 RotVecPoseType = np.ndarray
 """ a 6D pose [tx,ty,tz,rotvecx,rotvecy,rotvecz]"""
@@ -45,9 +51,10 @@ class URrtde(PositionManipulator):
     MANIPULATOR_SPECS = {
         # https://www.universal-robots.com/media/240787/ur3_us.pdf
         # https://www.universal-robots.com/media/1827367/05_2023_collective_data-sheet.pdf
-        URModels.UR3: ManipulatorSpecs([np.pi] * 3 + [2 * np.pi] * 3, 1.0),
-        URModels.UR3e: ManipulatorSpecs([np.pi] * 3 + [2 * np.pi] * 3, 1.0),
-        URModels.UR5e: ManipulatorSpecs([np.pi] * 6, 1.0),
+        # Torque values: https://www.universal-robots.com/articles/ur/robot-care-maintenance/max-joint-torques-cb3-and-e-series/
+        URModels.UR3: ManipulatorSpecs([np.pi] * 3 + [2 * np.pi] * 3, 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0]),
+        URModels.UR3e: ManipulatorSpecs([np.pi] * 3 + [2 * np.pi] * 3, 1.0, [54.0, 54.0, 28.0, 9.0, 9.0, 9.0]),
+        URModels.UR5e: ManipulatorSpecs([np.pi] * 6, 1.0, [150.0, 150.0, 150.0, 28.0, 28.0, 28.0]),
     }
 
     # For backward compatibility
@@ -266,6 +273,12 @@ class URrtde(PositionManipulator):
 
     def _is_joint_configuration_reachable(self, joint_configuration: JointConfigurationType) -> bool:
         return self.rtde_control.isJointsWithinSafetyLimits(joint_configuration)
+
+    def start_freedrive(self) -> None:
+        self.rtde_control.teachMode()
+
+    def stop_freedrive(self) -> None:
+        self.rtde_control.endTeachMode()
 
     @staticmethod
     def _convert_rotvec_pose_to_homogeneous_pose(ur_pose: RotVecPoseType) -> HomogeneousMatrixType:

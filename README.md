@@ -107,10 +107,13 @@ Probably the best way to learn what `airo-mono` has to offer, is to look at the 
 
 | Project                                                                     | Description                                                                                                 |
 | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 💃🏾 [Love Tomorrow](https://airo.ugent.be/news/202607_lovetomorrow/) | airo-mono powered our demo at Love Tomorrow 2026 |
 | 🧩 [ITF World 2026](https://airo.ugent.be/news/202605_itf/) | airo-mono powered our demos at ITF World 2026 |
 | 🍹 [ITF World 2025](https://airo.ugent.be/news/202505_itf/) | airo-mono powered our demos at ITF World 2025 |
 | 👕 [`cloth-competition`](https://github.com/Victorlouisdg/cloth-competition) | airo-mono is the backbone of the [ICRA 2024 Cloth Competition](https://airo.ugent.be/cloth_competition/) 🏆! |
 | 🧪 [ITF World 2024](https://airo.ugent.be/news/itf2024/) | airo-mono powered our demo at ITF World 2024 |
+
+**Your project here?** [Contact us](mailto:mathieu.decoster@ugent.be).
 
 ## Installation 🔧
 

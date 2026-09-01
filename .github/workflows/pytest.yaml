@@ -41,14 +41,18 @@ jobs:
       id: cache-venv
       with:
         path: .venv
-        key: venv-pytest-${{ matrix.python-version }}-${{ hashFiles('**/setup.py') }}
+        # Includes source files, not just setup.py, so a change to any package's code
+        # (not only its dependencies) invalidates this venv and gets reinstalled.
+        # The separate uv wheel cache above is still keyed on setup.py only, so this
+        # doesn't reintroduce heavy dependency re-downloads on every source change.
+        key: venv-pytest-${{ matrix.python-version }}-${{ hashFiles('**/setup.py', '**/*.py') }}
 
     - name: Install packages
       if: steps.cache-venv.outputs.cache-hit != 'true'
       run: |
         uv venv .venv --python ${{ matrix.python-version }}
         uv pip install --python .venv/bin/python pytest nbmake
-        uv pip install --python .venv/bin/python airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ "airo-dataset-tools/[augmentations]"
+        uv pip install --python .venv/bin/python airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/[ur] "airo-dataset-tools/[augmentations]"
         # albumentations (via [augmentations]) and fiftyone (via [fiftyone]) both pull in
         # opencv-python-headless, which conflicts with opencv-contrib-python — whichever is
         # installed last overwrites the cv2 namespace. Force-reinstall contrib so it wins.

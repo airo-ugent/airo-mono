@@ -30,10 +30,12 @@ class ManipulatorSpecs:
     dof: the Degrees of freedom of the robot, can be used to verify the shape of joint configurations
     max_joint_speeds: list of max joint speeds in [rad/s]
     max_linear_speed: an (approximate) maximal linear speed [m/s], since it is hard to test for joint speed limitations on each interpolation step
+    max_joint_torques: optional list of max joint torques in [Nm], required for torque-controlled manipulators
     """
 
     max_joint_speeds: List[float]
     max_linear_speed: float
+    max_joint_torques: Optional[List[float]] = None
 
     @property
     def dof(self) -> int:
@@ -235,6 +237,16 @@ class PositionManipulator(ABC):
         if joint_configuration is None:
             return False
         return self._is_joint_configuration_reachable(joint_configuration)
+
+    def start_freedrive(self) -> None:
+        """Put the robot in freedrive (a.k.a. teach mode / drag teach): a human can manually move the robot
+        by hand, e.g. to record poses for hand-eye calibration. Not all robots support this; the default
+        implementation raises, override in a hardware implementation that does."""
+        raise NotImplementedError(f"{type(self).__name__} does not support freedrive.")
+
+    def stop_freedrive(self) -> None:
+        """Take the robot out of freedrive, see `start_freedrive`."""
+        raise NotImplementedError(f"{type(self).__name__} does not support freedrive.")
 
     def execute_trajectory(
         self,

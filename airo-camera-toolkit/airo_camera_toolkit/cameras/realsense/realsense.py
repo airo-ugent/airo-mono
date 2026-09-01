@@ -102,6 +102,9 @@ class Realsense(RGBDCamera):
         devices = ctx.query_devices()
         for dev in devices:
             dev.hardware_reset()
+        # The D435 takes ~2 s to re-enumerate after a hardware reset; starting
+        # the pipeline immediately causes UVCIOC_CTRL_QUERY / VIDIOC_S_FMT timeouts.
+        time.sleep(2)
 
         self.pipeline = rs.pipeline()
 
