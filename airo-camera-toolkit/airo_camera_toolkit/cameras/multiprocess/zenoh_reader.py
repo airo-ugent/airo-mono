@@ -22,15 +22,10 @@ class WaitingForFirstMessageException(Exception):
 class ZenohReader:
     """Subscribes to a Zenoh key expression and deserializes the latest frame.
 
-    This is a drop-in replacement for ``airo_ipc``'s ``SMReader``.  The
-    subscriber callback runs in a Zenoh-managed background thread; a
+    The subscriber callback runs in a Zenoh-managed background thread; a
     :class:`threading.Lock` guards access to the latest received bytes so the
     calling thread can safely call :meth:`__call__` at any time.
-
-    The constructor blocks until the first message on *key_expr* arrives.  Note
-    that this is stronger than ``airo_ipc``'s ``SMReader``, which only waited
-    for a writer to exist: a publisher that is running but never publishes on
-    this key expression still causes a timeout here.
+    The constructor blocks until the first message on *key_expr* arrives.
 
     Args:
         session: An open :class:`zenoh.Session`.

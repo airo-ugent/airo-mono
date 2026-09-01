@@ -75,11 +75,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
             # Grab first frame
             self.grab_images()
         except BaseException:
-            # A half-constructed receiver is never handed to the caller, so
-            # nobody can stop() it.  Release the session here: a leaked session
-            # keeps scouting and stays a peer of every publisher started later
-            # in this process, which prevents those publishers from reaching
-            # new receivers.
+            # If any exception occurs, clean up here.
             self.stop()
             raise
 
@@ -87,12 +83,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Re-establish the connection to the publisher.
 
         Closes the Zenoh session, opens a new one and reads the publisher's
-        resolution and fps again.  Use it when :meth:`grab_images` times out
-        because the publisher was restarted: a new session re-runs peer
-        discovery, drops the shared memory mappings of the previous publisher,
-        and picks up a resolution that changed across the restart (frames from a
-        publisher at another resolution do not match the previous frame buffer
-        template and are rejected).
+        resolution and fps again.
 
         Arrays retrieved before this call keep pointing at their own payload and
         stay valid.
@@ -178,17 +169,13 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Read the latest frame from shared memory.
 
         When ``block_until_new_frame`` is set, this blocks until a message newer
-        than the one currently held is available.  The comparison is against the
-        message count of the frame we last returned (not the count at entry), so
-        a frame that arrived while the caller was busy is returned immediately
-        instead of waiting for the next one.
+        than the one currently held is available.
 
         Raises:
             RuntimeError: If the receiver has been stopped.
             TimeoutError: If no newer frame arrives within the receiver's
-                timeout, which is what a publisher that stopped, restarted or
-                became unreachable looks like from here.  Call
-                :meth:`reconnect` to re-establish the connection.
+                timeout. This implies a stopped or restarted publisher; you
+                can call :meth:`reconnect` to re-establish the connection.
         """
         reader = self._reader
         if reader is None:
@@ -209,9 +196,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     def stop(self) -> None:
         """Undeclare the readers and close the Zenoh session.
-
-        Safe to call more than once.  Receivers hold a Zenoh session and a
-        background subscriber thread for the lifetime of the process otherwise.
+        Safe to call more than once.
         """
         if self._stopped:
             return

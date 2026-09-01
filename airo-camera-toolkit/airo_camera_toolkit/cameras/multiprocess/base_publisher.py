@@ -25,20 +25,12 @@ _LOCALHOST = "127.0.0.1"
 def _make_zenoh_config(shm: bool = True, router_endpoint: Optional[str] = None) -> zenoh.Config:
     """Return the Zenoh configuration used by the multiprocess publishers and receivers.
 
-    By default the session is confined to the local host: peers are scouted over
-    loopback only and the session listens on loopback only.  Zenoh's default
-    configuration scouts over multicast on every interface, which would make two
-    machines on the same LAN using the same ``shared_memory_namespace`` connect
-    to each other -- a receiver would then silently consume another machine's
-    frames over the network, at which point the shared memory transport buys
-    nothing.
+    By default, the session is confined to the local host. You can opt in to cross-host
+    through a Zenoh router by passing ``router_endpoint`` or setting the
+    ``AIRO_ZENOH_ROUTER`` environment variable.
 
-    Cross-host use is opt-in through a Zenoh router: pass *router_endpoint*, or
-    set the ``AIRO_ZENOH_ROUTER`` environment variable (which every publisher and
-    receiver in the process, including spawned publisher processes, picks up).
-    Multicast scouting is then disabled and peers discover each other through the
-    router instead.  Frames to a peer on another host travel over the network, so
-    the shared memory transport only helps same-host peers.
+    In the local-host case, shared memory transport is used to reduce latency.
+    This option is not available in the cross-host case.
 
     Args:
         shm: Whether to enable the Zenoh shared memory transport.
@@ -54,9 +46,6 @@ def _make_zenoh_config(shm: bool = True, router_endpoint: Optional[str] = None) 
         router_endpoint = os.environ.get(ZENOH_ROUTER_ENV_VAR) or None
 
     conf = zenoh.Config()
-    # Set this explicitly either way: Zenoh enables the shared memory transport
-    # by default, so only inserting it when requested would make shm=False a
-    # no-op.
     conf.insert_json5("transport/shared_memory/enabled", json.dumps(shm))
 
     if router_endpoint is None:

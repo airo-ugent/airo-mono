@@ -2,7 +2,7 @@
 
 Multiprocessing in the airo-camera-toolkit was born from a simple need:
 
-> "We want to command robots and at the same time view a smooth camera feed.
+> We want to command robots and at the same time view a smooth camera feed.
 
 There a few things that make this difficult:
 * Robot commands can take long to execute (several seconds)
@@ -28,14 +28,6 @@ The receiver is subclass of `RGBCamera` which ensures that it follows the interf
 
 The arrays a receiver returns (images, depth maps, intrinsics, point clouds) are read-only views into the frame it received; nothing is copied out of the payload.
 This saves about 3 ms per FullHD RGBD frame, roughly a third of the end-to-end latency.
-
-Reading, converting and logging them works as before -- `ImageConverter`, `cv2.cvtColor`, `cv2.VideoWriter.write` and `rerun` all accept read-only input.
-Only in-place modification needs a copy:
-
-```python
-image = receiver.retrieve_rgb_image_as_int().copy()   # copy first ...
-cv2.rectangle(image, (0, 0), (100, 100), (255, 0, 0), 2)   # ... then draw
-```
 
 ## Surviving a publisher restart
 

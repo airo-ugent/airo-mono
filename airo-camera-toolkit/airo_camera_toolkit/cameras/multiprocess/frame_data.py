@@ -82,12 +82,7 @@ def serialize_frame(obj: Any, template: Any = None) -> bytes:
 def deserialize_frame(template: T, data: bytes) -> T:
     """Deserialize raw bytes back into a frame buffer dataclass instance.
 
-    The returned arrays are **read-only views** into ``data``; no frame bytes are
-    copied.  Copying every field cost about 2.8 ms for a FullHD RGBD frame, which
-    was roughly a fifth of the end-to-end latency of the multiprocess pipeline.
-    ``data`` is immutable and stays alive as long as the arrays reference it, so
-    the views remain valid for as long as the caller holds them.
-
+    The returned arrays are **read-only views** into ``data``
     Call ``.copy()`` on a field if you need a writable array, e.g. to draw on a
     received image in place.
 
