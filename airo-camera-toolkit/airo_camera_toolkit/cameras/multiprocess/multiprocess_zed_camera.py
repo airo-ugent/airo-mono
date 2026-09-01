@@ -252,14 +252,12 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         """Undeclare the Zed-specific readers, then the base reader and session."""
         if self._stopped:
             return
-        # _reader_pcd and _reader_spatial_map can both be None if the connection
+        # _reader_pcd and _reader_spatial_map can both be missing attributes if the connection
         # failed before they were set up.
-        if self._reader_pcd is not None:
+        if hasattr(self, "_reader_pcd"):
             self._reader_pcd.stop()
-            self._reader_pcd = None
-        if self._reader_spatial_map is not None:
+        if hasattr(self, "_reader_spatial_map"):
             self._reader_spatial_map.stop()
-            self._reader_spatial_map = None
         super().stop()
 
     def retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
