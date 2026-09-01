@@ -66,19 +66,27 @@ class MockRGBCamera(RGBCamera):
 _STARTUP_TIMEOUT = 15  # seconds to wait for publisher to be ready
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def namespace():
-    """A namespace unique to this test.
+    """The namespace of the module's publisher.
 
-    Tests share a process, so a publisher lingering from an earlier test must
-    never be the one a later test's receiver picks up.
+    Randomised so a stray publisher from another run on the same machine cannot
+    be mistaken for ours.
     """
     return f"test_camera_mock_{uuid.uuid4().hex[:8]}"
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def publisher(namespace):
-    """Start a MultiprocessRGBPublisher and stop it after the test."""
+    """One MultiprocessRGBPublisher shared by every test in this module.
+
+    Deliberately module-scoped: on the CI runners, a receiver reliably finds the
+    first publisher process started in a pytest process, but every publisher
+    started after that goes undiscovered -- the publisher then reports no
+    matching subscriber and the receiver times out, while the same tests pass
+    locally.  One publisher for the module keeps what the tests actually check
+    (the receiver side) without depending on that.
+    """
     multiprocessing.set_start_method("spawn", force=True)
     pub = MultiprocessRGBPublisher(
         camera_cls=MockRGBCamera,
@@ -90,7 +98,7 @@ def publisher(namespace):
     pub.join(timeout=5)
     if pub.is_alive():
         # Leaving it running would keep publishing (and holding its shared
-        # memory pool) for the rest of the test session.
+        # memory pool) after the test session.
         pub.kill()
         pub.join(timeout=5)
 
