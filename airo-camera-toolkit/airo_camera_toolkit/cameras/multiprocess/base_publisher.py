@@ -1,9 +1,11 @@
 """Base classes for multiprocess camera publishers and receivers."""
 
+import json
 import multiprocessing
+import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import zenoh
@@ -12,12 +14,59 @@ from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.interfaces import RGBCamera
 from loguru import logger
 
+# Environment variable naming the Zenoh router to connect to, e.g.
+# "tcp/192.168.0.10:7447".  Publishers and receivers are confined to the local
+# host unless this is set.
+ZENOH_ROUTER_ENV_VAR = "AIRO_ZENOH_ROUTER"
 
-def _make_zenoh_config(shm: bool = True) -> zenoh.Config:
-    """Return a Zenoh configuration with shared memory transport optionally enabled."""
+_LOCALHOST = "127.0.0.1"
+
+
+def _make_zenoh_config(shm: bool = True, router_endpoint: Optional[str] = None) -> zenoh.Config:
+    """Return the Zenoh configuration used by the multiprocess publishers and receivers.
+
+    By default the session is confined to the local host: peers are scouted over
+    loopback only and the session listens on loopback only.  Zenoh's default
+    configuration scouts over multicast on every interface, which would make two
+    machines on the same LAN using the same ``shared_memory_namespace`` connect
+    to each other -- a receiver would then silently consume another machine's
+    frames over the network, at which point the shared memory transport buys
+    nothing.
+
+    Cross-host use is opt-in through a Zenoh router: pass *router_endpoint*, or
+    set the ``AIRO_ZENOH_ROUTER`` environment variable (which every publisher and
+    receiver in the process, including spawned publisher processes, picks up).
+    Multicast scouting is then disabled and peers discover each other through the
+    router instead.  Frames to a peer on another host travel over the network, so
+    the shared memory transport only helps same-host peers.
+
+    Args:
+        shm: Whether to enable the Zenoh shared memory transport.
+        router_endpoint: Zenoh endpoint of a router to connect to, e.g.
+            ``"tcp/192.168.0.10:7447"``.  Defaults to the value of
+            ``AIRO_ZENOH_ROUTER``; when that is unset too, the session is
+            restricted to the local host.
+
+    Returns:
+        The Zenoh configuration.
+    """
+    if router_endpoint is None:
+        router_endpoint = os.environ.get(ZENOH_ROUTER_ENV_VAR) or None
+
     conf = zenoh.Config()
-    if shm:
-        conf.insert_json5("transport/shared_memory/enabled", "true")
+    # Set this explicitly either way: Zenoh enables the shared memory transport
+    # by default, so only inserting it when requested would make shm=False a
+    # no-op.
+    conf.insert_json5("transport/shared_memory/enabled", json.dumps(shm))
+
+    if router_endpoint is None:
+        conf.insert_json5("scouting/multicast/interface", json.dumps(_LOCALHOST))
+        conf.insert_json5("listen/endpoints", json.dumps([f"tcp/{_LOCALHOST}:0"]))
+    else:
+        logger.info(f"Using Zenoh router at {router_endpoint}; frames may travel over the network.")
+        conf.insert_json5("scouting/multicast/enabled", "false")
+        conf.insert_json5("connect/endpoints", json.dumps([router_endpoint]))
+
     return conf
 
 

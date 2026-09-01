@@ -9,6 +9,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Breaking changes
 - `airo-camera-toolkit`: the `multiprocess` module now uses [Eclipse Zenoh](https://zenoh.io/) instead of `airo-ipc`/CycloneDDS. `eclipse-zenoh>=1.7.0` is installed as a dependency, `airo-ipc` is no longer required, and the wire format changed, so publishers and receivers must both be updated.
+- `airo-camera-toolkit`: the `multiprocess` module now confines its Zenoh sessions to the local host (loopback scouting and listening) instead of scouting multicast on every interface. To publish and receive across machines, run a Zenoh router and set the `AIRO_ZENOH_ROUTER` environment variable (e.g. `tcp/192.168.0.10:7447`) on both sides.
 - `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
 - `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
 

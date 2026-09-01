@@ -24,6 +24,21 @@ Two classes are at the core of our solution:
 Note that the publisher is a subclass of `SpawnProcess`, this way it can publish uninterrupted.
 The receiver is subclass of `RGBCamera` which ensures that it follows the interface of a regular airo-camera-toolkit camera.
 
+## Networking
+
+Publishers and receivers communicate over Zenoh, which is configured to stay on the local host: peers are scouted over loopback only and sessions listen on loopback only.
+This keeps the shared memory transport effective and prevents two machines on the same network that happen to use the same `shared_memory_namespace` from connecting to each other -- a receiver would otherwise silently consume another machine's frames over the network.
+
+To publish on one machine and receive on another, run a [Zenoh router](https://zenoh.io/docs/getting-started/deployment/) (`zenohd`) and point both sides at it:
+
+```bash
+export AIRO_ZENOH_ROUTER=tcp/192.168.0.10:7447   # the host running zenohd
+```
+
+Multicast scouting is then disabled and peers discover each other through the router (gossip scouting) instead.
+Note that frames to a peer on another host travel over the network (~1.2 GB/s for FullHD RGBD at 60 FPS), so shared memory only helps same-host peers.
+Sessions still run in Zenoh's `peer` mode, so peers that turn out to be on the same host should link directly and keep using shared memory between them.
+
 ## Usage
 See the  main function in [multiprocess_rgb_camera.py](./multiprocess_rgb_camera.py) for a simple example of how to use these classes with a ZED camera.
 The main difference with the regular workflow is that instead of instantiating a `Zed` object, you now have to first create a `MultiprocessRGBPublisher` with the class and its kwargs, and then one or more `MultiprocessRGBReceiver`s.
