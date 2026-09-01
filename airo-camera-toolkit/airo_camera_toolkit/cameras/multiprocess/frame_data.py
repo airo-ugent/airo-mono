@@ -9,13 +9,70 @@ import numpy as np
 T = TypeVar("T")
 
 
-def serialize_frame(obj: Any) -> bytes:
+def frame_field_specs(template: Any) -> list[tuple[str, np.dtype, tuple[int, ...], int]]:
+    """Describe the wire format defined by *template*.
+
+    Args:
+        template: A template instance (from ``FrameBuffer.template()``).
+
+    Returns:
+        One ``(name, dtype, shape, nbytes)`` tuple per dataclass field, in
+        declaration order.
+    """
+    specs = []
+    for f in dataclasses.fields(template):
+        arr: np.ndarray = getattr(template, f.name)
+        specs.append((f.name, arr.dtype, arr.shape, arr.nbytes))
+    return specs
+
+
+def validate_frame(template: Any, obj: Any) -> None:
+    """Check that *obj* matches the wire format defined by *template*.
+
+    The wire format is a bare concatenation of the field bytes, so a field with
+    an unexpected dtype or shape would silently shift every field after it.
+    This check turns that into an error at the publishing side.
+
+    Args:
+        template: A template instance (from ``FrameBuffer.template()``).
+        obj: A frame buffer dataclass instance to validate.
+
+    Raises:
+        TypeError: If *obj* is not of the same type as *template*, or if a
+            field is not a numpy array.
+        ValueError: If a field's dtype or shape differs from the template.
+    """
+    if type(obj) is not type(template):
+        raise TypeError(f"Expected a {type(template).__name__} instance, but got {type(obj).__name__}.")
+    for name, dtype, shape, _ in frame_field_specs(template):
+        arr = getattr(obj, name)
+        if not isinstance(arr, np.ndarray):
+            raise TypeError(f"Field '{name}' must be a numpy array, but is {type(arr).__name__}.")
+        if arr.dtype != dtype:
+            raise ValueError(f"Field '{name}' has dtype {arr.dtype}, but the wire format expects {dtype}.")
+        if arr.shape != shape:
+            raise ValueError(f"Field '{name}' has shape {arr.shape}, but the wire format expects {shape}.")
+
+
+def serialize_frame(obj: Any, template: Any = None) -> bytes:
     """Serialize a frame buffer dataclass to raw bytes.
 
     All numpy fields are concatenated in dataclass field declaration order.
     The schema (field order, shapes, dtypes) must be agreed upon by both sides
     via the corresponding ``template()`` classmethod.
+
+    Args:
+        obj: A frame buffer dataclass instance.
+        template: Optional template instance to validate *obj* against before
+            serializing.  Passing it is strongly recommended: without it, a
+            field with an unexpected dtype or shape produces bytes that the
+            receiver silently misinterprets.
+
+    Returns:
+        The concatenated field bytes.
     """
+    if template is not None:
+        validate_frame(template, obj)
     parts = [getattr(obj, f.name).ravel().view(np.uint8) for f in dataclasses.fields(obj)]
     flat = np.empty(sum(p.nbytes for p in parts), dtype=np.uint8)
     np.concatenate(parts, out=flat)
@@ -32,15 +89,28 @@ def deserialize_frame(template: T, data: bytes) -> T:
 
     Returns:
         A new dataclass instance with numpy arrays filled from ``data``.
+
+    Raises:
+        ValueError: If ``data`` does not have exactly the length the template's
+            field layout describes.  Silently accepting a mismatch would return
+            a frame with garbage in (some of) its fields.
     """
+    specs = frame_field_specs(template)
+    expected_nbytes = sum(nbytes for _, _, _, nbytes in specs)
+    if len(data) != expected_nbytes:
+        raise ValueError(
+            f"Cannot deserialize a {type(template).__name__}: got {len(data)} bytes, "
+            f"but its field layout describes {expected_nbytes} bytes. "
+            "Publisher and receiver disagree on the wire format."
+        )
+
     kwargs: dict = {}
     offset = 0
-    for f in dataclasses.fields(template):  # type: ignore[arg-type]
-        arr: np.ndarray = getattr(template, f.name)
-        chunk = data[offset : offset + arr.nbytes]
-        kwargs[f.name] = np.frombuffer(chunk, dtype=arr.dtype).reshape(arr.shape).copy()
-        offset += arr.nbytes
-    return template.__class__(**kwargs)  # type: ignore[return-value]
+    for name, dtype, shape, nbytes in specs:
+        chunk = data[offset : offset + nbytes]
+        kwargs[name] = np.frombuffer(chunk, dtype=dtype).reshape(shape).copy()
+        offset += nbytes
+    return template.__class__(**kwargs)
 
 
 @dataclass

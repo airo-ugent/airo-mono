@@ -15,6 +15,7 @@ from airo_camera_toolkit.cameras.multiprocess.frame_data import (
     ZedFrameBuffer,
     deserialize_frame,
     serialize_frame,
+    validate_frame,
 )
 
 W, H = 64, 48  # small resolution for fast tests
@@ -186,3 +187,59 @@ def test_deserialized_arrays_are_copies():
     # Modifying the result must not affect the original bytes
     result2 = deserialize_frame(FpsIdl.template(), data)
     assert result2.fps.item() == pytest.approx(30.0)
+
+
+# ---------------------------------------------------------------------------
+# Schema validation: a field whose dtype or shape drifted from the template
+# would silently shift every field after it on the wire.
+# ---------------------------------------------------------------------------
+
+
+def _valid_rgbd_frame():
+    return RGBDFrameBuffer(
+        frame_id=np.array([1], dtype=np.uint64),
+        frame_timestamp=np.array([1.0], dtype=np.float64),
+        rgb=np.zeros((H, W, 3), dtype=np.uint8),
+        intrinsics=np.eye(3, dtype=np.float64),
+        depth_image=np.zeros((H, W, 3), dtype=np.uint8),
+        depth=np.zeros((H, W), dtype=np.float32),
+    )
+
+
+def test_validate_frame_accepts_matching_frame():
+    validate_frame(RGBDFrameBuffer.template(W, H), _valid_rgbd_frame())
+
+
+def test_validate_frame_rejects_wrong_dtype():
+    obj = _valid_rgbd_frame()
+    obj.depth = obj.depth.astype(np.float64)
+    with pytest.raises(ValueError, match="depth"):
+        validate_frame(RGBDFrameBuffer.template(W, H), obj)
+
+
+def test_validate_frame_rejects_wrong_shape():
+    obj = _valid_rgbd_frame()
+    obj.rgb = np.zeros((H, W, 4), dtype=np.uint8)
+    with pytest.raises(ValueError, match="rgb"):
+        validate_frame(RGBDFrameBuffer.template(W, H), obj)
+
+
+def test_validate_frame_rejects_wrong_type():
+    with pytest.raises(TypeError):
+        validate_frame(RGBDFrameBuffer.template(W, H), FpsIdl(fps=np.array([1.0])))
+
+
+def test_serialize_frame_validates_against_template():
+    obj = _valid_rgbd_frame()
+    obj.depth = obj.depth.astype(np.float64)
+    with pytest.raises(ValueError, match="depth"):
+        serialize_frame(obj, RGBDFrameBuffer.template(W, H))
+
+
+def test_deserialize_frame_rejects_wrong_length():
+    """A dtype mismatch used to deserialize silently, corrupting every later field."""
+    obj = _valid_rgbd_frame()
+    obj.depth = obj.depth.astype(np.float64)
+    data = serialize_frame(obj)  # unvalidated: simulates a publisher without validation
+    with pytest.raises(ValueError, match="wire format"):
+        deserialize_frame(RGBDFrameBuffer.template(W, H), data)

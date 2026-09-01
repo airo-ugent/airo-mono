@@ -8,10 +8,13 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ## Unreleased
 
 ### Breaking changes
+- `airo-camera-toolkit`: the `multiprocess` module now uses [Eclipse Zenoh](https://zenoh.io/) instead of `airo-ipc`/CycloneDDS. `eclipse-zenoh>=1.7.0` is installed as a dependency, `airo-ipc` is no longer required, and the wire format changed, so publishers and receivers must both be updated.
 - `airo-dataset-tools`: `fiftyone` is no longer installed by default. Use `pip install "airo-dataset-tools[fiftyone]"` to include it. See the [README](airo-dataset-tools/README.md#fiftyone-installation) for details.
 - `airo-dataset-tools`: `albumentations` is no longer installed by default. Use `pip install "airo-dataset-tools[augmentations]"` to include it. See the [README](airo-dataset-tools/README.md#augmentations-installation) for details.
 
 ### Added
+- `airo-camera-toolkit`: multiprocess frame publishing now validates each field's dtype and shape against the frame buffer template, and deserialization rejects payloads of unexpected length, instead of silently producing corrupted frames.
+- `airo-camera-toolkit`: multiprocess camera receivers gained a `stop()` method (and context manager support) to release their Zenoh session and subscribers.
 - Added `CLAUDE.md` with repo overview, setup instructions, coding conventions, and development workflow guidelines for Claude Code.
 - `airo-dataset-tools`: `merge_coco_datasets` now supports nested image subdirectories — images are copied to the target preserving their relative directory structure.
 - `airo-dataset-tools`: `CocoKeypointAnnotation` now auto-fills `num_keypoints` when the field is absent or `None` in the source data.
@@ -22,6 +25,8 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 - `airo-camera-toolkit`: migrated aruco detection to the new OpenCV 4.8+ API (`ArucoDetector`, `CharucoDetector`, `solvePnP`) — the legacy `detectMarkers` / `interpolateCornersCharuco` / `estimatePoseSingleMarkers` functions were only present in `opencv-contrib-python` and absent when `opencv-python-headless` (pulled in by fiftyone) overwrote the `cv2` module.
 
 ### Fixed
+- `airo-camera-toolkit`: multiprocess camera receivers no longer wait for the *next* published frame when a newer frame is already buffered, removing up to one frame period of latency per `grab_images()` call.
+- `airo-camera-toolkit`: multiprocess camera receivers now time out (default 30s, configurable via the `timeout` argument) instead of blocking forever when the publisher is not running or cannot be reached.
 - `airo-camera-toolkit`: `get_pose_of_charuco_board` now returns `None` instead of crashing when fewer than 6 charuco corners are detected (OpenCV's DLT algorithm requires at least 6 point correspondences). Fixes [#199](https://github.com/airo-ugent/airo-mono/issues/199).
 
 ### Removed

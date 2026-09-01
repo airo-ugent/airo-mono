@@ -17,7 +17,8 @@ setuptools.setup(
         "click",
         "open3d",
         "loguru",
-        "eclipse-zenoh",
+        # >=1.7.0 for the zenoh.shm API (ShmProvider.default_backend, GarbageCollect) used by the multiprocess module
+        "eclipse-zenoh>=1.7.0",
         "airo-typing>=2026.1.0",
         "airo-spatial-algebra>=2026.1.0",
         "airo-dataset-tools>=2026.1.0",

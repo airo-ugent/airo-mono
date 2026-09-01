@@ -29,7 +29,6 @@ Optional arguments::
     --duration   How many seconds to run (default: 10)
     --namespace  Zenoh key-expression namespace (default: bench_rgbd)
     --fps        Target publisher FPS (default: 60)
-    --no-shm     Disable Zenoh shared-memory transport
 """
 
 from __future__ import annotations
@@ -126,6 +125,7 @@ def _receiver_worker(namespace: str, duration: float, result_queue: multiprocess
         latencies_ms.append(latency_ms)
 
     elapsed = time.time() - t_start
+    receiver.stop()
     result_queue.put((latencies_ms, elapsed))
 
 
@@ -165,15 +165,16 @@ def run_benchmark(duration: float, namespace: str, fps: float) -> None:
         args=(namespace, duration, result_queue),
     )
     print("Waiting for receiver to connect...")
-    t_start = time.time()
     receiver_proc.start()
-    receiver_proc.join()
-    elapsed = time.time() - t_start
+
+    # Drain the queue BEFORE joining: the child cannot exit until its queue
+    # feeder thread has flushed the (potentially multi-hundred-kB) result
+    # through the pipe, so joining first would deadlock on long runs.
+    latencies_ms, elapsed = result_queue.get()
+    receiver_proc.join(timeout=10)
 
     publisher.stop()
     publisher.join(timeout=5)
-
-    latencies_ms, elapsed = result_queue.get()
 
     # ---------------------------------------------------------------------------
     # Statistics

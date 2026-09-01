@@ -16,7 +16,6 @@ import pytest
 pytest.importorskip("zenoh", reason="eclipse-zenoh not installed")
 
 import numpy as np
-import pytest
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
     MultiprocessRGBPublisher,
     MultiprocessRGBReceiver,
@@ -81,21 +80,36 @@ def publisher():
     pub.join(timeout=5)
 
 
+@pytest.fixture()
+def receiver_factory(publisher):
+    """Create receivers that time out (rather than hang) and are stopped afterwards."""
+    receivers = []
+
+    def make() -> MultiprocessRGBReceiver:
+        receiver = MultiprocessRGBReceiver(_NAMESPACE, timeout=_STARTUP_TIMEOUT)
+        receivers.append(receiver)
+        return receiver
+
+    yield make
+    for receiver in receivers:
+        receiver.stop()
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
 
-def test_receiver_reads_resolution_and_fps(publisher):
+def test_receiver_reads_resolution_and_fps(receiver_factory):
     """Receiver should report the same resolution and fps as the mock camera."""
-    receiver = MultiprocessRGBReceiver(_NAMESPACE)
+    receiver = receiver_factory()
     assert receiver.resolution == _MOCK_RESOLUTION
     assert receiver.fps == _MOCK_FPS
 
 
-def test_receiver_gets_rgb_image(publisher):
+def test_receiver_gets_rgb_image(receiver_factory):
     """Receiver should return an RGB image with the expected shape and values."""
-    receiver = MultiprocessRGBReceiver(_NAMESPACE)
+    receiver = receiver_factory()
     receiver.grab_images()
 
     image = receiver.retrieve_rgb_image_as_int()
@@ -105,9 +119,9 @@ def test_receiver_gets_rgb_image(publisher):
     np.testing.assert_array_equal(image, _MOCK_RGB_VALUE)
 
 
-def test_receiver_frame_timestamp_advances(publisher):
+def test_receiver_frame_timestamp_advances(receiver_factory):
     """Consecutive grab_images() calls should yield strictly increasing timestamps."""
-    receiver = MultiprocessRGBReceiver(_NAMESPACE)
+    receiver = receiver_factory()
 
     receiver.grab_images()
     t0 = receiver.get_current_timestamp()
@@ -118,9 +132,9 @@ def test_receiver_frame_timestamp_advances(publisher):
     assert t1 > t0, f"Timestamp did not advance: {t0} -> {t1}"
 
 
-def test_receiver_frame_id_advances(publisher):
+def test_receiver_frame_id_advances(receiver_factory):
     """Frame IDs should be monotonically increasing."""
-    receiver = MultiprocessRGBReceiver(_NAMESPACE)
+    receiver = receiver_factory()
 
     receiver.grab_images()
     id0 = receiver.get_current_frame_id()
@@ -131,13 +145,35 @@ def test_receiver_frame_id_advances(publisher):
     assert id1 > id0, f"Frame ID did not advance: {id0} -> {id1}"
 
 
-def test_multiple_receivers_same_namespace(publisher):
+def test_multiple_receivers_same_namespace(receiver_factory):
     """Multiple receivers on the same namespace should all get valid frames."""
-    r1 = MultiprocessRGBReceiver(_NAMESPACE)
-    r2 = MultiprocessRGBReceiver(_NAMESPACE)
+    r1 = receiver_factory()
+    r2 = receiver_factory()
 
     r1.grab_images()
     r2.grab_images()
 
     np.testing.assert_array_equal(r1.retrieve_rgb_image_as_int(), _MOCK_RGB_VALUE)
     np.testing.assert_array_equal(r2.retrieve_rgb_image_as_int(), _MOCK_RGB_VALUE)
+
+
+def test_grab_images_returns_buffered_frame_without_waiting(receiver_factory):
+    """A frame that arrived while the caller was busy should be returned immediately.
+
+    Regression test: comparing against the message count at entry (instead of the
+    count of the frame we last returned) made every grab_images() wait for the
+    *next* publish, so the frame returned was always captured after the call
+    started, adding up to a full frame period of latency.
+    """
+    receiver = receiver_factory()
+    receiver.grab_images()
+
+    # Let at least one new frame arrive while we are not grabbing.
+    time.sleep(3.0 / _MOCK_FPS)
+
+    t_call = time.time()
+    receiver.grab_images()
+
+    # The frame we get must be one that was already buffered, i.e. captured
+    # before we called grab_images() — not one published after the call.
+    assert receiver.get_current_timestamp() < t_call
