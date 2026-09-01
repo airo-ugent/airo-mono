@@ -10,6 +10,7 @@ tests are skipped automatically when it is not available.
 
 import multiprocessing
 import time
+import uuid
 
 import pytest
 
@@ -62,31 +63,45 @@ class MockRGBCamera(RGBCamera):
 # Helpers
 # ---------------------------------------------------------------------------
 
-_NAMESPACE = "test_camera_mock"
 _STARTUP_TIMEOUT = 15  # seconds to wait for publisher to be ready
 
 
 @pytest.fixture()
-def publisher():
+def namespace():
+    """A namespace unique to this test.
+
+    Tests share a process, so a publisher lingering from an earlier test must
+    never be the one a later test's receiver picks up.
+    """
+    return f"test_camera_mock_{uuid.uuid4().hex[:8]}"
+
+
+@pytest.fixture()
+def publisher(namespace):
     """Start a MultiprocessRGBPublisher and stop it after the test."""
     multiprocessing.set_start_method("spawn", force=True)
     pub = MultiprocessRGBPublisher(
         camera_cls=MockRGBCamera,
-        shared_memory_namespace=_NAMESPACE,
+        shared_memory_namespace=namespace,
     )
     pub.start()
     yield pub
     pub.stop()
     pub.join(timeout=5)
+    if pub.is_alive():
+        # Leaving it running would keep publishing (and holding its shared
+        # memory pool) for the rest of the test session.
+        pub.kill()
+        pub.join(timeout=5)
 
 
 @pytest.fixture()
-def receiver_factory(publisher):
+def receiver_factory(publisher, namespace):
     """Create receivers that time out (rather than hang) and are stopped afterwards."""
     receivers = []
 
     def make() -> MultiprocessRGBReceiver:
-        receiver = MultiprocessRGBReceiver(_NAMESPACE, timeout=_STARTUP_TIMEOUT)
+        receiver = MultiprocessRGBReceiver(namespace, timeout=_STARTUP_TIMEOUT)
         receivers.append(receiver)
         return receiver
 
@@ -177,3 +192,20 @@ def test_grab_images_returns_buffered_frame_without_waiting(receiver_factory):
     # The frame we get must be one that was already buffered, i.e. captured
     # before we called grab_images() — not one published after the call.
     assert receiver.get_current_timestamp() < t_call
+
+
+def test_failed_receiver_construction_does_not_break_later_receivers(receiver_factory):
+    """A receiver that times out must not leave its Zenoh session behind.
+
+    Regression test: the session opened in __init__ was only closed by stop(),
+    which nobody can call on a receiver whose construction raised.  The leaked
+    session kept scouting and stayed a peer of every publisher started later in
+    the process, so subsequent receivers never got a frame (and the interpreter
+    hung on exit).
+    """
+    with pytest.raises(TimeoutError):
+        MultiprocessRGBReceiver(f"namespace_without_a_publisher_{uuid.uuid4().hex[:8]}", timeout=1)
+
+    receiver = receiver_factory()
+    receiver.grab_images()
+    np.testing.assert_array_equal(receiver.retrieve_rgb_image_as_int(), _MOCK_RGB_VALUE)

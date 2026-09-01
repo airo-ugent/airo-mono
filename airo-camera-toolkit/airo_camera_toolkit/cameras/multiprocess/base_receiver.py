@@ -53,15 +53,24 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self._session = zenoh.open(_make_zenoh_config())
         self._stopped = False
 
-        # Read static camera information
-        self._resolution = self._read_resolution(shared_memory_namespace)
-        self._fps = self._read_fps(shared_memory_namespace)
+        try:
+            # Read static camera information
+            self._resolution = self._read_resolution(shared_memory_namespace)
+            self._fps = self._read_fps(shared_memory_namespace)
 
-        # Set up shared memory readers
-        self._setup_frame_reader(self._resolution)
+            # Set up shared memory readers
+            self._setup_frame_reader(self._resolution)
 
-        # Grab first frame
-        self.grab_images()
+            # Grab first frame
+            self.grab_images()
+        except BaseException:
+            # A half-constructed receiver is never handed to the caller, so
+            # nobody can stop() it.  Release the session here: a leaked session
+            # keeps scouting and stays a peer of every publisher started later
+            # in this process, which prevents those publishers from reaching
+            # new receivers.
+            self.stop()
+            raise
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         """Set up the main frame data reader."""
@@ -158,7 +167,11 @@ class BaseCameraReceiver(RGBCamera, ABC):
         if self._stopped:
             return
         self._stopped = True
-        self._reader.stop()
+        # The frame reader does not exist yet when __init__ fails before it is
+        # set up.
+        reader = getattr(self, "_reader", None)
+        if reader is not None:
+            reader.stop()
         self._session.close()
 
     def __enter__(self) -> "BaseCameraReceiver":
