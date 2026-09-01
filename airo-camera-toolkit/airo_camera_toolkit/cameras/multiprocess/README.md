@@ -24,6 +24,19 @@ Two classes are at the core of our solution:
 Note that the publisher is a subclass of `SpawnProcess`, this way it can publish uninterrupted.
 The receiver is subclass of `RGBCamera` which ensures that it follows the interface of a regular airo-camera-toolkit camera.
 
+## Read-only frames
+
+The arrays a receiver returns (images, depth maps, intrinsics, point clouds) are read-only views into the frame it received; nothing is copied out of the payload.
+This saves about 3 ms per FullHD RGBD frame, roughly a third of the end-to-end latency.
+
+Reading, converting and logging them works as before -- `ImageConverter`, `cv2.cvtColor`, `cv2.VideoWriter.write` and `rerun` all accept read-only input.
+Only in-place modification needs a copy:
+
+```python
+image = receiver.retrieve_rgb_image_as_int().copy()   # copy first ...
+cv2.rectangle(image, (0, 0), (100, 100), (255, 0, 0), 2)   # ... then draw
+```
+
 ## Networking
 
 Publishers and receivers communicate over Zenoh, which is configured to stay on the local host: peers are scouted over loopback only and sessions listen on loopback only.

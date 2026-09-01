@@ -16,6 +16,11 @@ from loguru import logger
 class BaseCameraReceiver(RGBCamera, ABC):
     """Base class for camera receivers that read frame data from shared memory.
 
+    The arrays returned by the ``retrieve_*`` methods are read-only views into
+    the last received frame, so they are not copied out of the payload.  Call
+    ``.copy()`` on one if you need to modify it in place.  Views from a previous
+    ``grab_images()`` stay valid, since each frame keeps its own payload alive.
+
     Subclasses should implement:
     - _get_frame_buffer_template(): Return the appropriate frame buffer template
     """

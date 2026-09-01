@@ -1,5 +1,7 @@
 """Unit tests for frame_data serialization round-trips."""
 
+import gc
+
 import numpy as np
 import pytest
 from airo_camera_toolkit.cameras.multiprocess.frame_data import (
@@ -175,18 +177,58 @@ def test_spatial_map_buffer_round_trip():
 
 
 # ---------------------------------------------------------------------------
-# Edge case: deserialized arrays are independent copies (not shared memory)
+# Deserialized arrays are read-only views into the payload, not copies
 # ---------------------------------------------------------------------------
 
 
-def test_deserialized_arrays_are_copies():
+def test_deserialized_arrays_are_read_only_views():
     obj = FpsIdl(fps=np.array([30.0], dtype=np.float64))
     data = serialize_frame(obj)
     result = deserialize_frame(FpsIdl.template(), data)
-    result.fps[0] = 99.0
-    # Modifying the result must not affect the original bytes
-    result2 = deserialize_frame(FpsIdl.template(), data)
-    assert result2.fps.item() == pytest.approx(30.0)
+
+    assert not result.fps.flags.writeable
+    with pytest.raises(ValueError):
+        result.fps[0] = 99.0
+
+    # A copy is writable and independent of the payload.
+    writable = result.fps.copy()
+    writable[0] = 99.0
+    assert deserialize_frame(FpsIdl.template(), data).fps.item() == pytest.approx(30.0)
+
+
+def test_deserialized_arrays_do_not_copy_the_payload():
+    """The fields must view into the payload bytes rather than copy them."""
+    rgb = np.random.randint(0, 255, (H, W, 3), dtype=np.uint8)
+    obj = RGBFrameBuffer(
+        frame_id=np.array([7], dtype=np.uint64),
+        frame_timestamp=np.array([1.0], dtype=np.float64),
+        rgb=rgb,
+        intrinsics=np.eye(3, dtype=np.float64),
+    )
+    data = serialize_frame(obj, RGBFrameBuffer.template(W, H))
+    result = deserialize_frame(RGBFrameBuffer.template(W, H), data)
+
+    def root_buffer(arr):
+        """Follow the view chain (reshape adds one level) to the object owning the memory."""
+        while isinstance(arr, np.ndarray):
+            arr = arr.base
+        return arr
+
+    for field in ("frame_id", "frame_timestamp", "rgb", "intrinsics"):
+        assert root_buffer(getattr(result, field)) is data, f"field '{field}' does not view into the payload"
+    np.testing.assert_array_equal(result.rgb, rgb)
+
+
+def test_deserialized_views_outlive_the_local_payload_reference():
+    """Fields keep the payload alive, so views stay valid after it goes out of scope."""
+
+    def make():
+        obj = FpsIdl(fps=np.array([30.0], dtype=np.float64))
+        return deserialize_frame(FpsIdl.template(), serialize_frame(obj))
+
+    result = make()
+    gc.collect()
+    assert result.fps.item() == pytest.approx(30.0)
 
 
 # ---------------------------------------------------------------------------
