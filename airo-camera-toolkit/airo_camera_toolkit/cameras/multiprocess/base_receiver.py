@@ -48,15 +48,26 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self._shared_memory_namespace = shared_memory_namespace
         self._block_until_new_frame = block_until_new_frame
         self._timeout = timeout
+        self._reader: Optional[ZenohReader] = None
+        self._stopped = False
 
+        self._connect()
+
+    def _connect(self) -> None:
+        """Open a Zenoh session, read the static camera information and subscribe.
+
+        Raises:
+            TimeoutError: If the publisher does not publish within the
+                receiver's timeout.
+        """
         # Open a Zenoh session for receiving
         self._session = zenoh.open(_make_zenoh_config())
         self._stopped = False
 
         try:
             # Read static camera information
-            self._resolution = self._read_resolution(shared_memory_namespace)
-            self._fps = self._read_fps(shared_memory_namespace)
+            self._resolution = self._read_resolution(self._shared_memory_namespace)
+            self._fps = self._read_fps(self._shared_memory_namespace)
 
             # Set up shared memory readers
             self._setup_frame_reader(self._resolution)
@@ -71,6 +82,27 @@ class BaseCameraReceiver(RGBCamera, ABC):
             # new receivers.
             self.stop()
             raise
+
+    def reconnect(self) -> None:
+        """Re-establish the connection to the publisher.
+
+        Closes the Zenoh session, opens a new one and reads the publisher's
+        resolution and fps again.  Use it when :meth:`grab_images` times out
+        because the publisher was restarted: a new session re-runs peer
+        discovery, drops the shared memory mappings of the previous publisher,
+        and picks up a resolution that changed across the restart (frames from a
+        publisher at another resolution do not match the previous frame buffer
+        template and are rejected).
+
+        Arrays retrieved before this call keep pointing at their own payload and
+        stay valid.
+
+        Raises:
+            TimeoutError: If the publisher does not publish within the
+                receiver's timeout.
+        """
+        self.stop()
+        self._connect()
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         """Set up the main frame data reader."""
@@ -150,13 +182,30 @@ class BaseCameraReceiver(RGBCamera, ABC):
         message count of the frame we last returned (not the count at entry), so
         a frame that arrived while the caller was busy is returned immediately
         instead of waiting for the next one.
+
+        Raises:
+            RuntimeError: If the receiver has been stopped.
+            TimeoutError: If no newer frame arrives within the receiver's
+                timeout, which is what a publisher that stopped, restarted or
+                became unreachable looks like from here.  Call
+                :meth:`reconnect` to re-establish the connection.
         """
+        reader = self._reader
+        if reader is None:
+            raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
+
         if self._block_until_new_frame:
+            t0 = time.time()
             # Compare message counters rather than timestamps: this avoids the
             # expensive deserialization on every poll iteration.
-            while self._reader.frame_count == self._consumed_count:
+            while reader.frame_count == self._consumed_count:
+                if self._timeout is not None and time.time() - t0 >= self._timeout:
+                    raise TimeoutError(
+                        f"No new frame on '{self._shared_memory_namespace}' within {self._timeout}s. "
+                        "Is the publisher still running? Call reconnect() to re-establish the connection."
+                    )
                 time.sleep(0.001)
-        self._last_frame, self._consumed_count = self._reader.read()
+        self._last_frame, self._consumed_count = reader.read()
 
     def stop(self) -> None:
         """Undeclare the readers and close the Zenoh session.
@@ -167,11 +216,11 @@ class BaseCameraReceiver(RGBCamera, ABC):
         if self._stopped:
             return
         self._stopped = True
-        # The frame reader does not exist yet when __init__ fails before it is
-        # set up.
-        reader = getattr(self, "_reader", None)
-        if reader is not None:
-            reader.stop()
+        # The frame reader does not exist yet when the connection failed before
+        # it was set up.
+        if self._reader is not None:
+            self._reader.stop()
+            self._reader = None
         self._session.close()
 
     def __enter__(self) -> "BaseCameraReceiver":

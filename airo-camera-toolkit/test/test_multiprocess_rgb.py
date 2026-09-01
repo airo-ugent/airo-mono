@@ -9,6 +9,7 @@ tests are skipped automatically when it is not available.
 """
 
 import multiprocessing
+import os
 import time
 import uuid
 
@@ -217,3 +218,78 @@ def test_failed_receiver_construction_does_not_break_later_receivers(receiver_fa
     receiver = receiver_factory()
     receiver.grab_images()
     np.testing.assert_array_equal(receiver.retrieve_rgb_image_as_int(), _MOCK_RGB_VALUE)
+
+
+def test_grab_images_times_out_when_no_new_frame_arrives(receiver_factory):
+    """grab_images() must not block forever when frames stop arriving.
+
+    Regression test: only the first message was bounded by the timeout, so a
+    receiver whose publisher stopped, restarted or became unreachable spun in
+    grab_images() forever instead of letting the caller reconnect.
+
+    The reader is replaced by one whose message count never advances, which is
+    what a publisher that stopped publishing looks like from the receiver.
+    """
+    receiver = receiver_factory()
+    real_reader = receiver._reader
+
+    class FrozenReader:
+        frame_count = real_reader.frame_count
+
+        def stop(self) -> None:
+            real_reader.stop()
+
+    receiver._reader = FrozenReader()
+    receiver._consumed_count = FrozenReader.frame_count
+    receiver._timeout = 0.2
+
+    with pytest.raises(TimeoutError):
+        receiver.grab_images()
+
+
+@pytest.mark.skipif(
+    os.environ.get("CI") == "true",
+    reason="On the CI runners only the first publisher process started in a pytest process is discovered, "
+    "so a restart cannot be tested there.",
+)
+def test_receiver_reconnects_after_publisher_restart():
+    """A receiver must survive a publisher restart through reconnect()."""
+    multiprocessing.set_start_method("spawn", force=True)
+    restart_namespace = f"test_camera_restart_{uuid.uuid4().hex[:8]}"
+
+    def start_publisher() -> MultiprocessRGBPublisher:
+        pub = MultiprocessRGBPublisher(camera_cls=MockRGBCamera, shared_memory_namespace=restart_namespace)
+        pub.start()
+        return pub
+
+    def stop_publisher(pub: MultiprocessRGBPublisher) -> None:
+        pub.stop()
+        pub.join(timeout=5)
+        if pub.is_alive():
+            pub.kill()
+            pub.join(timeout=5)
+
+    publisher = start_publisher()
+    receiver = None
+    try:
+        receiver = MultiprocessRGBReceiver(restart_namespace, timeout=_STARTUP_TIMEOUT)
+        receiver.grab_images()
+
+        stop_publisher(publisher)
+        receiver._timeout = 1.0
+        with pytest.raises(TimeoutError):
+            # Keep grabbing until the frames the publisher had already sent run out.
+            for _ in range(100):
+                receiver.grab_images()
+
+        publisher = start_publisher()
+        receiver._timeout = _STARTUP_TIMEOUT
+        receiver.reconnect()
+        receiver.grab_images()
+
+        assert receiver.resolution == _MOCK_RESOLUTION
+        np.testing.assert_array_equal(receiver.retrieve_rgb_image_as_int(), _MOCK_RGB_VALUE)
+    finally:
+        if receiver is not None:
+            receiver.stop()
+        stop_publisher(publisher)

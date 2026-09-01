@@ -37,6 +37,25 @@ image = receiver.retrieve_rgb_image_as_int().copy()   # copy first ...
 cv2.rectangle(image, (0, 0), (100, 100), (255, 0, 0), 2)   # ... then draw
 ```
 
+## Surviving a publisher restart
+
+A receiver blocks in `grab_images()` until a frame newer than the one it holds arrives, but no longer than its `timeout` (30 s by default, `None` to wait forever).
+A publisher that stopped, was restarted or became unreachable therefore surfaces as a `TimeoutError` instead of a hang:
+
+```python
+try:
+    receiver.grab_images()
+except TimeoutError:
+    receiver.reconnect()   # opens a new session and re-reads resolution and fps
+    receiver.grab_images()
+```
+
+`reconnect()` closes the Zenoh session and opens a new one, so it re-runs peer discovery and drops the shared memory mappings of the previous publisher.
+It also re-reads the resolution and fps, which matters because the frame buffer template is derived from the resolution: frames from a publisher that came back at a different resolution do not match the old template and are rejected.
+Arrays retrieved before the call keep pointing at their own payload and stay valid.
+
+A receiver that is only stopped (not reconnected) raises `RuntimeError` from `grab_images()`; call `reconnect()` to use it again.
+
 ## Networking
 
 Publishers and receivers communicate over Zenoh, which is configured to stay on the local host: peers are scouted over loopback only and sessions listen on loopback only.
