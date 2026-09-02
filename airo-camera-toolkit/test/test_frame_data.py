@@ -1,6 +1,8 @@
 """Unit tests for frame_data serialization round-trips."""
 
+import dataclasses
 import gc
+from typing import Any
 
 import numpy as np
 import pytest
@@ -16,16 +18,27 @@ from airo_camera_toolkit.cameras.multiprocess.frame_data import (
     StereoRGBDFrameBufferWithPointCloud,
     ZedFrameBuffer,
     deserialize_frame,
-    serialize_frame,
     validate_frame,
 )
 
 W, H = 64, 48  # small resolution for fast tests
 
 
-def _assert_frame_equal(a, b) -> None:
-    import dataclasses
+def serialize_frame(obj: Any, template: Any = None) -> bytes:
+    """Reference (non-production) serializer used to build test payloads for deserialize_frame.
 
+    Concatenates all numpy fields in dataclass field declaration order, mirroring the wire
+    format that ZenohWriter produces (by writing each field directly into an SHM buffer instead).
+    """
+    if template is not None:
+        validate_frame(template, obj)
+    parts = [getattr(obj, f.name).ravel().view(np.uint8) for f in dataclasses.fields(obj)]
+    flat = np.empty(sum(p.nbytes for p in parts), dtype=np.uint8)
+    np.concatenate(parts, out=flat)
+    return bytes(flat)
+
+
+def _assert_frame_equal(a, b) -> None:
     for f in dataclasses.fields(a):
         np.testing.assert_array_equal(getattr(a, f.name), getattr(b, f.name), err_msg=f"field '{f.name}' mismatch")
 

@@ -54,31 +54,6 @@ def validate_frame(template: Any, obj: Any) -> None:
             raise ValueError(f"Field '{name}' has shape {arr.shape}, but the wire format expects {shape}.")
 
 
-def serialize_frame(obj: Any, template: Any = None) -> bytes:
-    """Serialize a frame buffer dataclass to raw bytes.
-
-    All numpy fields are concatenated in dataclass field declaration order.
-    The schema (field order, shapes, dtypes) must be agreed upon by both sides
-    via the corresponding ``template()`` classmethod.
-
-    Args:
-        obj: A frame buffer dataclass instance.
-        template: Optional template instance to validate *obj* against before
-            serializing.  Passing it is strongly recommended: without it, a
-            field with an unexpected dtype or shape produces bytes that the
-            receiver silently misinterprets.
-
-    Returns:
-        The concatenated field bytes.
-    """
-    if template is not None:
-        validate_frame(template, obj)
-    parts = [getattr(obj, f.name).ravel().view(np.uint8) for f in dataclasses.fields(obj)]
-    flat = np.empty(sum(p.nbytes for p in parts), dtype=np.uint8)
-    np.concatenate(parts, out=flat)
-    return bytes(flat)
-
-
 def deserialize_frame(template: T, data: bytes) -> T:
     """Deserialize raw bytes back into a frame buffer dataclass instance.
 
@@ -89,7 +64,8 @@ def deserialize_frame(template: T, data: bytes) -> T:
     Args:
         template: A template instance (from ``FrameBuffer.template()``) that
             defines the expected field shapes and dtypes.
-        data: Raw bytes produced by :func:`serialize_frame`.
+        data: Raw bytes laid out as the concatenation of the template's
+            fields in declaration order (see :class:`ZenohWriter`).
 
     Returns:
         A new dataclass instance whose numpy arrays are read-only views into
