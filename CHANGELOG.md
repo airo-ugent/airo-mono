@@ -7,6 +7,10 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+## 2026.9.0
+
+Released: 2026-09-02
+
 ### Added
 - `airo-robots`: Added `HalberdBLEGripper`, a `ParallelPositionGripper` implementation for grippers built on the Dwengo Halberd (nRF52840) board running the `HalberdGripper` firmware library, controlled over Bluetooth Low Energy with the Airo Gripper Protocol. Also added `GenericHalberdGripper` for exotic (multi-axis) gripper designs. Firmware-declared sensor channels (force, pressure, ...) are streamed over a dedicated characteristic and exposed via `sensors`/`sensor_values`/`get_sensor(name)`. BLE support is installed with `pip install "airo-robots[halberd]"`. Grippers are identified by their user-assigned name and connecting fails loudly when multiple grippers share a name. See [halberd_ble.md](airo-robots/airo_robots/grippers/hardware/halberd_ble.md).
 
