@@ -13,6 +13,9 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 ### Fixed
 - `prepare-release.yaml`: The `Create version-bump PR` step no longer fails with a non-fast-forward push error when a `release/<version>` branch from a previous, abandoned run still exists on the remote. It now force-pushes and (re)creates the branch when there is no open PR for it, or when the open PR consists only of this workflow's own bot commits (so it's refreshed to pick up commits that landed on `main` while it was open); a PR containing any human commit is left untouched so manual edits are never clobbered.
 
+### Changed
+- `airo-robots`: `URrtdeTorque` now exposes `kp`/`kd` as properties that can be read and updated at any time, including while torque control is active, so joint stiffness/damping can be adapted inside the control loop the same way `target_joint_configuration` already could. To prevent an accidental torque jump, a single update is rejected if any joint's gain would change by more than `MAX_GAIN_STEP_FACTOR` (50% by default) times that joint's default gain.
+
 ## 2026.8.0
 
 Released: 2026-08-17
