@@ -59,6 +59,7 @@ Before opening or marking a PR ready:
    ```
    - `airo-robots`: Added support for UR20.
    ```
+   Only add an entry for changes that are themselves user-visible (a new feature, a behavior change, a bugfix, a removed/changed public API). Skip internal or intermediate steps taken along the way to building a feature — refactors, dead-code removal, test-only changes, moving a helper around. For example, when developing driver code for a new robot: if during development of the driver a bug is found that is fixed *before the driver is finished* (i.e., before the PR is merged to main), the changelog should not reflect that bugfix; the changelog should only mention the addition of the driver -- if, however, the driver was already part of the codebase (on main) and the bug-fix is a PR, *then* you should update the changelog to reflect the change.
 
 ---
 
