@@ -1,16 +1,62 @@
 """Base classes for multiprocess camera publishers and receivers."""
 
+import json
 import multiprocessing
+import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
+import zenoh
 from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, ResolutionIdl
+from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.interfaces import RGBCamera
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
-from cyclonedds.domain import DomainParticipant
 from loguru import logger
+
+# Environment variable naming the Zenoh router to connect to, e.g.
+# "tcp/192.168.0.10:7447".  Publishers and receivers are confined to the local
+# host unless this is set.
+ZENOH_ROUTER_ENV_VAR = "AIRO_ZENOH_ROUTER"
+
+_LOCALHOST = "127.0.0.1"
+
+
+def _make_zenoh_config(shm: bool = True, router_endpoint: Optional[str] = None) -> zenoh.Config:
+    """Return the Zenoh configuration used by the multiprocess publishers and receivers.
+
+    By default, the session is confined to the local host. You can opt in to cross-host
+    through a Zenoh router by passing ``router_endpoint`` or setting the
+    ``AIRO_ZENOH_ROUTER`` environment variable.
+
+    In the local-host case, shared memory transport is used to reduce latency.
+    This option is not available in the cross-host case.
+
+    Args:
+        shm: Whether to enable the Zenoh shared memory transport.
+        router_endpoint: Zenoh endpoint of a router to connect to, e.g.
+            ``"tcp/192.168.0.10:7447"``.  Defaults to the value of
+            ``AIRO_ZENOH_ROUTER``; when that is unset too, the session is
+            restricted to the local host.
+
+    Returns:
+        The Zenoh configuration.
+    """
+    if router_endpoint is None:
+        router_endpoint = os.environ.get(ZENOH_ROUTER_ENV_VAR) or None
+
+    conf = zenoh.Config()
+    conf.insert_json5("transport/shared_memory/enabled", json.dumps(shm))
+
+    if router_endpoint is None:
+        conf.insert_json5("scouting/multicast/interface", json.dumps(_LOCALHOST))
+        conf.insert_json5("listen/endpoints", json.dumps([f"tcp/{_LOCALHOST}:0"]))
+    else:
+        logger.info(f"Using Zenoh router at {router_endpoint}; frames may travel over the network.")
+        conf.insert_json5("scouting/multicast/enabled", "false")
+        conf.insert_json5("connect/endpoints", json.dumps([router_endpoint]))
+
+    return conf
 
 
 class BaseCameraPublisher(multiprocessing.context.Process, ABC):
@@ -45,18 +91,17 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         self._frame_id = 0
 
     def _setup(self) -> None:
-        """Initialize the camera and shared memory infrastructure.
+        """Initialize the camera and Zenoh publishing infrastructure.
 
         Note: Camera must be instantiated in the publisher process to retrieve images.
         """
-        # Initialize DDS domain participant
-        self._dp = DomainParticipant()
-        self._resolution_writer = SMWriter(
-            self._dp,
+        self._session = zenoh.open(_make_zenoh_config())
+        self._resolution_writer = ZenohWriter(
+            self._session,
             f"{self._shared_memory_namespace}_resolution",
             ResolutionIdl.template(),
         )
-        self._fps_writer = SMWriter(self._dp, f"{self._shared_memory_namespace}_fps", FpsIdl.template())
+        self._fps_writer = ZenohWriter(self._session, f"{self._shared_memory_namespace}_fps", FpsIdl.template())
 
         # Instantiate the camera
         logger.info(f"Instantiating a {self._camera_cls.__name__} camera.")
@@ -67,17 +112,17 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
         logger.info(f"Successfully instantiated a {self._camera_cls.__name__} camera.")
 
-        # Set up shared memory writers
+        # Set up frame writer
         self._setup_frame_writer()
 
     def _setup_frame_writer(self) -> None:
         """Set up the main frame data writer."""
         frame_buffer_template = self._get_frame_buffer_template(self._camera.resolution[0], self._camera.resolution[1])
 
-        self._writer = SMWriter(
-            domain_participant=self._dp,
-            topic_name=self._shared_memory_namespace,
-            idl_dataclass=frame_buffer_template,
+        self._writer = ZenohWriter(
+            session=self._session,
+            key_expr=self._shared_memory_namespace,
+            template=frame_buffer_template,
         )
 
     def _publish_metadata(self) -> None:
@@ -125,6 +170,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             logger.error(f"Error in {self.__class__.__name__}: {e}")
             raise
         finally:
+            self._session.close()
             logger.info(f"{self.__class__.__name__} process terminated.")
 
     @abstractmethod

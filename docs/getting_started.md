@@ -107,7 +107,7 @@ The `multiprocess` module in the `airo-camera-toolkit` package provides a way to
 see [the README](airo-camera-toolkit/README.md) for more information.
 
 For other multiprocessing needs, e.g., custom sensors or logging, we recommend using [`airo-ipc`](https://pypi.org/project/airo-ipc/).
-This is also the library underlying the `multiprocess` module in `airo-camera-toolkit`.
+The `multiprocess` module in `airo-camera-toolkit` itself uses [Eclipse Zenoh](https://zenoh.io/) with shared-memory transport.
 
 #### Image operations
 

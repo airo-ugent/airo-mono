@@ -7,7 +7,14 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+### Breaking changes
+- `airo-camera-toolkit`: the `multiprocess` module now uses [Eclipse Zenoh](https://zenoh.io/) instead of `airo-ipc`/CycloneDDS. `eclipse-zenoh>=1.7.0` is installed as a dependency, `airo-ipc` is no longer required, and the wire format changed, so publishers and receivers must both be updated.
+- `airo-camera-toolkit`: the `multiprocess` module's receivers now return read-only numpy arrays that view directly into the received payload instead of copies. This cuts the end-to-end latency of a FullHD RGBD frame from ~10.4 ms to ~6.6 ms, but code that writes into a retrieved image or depth map in place (e.g. `cv2.rectangle`) must now `.copy()` it first.
+
 ### Added
+- `airo-camera-toolkit`: multiprocess camera receivers gained `reconnect()`, which reopens the Zenoh session and re-reads the publisher's resolution and fps, so a long-lived receiver survives a publisher restart (including one at a different resolution). `grab_images()` is now bounded by the receiver's `timeout` as well -- it previously blocked forever when the publisher stopped, restarted or became unreachable, since only the first message was bounded. See the [multiprocess README](airo-camera-toolkit/airo_camera_toolkit/cameras/multiprocess/README.md#surviving-a-publisher-restart).
+- `airo-camera-toolkit`: multiprocess frame publishing now validates each field's dtype and shape against the frame buffer template, and deserialization rejects payloads of unexpected length, instead of silently producing corrupted frames.
+- `airo-camera-toolkit`: multiprocess camera receivers gained a `stop()` method (and context manager support) to release their Zenoh session and subscribers.
 - `airo-robots`: Added `HalberdBLEGripper`, a `ParallelPositionGripper` implementation for grippers built on the Dwengo Halberd (nRF52840) board running the `HalberdGripper` firmware library, controlled over Bluetooth Low Energy with the Airo Gripper Protocol. Also added `GenericHalberdGripper` for exotic (multi-axis) gripper designs. Firmware-declared sensor channels (force, pressure, ...) are streamed over a dedicated characteristic and exposed via `sensors`/`sensor_values`/`get_sensor(name)`. BLE support is installed with `pip install "airo-robots[halberd]"`. Grippers are identified by their user-assigned name and connecting fails loudly when multiple grippers share a name. See [halberd_ble.md](airo-robots/airo_robots/grippers/hardware/halberd_ble.md).
 
 ### Fixed

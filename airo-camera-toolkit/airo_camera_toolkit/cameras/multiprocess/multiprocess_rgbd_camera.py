@@ -2,12 +2,13 @@
 
 import multiprocessing
 import time
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.frame_data import RGBDFrameBuffer, RGBDFrameBufferWithPointCloud
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
+from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import NumpyDepthMapType, NumpyIntImageType, PointCloud
@@ -106,9 +107,14 @@ class MultiprocessRGBDPublisher(BaseCameraPublisher):
 class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
     """Receives RGBD camera data from shared memory."""
 
-    def __init__(self, shared_memory_namespace: str, enable_pointcloud: bool = True) -> None:
+    def __init__(
+        self,
+        shared_memory_namespace: str,
+        enable_pointcloud: bool = True,
+        timeout: Optional[float] = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+    ) -> None:
         self.enable_pointcloud = enable_pointcloud
-        super().__init__(shared_memory_namespace)
+        super().__init__(shared_memory_namespace, timeout=timeout)
 
     def _get_frame_buffer_template(self, width: int, height: int) -> Any:
         """Return RGBD frame buffer template."""

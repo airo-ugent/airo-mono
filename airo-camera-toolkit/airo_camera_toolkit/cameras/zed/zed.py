@@ -606,7 +606,7 @@ class Zed(StereoRGBDCamera):
 
         # We use cv2.cvtColor because, unlike a slice (point_cloud_XYZ_[..., :3]), it returns a contiguous array.
         # Downstream code can avoid a copy/explicitly making the array contiguous if it is contiguous.
-        # For example, in shared memory transport with airo-ipc, non-contiguous arrays incur a cost.
+        # For example, in Zenoh's shared memory transport, non-contiguous arrays incur an extra copy cost.
         # See also: https://github.com/airo-ugent/airo-mono/issues/177 for discussion and benchmarks.
         positions = cv2.cvtColor(point_cloud_XYZ_, cv2.COLOR_BGRA2BGR).reshape(-1, 3)
         colors = self.retrieve_rgb_image_as_int().reshape(-1, 3)

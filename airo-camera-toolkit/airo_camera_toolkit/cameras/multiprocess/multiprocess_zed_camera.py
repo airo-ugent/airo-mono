@@ -9,10 +9,10 @@ import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.frame_data import PointCloudBuffer, SpatialMapBuffer, ZedFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera import MultiprocessStereoRGBDReceiver
+from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT, ZenohReader
+from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.cameras.zed.zed import Zed, ZedSpatialMap
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
 from airo_typing import CameraResolutionType, HomogeneousMatrixType, NumpyDepthMapType, NumpyIntImageType, PointCloud
 
 logger = loguru.logger
@@ -63,10 +63,10 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
                 (self._camera.resolution[0] * self._camera.resolution[1], 3),
                 dtype=np.uint8,
             )
-            self._pcd_writer = SMWriter(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_pcd",
-                idl_dataclass=PointCloudBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
+            self._pcd_writer = ZenohWriter(
+                session=self._session,
+                key_expr=f"{self._shared_memory_namespace}_pcd",
+                template=PointCloudBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
             )
 
         if self.enable_spatial_mapping:
@@ -75,10 +75,10 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
             self._spatial_map_chunk_sizes = np.zeros(self.max_spatial_map_chunks, dtype=np.int32)
             self._spatial_map_point_positions = np.zeros((self.max_spatial_map_points, 3), dtype=np.float32)
             self._spatial_map_point_colors = np.zeros((self.max_spatial_map_points, 3), dtype=np.uint8)
-            self._spatial_map_writer = SMWriter(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_spatial_map",
-                idl_dataclass=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+            self._spatial_map_writer = ZenohWriter(
+                session=self._session,
+                key_expr=f"{self._shared_memory_namespace}_spatial_map",
+                template=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
     def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
@@ -211,6 +211,7 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         enable_spatial_mapping: bool = False,
         max_spatial_map_chunks: int = 10000,
         max_spatial_map_points: int = 1000000,
+        timeout: Optional[float] = DEFAULT_FIRST_MESSAGE_TIMEOUT,
     ) -> None:
         self.enable_pointcloud = enable_pointcloud
         self.enable_positional_tracking = enable_positional_tracking
@@ -218,24 +219,26 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         self.max_spatial_map_chunks = max_spatial_map_chunks
         self.max_spatial_map_points = max_spatial_map_points
 
-        super().__init__(shared_memory_namespace)
+        super().__init__(shared_memory_namespace, timeout=timeout)
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         super()._setup_frame_reader(resolution)
 
         if self.enable_pointcloud:
-            self._reader_pcd = SMReader(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_pcd",
-                idl_dataclass=PointCloudBuffer.template(resolution[0], resolution[1]),
+            self._reader_pcd = ZenohReader(
+                session=self._session,
+                key_expr=f"{self._shared_memory_namespace}_pcd",
+                template=PointCloudBuffer.template(resolution[0], resolution[1]),
+                timeout=self._timeout,
             )
             self._last_pcd_frame = PointCloudBuffer.template(resolution[0], resolution[1])
 
         if self.enable_spatial_mapping:
-            self._reader_spatial_map = SMReader(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_spatial_map",
-                idl_dataclass=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+            self._reader_spatial_map = ZenohReader(
+                session=self._session,
+                key_expr=f"{self._shared_memory_namespace}_spatial_map",
+                template=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+                timeout=self._timeout,
             )
             self._last_spatial_map_frame = SpatialMapBuffer.template(
                 self.max_spatial_map_chunks, self.max_spatial_map_points
@@ -244,6 +247,18 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
     def _get_frame_buffer_template(self, width: int, height: int) -> Any:
         """Return Zed frame buffer template."""
         return ZedFrameBuffer.template(width, height)
+
+    def stop(self) -> None:
+        """Undeclare the Zed-specific readers, then the base reader and session."""
+        if self._stopped:
+            return
+        # _reader_pcd and _reader_spatial_map can both be missing attributes if the connection
+        # failed before they were set up.
+        if hasattr(self, "_reader_pcd"):
+            self._reader_pcd.stop()
+        if hasattr(self, "_reader_spatial_map"):
+            self._reader_spatial_map.stop()
+        super().stop()
 
     def retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
         """Retrieve RGB image as integer array."""
