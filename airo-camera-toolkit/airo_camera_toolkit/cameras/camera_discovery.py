@@ -1,5 +1,5 @@
 """Module to automatically resolve the desired connected camera.
-Useful when you want to support both ZED and RealSense cameras in your scripts and CLIs.
+Useful when you want to support ZED, RealSense and Luxonis cameras in your scripts and CLIs.
 """
 from enum import Enum
 from typing import Any, Callable, Optional
@@ -12,6 +12,7 @@ from loguru import logger
 class CameraBrand(Enum):
     ZED = "zed"
     REALSENSE = "realsense"
+    LUXONIS = "luxonis"
 
 
 SUPPORTED_CAMERAS = [m.value for m in CameraBrand]
@@ -43,6 +44,8 @@ def discover_camera(brand: Optional[str], serial_number: Optional[str] = None, *
     brand = brand.lower()
     brand_enum = CameraBrand(brand)  # Attempt to convert to enum
 
+    camera: RGBDCamera
+
     if brand_enum == CameraBrand.ZED:
         from airo_camera_toolkit.cameras.zed.zed import Zed
 
@@ -50,7 +53,11 @@ def discover_camera(brand: Optional[str], serial_number: Optional[str] = None, *
     elif brand_enum == CameraBrand.REALSENSE:
         from airo_camera_toolkit.cameras.realsense.realsense import Realsense
 
-        camera = Realsense(serial_number=serial_number, **kwargs)  # type: ignore
+        camera = Realsense(serial_number=serial_number, **kwargs)
+    elif brand_enum == CameraBrand.LUXONIS:
+        from airo_camera_toolkit.cameras.luxonis.luxonis import Luxonis
+
+        camera = Luxonis(serial_number=serial_number, **kwargs)
     else:
         raise RuntimeError(f"Camera brand {brand} not supported.")  # Should be unreachable due to enum
 

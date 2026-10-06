@@ -22,7 +22,7 @@ setuptools.setup(
         "airo-spatial-algebra>=2026.1.0",
         "airo-dataset-tools>=2026.1.0",
     ],
-    extras_require={"hand-eye-calibration": ["airo-robots"]},
+    extras_require={"hand-eye-calibration": ["airo-robots"], "luxonis": ["depthai>=3.0"]},
     packages=setuptools.find_packages(exclude=["test"]),
     entry_points={
         "console_scripts": [
