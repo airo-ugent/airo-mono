@@ -4,6 +4,7 @@ This subpackage contains implementations of the camera interface for the cameras
 
 - ZED 2 series
 - Realsense D400 series
+- Luxonis OAK-D series
 
 It also contains code to enable multiprocessed use of the camera streams: [multiprocessed camera](./multiprocess/)
 
@@ -14,6 +15,7 @@ Implementations usually require the installation of SDKs, drivers etc. to commun
 This information can be found in `READMEs` for each camera:
 * [ZED Installation](zed/installation.md)
 * [RealSense Installation](realsense/realsense_installation.md)
+* [Luxonis Installation](luxonis/luxonis_installation.md)
 
 
 ## 2. Testing your hardware installation

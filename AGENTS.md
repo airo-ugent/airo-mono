@@ -13,7 +13,7 @@ If a user is new to airo-mono and needs help getting started, you can point them
 | `airo-typing` | Shared type aliases and unit/convention contracts (scalar-last quaternions, metric units, row-major homogeneous matrices) |
 | `airo-spatial-algebra` | SE3 poses and transforms via a `spatialmath-python` wrapper |
 | `airo-robots` | UR robot (RTDE) and Robotiq gripper interfaces; async `AwaitableAction` pattern |
-| `airo-camera-toolkit` | RGB(D) camera interfaces (ZED, RealSense, USB), image processing, point clouds, hand-eye calibration |
+| `airo-camera-toolkit` | RGB(D) camera interfaces (ZED, RealSense, Luxonis, USB), image processing, point clouds, hand-eye calibration |
 | `airo-dataset-tools` | COCO dataset utilities, pose/intrinsics formats, CVAT workflow, optional FiftyOne visualization |
 
 ## Setup
