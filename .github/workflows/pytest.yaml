@@ -25,6 +25,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
+      id: setup-python
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install system libraries
@@ -49,12 +50,20 @@ jobs:
         # (not only its dependencies) invalidates this venv and gets reinstalled.
         # The separate uv wheel cache above is still keyed on setup.py only, so this
         # doesn't reintroduce heavy dependency re-downloads on every source change.
-        key: venv-pytest-${{ matrix.python-version }}-${{ hashFiles('**/setup.py', '**/*.py') }}
+        # A venv's bin/python is a symlink to an interpreter outside .venv, so key on the exact
+        # Python version (e.g. 3.10.21, not 3.10): a runner image update must not restore a venv
+        # whose interpreter no longer exists.
+        key: venv-pytest-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/setup.py', '**/*.py') }}
 
     - name: Install packages
-      if: steps.cache-venv.outputs.cache-hit != 'true'
       run: |
-        uv venv .venv --python ${{ matrix.python-version }}
+        # Safety net: also rebuild if a restored venv is broken (e.g. its interpreter is missing).
+        if [ "${{ steps.cache-venv.outputs.cache-hit }}" = "true" ] && .venv/bin/pytest --version > /dev/null 2>&1; then
+          echo "Using cached venv."
+          exit 0
+        fi
+        rm -rf .venv
+        uv venv .venv --python ${{ steps.setup-python.outputs.python-path }}
         uv pip install --python .venv/bin/python pytest nbmake
         uv pip install --python .venv/bin/python airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/[ur] "airo-dataset-tools/[augmentations]"
         # albumentations (via [augmentations]) and fiftyone (via [fiftyone]) both pull in
