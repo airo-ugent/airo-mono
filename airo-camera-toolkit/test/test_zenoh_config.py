@@ -23,7 +23,7 @@ def test_default_config_is_confined_to_localhost():
     conf = _make_zenoh_config()
     assert json.loads(conf.get_json("scouting/multicast/interface")) == "127.0.0.1"
     assert json.loads(conf.get_json("listen/endpoints")) == ["tcp/127.0.0.1:0"]
-    assert json.loads(conf.get_json("transport/shared_memory/enabled")) is True
+    assert json.loads(conf.get_json("transport/shared_memory/enabled")) is False
 
 
 def test_router_endpoint_replaces_multicast_scouting():
