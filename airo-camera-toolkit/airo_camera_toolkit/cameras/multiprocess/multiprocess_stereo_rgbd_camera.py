@@ -2,7 +2,7 @@
 
 import multiprocessing
 import time
-from typing import Any
+from typing import Any, Optional
 
 import loguru
 import numpy as np
@@ -12,11 +12,17 @@ from airo_camera_toolkit.cameras.multiprocess.frame_data import (
     StereoRGBDFrameBuffer,
     StereoRGBDFrameBufferWithPointCloud,
 )
+from airo_camera_toolkit.cameras.multiprocess.pointcloud_buffer import (
+    allocate_pointcloud_buffers,
+    fill_pointcloud_buffers,
+)
+from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     HomogeneousMatrixType,
+    NumpyDepthMapType,
     NumpyFloatImageType,
     NumpyIntImageType,
     PointCloud,
@@ -56,86 +62,73 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
         self._intrinsics_right = self._camera.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB)
 
         if self.enable_pointcloud:
-            # Prepare buffers for point cloud data
-            self._pcd_pos_buf = np.zeros(
-                (self._camera.resolution[0] * self._camera.resolution[1], 3),
-                dtype=np.float32,
-            )
-            self._pcd_col_buf = np.zeros(
-                (self._camera.resolution[0] * self._camera.resolution[1], 3),
-                dtype=np.uint8,
-            )
+            self._pcd_pos_buf, self._pcd_col_buf = allocate_pointcloud_buffers(*self._camera.resolution)
 
-    def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
-        """Retrieve stereo RGB-D data and optionally point cloud."""
-        self._current_frame_id = frame_id
-        self._current_frame_timestamp = frame_timestamp
+    def _capture_stereo_fields(self, frame_id: int, frame_timestamp: float) -> dict:
+        """Capture the fields shared by every stereo RGB-D frame buffer (left/right image, depth, intrinsics, pose).
 
-        # Capture left and right images
-        self._current_rgb_left = self._camera.retrieve_rgb_image_as_int()
-        self._current_rgb_right = self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+        Composed by :class:`MultiprocessZedPublisher` to build its own frame buffer, which adds a
+        camera pose field on top of these.
 
-        # Capture depth data
-        self._current_depth_map = self._camera.retrieve_depth_map()
-        self._current_depth_image = self._camera.retrieve_depth_image()
+        Args:
+            frame_id: Monotonically increasing frame identifier.
+            frame_timestamp: Timestamp when the frame was captured.
 
-        # Capture point cloud if enabled
-        if self.enable_pointcloud:
-            point_cloud = self._camera.retrieve_colored_point_cloud()
+        Returns:
+            A dict suitable for ``**``-passing into a :class:`StereoRGBDFrameBuffer` (sub)class.
+        """
+        return {
+            **self._header(frame_id, frame_timestamp),
+            "rgb": self._camera.retrieve_rgb_image_as_int(),
+            "rgb_right": self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB),
+            "intrinsics": self._intrinsics_left,
+            "intrinsics_right": self._intrinsics_right,
+            "pose_right_in_left": self._pose_right_in_left,
+            "depth": self._camera.retrieve_depth_map(),
+            "depth_image": self._camera.retrieve_depth_image(),
+        }
 
-            # Handle sparse point clouds
-            self._pcd_pos_buf.fill(np.nan)
-            self._pcd_pos_buf[: point_cloud.points.shape[0]] = point_cloud.points
+    def _capture_pointcloud_fields(self, point_cloud: PointCloud) -> dict:
+        """Stage *point_cloud* into this publisher's point cloud buffers and describe the result.
 
-            if point_cloud.colors is not None:
-                self._pcd_col_buf[: point_cloud.colors.shape[0]] = point_cloud.colors
-            else:
-                self._pcd_col_buf[: point_cloud.points.shape[0]] = 0  # Use black if no colors
+        Composed by :class:`MultiprocessZedPublisher`, which publishes its point cloud on a
+        separate key expression rather than embedding it in the main frame buffer.
 
-            self._current_pcd_num_points = point_cloud.points.shape[0]
+        Args:
+            point_cloud: The point cloud to stage.
 
-    def _write_frame_data(self) -> None:
-        """Write stereo RGBD frame data and optionally point cloud to shared memory."""
-        # Write main stereo RGBD frame
-        if self.enable_pointcloud:
-            self._writer(
-                StereoRGBDFrameBufferWithPointCloud(
-                    frame_id=np.array([self._current_frame_id], dtype=np.uint64),
-                    frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-                    rgb=self._current_rgb_left,
-                    rgb_right=self._current_rgb_right,
-                    intrinsics=self._intrinsics_left,
-                    intrinsics_right=self._intrinsics_right,
-                    pose_right_in_left=self._pose_right_in_left,
-                    depth=self._current_depth_map,
-                    depth_image=self._current_depth_image,
-                    point_cloud_positions=self._pcd_pos_buf,
-                    point_cloud_colors=self._pcd_col_buf,
-                    num_valid_points=np.array([self._current_pcd_num_points], dtype=np.int32),
-                )
-            )
-        else:
-            self._writer(
-                StereoRGBDFrameBuffer(
-                    frame_id=np.array([self._current_frame_id], dtype=np.uint64),
-                    frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-                    rgb=self._current_rgb_left,
-                    rgb_right=self._current_rgb_right,
-                    intrinsics=self._intrinsics_left,
-                    intrinsics_right=self._intrinsics_right,
-                    pose_right_in_left=self._pose_right_in_left,
-                    depth=self._current_depth_map,
-                    depth_image=self._current_depth_image,
-                )
-            )
+        Returns:
+            A dict suitable for ``**``-passing into a frame buffer with point cloud fields.
+        """
+        num_valid_points = fill_pointcloud_buffers(self._pcd_pos_buf, self._pcd_col_buf, point_cloud)
+        return {
+            "point_cloud_positions": self._pcd_pos_buf,
+            "point_cloud_colors": self._pcd_col_buf,
+            "num_valid_points": np.array([num_valid_points], dtype=np.int32),
+        }
+
+    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
+        """Capture stereo RGB-D data and, if enabled, the point cloud."""
+        stereo_fields = self._capture_stereo_fields(frame_id, frame_timestamp)
+
+        if not self.enable_pointcloud:
+            return StereoRGBDFrameBuffer(**stereo_fields)
+
+        point_cloud = self._camera.retrieve_colored_point_cloud()
+        return StereoRGBDFrameBufferWithPointCloud(**stereo_fields, **self._capture_pointcloud_fields(point_cloud))
 
 
 class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
     """Receives stereo RGBD camera data from shared memory."""
 
-    def __init__(self, shared_memory_namespace: str, enable_pointcloud: bool = True) -> None:
+    def __init__(
+        self,
+        shared_memory_namespace: str,
+        enable_pointcloud: bool = True,
+        timeout: Optional[float] = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+    ) -> None:
         self.enable_pointcloud = enable_pointcloud
-        super().__init__(shared_memory_namespace)
+        super().__init__(shared_memory_namespace, timeout=timeout)
 
     def _get_frame_buffer_template(self, width: int, height: int) -> Any:
         """Return stereo RGBD frame buffer template."""
@@ -163,7 +156,7 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
         else:
             return self._last_frame.intrinsics_right
 
-    def retrieve_depth_map(self) -> NumpyIntImageType:
+    def retrieve_depth_map(self) -> NumpyDepthMapType:
         """Retrieve depth map from frame buffer."""
         return self._last_frame.depth
 
