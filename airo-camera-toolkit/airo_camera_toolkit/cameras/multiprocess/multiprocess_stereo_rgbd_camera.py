@@ -18,6 +18,7 @@ from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import (
     CameraIntrinsicsMatrixType,
     HomogeneousMatrixType,
+    NumpyDepthMapType,
     NumpyFloatImageType,
     NumpyIntImageType,
     PointCloud,
@@ -169,7 +170,7 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
         else:
             return self._last_frame.intrinsics_right
 
-    def retrieve_depth_map(self) -> NumpyIntImageType:
+    def retrieve_depth_map(self) -> NumpyDepthMapType:
         """Retrieve depth map from frame buffer."""
         return self._last_frame.depth
 

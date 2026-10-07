@@ -37,7 +37,7 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         try:
             image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
         except (TypeError, IndexError) as e:
-            print(e)
+            logger.warning(f"Failed to convert image to OpenCV format: {e}. Continuing without logging.")
             return
         image_rgb = image_bgr[:, :, ::-1]
         if self._image_transform is not None:
