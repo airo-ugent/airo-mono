@@ -141,6 +141,7 @@ class ZenohWriter:
             return
 
         try:
+            assert isinstance(buf, zenoh.shm.ShmProvider)  # for mypy
             buf = self._provider.alloc(self._frame_size, zenoh.shm.GarbageCollect())
         except zenoh.ZError:
             logger.warning(f"ZenohWriter: SHM pool full, dropping frame on '{self._key_expr}'")
