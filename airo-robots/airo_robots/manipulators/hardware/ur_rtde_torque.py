@@ -3,7 +3,8 @@
 This module extends the position-controlled `URrtde` class with a torque control mode.
 When torque control is enabled, a dedicated process runs a PD control loop at 500Hz
 that computes joint torques to track a target joint configuration, and streams them to the robot with
-`RTDEControlInterface.directTorque`. The target joint configuration can be updated at any time from the main process.
+`RTDEControlInterface.directTorque`. The target joint configuration, as well as the PD gains (`kp`/`kd`), can be
+updated at any time from the main process.
 
 Example usage:
 
@@ -148,23 +149,29 @@ def _torque_control_worker(
     ip_address: str,
     controller: JointSpacePDController,
     target_shared: SynchronizedArray,
+    kp_shared: SynchronizedArray,
+    kd_shared: SynchronizedArray,
     running_flag: Synchronized,
     target_lock: LockType,
+    gains_lock: LockType,
 ) -> None:
     """Real-time torque control loop, meant to run in a dedicated process.
 
     Creates its own RTDE interfaces (only one RTDEControlInterface can be connected to a robot at a time, so the
     parent process must disconnect its control interface before starting this worker). Tracks the target joint
-    configuration in `target_shared` with the given PD controller until `running_flag` is cleared, then ramps down
-    to zero torque and stops the control script.
+    configuration in `target_shared`, using the PD gains in `kp_shared`/`kd_shared`, until `running_flag` is
+    cleared, then ramps down to zero torque and stops the control script.
 
     Args:
         ip_address: IP address of the UR robot.
         controller: the PD controller to use. Its reference trajectory is reset to the measured joint positions
-            before the loop starts.
+            before the loop starts. Its `kp`/`kd` are overwritten every cycle from `kp_shared`/`kd_shared`.
         target_shared: shared array with the target joint configuration, written by the parent process.
+        kp_shared: shared array with the proportional gains, written by the parent process.
+        kd_shared: shared array with the derivative gains, written by the parent process.
         running_flag: shared boolean; the loop runs for as long as it is set.
         target_lock: lock guarding `target_shared`.
+        gains_lock: lock guarding `kp_shared` and `kd_shared`.
     """
     rtde_control = RTDEControlInterface(ip_address, TORQUE_CONTROL_FREQUENCY)
     rtde_receive = RTDEReceiveInterface(ip_address, TORQUE_CONTROL_FREQUENCY)
@@ -177,6 +184,9 @@ def _torque_control_worker(
             joint_velocities = np.array(rtde_receive.getActualQd())
             with target_lock:
                 target = np.array(target_shared[:dof])
+            with gains_lock:
+                controller.kp = np.array(kp_shared[:dof])
+                controller.kd = np.array(kd_shared[:dof])
             torques = controller.compute_torques(target, joint_positions, joint_velocities)
             rtde_control.directTorque(torques.tolist())
             rtde_control.waitPeriod(cycle_start)
@@ -220,6 +230,11 @@ class URrtdeTorque(URrtde):
     DEFAULT_KD = np.array([4.0, 4.0, 3.0, 0.8, 0.6, 0.3])
     """Default derivative gains [Nm/(rad/s)], tuned on a UR3e."""
 
+    MAX_GAIN_STEP_FACTOR = 0.5
+    """The maximum amount by which `kp`/`kd` may change in a single update, per joint, as a fraction of that
+    joint's default gain. Prevents an accidental large stiffness/damping step, which would cause a torque jump.
+    Change gains gradually (in several smaller steps) if you need a bigger change than this allows."""
+
     def __init__(
         self,
         ip_address: str,
@@ -252,8 +267,11 @@ class URrtdeTorque(URrtde):
         if self._kp.shape != (dof,) or self._kd.shape != (dof,):
             raise ValueError(f"kp and kd must have shape ({dof},), got {self._kp.shape} and {self._kd.shape}.")
         self._target_shared = Array("d", dof)
+        self._kp_shared = Array("d", self._kp.tolist())
+        self._kd_shared = Array("d", self._kd.tolist())
         self._running_flag = Value("b", False)
         self._target_lock = Lock()
+        self._gains_lock = Lock()
         self._torque_process: Optional[Process] = None
 
     @property
@@ -270,12 +288,13 @@ class URrtdeTorque(URrtde):
         if self.is_torque_control_active:
             logger.warning("Torque control is already active.")
             return
-        controller = JointSpacePDController(
-            kp=self._kp,
-            kd=self._kd,
-            joint_torque_limits=np.asarray(self.manipulator_specs.max_joint_torques) * TORQUE_LIMIT_SAFETY_FACTOR,
-            control_period=1.0 / TORQUE_CONTROL_FREQUENCY,
-        )
+        with self._gains_lock:
+            controller = JointSpacePDController(
+                kp=np.array(self._kp_shared[:]),
+                kd=np.array(self._kd_shared[:]),
+                joint_torque_limits=np.asarray(self.manipulator_specs.max_joint_torques) * TORQUE_LIMIT_SAFETY_FACTOR,
+                control_period=1.0 / TORQUE_CONTROL_FREQUENCY,
+            )
         joint_configuration = self.get_joint_configuration()
         with self._target_lock:
             for i, position in enumerate(joint_configuration):
@@ -289,8 +308,11 @@ class URrtdeTorque(URrtde):
                 self.ip_address,
                 controller,
                 self._target_shared,
+                self._kp_shared,
+                self._kd_shared,
                 self._running_flag,
                 self._target_lock,
+                self._gains_lock,
             ),
             daemon=True,
         )
@@ -336,10 +358,72 @@ class URrtdeTorque(URrtde):
             for i, position in enumerate(joint_configuration):
                 self._target_shared[i] = float(position)
 
+    @property
+    def kp(self) -> np.ndarray:
+        """The proportional gains [Nm/rad] currently used by the torque controller. Can be updated at any time,
+        including while torque control is active, to change the joint stiffness on the fly. A single update may not
+        change any joint's gain by more than `MAX_GAIN_STEP_FACTOR` times its default gain; change gains gradually
+        for bigger changes."""
+        with self._gains_lock:
+            return np.array(self._kp_shared[:], dtype=float)
+
+    @kp.setter
+    def kp(self, kp: np.ndarray) -> None:
+        kp = np.asarray(kp, dtype=float)
+        dof = self.manipulator_specs.dof
+        if kp.shape != (dof,):
+            raise ValueError(f"kp must have shape ({dof},), got {kp.shape}.")
+        if np.any(kp < 0.0):
+            raise ValueError("kp must be non-negative.")
+        self._assert_gain_step_is_small("kp", self.kp, kp, self.DEFAULT_KP)
+        with self._gains_lock:
+            self._kp = kp
+            for i, value in enumerate(kp):
+                self._kp_shared[i] = float(value)
+
+    @property
+    def kd(self) -> np.ndarray:
+        """The derivative gains [Nm/(rad/s)] currently used by the torque controller. Can be updated at any time,
+        including while torque control is active, to change the joint damping on the fly. A single update may not
+        change any joint's gain by more than `MAX_GAIN_STEP_FACTOR` times its default gain; change gains gradually
+        for bigger changes."""
+        with self._gains_lock:
+            return np.array(self._kd_shared[:], dtype=float)
+
+    @kd.setter
+    def kd(self, kd: np.ndarray) -> None:
+        kd = np.asarray(kd, dtype=float)
+        dof = self.manipulator_specs.dof
+        if kd.shape != (dof,):
+            raise ValueError(f"kd must have shape ({dof},), got {kd.shape}.")
+        if np.any(kd < 0.0):
+            raise ValueError("kd must be non-negative.")
+        self._assert_gain_step_is_small("kd", self.kd, kd, self.DEFAULT_KD)
+        with self._gains_lock:
+            self._kd = kd
+            for i, value in enumerate(kd):
+                self._kd_shared[i] = float(value)
+
     def get_tcp_force(self) -> np.ndarray:
         """The TCP force/torque [Fx, Fy, Fz, Tx, Ty, Tz] in N and Nm, as estimated by the robot.
         Available in both position and torque control mode."""
         return np.array(self.rtde_receive.getActualTCPForce())
+
+    def _assert_gain_step_is_small(
+        self, name: str, current_gain: np.ndarray, new_gain: np.ndarray, default_gain: np.ndarray
+    ) -> None:
+        """Raise a `ValueError` if `new_gain` differs from `current_gain` by more than `MAX_GAIN_STEP_FACTOR` times
+        the default gain, for any joint. `default_gain` (rather than `current_gain`) is used as the reference scale
+        so that the check also works when going from/to a gain of zero (fully compliant)."""
+        max_step = self.MAX_GAIN_STEP_FACTOR * default_gain
+        step = np.abs(new_gain - current_gain)
+        joints_exceeding = np.where(step > max_step)[0]
+        if len(joints_exceeding) > 0:
+            raise ValueError(
+                f"{name} would change by more than {self.MAX_GAIN_STEP_FACTOR * 100:.0f}% of the default gain in "
+                f"one update, for joint(s) {joints_exceeding.tolist()}: {current_gain} -> {new_gain}. Change gains "
+                "gradually, in several smaller steps, to avoid a torque jump."
+            )
 
     def _assert_torque_control_active(self) -> None:
         if self._torque_process is None:
