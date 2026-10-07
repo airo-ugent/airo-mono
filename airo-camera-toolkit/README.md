@@ -25,6 +25,7 @@ Depending on the hardware you are using, you might need to complete additional i
 Instructions can be found in the following files:
 * [ZED Installation](airo_camera_toolkit/cameras/zed/installation.md)
 * [RealSense Installation](airo_camera_toolkit/cameras/realsense/realsense_installation.md)
+* [Luxonis Installation](airo_camera_toolkit/cameras/luxonis/luxonis_installation.md)
 
 Additionally, to ensure you have `airo-robots` installed for the hand-eye calibration, install the extra dependencies:
 ```

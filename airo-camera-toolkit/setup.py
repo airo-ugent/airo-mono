@@ -5,7 +5,7 @@ import setuptools
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo_camera_toolkit",
-    version="2026.8.0",
+    version="2026.10.0",
     description="Interfaces and common functionality to work with RGB(D) cameras for robotic manipulation at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
@@ -23,7 +23,7 @@ setuptools.setup(
         "airo-spatial-algebra>=2026.1.0",
         "airo-dataset-tools>=2026.1.0",
     ],
-    extras_require={"hand-eye-calibration": ["airo-robots"]},
+    extras_require={"hand-eye-calibration": ["airo-robots"], "luxonis": ["depthai>=3.0"]},
     packages=setuptools.find_packages(exclude=["test"]),
     entry_points={
         "console_scripts": [

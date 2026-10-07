@@ -1,6 +1,6 @@
 """Camera implementations.
 
-Hardware-dependent classes (`Zed`, `ZedSpatialMap`, `Realsense`) and the optional
+Hardware-dependent classes (`Zed`, `ZedSpatialMap`, `Realsense`, `Luxonis`) and the optional
 `MultiprocessVideoRecorder` are exposed lazily so this package can be imported on
 machines that don't have the corresponding hardware/SDK installed. The underlying module
 is only loaded when the attribute is actually accessed; the resulting ImportError tells
@@ -29,6 +29,10 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "Realsense": (
         "airo_camera_toolkit.cameras.realsense.realsense",
         "the realsense SDK and the `pyrealsense2` package (see airo_camera_toolkit/cameras/realsense/realsense_installation.md)",
+    ),
+    "Luxonis": (
+        "airo_camera_toolkit.cameras.luxonis.luxonis",
+        "the `depthai` package (see airo_camera_toolkit/cameras/luxonis/luxonis_installation.md)",
     ),
     "OpenCVVideoCapture": (
         "airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture",
@@ -60,6 +64,7 @@ def __dir__() -> list[str]:
 
 
 if TYPE_CHECKING:
+    from airo_camera_toolkit.cameras.luxonis.luxonis import Luxonis
     from airo_camera_toolkit.cameras.multiprocess.multiprocess_video_recorder import MultiprocessVideoRecorder
     from airo_camera_toolkit.cameras.opencv_videocapture.opencv_videocapture import OpenCVVideoCapture
     from airo_camera_toolkit.cameras.realsense.realsense import Realsense
@@ -67,6 +72,7 @@ if TYPE_CHECKING:
     from airo_camera_toolkit.cameras.zed.zed2i import Zed2i
 
     __all__ = [
+        "Luxonis",
         "MultiprocessVideoRecorder",
         "OpenCVVideoCapture",
         "Realsense",

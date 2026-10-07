@@ -23,6 +23,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
+      id: setup-python
       with:
         python-version: '3.11'
     - uses: astral-sh/setup-uv@v4
@@ -43,12 +44,20 @@ jobs:
         # (not only its dependencies) invalidates this venv and gets reinstalled.
         # The separate uv wheel cache above is still keyed on setup.py only, so this
         # doesn't reintroduce heavy dependency re-downloads on every source change.
-        key: venv-mypy-3.11-${{ hashFiles('**/setup.py', '**/*.py') }}
+        # A venv's bin/python is a symlink to an interpreter outside .venv, so key on the exact
+        # Python version (e.g. 3.10.21, not 3.10): a runner image update must not restore a venv
+        # whose interpreter no longer exists.
+        key: venv-mypy-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/setup.py', '**/*.py') }}
 
     - name: Install packages
-      if: steps.cache-venv.outputs.cache-hit != 'true'
       run: |
-        uv venv .venv --python 3.11
+        # Safety net: also rebuild if a restored venv is broken (e.g. its interpreter is missing).
+        if [ "${{ steps.cache-venv.outputs.cache-hit }}" = "true" ] && .venv/bin/mypy --version > /dev/null 2>&1; then
+          echo "Using cached venv."
+          exit 0
+        fi
+        rm -rf .venv
+        uv venv .venv --python ${{ steps.setup-python.outputs.python-path }}
         uv pip install --python .venv/bin/python mypy
         uv pip install --python .venv/bin/python airo-typing/ airo-spatial-algebra/ airo-camera-toolkit/ airo-robots/ airo-dataset-tools/
 

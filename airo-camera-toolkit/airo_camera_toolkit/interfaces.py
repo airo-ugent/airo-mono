@@ -232,6 +232,7 @@ class DepthCamera(Camera, abc.ABC):
         - Realsense uses disparity between left and right infrared images
           via OpenCV's SGBM algorithm.
         - ZED uses the camera's internal confidence measure.
+        - Luxonis uses this default implementation.
 
         See also: https://github.com/opencv/opencv_contrib/blob/master/modules/ximgproc/samples/disparity_filtering.cpp
 

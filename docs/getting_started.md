@@ -84,6 +84,7 @@ We support the following cameras:
 
 - [ZED2i](https://www.stereolabs.com/zed-2/) and [ZED Mini](https://www.stereolabs.com/zed-mini/) (other Zed cameras may also work)
 - [Realsense D435](https://www.intelrealsense.com/depth-camera-d435/) (other Realsense cameras may also work)
+- [Luxonis OAK-D](https://docs.luxonis.com/hardware/products/OAK-D) (other OAK-D stereo cameras may also work)
 - [USB Webcams via OpenCV](https://opencv.org/)
 
 For RGB cameras, we support reading RGB images.
@@ -97,6 +98,7 @@ the Python bindings can be used. Follow the vendor-specific installation guides:
 
 - [ZED installation](airo-camera-toolkit/airo_camera_toolkit/cameras/zed/installation.md)
 - [RealSense installation](airo-camera-toolkit/airo_camera_toolkit/cameras/realsense/realsense_installation.md)
+- [Luxonis installation](airo-camera-toolkit/airo_camera_toolkit/cameras/luxonis/luxonis_installation.md) (pip installable: `pip install "airo-camera-toolkit[luxonis]"`)
 
 USB webcams via OpenCV require no additional installation.
 
