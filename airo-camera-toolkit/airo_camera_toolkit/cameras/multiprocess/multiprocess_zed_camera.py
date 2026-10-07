@@ -67,6 +67,7 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
                 session=self._session,
                 key_expr=f"{self._shared_memory_namespace}_pcd",
                 template=PointCloudBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
+                shm=self._shm_enabled,
             )
 
         if self.enable_spatial_mapping:
@@ -79,6 +80,7 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
                 session=self._session,
                 key_expr=f"{self._shared_memory_namespace}_spatial_map",
                 template=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+                shm=self._shm_enabled,
             )
 
     def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:

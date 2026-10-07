@@ -63,6 +63,31 @@ Multicast scouting is then disabled and peers discover each other through the ro
 Note that frames to a peer on another host travel over the network (~1.2 GB/s for FullHD RGBD at 60 FPS), so shared memory only helps same-host peers.
 Sessions still run in Zenoh's `peer` mode, so peers that turn out to be on the same host should link directly and keep using shared memory between them.
 
+## Shared memory and `ulimit -l`
+
+Zenoh's SHM transport is **opt-in** (disabled by default; a warning is logged when the default applies) because it `mlock()`s its frame pool so it always stays resident in physical RAM -- a page fault mid zero-copy transfer would reintroduce exactly the kind of latency spike this whole setup is trying to avoid.
+`mlock()` is capped by the process's `RLIMIT_MEMLOCK` (`ulimit -l`), which defaults to as little as 8 MB on many systems -- far less than even a single FullHD RGB frame pool needs.
+This is unrelated to `/dev/shm` capacity: plain `mmap()`-based shared memory (e.g. `multiprocessing.shared_memory`, used by `airo_ipc`) is never locked and is not subject to this limit.
+
+Without SHM, frames are still published correctly, just as plain copied `bytes` buffers instead of zero-copy SHM references -- a bit more latency, but no special privileges required.
+
+To opt in to SHM for lower latency, first raise the limit once via `/etc/security/limits.d/` (requires logging back in):
+
+```
+<user>   soft   memlock   unlimited
+<user>   hard   memlock   unlimited
+```
+
+Then enable it:
+
+```bash
+export AIRO_ZENOH_SHM=1
+```
+
+If the pool still can't be allocated (e.g. the limit wasn't actually raised), `ZenohWriter` raises a `RuntimeError` explaining the likely `ulimit -l` cause rather than the raw `OS error 12`.
+
+This makes every `MultiprocessCameraPublisher` publish plain (copied) byte buffers instead of allocating from an SHM pool, at the cost of the single-copy latency benefit described above -- frames are otherwise unaffected.
+
 ## Usage
 See the  main function in [multiprocess_rgb_camera.py](./multiprocess_rgb_camera.py) for a simple example of how to use these classes with a ZED camera.
 The main difference with the regular workflow is that instead of instantiating a `Zed` object, you now have to first create a `MultiprocessRGBPublisher` with the class and its kwargs, and then one or more `MultiprocessRGBReceiver`s.

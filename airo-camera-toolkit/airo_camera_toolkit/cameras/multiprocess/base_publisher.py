@@ -19,21 +19,57 @@ from loguru import logger
 # host unless this is set.
 ZENOH_ROUTER_ENV_VAR = "AIRO_ZENOH_ROUTER"
 
+# Environment variable to enable the Zenoh shared memory transport, e.g. "1" or
+# "true".  SHM buffers are mlock()ed, which requires the process's
+# RLIMIT_MEMLOCK (`ulimit -l`) to be large enough for the frame pool, so it is
+# opt-in: it defaults to disabled, and a warning is logged when that default
+# applies, since SHM gives a real latency benefit that is easy to miss.
+ZENOH_SHM_ENV_VAR = "AIRO_ZENOH_SHM"
+
 _LOCALHOST = "127.0.0.1"
+_SHM_ENABLED_VALUES = {"1", "true", "yes", "on"}
 
 
-def _make_zenoh_config(shm: bool = True, router_endpoint: Optional[str] = None) -> zenoh.Config:
+def _shm_enabled(explicit: Optional[bool] = None) -> bool:
+    """Resolve whether Zenoh shared memory transport should be used.
+
+    Args:
+        explicit: Force the result if not ``None``. Otherwise this is read
+            from the ``AIRO_ZENOH_SHM`` environment variable, which defaults
+            to disabled; a warning is logged in that default case.
+
+    Returns:
+        Whether SHM should be used.
+    """
+    if explicit is not None:
+        return explicit
+    if ZENOH_SHM_ENV_VAR in os.environ:
+        return os.environ[ZENOH_SHM_ENV_VAR].strip().lower() in _SHM_ENABLED_VALUES
+    logger.warning(
+        f"Zenoh shared memory transport is disabled by default (set {ZENOH_SHM_ENV_VAR}=1 to enable it for "
+        "lower latency). Frames will be copied instead. Enabling shared memory transport requires the process's 'ulimit -l' (max locked memory) "
+        "to accommodate the frame pool, which is a few MB per camera stream and not always available. See multiprocess/README.md for more details."
+    )
+    return False
+
+
+def _make_zenoh_config(shm: Optional[bool] = None, router_endpoint: Optional[str] = None) -> zenoh.Config:
     """Return the Zenoh configuration used by the multiprocess publishers and receivers.
 
     By default, the session is confined to the local host. You can opt in to cross-host
     through a Zenoh router by passing ``router_endpoint`` or setting the
     ``AIRO_ZENOH_ROUTER`` environment variable.
 
-    In the local-host case, shared memory transport is used to reduce latency.
+    In the local-host case, shared memory transport can be used to reduce latency further.
     This option is not available in the cross-host case.
 
     Args:
-        shm: Whether to enable the Zenoh shared memory transport.
+        shm: Whether to enable the Zenoh shared memory transport. Defaults to
+            the value of ``AIRO_ZENOH_SHM`` (disabled unless set to "1",
+            "true", "yes" or "on"; a warning is logged when the default
+            applies). Shared memory buffers are mlock()ed, so enabling this
+            requires the process's ``ulimit -l`` to accommodate the frame
+            pool.
         router_endpoint: Zenoh endpoint of a router to connect to, e.g.
             ``"tcp/192.168.0.10:7447"``.  Defaults to the value of
             ``AIRO_ZENOH_ROUTER``; when that is unset too, the session is
@@ -42,6 +78,8 @@ def _make_zenoh_config(shm: bool = True, router_endpoint: Optional[str] = None) 
     Returns:
         The Zenoh configuration.
     """
+    shm = _shm_enabled(shm)
+
     if router_endpoint is None:
         router_endpoint = os.environ.get(ZENOH_ROUTER_ENV_VAR) or None
 
@@ -95,13 +133,17 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
         Note: Camera must be instantiated in the publisher process to retrieve images.
         """
-        self._session = zenoh.open(_make_zenoh_config())
+        self._shm_enabled = _shm_enabled()
+        self._session = zenoh.open(_make_zenoh_config(shm=self._shm_enabled))
         self._resolution_writer = ZenohWriter(
             self._session,
             f"{self._shared_memory_namespace}_resolution",
             ResolutionIdl.template(),
+            shm=self._shm_enabled,
         )
-        self._fps_writer = ZenohWriter(self._session, f"{self._shared_memory_namespace}_fps", FpsIdl.template())
+        self._fps_writer = ZenohWriter(
+            self._session, f"{self._shared_memory_namespace}_fps", FpsIdl.template(), shm=self._shm_enabled
+        )
 
         # Instantiate the camera
         logger.info(f"Instantiating a {self._camera_cls.__name__} camera.")
@@ -123,6 +165,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             session=self._session,
             key_expr=self._shared_memory_namespace,
             template=frame_buffer_template,
+            shm=self._shm_enabled,
         )
 
     def _publish_metadata(self) -> None:

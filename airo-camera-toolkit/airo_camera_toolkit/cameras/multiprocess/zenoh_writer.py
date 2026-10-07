@@ -41,14 +41,15 @@ def _pool_size(frame_size: int, max_pool_bytes: int = _MAX_POOL_BYTES) -> int:
 class ZenohWriter:
     """Publishes frame buffer dataclass instances over a Zenoh key expression.
 
-    Each frame is allocated from a :class:`zenoh.shm.ShmProvider` pool and
-    serialized into shared memory field-by-field.  The Zenoh transport then
-    hands the SHM reference to subscribers without an additional copy, giving
-    the same single-copy behaviour as ``airo_ipc``'s ``SMWriter``.
+    By default, each frame is allocated from a :class:`zenoh.shm.ShmProvider`
+    pool and serialized into shared memory field-by-field.  The Zenoh transport
+    then hands the SHM reference to subscribers without an additional copy,
+    giving the same single-copy behaviour as ``airo_ipc``'s ``SMWriter``.
 
-    Per-field copying (``arr.tobytes()`` followed by a SHM slice assignment)
-    keeps each field's bytes hot in CPU cache between the two copies, which is
-    measurably faster than first concatenating everything into a flat buffer.
+    Per-field copying (``arr.tobytes()`` followed by a slice assignment into
+    the destination buffer) keeps each field's bytes hot in CPU cache between
+    the two copies, which is measurably faster than first concatenating
+    everything into a flat buffer.
 
     If the SHM pool is momentarily full (all buffers still in flight to slow
     consumers) the frame is dropped and a warning is logged.  This matches
@@ -60,13 +61,23 @@ class ZenohWriter:
         template: A template instance (from ``FrameBuffer.template()``) whose
             field layout defines the wire format and the SHM pool allocation
             size.
+        shm: Whether to use the SHM provider (see ``AIRO_ZENOH_SHM``, disabled
+            by default). The provider ``mlock()``s its pool, which requires
+            the process's ``ulimit -l`` to accommodate the frame pool size;
+            when ``False`` a plain, non-mlock'ed ``bytes`` buffer is published
+            instead.
+
+    Raises:
+        RuntimeError: If ``shm`` is ``True`` and the SHM pool could not be
+            allocated, most commonly because ``ulimit -l`` is too small.
     """
 
-    def __init__(self, session: zenoh.Session, key_expr: str, template: Any) -> None:
+    def __init__(self, session: zenoh.Session, key_expr: str, template: Any, shm: bool = True) -> None:
         self._template = template
         self._field_specs = frame_field_specs(template)
         self._frame_size = sum(nbytes for _, _, _, nbytes in self._field_specs)
-        self._provider = zenoh.shm.ShmProvider.default_backend(_pool_size(self._frame_size))
+        self._shm = shm
+        self._provider = self._create_shm_provider(key_expr, _pool_size(self._frame_size)) if shm else None
         self._publisher = session.declare_publisher(
             key_expr,
             congestion_control=zenoh.CongestionControl.DROP,
@@ -74,11 +85,40 @@ class ZenohWriter:
         self._key_expr = key_expr
         atexit.register(self.stop)
 
+    @staticmethod
+    def _create_shm_provider(key_expr: str, pool_bytes: int) -> Any:
+        """Create the SHM provider, turning a locked-memory failure into an actionable error.
+
+        Zenoh's SHM provider ``mlock()``s its whole pool up front, which fails with an
+        opaque ``OS error 12`` (``ENOMEM``) when the process's ``RLIMIT_MEMLOCK``
+        (``ulimit -l``) is smaller than the pool -- a common situation, since that limit
+        defaults to as little as 8 MB on many systems while even a single FullHD RGB
+        frame pool needs tens of MB. This is unrelated to ``/dev/shm`` capacity.
+        """
+        try:
+            return zenoh.shm.ShmProvider.default_backend(pool_bytes)
+        except zenoh.ZError as e:
+            raise RuntimeError(
+                f"ZenohWriter '{key_expr}': failed to allocate a {pool_bytes}-byte SHM pool ({e}). "
+                "This almost always means the process's 'ulimit -l' (max locked memory) is smaller than the "
+                "pool, since Zenoh's SHM provider mlock()s it -- check with 'ulimit -l'. Either raise that "
+                "limit (e.g. via /etc/security/limits.d/, requires logging back in) or leave "
+                "AIRO_ZENOH_SHM unset/0 to use the non-SHM transport instead."
+            ) from e
+
+    def _write_fields(self, msg: Any, buf: Any) -> None:
+        """Copy every field of *msg* into *buf*, field-by-field."""
+        offset = 0
+        for name, _, _, nbytes in self._field_specs:
+            buf[offset : offset + nbytes] = getattr(msg, name).tobytes()
+            offset += nbytes
+
     def __call__(self, msg: Any) -> None:
-        """Serialize *msg* into an SHM buffer and publish it.
+        """Serialize *msg* into a buffer and publish it.
 
         Each numpy field is copied directly from the field's memory into the
-        SHM buffer, keeping it in CPU cache between the two operations.
+        destination buffer, keeping it in CPU cache between the two
+        operations.
 
         Args:
             msg: A frame buffer dataclass instance (same type as the template).
@@ -94,6 +134,12 @@ class ZenohWriter:
         # whose dtype or shape drifted from the template.
         validate_frame(self._template, msg)
 
+        if not self._shm:
+            buf = bytearray(self._frame_size)
+            self._write_fields(msg, buf)
+            self._publisher.put(zenoh.ZBytes(bytes(buf)))
+            return
+
         try:
             buf = self._provider.alloc(self._frame_size, zenoh.shm.GarbageCollect())
         except zenoh.ZError:
@@ -103,10 +149,7 @@ class ZenohWriter:
         # the buffer is written completely.  That matters because buffers come
         # from a recycled pool: an unfilled tail would publish bytes left behind
         # by an earlier frame.
-        offset = 0
-        for name, _, _, nbytes in self._field_specs:
-            buf[offset : offset + nbytes] = getattr(msg, name).tobytes()
-            offset += nbytes
+        self._write_fields(msg, buf)
         self._publisher.put(zenoh.ZBytes(buf))
 
     def stop(self) -> None:
