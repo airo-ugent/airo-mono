@@ -199,6 +199,13 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
         )
         self._spatial_map_writer(spatial_map_data)
 
+    def _stop_writers(self) -> None:
+        if hasattr(self, "_pcd_writer"):
+            self._pcd_writer.stop()
+        if hasattr(self, "_spatial_map_writer"):
+            self._spatial_map_writer.stop()
+        super()._stop_writers()
+
 
 class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
     """Receives Zed camera data from shared memory."""
@@ -213,13 +220,14 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         max_spatial_map_points: int = 1000000,
         timeout: Optional[float] = DEFAULT_FIRST_MESSAGE_TIMEOUT,
     ) -> None:
-        self.enable_pointcloud = enable_pointcloud
         self.enable_positional_tracking = enable_positional_tracking
         self.enable_spatial_mapping = enable_spatial_mapping
         self.max_spatial_map_chunks = max_spatial_map_chunks
         self.max_spatial_map_points = max_spatial_map_points
+        self._reader_pcd: Optional[ZenohReader] = None
+        self._reader_spatial_map: Optional[ZenohReader] = None
 
-        super().__init__(shared_memory_namespace, timeout=timeout)
+        super().__init__(shared_memory_namespace, enable_pointcloud=enable_pointcloud, timeout=timeout)
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         super()._setup_frame_reader(resolution)
@@ -254,10 +262,12 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
             return
         # _reader_pcd and _reader_spatial_map can both be missing attributes if the connection
         # failed before they were set up.
-        if hasattr(self, "_reader_pcd"):
+        if self._reader_pcd is not None:
             self._reader_pcd.stop()
-        if hasattr(self, "_reader_spatial_map"):
+            self._reader_pcd = None
+        if self._reader_spatial_map is not None:
             self._reader_spatial_map.stop()
+            self._reader_spatial_map = None
         super().stop()
 
     def retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
@@ -291,6 +301,8 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         """Retrieve colored point cloud."""
         if not self.enable_pointcloud:
             raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
+        if self._reader_pcd is None:
+            raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
         self._last_pcd_frame = self._reader_pcd()
         num_points = self._last_pcd_frame.point_cloud_valid.item()
         positions = self._last_pcd_frame.point_cloud_positions[:num_points]
@@ -313,6 +325,8 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         """
         if not self.enable_spatial_mapping:
             raise RuntimeError("Cannot retrieve spatial map when it is not enabled.")
+        if self._reader_spatial_map is None:
+            raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
 
         self._last_spatial_map_frame = self._reader_spatial_map()
 

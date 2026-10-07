@@ -137,6 +137,19 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         )
         self._fps_writer(FpsIdl(fps=np.array([self._camera.fps], dtype=np.float64)))
 
+    def _stop_writers(self) -> None:
+        """Stop all ZenohWriters before closing the session.
+
+        Subclasses that create additional writers should override this,
+        stop their own writers, and call ``super()._stop_writers()``.
+        """
+        if hasattr(self, "_writer"):
+            self._writer.stop()
+        if hasattr(self, "_resolution_writer"):
+            self._resolution_writer.stop()
+        if hasattr(self, "_fps_writer"):
+            self._fps_writer.stop()
+
     def _next_frame_id(self) -> int:
         """Get the next frame ID and increment the counter."""
         frame_id = self._frame_id
@@ -170,6 +183,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             logger.error(f"Error in {self.__class__.__name__}: {e}")
             raise
         finally:
+            self._stop_writers()
             self._session.close()
             logger.info(f"{self.__class__.__name__} process terminated.")
 
