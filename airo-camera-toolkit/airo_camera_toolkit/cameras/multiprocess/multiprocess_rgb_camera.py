@@ -4,7 +4,6 @@ import multiprocessing
 import time
 from typing import Any
 
-import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.base_receiver import BaseCameraReceiver
 from airo_camera_toolkit.cameras.multiprocess.frame_data import RGBFrameBuffer
@@ -21,22 +20,13 @@ class MultiprocessRGBPublisher(BaseCameraPublisher):
         """Return RGB frame buffer template."""
         return RGBFrameBuffer.template(width, height)
 
-    def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
-        """Retrieve RGB image and intrinsics."""
-        self._current_frame_id = frame_id
-        self._current_frame_timestamp = frame_timestamp
-        self._current_rgb_image = self._camera.retrieve_rgb_image_as_int()
-        self._current_intrinsics = self._camera.intrinsics_matrix()
-
-    def _write_frame_data(self) -> None:
-        """Write RGB frame data to shared memory."""
-        frame_data = RGBFrameBuffer(
-            frame_id=np.array([self._current_frame_id], dtype=np.uint64),
-            frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-            rgb=self._current_rgb_image,
-            intrinsics=self._current_intrinsics,
+    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
+        """Capture the RGB image and intrinsics for the current frame."""
+        return RGBFrameBuffer(
+            **self._header(frame_id, frame_timestamp),
+            rgb=self._camera.retrieve_rgb_image_as_int(),
+            intrinsics=self._camera.intrinsics_matrix(),
         )
-        self._writer(frame_data)
 
 
 class MultiprocessRGBReceiver(BaseCameraReceiver, RGBCamera):

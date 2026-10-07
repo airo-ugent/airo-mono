@@ -199,6 +199,22 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         self._frame_id += 1
         return frame_id
 
+    @staticmethod
+    def _header(frame_id: int, frame_timestamp: float) -> dict:
+        """Build the ``frame_id``/``frame_timestamp`` keyword arguments shared by every frame buffer.
+
+        Args:
+            frame_id: Monotonically increasing frame identifier.
+            frame_timestamp: Timestamp when the frame was captured.
+
+        Returns:
+            A dict suitable for ``**``-passing into a frame buffer dataclass constructor.
+        """
+        return {
+            "frame_id": np.array([frame_id], dtype=np.uint64),
+            "frame_timestamp": np.array([frame_timestamp], dtype=np.float64),
+        }
+
     def stop(self) -> None:
         """Signal the publisher to stop."""
         self.shutdown_event.set()
@@ -218,9 +234,9 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
                 frame_timestamp = time.time()
                 frame_id = self._next_frame_id()
 
-                # Retrieve and write frame data
-                self._retrieve_frame_data(frame_id, frame_timestamp)
-                self._write_frame_data()
+                # Capture and write the frame
+                frame = self._capture_frame(frame_id, frame_timestamp)
+                self._writer(frame)
 
         except Exception as e:
             logger.error(f"Error in {self.__class__.__name__}: {e}")
@@ -243,24 +259,20 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         """
 
     @abstractmethod
-    def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
-        """Retrieve all data for the current frame.
+    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
+        """Capture the current camera frame and return the frame buffer to publish.
 
-        This method should retrieve all necessary data from the camera and store it
-        in instance variables for later writing.
+        **Important**: This should retrieve data using methods starting with `retrieve_`, not
+        `get_`, since `grab_images()` has already been called by `run()` and calling a `get_`
+        method would trigger an extra, unwanted frame capture.
 
-        **Important**: The method should NOT call functions that start with `get_`, because that will
-        trigger a new frame capture. Instead, it should call only functions that start with `retrieve_`
+        Implementations may also publish extra data on their own writers (e.g. a point cloud or
+        spatial map on a side key expression) before returning.
 
         Args:
             frame_id: Monotonically increasing frame identifier
             frame_timestamp: Timestamp when the frame was captured
-        """
 
-    @abstractmethod
-    def _write_frame_data(self) -> None:
-        """Write the captured frame data to shared memory.
-
-        This method should construct the appropriate frame buffer from previously
-        captured data and write it using self._writer.
+        Returns:
+            The frame buffer dataclass instance to write via ``self._writer``.
         """

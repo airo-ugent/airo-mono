@@ -8,6 +8,10 @@ import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.frame_data import RGBDFrameBuffer, RGBDFrameBufferWithPointCloud
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
+from airo_camera_toolkit.cameras.multiprocess.pointcloud_buffer import (
+    allocate_pointcloud_buffers,
+    fill_pointcloud_buffers,
+)
 from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
@@ -42,66 +46,34 @@ class MultiprocessRGBDPublisher(BaseCameraPublisher):
         if self.enable_pointcloud:
             # Some cameras can return sparse point clouds. We ensure we always have
             # a buffer for every pixel in the RGB image.
-            self._pcd_pos_buf = np.zeros(
-                (self._camera.resolution[0] * self._camera.resolution[1], 3),
-                dtype=np.float32,
+            self._pcd_pos_buf, self._pcd_col_buf = allocate_pointcloud_buffers(*self._camera.resolution)
+
+    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
+        """Capture RGB-D data and, if enabled, the point cloud."""
+        header = self._header(frame_id, frame_timestamp)
+        rgb_image = self._camera.retrieve_rgb_image_as_int()
+        depth_map = self._camera.retrieve_depth_map()
+        depth_image = self._camera.retrieve_depth_image()
+        intrinsics = self._camera.intrinsics_matrix()
+
+        if not self.enable_pointcloud:
+            return RGBDFrameBuffer(
+                **header, rgb=rgb_image, intrinsics=intrinsics, depth=depth_map, depth_image=depth_image
             )
-            self._pcd_col_buf = np.zeros(
-                (self._camera.resolution[0] * self._camera.resolution[1], 3),
-                dtype=np.uint8,
-            )
 
-    def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
-        """Retrieve RGB-D data and optionally point cloud."""
-        self._current_frame_id = frame_id
-        self._current_frame_timestamp = frame_timestamp
-        self._current_rgb_image = self._camera.retrieve_rgb_image_as_int()
-        self._current_depth_map = self._camera.retrieve_depth_map()
-        self._current_depth_image = self._camera.retrieve_depth_image()
-        self._current_intrinsics = self._camera.intrinsics_matrix()
+        point_cloud = self._camera.retrieve_colored_point_cloud()
+        num_valid_points = fill_pointcloud_buffers(self._pcd_pos_buf, self._pcd_col_buf, point_cloud)
 
-        if self.enable_pointcloud:
-            point_cloud = self._camera.retrieve_colored_point_cloud()
-
-            # Handle sparse point clouds by filling buffer with NaN
-            self._pcd_pos_buf.fill(np.nan)
-            self._pcd_pos_buf[: point_cloud.points.shape[0]] = point_cloud.points
-
-            if point_cloud.colors is not None:
-                self._pcd_col_buf[: point_cloud.colors.shape[0]] = point_cloud.colors
-            else:
-                self._pcd_col_buf[: point_cloud.points.shape[0]] = 0  # Use black if no colors
-
-            self._current_pcd_num_points = point_cloud.points.shape[0]
-
-    def _write_frame_data(self) -> None:
-        """Write RGBD frame data and optionally point cloud to shared memory."""
-        if self.enable_pointcloud:
-            self._writer(
-                RGBDFrameBufferWithPointCloud(
-                    frame_id=np.array([self._current_frame_id], dtype=np.uint64),
-                    frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-                    rgb=self._current_rgb_image,
-                    intrinsics=self._current_intrinsics,
-                    depth=self._current_depth_map,
-                    depth_image=self._current_depth_image,
-                    point_cloud_positions=self._pcd_pos_buf,
-                    point_cloud_colors=self._pcd_col_buf,
-                    num_valid_points=np.array([self._current_pcd_num_points], dtype=np.int32),
-                )
-            )
-        else:
-            # Write main RGBD frame
-            self._writer(
-                RGBDFrameBuffer(
-                    frame_id=np.array([self._current_frame_id], dtype=np.uint64),
-                    frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-                    rgb=self._current_rgb_image,
-                    intrinsics=self._current_intrinsics,
-                    depth=self._current_depth_map,
-                    depth_image=self._current_depth_image,
-                )
-            )
+        return RGBDFrameBufferWithPointCloud(
+            **header,
+            rgb=rgb_image,
+            intrinsics=intrinsics,
+            depth=depth_map,
+            depth_image=depth_image,
+            point_cloud_positions=self._pcd_pos_buf,
+            point_cloud_colors=self._pcd_col_buf,
+            num_valid_points=np.array([num_valid_points], dtype=np.int32),
+        )
 
 
 class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):

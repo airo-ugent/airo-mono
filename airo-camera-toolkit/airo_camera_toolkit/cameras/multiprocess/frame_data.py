@@ -54,6 +54,24 @@ def validate_frame(template: Any, obj: Any) -> None:
             raise ValueError(f"Field '{name}' has shape {arr.shape}, but the wire format expects {shape}.")
 
 
+def _extend_template(parent: Any, **own_fields: np.ndarray) -> dict:
+    """Merge an already-built parent template's fields with a subclass's own fields.
+
+    This lets a subclass's ``template()`` build on its parent's instead of repeating every
+    inherited field. ``vars(parent)`` returns the parent dataclass's field dict without copying
+    the (potentially large, shared-memory backed) array values it holds.
+
+    Args:
+        parent: A template instance of the parent dataclass.
+        **own_fields: The fields introduced by the subclass.
+
+    Returns:
+        A dict with the parent's fields followed by ``own_fields``, suitable for ``**``-passing
+        into the subclass's constructor.
+    """
+    return {**vars(parent), **own_fields}
+
+
 def deserialize_frame(template: T, data: bytes) -> T:
     """Deserialize raw bytes back into a frame buffer dataclass instance.
 
@@ -129,6 +147,14 @@ class BaseFrameBuffer:
     # Timestamp when the frame was captured (seconds since epoch)
     frame_timestamp: np.ndarray
 
+    @staticmethod
+    def template() -> Any:
+        """Construct a new BaseFrameBuffer template with pre-allocated arrays."""
+        return BaseFrameBuffer(
+            frame_id=np.empty((1,), dtype=np.uint64),
+            frame_timestamp=np.empty((1,), dtype=np.float64),
+        )
+
 
 @dataclass
 class RGBFrameBuffer(BaseFrameBuffer):
@@ -143,10 +169,11 @@ class RGBFrameBuffer(BaseFrameBuffer):
     def template(width: int, height: int) -> Any:
         """Construct a new RGBFrameBuffer with shared memory backed arrays."""
         return RGBFrameBuffer(
-            frame_id=np.empty((1,), dtype=np.uint64),
-            frame_timestamp=np.empty((1,), dtype=np.float64),
-            rgb=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics=np.empty((3, 3), dtype=np.float64),
+            **_extend_template(
+                BaseFrameBuffer.template(),
+                rgb=np.empty((height, width, 3), dtype=np.uint8),
+                intrinsics=np.empty((3, 3), dtype=np.float64),
+            )
         )
 
 
@@ -163,12 +190,11 @@ class RGBDFrameBuffer(RGBFrameBuffer):
     def template(width: int, height: int) -> Any:
         """Construct a new RGBDFrameBuffer with shared memory backed arrays."""
         return RGBDFrameBuffer(
-            frame_id=np.empty((1,), dtype=np.uint64),
-            frame_timestamp=np.empty((1,), dtype=np.float64),
-            rgb=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics=np.empty((3, 3), dtype=np.float64),
-            depth_image=np.empty((height, width, 3), dtype=np.uint8),
-            depth=np.empty((height, width), dtype=np.float32),
+            **_extend_template(
+                RGBFrameBuffer.template(width, height),
+                depth_image=np.empty((height, width, 3), dtype=np.uint8),
+                depth=np.empty((height, width), dtype=np.float32),
+            )
         )
 
 
@@ -187,15 +213,12 @@ class RGBDFrameBufferWithPointCloud(RGBDFrameBuffer):
     def template(width: int, height: int) -> Any:
         """Construct a new RGBDFrameBufferWithPointCloud with shared memory backed arrays."""
         return RGBDFrameBufferWithPointCloud(
-            frame_id=np.empty((1,), dtype=np.uint64),
-            frame_timestamp=np.empty((1,), dtype=np.float64),
-            rgb=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics=np.empty((3, 3), dtype=np.float64),
-            depth_image=np.empty((height, width, 3), dtype=np.uint8),
-            depth=np.empty((height, width), dtype=np.float32),
-            point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
-            point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
-            num_valid_points=np.empty((1,), dtype=np.int32),
+            **_extend_template(
+                RGBDFrameBuffer.template(width, height),
+                point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
+                point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
+                num_valid_points=np.empty((1,), dtype=np.int32),
+            )
         )
 
 
@@ -214,15 +237,12 @@ class StereoRGBDFrameBuffer(RGBDFrameBuffer):
     def template(width: int, height: int) -> Any:
         """Construct a new StereoRGBDFrameBuffer with shared memory backed arrays."""
         return StereoRGBDFrameBuffer(
-            frame_id=np.empty((1,), dtype=np.uint64),
-            frame_timestamp=np.empty((1,), dtype=np.float64),
-            rgb=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics=np.empty((3, 3), dtype=np.float64),
-            depth_image=np.empty((height, width, 3), dtype=np.uint8),
-            depth=np.empty((height, width), dtype=np.float32),
-            rgb_right=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics_right=np.empty((3, 3), dtype=np.float64),
-            pose_right_in_left=np.empty((4, 4), dtype=np.float64),
+            **_extend_template(
+                RGBDFrameBuffer.template(width, height),
+                rgb_right=np.empty((height, width, 3), dtype=np.uint8),
+                intrinsics_right=np.empty((3, 3), dtype=np.float64),
+                pose_right_in_left=np.empty((4, 4), dtype=np.float64),
+            )
         )
 
 
@@ -241,18 +261,12 @@ class StereoRGBDFrameBufferWithPointCloud(StereoRGBDFrameBuffer):
     def template(width: int, height: int) -> Any:
         """Construct a new StereoRGBDFrameBufferWithPointCloud with shared memory backed arrays."""
         return StereoRGBDFrameBufferWithPointCloud(
-            frame_id=np.empty((1,), dtype=np.uint64),
-            frame_timestamp=np.empty((1,), dtype=np.float64),
-            rgb=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics=np.empty((3, 3), dtype=np.float64),
-            depth_image=np.empty((height, width, 3), dtype=np.uint8),
-            depth=np.empty((height, width), dtype=np.float32),
-            rgb_right=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics_right=np.empty((3, 3), dtype=np.float64),
-            pose_right_in_left=np.empty((4, 4), dtype=np.float64),
-            point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
-            point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
-            num_valid_points=np.empty((1,), dtype=np.int32),
+            **_extend_template(
+                StereoRGBDFrameBuffer.template(width, height),
+                point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
+                point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
+                num_valid_points=np.empty((1,), dtype=np.int32),
+            )
         )
 
 
@@ -267,27 +281,17 @@ class ZedFrameBuffer(StereoRGBDFrameBuffer):
     def template(width: int, height: int) -> Any:
         """Construct a new ZedFrameBuffer with shared memory backed arrays."""
         return ZedFrameBuffer(
-            frame_id=np.empty((1,), dtype=np.uint64),
-            frame_timestamp=np.empty((1,), dtype=np.float64),
-            rgb=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics=np.empty((3, 3), dtype=np.float64),
-            depth_image=np.empty((height, width, 3), dtype=np.uint8),
-            depth=np.empty((height, width), dtype=np.float32),
-            rgb_right=np.empty((height, width, 3), dtype=np.uint8),
-            intrinsics_right=np.empty((3, 3), dtype=np.float64),
-            pose_right_in_left=np.empty((4, 4), dtype=np.float64),
-            camera_pose=np.empty((4, 4), dtype=np.float64),
+            **_extend_template(
+                StereoRGBDFrameBuffer.template(width, height),
+                camera_pose=np.empty((4, 4), dtype=np.float64),
+            )
         )
 
 
 @dataclass
-class PointCloudBuffer:
+class PointCloudBuffer(BaseFrameBuffer):
     """Buffer containing point cloud data."""
 
-    # Frame ID for synchronization
-    frame_id: np.ndarray
-    # Timestamp of the point cloud
-    frame_timestamp: np.ndarray
     # Point cloud positions (height * width x 3)
     point_cloud_positions: np.ndarray
     # Point cloud colors (height * width x 3)
@@ -299,22 +303,19 @@ class PointCloudBuffer:
     def template(width: int, height: int) -> Any:
         """Construct a new PointCloudBuffer with shared memory backed arrays."""
         return PointCloudBuffer(
-            frame_id=np.empty((1,), dtype=np.uint64),
-            frame_timestamp=np.empty((1,), dtype=np.float64),
-            point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
-            point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
-            point_cloud_valid=np.empty((1,), dtype=np.int32),
+            **_extend_template(
+                BaseFrameBuffer.template(),
+                point_cloud_positions=np.empty((height * width, 3), dtype=np.float32),
+                point_cloud_colors=np.empty((height * width, 3), dtype=np.uint8),
+                point_cloud_valid=np.empty((1,), dtype=np.int32),
+            )
         )
 
 
 @dataclass
-class SpatialMapBuffer:
+class SpatialMapBuffer(BaseFrameBuffer):
     """Buffer containing spatial map data from Zed camera."""
 
-    # Frame ID for synchronization
-    frame_id: np.ndarray
-    # Timestamp of the spatial map
-    frame_timestamp: np.ndarray
     # Amount of chunks in the spatial map
     num_chunks: np.ndarray
     # Array indicating which chunks have been updated
@@ -329,11 +330,12 @@ class SpatialMapBuffer:
     def template(max_chunks: int, max_points: int) -> Any:
         """Construct a new SpatialMapBuffer with shared memory backed arrays."""
         return SpatialMapBuffer(
-            frame_id=np.empty((1,), dtype=np.uint64),
-            frame_timestamp=np.empty((1,), dtype=np.float64),
-            num_chunks=np.empty((1,), dtype=np.int32),
-            chunks_updated=np.empty((max_chunks,), dtype=np.bool_),
-            chunk_sizes=np.empty((max_chunks,), dtype=np.int32),
-            point_positions=np.empty((max_points, 3), dtype=np.float32),
-            point_colors=np.empty((max_points, 3), dtype=np.uint8),
+            **_extend_template(
+                BaseFrameBuffer.template(),
+                num_chunks=np.empty((1,), dtype=np.int32),
+                chunks_updated=np.empty((max_chunks,), dtype=np.bool_),
+                chunk_sizes=np.empty((max_chunks,), dtype=np.int32),
+                point_positions=np.empty((max_points, 3), dtype=np.float32),
+                point_colors=np.empty((max_points, 3), dtype=np.uint8),
+            )
         )
