@@ -166,7 +166,7 @@ class RGBFrameBuffer(BaseFrameBuffer):
     intrinsics: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int) -> Any:
+    def template(width: int, height: int) -> Any:  # type: ignore[override]
         """Construct a new RGBFrameBuffer with shared memory backed arrays."""
         return RGBFrameBuffer(
             **_extend_template(
@@ -187,7 +187,7 @@ class RGBDFrameBuffer(RGBFrameBuffer):
     depth: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int) -> Any:
+    def template(width: int, height: int) -> Any:  # type: ignore[override]
         """Construct a new RGBDFrameBuffer with shared memory backed arrays."""
         return RGBDFrameBuffer(
             **_extend_template(
@@ -210,7 +210,7 @@ class RGBDFrameBufferWithPointCloud(RGBDFrameBuffer):
     num_valid_points: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int) -> Any:
+    def template(width: int, height: int) -> Any:  # type: ignore[override]
         """Construct a new RGBDFrameBufferWithPointCloud with shared memory backed arrays."""
         return RGBDFrameBufferWithPointCloud(
             **_extend_template(
@@ -234,7 +234,7 @@ class StereoRGBDFrameBuffer(RGBDFrameBuffer):
     pose_right_in_left: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int) -> Any:
+    def template(width: int, height: int) -> Any:  # type: ignore[override]
         """Construct a new StereoRGBDFrameBuffer with shared memory backed arrays."""
         return StereoRGBDFrameBuffer(
             **_extend_template(
@@ -258,7 +258,7 @@ class StereoRGBDFrameBufferWithPointCloud(StereoRGBDFrameBuffer):
     num_valid_points: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int) -> Any:
+    def template(width: int, height: int) -> Any:  # type: ignore[override]
         """Construct a new StereoRGBDFrameBufferWithPointCloud with shared memory backed arrays."""
         return StereoRGBDFrameBufferWithPointCloud(
             **_extend_template(
@@ -278,7 +278,7 @@ class ZedFrameBuffer(StereoRGBDFrameBuffer):
     camera_pose: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int) -> Any:
+    def template(width: int, height: int) -> Any:  # type: ignore[override]
         """Construct a new ZedFrameBuffer with shared memory backed arrays."""
         return ZedFrameBuffer(
             **_extend_template(
@@ -300,7 +300,7 @@ class PointCloudBuffer(BaseFrameBuffer):
     point_cloud_valid: np.ndarray
 
     @staticmethod
-    def template(width: int, height: int) -> Any:
+    def template(width: int, height: int) -> Any:  # type: ignore[override]
         """Construct a new PointCloudBuffer with shared memory backed arrays."""
         return PointCloudBuffer(
             **_extend_template(
@@ -327,7 +327,7 @@ class SpatialMapBuffer(BaseFrameBuffer):
     point_colors: np.ndarray
 
     @staticmethod
-    def template(max_chunks: int, max_points: int) -> Any:
+    def template(max_chunks: int, max_points: int) -> Any:  # type: ignore[override]
         """Construct a new SpatialMapBuffer with shared memory backed arrays."""
         return SpatialMapBuffer(
             **_extend_template(

@@ -134,6 +134,8 @@ class ZenohWriter:
         # whose dtype or shape drifted from the template.
         validate_frame(self._template, msg)
 
+        buf: Any
+
         if not self._shm:
             buf = bytearray(self._frame_size)
             self._write_fields(msg, buf)
