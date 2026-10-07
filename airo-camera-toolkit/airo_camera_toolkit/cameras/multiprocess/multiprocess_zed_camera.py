@@ -256,6 +256,21 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         """Return Zed frame buffer template."""
         return ZedFrameBuffer.template(width, height)
 
+    def grab_images(self) -> None:
+        """Read the latest main frame, and the latest point cloud / spatial map if enabled.
+
+        The point cloud and spatial map are published on separate Zenoh key
+        expressions (the spatial map is only refreshed every few frames), so
+        they are not guaranteed to share the exact ``frame_id`` of the main
+        frame. Reading them here, right after the main frame, keeps all three
+        as close in time as possible.
+        """
+        super().grab_images()
+        if self._reader_pcd is not None:
+            self._last_pcd_frame = self._reader_pcd()
+        if self._reader_spatial_map is not None:
+            self._last_spatial_map_frame = self._reader_spatial_map()
+
     def stop(self) -> None:
         """Undeclare the Zed-specific readers, then the base reader and session."""
         if self._stopped:
@@ -298,12 +313,11 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         return self._last_frame.depth_image
 
     def retrieve_colored_point_cloud(self) -> PointCloud:
-        """Retrieve colored point cloud."""
+        """Retrieve colored point cloud from the frame captured by the last grab_images()."""
         if not self.enable_pointcloud:
             raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
         if self._reader_pcd is None:
             raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
-        self._last_pcd_frame = self._reader_pcd()
         num_points = self._last_pcd_frame.point_cloud_valid.item()
         positions = self._last_pcd_frame.point_cloud_positions[:num_points]
         colors = self._last_pcd_frame.point_cloud_colors[:num_points]
@@ -317,7 +331,7 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
 
     def retrieve_spatial_map(self) -> ZedSpatialMap:
         """
-        Reconstructs the spatial map from the shared memory buffer.
+        Reconstructs the spatial map from the frame captured by the last grab_images().
 
         Returns:
             list[tuple[PointCloud, bool]]: A list of tuples, each containing a PointCloud object
@@ -327,8 +341,6 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
             raise RuntimeError("Cannot retrieve spatial map when it is not enabled.")
         if self._reader_spatial_map is None:
             raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
-
-        self._last_spatial_map_frame = self._reader_spatial_map()
 
         # Get the last spatial map frame from shared memory
         buf = self._last_spatial_map_frame

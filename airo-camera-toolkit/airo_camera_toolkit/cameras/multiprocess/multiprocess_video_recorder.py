@@ -58,12 +58,6 @@ class MultiprocessVideoRecorder(SpawnProcess):
         while not self.shutdown_event.is_set():
             receiver.grab_images()
             timestamp_receiver = receiver.get_current_timestamp()
-
-            if timestamp_receiver <= timestamp_prev_frame:
-                time.sleep(0.00001)  # Prevent busy waiting
-                continue
-
-            # New frame arrived
             image_rgb_new = receiver.retrieve_rgb_image_as_int()
 
             timestamp_difference = timestamp_receiver - timestamp_prev_frame
@@ -98,16 +92,13 @@ class MultiprocessVideoRecorder(SpawnProcess):
         self.shutdown_event.set()
         wait_time = 10
         logger.info("Set video recording shutdown event, waiting...")
-        for i in range(1):
-            successfully_stopped = self.recording_finished_event.wait(timeout=wait_time)
-            if successfully_stopped:
-                logger.success("Video recording stopped successfully.")
-                return
-            else:
-                self.shutdown_event.set()
-                logger.warning(f"Video recording did not stop within {(i + 1) * wait_time:.2f} seconds.")
+        successfully_stopped = self.recording_finished_event.wait(timeout=wait_time)
+        if successfully_stopped:
+            logger.success("Video recording stopped successfully.")
+            return
         logger.error(
-            "Video recording did not stop, end of video might be lost/corrupted. This seems to happen when RAM is full."
+            f"Video recording did not stop within {wait_time:.2f} seconds, end of video might be "
+            "lost/corrupted. This seems to happen when RAM is full."
         )
 
 
