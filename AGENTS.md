@@ -142,4 +142,4 @@ Three GitHub Actions workflows:
 - **rerun-sdk** ≥ 0.23.4 (visualization)
 - **ur-rtde** ≥ 1.6.0 (UR robot driver — hardware only)
 
-Optional / hardware-specific deps (`fiftyone`, `airo-ipc`, `airo-tulip`) are declared as optional extras or installed separately.
+Optional / hardware-specific deps (`fiftyone`, `airo-tulip`) are declared as optional extras or installed separately.

@@ -1,0 +1,148 @@
+"""Zenoh-based writer for inter-process frame buffer communication."""
+
+from typing import Any, Generic
+
+import zenoh
+from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout
+from loguru import logger
+
+# Upper bound on the shared memory pool of a single writer.  The number of
+# in-flight frames the pool can hold is derived from this and the frame size, so
+# small (metadata) messages get a deep pool while multi-megabyte frames do not
+# each reserve hundreds of megabytes of /dev/shm.
+_MAX_POOL_BYTES = 128 * 1024 * 1024  # 128 MB
+# Bounds on the derived pool depth.  A deeper pool means slow consumers are less
+# likely to stall the publisher; two frames is the minimum for double buffering.
+_MIN_POOL_FRAMES = 2
+_MAX_POOL_FRAMES = 32
+# The default (Talc) backend needs at least a page, and its bookkeeping costs
+# roughly one allocation's worth of space, so pools are sized with one frame of
+# slack and never go below this floor.
+_MIN_POOL_BYTES = 1024 * 1024  # 1 MB
+
+
+def _pool_size(frame_size: int, max_pool_bytes: int = _MAX_POOL_BYTES) -> int:
+    """Return the SHM pool size in bytes for a writer publishing *frame_size* frames.
+
+    Args:
+        frame_size: Size of a single serialized frame in bytes.
+        max_pool_bytes: Soft upper bound on the frames kept resident in the pool.
+
+    Returns:
+        The pool size to request from the SHM provider: room for the derived
+        number of in-flight frames plus one frame of allocator overhead, and at
+        least :data:`_MIN_POOL_BYTES`.
+    """
+    pool_frames = min(max(max_pool_bytes // frame_size, _MIN_POOL_FRAMES), _MAX_POOL_FRAMES)
+    return max((pool_frames + 1) * frame_size, _MIN_POOL_BYTES)
+
+
+class ZenohWriter(Generic[Frame]):
+    """Publishes frame buffer dataclass instances over a Zenoh key expression.
+
+    Each frame is serialized field by field into a buffer that is reused across frames (Zenoh
+    copies it when publishing), or, with ``shm``, into a buffer allocated from a
+    :class:`zenoh.shm.ShmProvider` pool, which Zenoh hands to subscribers without a copy.
+
+    If the SHM pool is momentarily full (all buffers still in flight to slow
+    consumers) the frame is dropped and a warning is logged.  This matches
+    Zenoh's ``CongestionControl.DROP`` semantics used on the publisher.
+
+    Args:
+        session: An open :class:`zenoh.Session`.
+        key_expr: Zenoh key expression (topic name) to publish on.
+        layout: The frame layout (e.g. from ``RGBFrameBuffer.layout()``) that
+            defines the wire format and the SHM pool allocation size.
+        shm: Whether to use the SHM provider. Disabled by default, like the
+            ``AIRO_ZENOH_SHM`` environment variable the publishers read it from.
+
+    Raises:
+        RuntimeError: If ``shm`` is ``True`` and the SHM pool could not be
+            allocated, most commonly because ``ulimit -l`` is too small.
+    """
+
+    def __init__(self, session: zenoh.Session, key_expr: str, layout: FrameLayout[Frame], shm: bool = False) -> None:
+        self._layout = layout
+        self._frame_size = layout.nbytes
+        self._provider = self._create_shm_provider(key_expr, _pool_size(self._frame_size)) if shm else None
+        # Without SHM, frames are serialized into this one buffer, which ZBytes copies on publishing.
+        self._buffer = bytearray(0 if shm else self._frame_size)
+        self._buffer_view = memoryview(self._buffer)
+        self._publisher = session.declare_publisher(
+            key_expr,
+            congestion_control=zenoh.CongestionControl.DROP,
+        )
+        self._key_expr = key_expr
+
+    @property
+    def layout(self) -> FrameLayout[Frame]:
+        """The layout of the frames this writer publishes."""
+        return self._layout
+
+    @property
+    def has_subscribers(self) -> bool:
+        """Whether any subscriber currently matches this writer's key expression."""
+        # The stubs type matching_status as bool, but it is a MatchingStatus (which is always truthy).
+        return bool(self._publisher.matching_status.matching)  # type: ignore[attr-defined]
+
+    @staticmethod
+    def _create_shm_provider(key_expr: str, pool_bytes: int) -> Any:
+        """Create the SHM provider, turning a locked-memory failure into an actionable error.
+
+        Zenoh's SHM provider ``mlock()``s its whole pool up front, which fails with an
+        opaque ``OS error 12`` (``ENOMEM``) when the process's ``RLIMIT_MEMLOCK``
+        (``ulimit -l``) is smaller than the pool -- a common situation, since that limit
+        defaults to as little as 8 MB on many systems while even a single FullHD RGB
+        frame pool needs tens of MB. This is unrelated to ``/dev/shm`` capacity.
+        """
+        try:
+            return zenoh.shm.ShmProvider.default_backend(pool_bytes)
+        except zenoh.ZError as e:
+            raise RuntimeError(
+                f"ZenohWriter '{key_expr}': failed to allocate a {pool_bytes}-byte SHM pool ({e}). "
+                "This almost always means the process's 'ulimit -l' (max locked memory) is smaller than the "
+                "pool, since Zenoh's SHM provider mlock()s it -- check with 'ulimit -l'. Either raise that "
+                "limit (e.g. via /etc/security/limits.d/, requires logging back in) or leave "
+                "AIRO_ZENOH_SHM unset/0 to use the non-SHM transport instead."
+            ) from e
+
+    def __call__(self, msg: Frame) -> None:
+        """Serialize *msg* into a buffer and publish it.
+
+        Args:
+            msg: A frame buffer dataclass instance (of the layout's frame type).
+
+        Raises:
+            TypeError: If *msg* is not of the layout's frame type or has a
+                non-array field.
+            ValueError: If a field's dtype or shape differs from the layout.
+                The wire format is a bare byte concatenation, so publishing
+                such a frame would silently corrupt it for every receiver.
+        """
+        # Validate before allocating: the receiver has no way to detect a field
+        # whose dtype or shape drifted from the layout.
+        self._layout.validate(msg)
+
+        if self._provider is None:
+            self._layout.write_into(msg, self._buffer_view)
+            self._publisher.put(zenoh.ZBytes(self._buffer))
+            return
+
+        try:
+            buf = self._provider.alloc(self._frame_size, zenoh.shm.GarbageCollect())
+        except zenoh.ZError:
+            logger.warning(f"ZenohWriter: SHM pool full, dropping frame on '{self._key_expr}'")
+            return
+        # The validation above guarantees the field bytes sum to _frame_size, so
+        # the buffer is written completely.  That matters because buffers come
+        # from a recycled pool: an unfilled tail would publish bytes left behind
+        # by an earlier frame.
+        self._layout.write_into(msg, buf)
+        self._publisher.put(zenoh.ZBytes(buf))
+
+    def stop(self) -> None:
+        """Undeclare the publisher and release its resources."""
+        try:
+            self._publisher.undeclare()
+        except Exception as e:  # pragma: no cover - shutdown-only path
+            logger.debug(f"ZenohWriter '{self._key_expr}': error while undeclaring publisher: {e}")

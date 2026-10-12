@@ -2,24 +2,34 @@
 
 import multiprocessing
 import time
-from typing import Any
+from typing import ClassVar
 
 import loguru
 import numpy as np
-from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
-from airo_camera_toolkit.cameras.multiprocess.frame_data import PointCloudBuffer, SpatialMapBuffer, ZedFrameBuffer
-from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera import MultiprocessStereoRGBDReceiver
+from airo_camera_toolkit.cameras.multiprocess.frame_data import SpatialMapBuffer, StereoRGBDFrameBuffer, ZedFrameBuffer
+from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera import (
+    MultiprocessStereoRGBDPublisher,
+    MultiprocessStereoRGBDReceiver,
+)
+from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT, ZenohReader
 from airo_camera_toolkit.cameras.zed.zed import Zed, ZedSpatialMap
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
-from airo_ipc.cyclone_shm.patterns.sm_reader import SMReader
-from airo_ipc.cyclone_shm.patterns.sm_writer import SMWriter
-from airo_typing import CameraResolutionType, HomogeneousMatrixType, NumpyDepthMapType, NumpyIntImageType, PointCloud
+from airo_typing import CameraResolutionType, PointCloud
 
 logger = loguru.logger
 
+# Published as the camera pose when positional tracking is disabled, so receivers cannot mistake it for a pose.
+_NO_CAMERA_POSE = np.full((4, 4), np.nan)
 
-class MultiprocessZedPublisher(BaseCameraPublisher):
-    """Publishes Zed camera data including positional tracking and spatial mapping to shared memory."""
+
+class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
+    """Publishes Zed camera data including positional tracking and spatial mapping over Zenoh.
+
+    Publishes the frames of :class:`MultiprocessStereoRGBDPublisher` with the camera pose added,
+    and the spatial map (if enabled) on the ``<namespace>_spatial_map`` key expression.
+    """
+
+    _frame_type: ClassVar[type[StereoRGBDFrameBuffer]] = ZedFrameBuffer
 
     def __init__(
         self,
@@ -31,177 +41,90 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
         max_spatial_map_points: int = 1000000,
         map_refresh_interval: int = 5,  # Map is refreshed every N frames
     ):
-        self.enable_pointcloud = enable_pointcloud
         self.enable_positional_tracking = camera_kwargs.get("camera_tracking_params") is not None
         self.enable_spatial_mapping = camera_kwargs.get("camera_mapping_params") is not None
         self.max_spatial_map_chunks = max_spatial_map_chunks
         self.max_spatial_map_points = max_spatial_map_points
         self.map_refresh_interval = map_refresh_interval
-        super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
-
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return Zed frame buffer template."""
-        return ZedFrameBuffer.template(width, height)
+        super().__init__(camera_cls, camera_kwargs, shared_memory_namespace, enable_pointcloud=enable_pointcloud)
 
     def _setup(self) -> None:
-        """Set up camera and prepare buffers for point clouds and spatial mapping."""
+        """Set up the inherited stereo RGB-D state, then the spatial map writer."""
         super()._setup()
 
-        # Cache static camera parameters
-        assert isinstance(self._camera, StereoRGBDCamera)
-        self._pose_right_in_left = self._camera.pose_of_right_view_in_left_view
-        self._intrinsics_left = self._camera.intrinsics_matrix(view=StereoRGBDCamera.LEFT_RGB)
-        self._intrinsics_right = self._camera.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB)
-
-        if self.enable_pointcloud:
-            # Prepare buffers for point cloud data
-            self._pcd_pos_buf = np.zeros(
-                (self._camera.resolution[0] * self._camera.resolution[1], 3),
-                dtype=np.float32,
-            )
-            self._pcd_col_buf = np.zeros(
-                (self._camera.resolution[0] * self._camera.resolution[1], 3),
-                dtype=np.uint8,
-            )
-            self._pcd_writer = SMWriter(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_pcd",
-                idl_dataclass=PointCloudBuffer.template(self._camera.resolution[0], self._camera.resolution[1]),
-            )
-
         if self.enable_spatial_mapping:
-            # Initialize buffers for spatial map data
             self._spatial_map_chunks_updated = np.zeros(self.max_spatial_map_chunks, dtype=np.bool_)
             self._spatial_map_chunk_sizes = np.zeros(self.max_spatial_map_chunks, dtype=np.int32)
             self._spatial_map_point_positions = np.zeros((self.max_spatial_map_points, 3), dtype=np.float32)
             self._spatial_map_point_colors = np.zeros((self.max_spatial_map_points, 3), dtype=np.uint8)
-            self._spatial_map_writer = SMWriter(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_spatial_map",
-                idl_dataclass=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+            self._spatial_map_writer = self._declare_writer(
+                f"{self._shared_memory_namespace}_spatial_map",
+                SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
-    def _retrieve_frame_data(self, frame_id: int, frame_timestamp: float) -> None:
-        """Retrieve Zed stereo RGB-D data, pose, point cloud, and optionally spatial map."""
-        self._current_frame_id = frame_id
-        self._current_frame_timestamp = frame_timestamp
+    def _capture_extra_fields(self) -> dict[str, np.ndarray]:
+        """Capture the camera pose, or NaNs if positional tracking is disabled."""
+        if not self.enable_positional_tracking:
+            return {"camera_pose": _NO_CAMERA_POSE}
+        return {"camera_pose": self._camera.retrieve_camera_pose()}
 
-        # Capture left and right images
-        self._current_rgb_left = self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.LEFT_RGB)
-        self._current_rgb_right = self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+    def _publish_side_streams(self, frame_id: int, frame_timestamp: float) -> None:
+        """Publish the point cloud (if enabled) and, every few frames, the spatial map (if enabled)."""
+        super()._publish_side_streams(frame_id, frame_timestamp)
 
-        # Capture depth data
-        self._current_depth_map = self._camera.retrieve_depth_map()
-        self._current_depth_image = self._camera.retrieve_depth_image()
-
-        # Capture camera pose if tracking is enabled
-        if self.enable_positional_tracking:
-            self._current_camera_pose = self._camera.retrieve_camera_pose()
-        else:
-            self._current_camera_pose = np.eye(4, dtype=np.float64)
-
-        # Capture point cloud if enabled
-        if self.enable_pointcloud:
-            point_cloud = self._camera.retrieve_colored_point_cloud()
-
-            # Handle sparse point clouds
-            self._pcd_pos_buf.fill(np.nan)
-            self._pcd_pos_buf[: point_cloud.points.shape[0]] = point_cloud.points
-
-            if point_cloud.colors is not None:
-                self._pcd_col_buf[: point_cloud.colors.shape[0]] = point_cloud.colors
-            else:
-                self._pcd_col_buf[: point_cloud.points.shape[0]] = 0  # Use black if no colors
-
-            self._current_pcd_num_points = point_cloud.points.shape[0]
-
-        # Capture spatial map if enabled and on refresh interval
-        self._current_spatial_map: ZedSpatialMap | None = None
-        if self.enable_spatial_mapping and frame_id % self.map_refresh_interval == 0:
+        if (
+            self.enable_spatial_mapping
+            and frame_id % self.map_refresh_interval == 0
+            and self._spatial_map_writer.has_subscribers
+        ):
             assert isinstance(self._camera, Zed)
             self._camera.request_spatial_map_update()
-            self._current_spatial_map = self._camera.retrieve_spatial_map()
+            spatial_map = self._camera.retrieve_spatial_map()
+            self._write_spatial_map(frame_id, frame_timestamp, spatial_map)
 
-    def _write_frame_data(self) -> None:
-        """Write Zed frame data, point cloud, and spatial map to shared memory."""
-        # Write main Zed frame
-        frame_data = ZedFrameBuffer(
-            frame_id=np.array([self._current_frame_id], dtype=np.uint64),
-            frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-            rgb=self._current_rgb_left,
-            rgb_right=self._current_rgb_right,
-            intrinsics=self._intrinsics_left,
-            intrinsics_right=self._intrinsics_right,
-            pose_right_in_left=self._pose_right_in_left,
-            depth=self._current_depth_map,
-            depth_image=self._current_depth_image,
-            camera_pose=self._current_camera_pose,
-        )
-        self._writer(frame_data)
+    def _write_spatial_map(self, frame_id: int, frame_timestamp: float, spatial_map: ZedSpatialMap) -> None:
+        """Stage *spatial_map* into the spatial map buffers and publish it."""
+        num_chunks = spatial_map.num_chunks
+        chunks_updated = spatial_map.chunks_updated
+        chunk_sizes = spatial_map.chunk_sizes
+        point_positions = spatial_map.full_pointcloud.points
+        point_colors = spatial_map.full_pointcloud.colors
 
-        # Write point cloud if enabled
-        if self.enable_pointcloud:
-            pcd_data = PointCloudBuffer(
-                frame_id=np.array([self._current_frame_id], dtype=np.uint64),
-                frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-                point_cloud_positions=self._pcd_pos_buf,
-                point_cloud_colors=self._pcd_col_buf,
-                point_cloud_valid=np.array([self._current_pcd_num_points], dtype=np.int32),
-            )
-            self._pcd_writer(pcd_data)
-
-        # Write spatial map if available
-        if self.enable_spatial_mapping and self._current_spatial_map is not None:
-            self._write_spatial_map()
-
-    def _write_spatial_map(self) -> None:
-        """Write spatial map data to shared memory."""
-        if self._current_spatial_map is None:
-            raise AssertionError("Spatial map data is not available for writing.")
-
-        num_chunks = self._current_spatial_map.num_chunks
-        chunks_updated = self._current_spatial_map.chunks_updated
-        chunk_sizes = self._current_spatial_map.chunk_sizes
-        point_positions = self._current_spatial_map.full_pointcloud.points
-        point_colors = self._current_spatial_map.full_pointcloud.colors
-        # Check if number of chunks exceeds maximum allowed
-        # For simplicity, just throw error for now. Could later be improved to only send partial map.
+        # For simplicity, just throw an error for now if the map exceeds the preallocated buffers.
+        # Could later be improved to only send a partial map.
         if num_chunks > self.max_spatial_map_chunks:
             raise RuntimeError(
                 f"Spatial map has {num_chunks} chunks, exceeding the maximum of {self.max_spatial_map_chunks}."
             )
-
-        # Check if number of points exceeds maximum allowed.
-        # For simplicity, just throw error for now. Could later be improved to only send partial map.
-        if self._current_spatial_map.size > self.max_spatial_map_points:
+        if spatial_map.size > self.max_spatial_map_points:
             raise RuntimeError(
-                f"Spatial map has {self._current_spatial_map.size} points, exceeding the maximum of {self.max_spatial_map_points}."
+                f"Spatial map has {spatial_map.size} points, exceeding the maximum of {self.max_spatial_map_points}."
             )
 
-        # Put data in buffers
-        self._spatial_map_chunks_updated[:num_chunks] = np.array(chunks_updated)
-        self._spatial_map_chunk_sizes[:num_chunks] = np.array(chunk_sizes)
-        self._spatial_map_point_positions[: self._current_spatial_map.size, :] = np.array(point_positions)
+        self._spatial_map_chunks_updated[:num_chunks] = chunks_updated
+        self._spatial_map_chunk_sizes[:num_chunks] = chunk_sizes
+        self._spatial_map_point_positions[: spatial_map.size, :] = point_positions
         if point_colors is not None:
-            self._spatial_map_point_colors[: self._current_spatial_map.size, :] = np.array(point_colors)
+            self._spatial_map_point_colors[: spatial_map.size, :] = point_colors
         else:
-            self._spatial_map_point_colors[: self._current_spatial_map.size, :] = 0
+            self._spatial_map_point_colors[: spatial_map.size, :] = 0
 
-        # Write spatial map buffer
-        spatial_map_data = SpatialMapBuffer(
-            frame_id=np.array([self._current_frame_id], dtype=np.uint64),
-            frame_timestamp=np.array([self._current_frame_timestamp], dtype=np.float64),
-            num_chunks=np.array([num_chunks], dtype=np.int32),
-            chunks_updated=self._spatial_map_chunks_updated,
-            chunk_sizes=self._spatial_map_chunk_sizes,
-            point_positions=self._spatial_map_point_positions,
-            point_colors=self._spatial_map_point_colors,
+        self._spatial_map_writer(
+            SpatialMapBuffer(
+                **self._header(frame_id, frame_timestamp),
+                num_chunks=np.array([num_chunks], dtype=np.int32),
+                chunks_updated=self._spatial_map_chunks_updated,
+                chunk_sizes=self._spatial_map_chunk_sizes,
+                point_positions=self._spatial_map_point_positions,
+                point_colors=self._spatial_map_point_colors,
+            )
         )
-        self._spatial_map_writer(spatial_map_data)
 
 
-class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
-    """Receives Zed camera data from shared memory."""
+class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
+    """Receives Zed camera data over Zenoh."""
+
+    _frame_type: ClassVar[type[StereoRGBDFrameBuffer]] = ZedFrameBuffer
 
     def __init__(
         self,
@@ -211,86 +134,47 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         enable_spatial_mapping: bool = False,
         max_spatial_map_chunks: int = 10000,
         max_spatial_map_points: int = 1000000,
+        timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
     ) -> None:
-        self.enable_pointcloud = enable_pointcloud
         self.enable_positional_tracking = enable_positional_tracking
         self.enable_spatial_mapping = enable_spatial_mapping
         self.max_spatial_map_chunks = max_spatial_map_chunks
         self.max_spatial_map_points = max_spatial_map_points
+        self._reader_spatial_map: ZenohReader[SpatialMapBuffer] | None = None
 
-        super().__init__(shared_memory_namespace)
+        super().__init__(shared_memory_namespace, enable_pointcloud=enable_pointcloud, timeout=timeout)
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         super()._setup_frame_reader(resolution)
 
-        if self.enable_pointcloud:
-            self._reader_pcd = SMReader(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_pcd",
-                idl_dataclass=PointCloudBuffer.template(resolution[0], resolution[1]),
-            )
-            self._last_pcd_frame = PointCloudBuffer.template(resolution[0], resolution[1])
-
         if self.enable_spatial_mapping:
-            self._reader_spatial_map = SMReader(
-                domain_participant=self._dp,
-                topic_name=f"{self._shared_memory_namespace}_spatial_map",
-                idl_dataclass=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
-            )
-            self._last_spatial_map_frame = SpatialMapBuffer.template(
-                self.max_spatial_map_chunks, self.max_spatial_map_points
+            self._reader_spatial_map = self._declare_reader(
+                f"{self._shared_memory_namespace}_spatial_map",
+                SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return Zed frame buffer template."""
-        return ZedFrameBuffer.template(width, height)
+    def grab_images(self) -> None:
+        """Read the latest frame, and the latest spatial map if enabled.
 
-    def retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
-        """Retrieve RGB image as integer array."""
-        if view == StereoRGBDCamera.LEFT_RGB:
-            return self._last_frame.rgb
-        else:
-            return self._last_frame.rgb_right
-
-    @property
-    def pose_of_right_view_in_left_view(self) -> HomogeneousMatrixType:
-        """Get the pose of the right camera in left camera frame."""
-        return self._last_frame.pose_right_in_left
-
-    def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> np.ndarray:
-        """Get camera intrinsics matrix."""
-        if view == StereoRGBDCamera.LEFT_RGB:
-            return self._last_frame.intrinsics
-        else:
-            return self._last_frame.intrinsics_right
-
-    def retrieve_depth_map(self) -> NumpyDepthMapType:
-        """Retrieve depth map from frame buffer."""
-        return self._last_frame.depth
-
-    def retrieve_depth_image(self) -> NumpyIntImageType:
-        """Retrieve depth image from frame buffer."""
-        return self._last_frame.depth_image
-
-    def retrieve_colored_point_cloud(self) -> PointCloud:
-        """Retrieve colored point cloud."""
-        if not self.enable_pointcloud:
-            raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
-        self._last_pcd_frame = self._reader_pcd()
-        num_points = self._last_pcd_frame.point_cloud_valid.item()
-        positions = self._last_pcd_frame.point_cloud_positions[:num_points]
-        colors = self._last_pcd_frame.point_cloud_colors[:num_points]
-        return PointCloud(positions, colors)
+        The spatial map is published on a separate key expression and only refreshed every few
+        frames, so it generally belongs to an earlier ``frame_id`` than the frame.
+        """
+        super().grab_images()
+        if self._reader_spatial_map is not None:
+            self._last_spatial_map_frame, _ = self._reader_spatial_map.read()
 
     def retrieve_camera_pose(self) -> np.ndarray:
         """Returns the 4x4 global pose matrix of the camera if tracking is enabled."""
         if not self.enable_positional_tracking:
             raise RuntimeError("Cannot retrieve camera pose when positional tracking is not enabled.")
-        return self._last_frame.camera_pose
+        camera_pose = self._last_frame.camera_pose
+        if np.isnan(camera_pose).any():
+            raise RuntimeError("The publisher has no positional tracking; create it with camera_tracking_params.")
+        return camera_pose
 
     def retrieve_spatial_map(self) -> ZedSpatialMap:
         """
-        Reconstructs the spatial map from the shared memory buffer.
+        Reconstructs the spatial map from the frame captured by the last grab_images().
 
         Returns:
             list[tuple[PointCloud, bool]]: A list of tuples, each containing a PointCloud object
@@ -299,41 +183,19 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         if not self.enable_spatial_mapping:
             raise RuntimeError("Cannot retrieve spatial map when it is not enabled.")
 
-        self._last_spatial_map_frame = self._reader_spatial_map()
-
-        # Get the last spatial map frame from shared memory
         buf = self._last_spatial_map_frame
-
-        # Get total chunks
         num_chunks = int(buf.num_chunks.item())
-
-        # If no chunks, return empty spatial map
-        if num_chunks == 0:
-            return ZedSpatialMap([], [])
-
-        current_offset = 0
-
-        chunks = []
-        chunks_updated = []
-
-        # Iterate through the chunks described in the shared memory
-        for i in range(num_chunks):
-            chunk_size = int(buf.chunk_sizes[i])
-            has_been_updated = bool(buf.chunks_updated[i])
-
-            # Slice the flattened arrays based on the current chunk size
-            # We use .copy() to decouple the PointCloud data from the shared memory buffer
-            positions = buf.point_positions[current_offset : current_offset + chunk_size].copy()
-            colors = buf.point_colors[current_offset : current_offset + chunk_size].copy()
-
-            # Reconstruct the ZedSpatialMap
-            chunks.append(PointCloud(positions, colors))
-            chunks_updated.append(has_been_updated)
-
-            # Increment offset for the next chunk
-            current_offset += chunk_size
-
-        return ZedSpatialMap(chunks, chunks_updated)
+        chunk_sizes = buf.chunk_sizes[:num_chunks]
+        # Split the concatenated points at the chunk boundaries. The copies decouple the chunks
+        # from the received payload.
+        boundaries = np.cumsum(chunk_sizes)[:-1]
+        num_points = int(chunk_sizes.sum())
+        positions = np.split(buf.point_positions[:num_points].copy(), boundaries)
+        colors = np.split(buf.point_colors[:num_points].copy(), boundaries)
+        chunks = [
+            PointCloud(chunk_positions, chunk_colors) for chunk_positions, chunk_colors in zip(positions, colors)
+        ]
+        return ZedSpatialMap(chunks, [bool(updated) for updated in buf.chunks_updated[:num_chunks]])
 
 
 if __name__ == "__main__":
@@ -379,126 +241,126 @@ if __name__ == "__main__":
     publisher.start()
 
     receiver = MultiprocessZedReceiver("camera", enable_positional_tracking=True, enable_spatial_mapping=True)
+    try:
+        # while not receiver.is_ready():
+        #     logger.warning("Waiting for receiver to be ready...")
+        #     time.sleep(1.0)
 
-    # while not receiver.is_ready():
-    #     logger.warning("Waiting for receiver to be ready...")
-    #     time.sleep(1.0)
-
-    receiver.grab_images()
-
-    with np.printoptions(precision=3, suppress=True):
-        print("Intrinsics left:\n", receiver.intrinsics_matrix())
-        print(
-            "Intrinsics right:\n",
-            receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB),
-        )
-        print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
-
-    cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("RGB Image Right", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
-    # cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
-
-    rr.init(f"{MultiprocessZedReceiver.__name__}")
-    rr.spawn(memory_limit="2GB")
-
-    # 1. Setup World Coordinate System (Z-Up)
-    rr.log("World", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-
-    rr.log(
-        "World/Camera/Pinhole",
-        rr.Pinhole(
-            resolution=[1280, 720],  # Arbitrary resolution for visualization
-            focal_length=700,  # Arbitrary FOV for visualization
-        ),
-        static=True,
-    )
-
-    log_point_cloud = False
-    log_spatial_map = True
-
-    time_current = None
-    time_previous = None
-
-    while True:
-        time_previous = time_current
-        time_current = time.time()
-
-        # Retrieve images and data from shared memory
         receiver.grab_images()
-        image = receiver.retrieve_rgb_image_as_int()
-        image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
-        depth_map = receiver.retrieve_depth_map()
-        depth_image = receiver.retrieve_depth_image()
-        # confidence_map = receiver.retrieve_confidence_map()
-        point_cloud = receiver.retrieve_colored_point_cloud()
 
-        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
-
-        spatial_map = receiver.retrieve_spatial_map()
-        pose_matrix = receiver.retrieve_camera_pose()
-
-        # Visualize images using OpenCV
-        cv2.imshow("RGB Image", image_bgr)
-        cv2.imshow("RGB Image Right", image_right_bgr)
-        cv2.imshow("Depth Map", depth_map)
-        cv2.imshow("Depth Image", depth_image)
-        # cv2.imshow("Confidence Map", confidence_map)
-
-        # If enabled, log point cloud to rerun
-        if log_point_cloud:
-            point_cloud.points[np.isnan(point_cloud.points)] = 0
-            if point_cloud.colors is not None:
-                point_cloud.colors[np.isnan(point_cloud.colors)] = 0
-            rr.log(
-                "World/point_cloud",
-                rr.Points3D(
-                    positions=camera_to_rerun(point_cloud.points),
-                    colors=point_cloud.colors,
-                ),
+        with np.printoptions(precision=3, suppress=True):
+            print("Intrinsics left:\n", receiver.intrinsics_matrix())
+            print(
+                "Intrinsics right:\n",
+                receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB),
             )
+            print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
 
-        # If enabled, log spatial map to rerun
-        if log_spatial_map:
-            full_pointcloud = spatial_map.full_pointcloud
-            rr.log(
-                "World/spatial_map",
-                rr.Points3D(
-                    positions=camera_to_rerun(full_pointcloud.points),
-                    colors=full_pointcloud.colors,
-                ),
-            )
+        cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("RGB Image Right", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
+        # cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
 
-        # Visualize camera pose in Rerun
+        rr.init(f"{MultiprocessZedReceiver.__name__}")
+        rr.spawn(memory_limit="2GB")
 
-        # Extract Translation (first 3 rows, 4th column)
-        translation = pose_matrix[:3, 3]
+        # 1. Setup World Coordinate System (Z-Up)
+        rr.log("World", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
-        # Extract Rotation Matrix (3x3 top-left)
-        rotation_mat = pose_matrix[:3, :3]
-
-        R_x_90 = np.array(
-            [
-                [1, 0, 0],
-                [0, 0, 1],
-                [0, -1, 0],
-            ],
-            dtype=float,
+        rr.log(
+            "World/Camera/Pinhole",
+            rr.Pinhole(
+                resolution=[1280, 720],  # Arbitrary resolution for visualization
+                focal_length=700,  # Arbitrary FOV for visualization
+            ),
+            static=True,
         )
 
-        rotation_mat = rotation_mat @ R_x_90
+        log_point_cloud = False
+        log_spatial_map = True
 
-        # Log the transform.
-        # This moves "World/Camera" (and its child "Pinhole") to the new location.
-        rr.log("World/Camera", rr.Transform3D(translation=translation, mat3x3=rotation_mat))
+        time_current = None
+        time_previous = None
 
-        key = cv2.waitKey(10)
-        if key == ord("q"):
-            break
-        elif key == ord("l"):
-            log_point_cloud = not log_point_cloud
+        while True:
+            time_previous = time_current
+            time_current = time.time()
 
-    publisher.stop()
-    publisher.join()
+            # Retrieve images and data from the last received frame
+            receiver.grab_images()
+            image = receiver.retrieve_rgb_image_as_int()
+            image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+            depth_map = receiver.retrieve_depth_map()
+            depth_image = receiver.retrieve_depth_image()
+            # confidence_map = receiver.retrieve_confidence_map()
+            point_cloud = receiver.retrieve_colored_point_cloud()
+
+            image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
+
+            spatial_map = receiver.retrieve_spatial_map()
+            pose_matrix = receiver.retrieve_camera_pose()
+
+            # Visualize images using OpenCV
+            cv2.imshow("RGB Image", image_bgr)
+            cv2.imshow("RGB Image Right", image_right_bgr)
+            cv2.imshow("Depth Map", depth_map)
+            cv2.imshow("Depth Image", depth_image)
+            # cv2.imshow("Confidence Map", confidence_map)
+
+            # If enabled, log point cloud to rerun
+            if log_point_cloud:
+                # Received arrays are read-only views, so replace NaNs in a copy. Colors are uint8 and cannot be NaN.
+                positions = np.nan_to_num(point_cloud.points)
+                rr.log(
+                    "World/point_cloud",
+                    rr.Points3D(
+                        positions=camera_to_rerun(positions),
+                        colors=point_cloud.colors,
+                    ),
+                )
+
+            # If enabled, log spatial map to rerun
+            if log_spatial_map:
+                full_pointcloud = spatial_map.full_pointcloud
+                rr.log(
+                    "World/spatial_map",
+                    rr.Points3D(
+                        positions=camera_to_rerun(full_pointcloud.points),
+                        colors=full_pointcloud.colors,
+                    ),
+                )
+
+            # Visualize camera pose in Rerun
+
+            # Extract Translation (first 3 rows, 4th column)
+            translation = pose_matrix[:3, 3]
+
+            # Extract Rotation Matrix (3x3 top-left)
+            rotation_mat = pose_matrix[:3, :3]
+
+            R_x_90 = np.array(
+                [
+                    [1, 0, 0],
+                    [0, 0, 1],
+                    [0, -1, 0],
+                ],
+                dtype=float,
+            )
+
+            rotation_mat = rotation_mat @ R_x_90
+
+            # Log the transform.
+            # This moves "World/Camera" (and its child "Pinhole") to the new location.
+            rr.log("World/Camera", rr.Transform3D(translation=translation, mat3x3=rotation_mat))
+
+            key = cv2.waitKey(10)
+            if key == ord("q"):
+                break
+            elif key == ord("l"):
+                log_point_cloud = not log_point_cloud
+    finally:
+        receiver.stop()
+        publisher.stop()
+        publisher.join()

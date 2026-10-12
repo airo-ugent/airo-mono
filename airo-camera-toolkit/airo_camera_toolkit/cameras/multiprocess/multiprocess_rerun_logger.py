@@ -36,7 +36,7 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         try:
             image_bgr = ImageConverter.from_numpy_format(image).image_in_opencv_format
         except (TypeError, IndexError) as e:
-            print(e)
+            logger.warning(f"Failed to convert image to OpenCV format: {e}. Continuing without logging.")
             return
         image_rgb = image_bgr[:, :, ::-1]
         if self._image_transform is not None:
@@ -51,11 +51,10 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         rr.init(self._rerun_application_id)
         rr.connect_grpc()
 
-        self._receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
-
-        while not self.shutdown_event.is_set():
-            self._receiver.grab_images()
-            self._log_rgb_image()
+        with MultiprocessRGBReceiver(self._shared_memory_namespace) as self._receiver:
+            while not self.shutdown_event.is_set():
+                self._receiver.grab_images()
+                self._log_rgb_image()
 
     def stop(self) -> None:
         self.shutdown_event.set()
@@ -97,12 +96,11 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         rerun.init(self._rerun_application_id)
         rerun.connect_grpc()
 
-        self._receiver = MultiprocessRGBDReceiver(self._shared_memory_namespace)
-
-        while not self.shutdown_event.is_set():
-            self._receiver.grab_images()
-            self._log_rgb_image()
-            self._log_depth_image()
+        with MultiprocessRGBDReceiver(self._shared_memory_namespace) as self._receiver:
+            while not self.shutdown_event.is_set():
+                self._receiver.grab_images()
+                self._log_rgb_image()
+                self._log_depth_image()
 
     def stop(self) -> None:
         self.shutdown_event.set()
