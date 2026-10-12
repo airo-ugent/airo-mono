@@ -5,7 +5,7 @@ import setuptools
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo_spatial_algebra",
-    version="2026.10.1",
+    version="2026.10.2",
     description="Code for working with SE3 poses, transforms... for robotic manipulation at the Ghent University AI and Robotics Lab",
     long_description=(pathlib.Path(__file__).parent / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",

@@ -7,6 +7,10 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+## 2026.10.2
+
+Released: 2026-10-12
+
 ## 2026.10.1
 
 Released: 2026-10-12

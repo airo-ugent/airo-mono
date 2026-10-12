@@ -4,7 +4,7 @@ import setuptools
 
 setuptools.setup(
     name="airo_typing",
-    version="2026.10.1",
+    version="2026.10.2",
     description="Python type definitions for use in the python packages at the Ghent University AI and Robotics Lab",
     long_description=(pathlib.Path(__file__).parent / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
