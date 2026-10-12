@@ -63,7 +63,6 @@ def _metadata(**streams: FrameLayout) -> PublisherMetadata:
         resolution=(W, H),
         fps=30.0,
         streams={key_expr: layout.describe() for key_expr, layout in streams.items()},
-        config={"positional_tracking": True},
     )
 
 

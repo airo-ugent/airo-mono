@@ -156,17 +156,14 @@ class PublisherMetadata:
     """Static information a publisher announces alongside its frames.
 
     Besides the camera's resolution and fps, it describes the wire format of every key expression
-    the publisher writes to, and the publisher's options that do not show in the wire format, so a
-    receiver configured differently from its publisher fails with a clear error up front instead
-    of timing out, failing on every frame, or reading placeholder data.
+    the publisher writes to, so a receiver configured differently from its publisher fails with a
+    clear error up front instead of timing out or failing on every frame.
     """
 
     resolution: tuple[int, int]
     fps: float
     # Key expression -> FrameLayout.describe() of the frames published on it.
     streams: dict[str, list[list[Any]]]
-    # Publisher options, e.g. whether positional tracking is enabled.
-    config: dict[str, Any]
 
     def to_json(self) -> str:
         return json.dumps(dataclasses.asdict(self))
@@ -178,7 +175,6 @@ class PublisherMetadata:
             resolution=(int(fields["resolution"][0]), int(fields["resolution"][1])),
             fps=float(fields["fps"]),
             streams=fields["streams"],
-            config=fields["config"],
         )
 
     def check_stream(self, key_expr: str, layout: FrameLayout[Any]) -> None:

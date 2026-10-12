@@ -2,7 +2,7 @@
 
 import multiprocessing
 import time
-from typing import Any, ClassVar
+from typing import ClassVar
 
 import loguru
 import numpy as np
@@ -17,6 +17,9 @@ from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_typing import CameraResolutionType, PointCloud
 
 logger = loguru.logger
+
+# Published as the camera pose when positional tracking is disabled, so receivers cannot mistake it for a pose.
+_NO_CAMERA_POSE = np.full((4, 4), np.nan)
 
 
 class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
@@ -60,11 +63,10 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             )
 
     def _capture_extra_fields(self) -> dict[str, np.ndarray]:
-        """Capture the camera pose (identity if positional tracking is disabled)."""
-        camera_pose = (
-            self._camera.retrieve_camera_pose() if self.enable_positional_tracking else np.eye(4, dtype=np.float64)
-        )
-        return {"camera_pose": camera_pose}
+        """Capture the camera pose, or NaNs if positional tracking is disabled."""
+        if not self.enable_positional_tracking:
+            return {"camera_pose": _NO_CAMERA_POSE}
+        return {"camera_pose": self._camera.retrieve_camera_pose()}
 
     def _publish_side_streams(self, frame_id: int, frame_timestamp: float) -> None:
         """Publish the point cloud (if enabled) and, every few frames, the spatial map (if enabled)."""
@@ -118,9 +120,6 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             )
         )
 
-    def _publisher_config(self) -> dict[str, Any]:
-        return {**super()._publisher_config(), "positional_tracking": self.enable_positional_tracking}
-
 
 class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
     """Receives Zed camera data over Zenoh."""
@@ -146,13 +145,6 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
         super().__init__(shared_memory_namespace, enable_pointcloud=enable_pointcloud, timeout=timeout)
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
-        # The camera pose is part of every frame, so a mismatch would not show in the wire format:
-        # without tracking, the publisher fills in an identity pose.
-        if self.enable_positional_tracking and not self._metadata.config.get("positional_tracking", False):
-            raise ValueError(
-                "enable_positional_tracking is set, but the publisher was not created with camera_tracking_params."
-            )
-
         super()._setup_frame_reader(resolution)
 
         if self.enable_spatial_mapping:
@@ -175,7 +167,10 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
         """Returns the 4x4 global pose matrix of the camera if tracking is enabled."""
         if not self.enable_positional_tracking:
             raise RuntimeError("Cannot retrieve camera pose when positional tracking is not enabled.")
-        return self._last_frame.camera_pose
+        camera_pose = self._last_frame.camera_pose
+        if np.isnan(camera_pose).any():
+            raise RuntimeError("The publisher has no positional tracking; create it with camera_tracking_params.")
+        return camera_pose
 
     def retrieve_spatial_map(self) -> ZedSpatialMap:
         """

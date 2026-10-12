@@ -156,13 +156,6 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         Side streams let receivers that do not need the data skip receiving it.
         """
 
-    def _publisher_config(self) -> dict[str, Any]:
-        """Publisher options that receivers must agree with but that do not show in the wire format.
-
-        Subclasses with such options should override this and extend ``super()._publisher_config()``.
-        """
-        return {}
-
     @staticmethod
     def _header(frame_id: int, frame_timestamp: float) -> dict:
         """Build the ``frame_id``/``frame_timestamp`` keyword arguments shared by every frame buffer.
@@ -196,7 +189,6 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
                 resolution=(self._camera.resolution[0], self._camera.resolution[1]),
                 fps=float(self._camera.fps),
                 streams={key_expr: writer.layout.describe() for key_expr, writer in self._writers.items()},
-                config=self._publisher_config(),
             ).to_json()
             logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
 
