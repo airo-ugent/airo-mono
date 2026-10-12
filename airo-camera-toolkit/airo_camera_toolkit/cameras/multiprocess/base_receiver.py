@@ -6,7 +6,7 @@ from typing import Any, Self
 
 import zenoh
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import _make_zenoh_config
-from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, ResolutionIdl
+from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, FrameLayout, ResolutionIdl
 from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT, ZenohReader
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_typing import CameraResolutionType
@@ -26,7 +26,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
     ``grab_images()`` stay valid, since each frame keeps its own payload alive.
 
     Subclasses should implement:
-    - _get_frame_buffer_template(): Return the appropriate frame buffer template
+    - _get_frame_layout(): Return the layout of the frame buffer this camera type publishes
     """
 
     def __init__(
@@ -53,7 +53,9 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self._shared_memory_namespace = shared_memory_namespace
         self._block_until_new_frame = block_until_new_frame
         self._timeout = timeout
-        self._reader: ZenohReader | None = None
+        self._reader: ZenohReader[Any] | None = None
+        # The frame read by the last grab_images(); the constructor grabs the first one.
+        self._last_frame: Any = None
         self._stopped = False
 
         self._connect()
@@ -102,32 +104,20 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         """Set up the main frame data reader."""
-        frame_buffer_template = self._get_frame_buffer_template(resolution[0], resolution[1])
-
         self._reader = ZenohReader(
             session=self._session,
             key_expr=self._shared_memory_namespace,
-            template=frame_buffer_template,
+            layout=self._get_frame_layout(resolution[0], resolution[1]),
             timeout=self._timeout,
         )
-
-        # Initialize an empty frame
-        self._last_frame = frame_buffer_template
         # Message count of the frame in self._last_frame; 0 means "nothing read yet".
         self._consumed_count = 0
-
-        if self._block_until_new_frame:
-            # If blocking is enabled, the frame_buffer_template must have a timestamp
-            if not hasattr(frame_buffer_template, "frame_timestamp"):
-                raise ValueError(
-                    "Blocking until new frame is enabled, but frame buffer template has no 'frame_timestamp'"
-                )
 
     def _read_fps(self, shared_memory_namespace: str) -> int:
         """Read the camera FPS published by the publisher."""
         logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
         fps_reader = ZenohReader(
-            self._session, f"{shared_memory_namespace}_fps", FpsIdl.template(), timeout=self._timeout
+            self._session, f"{shared_memory_namespace}_fps", FpsIdl.layout(), timeout=self._timeout
         )
         fps_data = fps_reader()
         fps_reader.stop()
@@ -140,7 +130,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Read the camera resolution published by the publisher."""
         logger.info(f"Reading resolution from {shared_memory_namespace}_resolution")
         resolution_reader = ZenohReader(
-            self._session, f"{shared_memory_namespace}_resolution", ResolutionIdl.template(), timeout=self._timeout
+            self._session, f"{shared_memory_namespace}_resolution", ResolutionIdl.layout(), timeout=self._timeout
         )
         resolution_data = resolution_reader()
         resolution_reader.stop()
@@ -223,13 +213,13 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self.stop()
 
     @abstractmethod
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return the frame buffer template for this camera type.
+    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
+        """Return the frame buffer layout for this camera type.
 
         Args:
             width: Image width
             height: Image height
 
         Returns:
-            Frame buffer template instance
+            The frame buffer layout
         """

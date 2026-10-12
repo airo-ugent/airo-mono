@@ -43,7 +43,7 @@ except TimeoutError:
 ```
 
 `reconnect()` closes the Zenoh session and opens a new one, so it re-runs peer discovery and drops the shared memory mappings of the previous publisher.
-It also re-reads the resolution and fps, which matters because the frame buffer template is derived from the resolution: frames from a publisher that came back at a different resolution do not match the old template and are rejected.
+It also re-reads the resolution and fps, which matters because the frame buffer layout is derived from the resolution: frames from a publisher that came back at a different resolution do not match the old layout and are rejected.
 Arrays retrieved before the call keep pointing at their own payload and stay valid.
 
 A receiver that is only stopped (not reconnected) raises `RuntimeError` from `grab_images()`; call `reconnect()` to use it again.

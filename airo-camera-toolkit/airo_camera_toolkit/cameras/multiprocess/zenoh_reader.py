@@ -2,10 +2,10 @@
 
 import threading
 import time
-from typing import Any, Tuple
+from typing import Generic
 
 import zenoh
-from airo_camera_toolkit.cameras.multiprocess.frame_data import deserialize_frame
+from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout
 from loguru import logger
 
 # Default time to wait for the first message before giving up.  Waiting forever
@@ -18,7 +18,7 @@ class WaitingForFirstMessageException(Exception):
     """Raised when no data has been received yet."""
 
 
-class ZenohReader:
+class ZenohReader(Generic[Frame]):
     """Subscribes to a Zenoh key expression and deserializes the latest frame.
 
     The subscriber callback runs in a Zenoh-managed background thread and only
@@ -38,7 +38,7 @@ class ZenohReader:
     Args:
         session: An open :class:`zenoh.Session`.
         key_expr: Zenoh key expression to subscribe to.
-        template: A template instance (from ``FrameBuffer.template()``) that
+        layout: The frame layout (e.g. from ``RGBFrameBuffer.layout()``) that
             defines the expected field shapes and dtypes used for
             deserialization.
         timeout: Maximum seconds to wait for the first message.  ``None``
@@ -51,11 +51,11 @@ class ZenohReader:
         self,
         session: zenoh.Session,
         key_expr: str,
-        template: Any,
+        layout: FrameLayout[Frame],
         timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
         warn_every: int = 10,
     ) -> None:
-        self._template = template
+        self._layout = layout
         self._latest_payload: zenoh.ZBytes | None = None
         # (frame count, bytes) of the payload last copied out by read(), so reading
         # the same message again does not copy it again.
@@ -119,7 +119,7 @@ class ZenohReader:
     # ------------------------------------------------------------------
     # Public API
 
-    def read(self) -> Tuple[Any, int]:
+    def read(self) -> tuple[Frame, int]:
         """Return the latest frame together with the message count it belongs to.
 
         The count is sampled under the same lock as the payload, so callers can
@@ -145,9 +145,9 @@ class ZenohReader:
         else:
             data = payload.to_bytes()
             self._read_cache = (count, data)
-        return deserialize_frame(self._template, data), count
+        return self._layout.deserialize(data), count
 
-    def __call__(self) -> Any:
+    def __call__(self) -> Frame:
         """Return the most recently received frame, deserialized from bytes.
 
         Raises:

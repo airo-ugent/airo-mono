@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 import zenoh
-from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, ResolutionIdl
+from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, FrameLayout, ResolutionIdl
 from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.interfaces import RGBCamera
 from loguru import logger
@@ -104,7 +104,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
     shared memory transport if enabled (see ``AIRO_ZENOH_SHM``).
 
     Subclasses should implement:
-    - _get_frame_buffer_template(): Return the appropriate frame buffer template
+    - _get_frame_layout(): Return the layout of the frame buffer this camera type publishes
     - _capture_frame(): Retrieve all data for a single frame and return it as a frame buffer,
       which ``run()`` then publishes
     """
@@ -142,11 +142,11 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         self._resolution_writer = ZenohWriter(
             self._session,
             f"{self._shared_memory_namespace}_resolution",
-            ResolutionIdl.template(),
+            ResolutionIdl.layout(),
             shm=self._shm_enabled,
         )
         self._fps_writer = ZenohWriter(
-            self._session, f"{self._shared_memory_namespace}_fps", FpsIdl.template(), shm=self._shm_enabled
+            self._session, f"{self._shared_memory_namespace}_fps", FpsIdl.layout(), shm=self._shm_enabled
         )
 
         # Instantiate the camera
@@ -163,12 +163,10 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
     def _setup_frame_writer(self) -> None:
         """Set up the main frame data writer."""
-        frame_buffer_template = self._get_frame_buffer_template(self._camera.resolution[0], self._camera.resolution[1])
-
         self._writer = ZenohWriter(
             session=self._session,
             key_expr=self._shared_memory_namespace,
-            template=frame_buffer_template,
+            layout=self._get_frame_layout(self._camera.resolution[0], self._camera.resolution[1]),
             shm=self._shm_enabled,
         )
 
@@ -254,15 +252,15 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             logger.info(f"{self.__class__.__name__} process terminated.")
 
     @abstractmethod
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return the frame buffer template for this camera type.
+    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
+        """Return the frame buffer layout for this camera type.
 
         Args:
             width: Image width
             height: Image height
 
         Returns:
-            Frame buffer template instance
+            The frame buffer layout
         """
 
     @abstractmethod

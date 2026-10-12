@@ -1,9 +1,9 @@
 """Zenoh-based writer for inter-process frame buffer communication."""
 
-from typing import Any
+from typing import Any, Generic
 
 import zenoh
-from airo_camera_toolkit.cameras.multiprocess.frame_data import frame_field_specs, validate_frame
+from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout
 from loguru import logger
 
 # Upper bound on the shared memory pool of a single writer.  The number of
@@ -37,7 +37,7 @@ def _pool_size(frame_size: int, max_pool_bytes: int = _MAX_POOL_BYTES) -> int:
     return max((pool_frames + 1) * frame_size, _MIN_POOL_BYTES)
 
 
-class ZenohWriter:
+class ZenohWriter(Generic[Frame]):
     """Publishes frame buffer dataclass instances over a Zenoh key expression.
 
     By default, each frame is allocated from a :class:`zenoh.shm.ShmProvider`
@@ -56,9 +56,8 @@ class ZenohWriter:
     Args:
         session: An open :class:`zenoh.Session`.
         key_expr: Zenoh key expression (topic name) to publish on.
-        template: A template instance (from ``FrameBuffer.template()``) whose
-            field layout defines the wire format and the SHM pool allocation
-            size.
+        layout: The frame layout (e.g. from ``RGBFrameBuffer.layout()``) that
+            defines the wire format and the SHM pool allocation size.
         shm: Whether to use the SHM provider (see ``AIRO_ZENOH_SHM``, disabled
             by default). The provider ``mlock()``s its pool, which requires
             the process's ``ulimit -l`` to accommodate the frame pool size;
@@ -70,10 +69,9 @@ class ZenohWriter:
             allocated, most commonly because ``ulimit -l`` is too small.
     """
 
-    def __init__(self, session: zenoh.Session, key_expr: str, template: Any, shm: bool = True) -> None:
-        self._template = template
-        self._field_specs = frame_field_specs(template)
-        self._frame_size = sum(nbytes for _, _, _, nbytes in self._field_specs)
+    def __init__(self, session: zenoh.Session, key_expr: str, layout: FrameLayout[Frame], shm: bool = True) -> None:
+        self._layout = layout
+        self._frame_size = layout.nbytes
         self._shm = shm
         self._provider = self._create_shm_provider(key_expr, _pool_size(self._frame_size)) if shm else None
         self._publisher = session.declare_publisher(
@@ -103,14 +101,7 @@ class ZenohWriter:
                 "AIRO_ZENOH_SHM unset/0 to use the non-SHM transport instead."
             ) from e
 
-    def _write_fields(self, msg: Any, buf: Any) -> None:
-        """Copy every field of *msg* into *buf*, field-by-field."""
-        offset = 0
-        for name, _, _, nbytes in self._field_specs:
-            buf[offset : offset + nbytes] = getattr(msg, name).tobytes()
-            offset += nbytes
-
-    def __call__(self, msg: Any) -> None:
+    def __call__(self, msg: Frame) -> None:
         """Serialize *msg* into a buffer and publish it.
 
         Each numpy field is copied directly from the field's memory into the
@@ -118,24 +109,24 @@ class ZenohWriter:
         operations.
 
         Args:
-            msg: A frame buffer dataclass instance (same type as the template).
+            msg: A frame buffer dataclass instance (of the layout's frame type).
 
         Raises:
-            TypeError: If *msg* is not of the template's type or has a
+            TypeError: If *msg* is not of the layout's frame type or has a
                 non-array field.
-            ValueError: If a field's dtype or shape differs from the template.
+            ValueError: If a field's dtype or shape differs from the layout.
                 The wire format is a bare byte concatenation, so publishing
                 such a frame would silently corrupt it for every receiver.
         """
         # Validate before allocating: the receiver has no way to detect a field
-        # whose dtype or shape drifted from the template.
-        validate_frame(self._template, msg)
+        # whose dtype or shape drifted from the layout.
+        self._layout.validate(msg)
 
         buf: Any
 
         if not self._shm:
             buf = bytearray(self._frame_size)
-            self._write_fields(msg, buf)
+            self._layout.write_into(msg, buf)
             self._publisher.put(zenoh.ZBytes(bytes(buf)))
             return
 
@@ -149,7 +140,7 @@ class ZenohWriter:
         # the buffer is written completely.  That matters because buffers come
         # from a recycled pool: an unfilled tail would publish bytes left behind
         # by an earlier frame.
-        self._write_fields(msg, buf)
+        self._layout.write_into(msg, buf)
         self._publisher.put(zenoh.ZBytes(buf))
 
     def stop(self) -> None:

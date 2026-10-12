@@ -6,7 +6,11 @@ from typing import Any
 
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
-from airo_camera_toolkit.cameras.multiprocess.frame_data import RGBDFrameBuffer, RGBDFrameBufferWithPointCloud
+from airo_camera_toolkit.cameras.multiprocess.frame_data import (
+    FrameLayout,
+    RGBDFrameBuffer,
+    RGBDFrameBufferWithPointCloud,
+)
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.cameras.multiprocess.pointcloud_buffer import (
     allocate_pointcloud_buffers,
@@ -32,12 +36,12 @@ class MultiprocessRGBDPublisher(BaseCameraPublisher):
         self.enable_pointcloud = enable_pointcloud
         super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
 
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return RGBD frame buffer template."""
+    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
+        """Return RGBD frame buffer layout."""
         if self.enable_pointcloud:
-            return RGBDFrameBufferWithPointCloud.template(width, height)
+            return RGBDFrameBufferWithPointCloud.layout(width, height)
         else:
-            return RGBDFrameBuffer.template(width, height)
+            return RGBDFrameBuffer.layout(width, height)
 
     def _setup(self) -> None:
         """Set up camera and prepare point cloud buffers if needed."""
@@ -88,12 +92,12 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
         self.enable_pointcloud = enable_pointcloud
         super().__init__(shared_memory_namespace, timeout=timeout)
 
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return RGBD frame buffer template."""
+    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
+        """Return RGBD frame buffer layout."""
         if self.enable_pointcloud:
-            return RGBDFrameBufferWithPointCloud.template(width, height)
+            return RGBDFrameBufferWithPointCloud.layout(width, height)
         else:
-            return RGBDFrameBuffer.template(width, height)
+            return RGBDFrameBuffer.layout(width, height)
 
     def retrieve_depth_map(self) -> NumpyDepthMapType:
         return self._last_frame.depth

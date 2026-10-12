@@ -6,7 +6,12 @@ from typing import Any
 
 import loguru
 import numpy as np
-from airo_camera_toolkit.cameras.multiprocess.frame_data import PointCloudBuffer, SpatialMapBuffer, ZedFrameBuffer
+from airo_camera_toolkit.cameras.multiprocess.frame_data import (
+    FrameLayout,
+    PointCloudBuffer,
+    SpatialMapBuffer,
+    ZedFrameBuffer,
+)
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera import (
     MultiprocessStereoRGBDPublisher,
     MultiprocessStereoRGBDReceiver,
@@ -46,9 +51,9 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
         self.map_refresh_interval = map_refresh_interval
         super().__init__(camera_cls, camera_kwargs, shared_memory_namespace, enable_pointcloud=enable_pointcloud)
 
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return Zed frame buffer template."""
-        return ZedFrameBuffer.template(width, height)
+    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
+        """Return Zed frame buffer layout."""
+        return ZedFrameBuffer.layout(width, height)
 
     def _setup(self) -> None:
         """Set up the inherited stereo RGB-D state, then the Zed-specific point cloud and spatial map writers."""
@@ -62,7 +67,7 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             self._pcd_writer = ZenohWriter(
                 session=self._session,
                 key_expr=f"{self._shared_memory_namespace}_pcd",
-                template=PointCloudBuffer.template(*self._camera.resolution),
+                layout=PointCloudBuffer.layout(*self._camera.resolution),
                 shm=self._shm_enabled,
             )
 
@@ -74,7 +79,7 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             self._spatial_map_writer = ZenohWriter(
                 session=self._session,
                 key_expr=f"{self._shared_memory_namespace}_spatial_map",
-                template=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+                layout=SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
                 shm=self._shm_enabled,
             )
 
@@ -181,25 +186,21 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
             self._reader_pcd = ZenohReader(
                 session=self._session,
                 key_expr=f"{self._shared_memory_namespace}_pcd",
-                template=PointCloudBuffer.template(resolution[0], resolution[1]),
+                layout=PointCloudBuffer.layout(resolution[0], resolution[1]),
                 timeout=self._timeout,
             )
-            self._last_pcd_frame = PointCloudBuffer.template(resolution[0], resolution[1])
 
         if self.enable_spatial_mapping:
             self._reader_spatial_map = ZenohReader(
                 session=self._session,
                 key_expr=f"{self._shared_memory_namespace}_spatial_map",
-                template=SpatialMapBuffer.template(self.max_spatial_map_chunks, self.max_spatial_map_points),
+                layout=SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
                 timeout=self._timeout,
             )
-            self._last_spatial_map_frame = SpatialMapBuffer.template(
-                self.max_spatial_map_chunks, self.max_spatial_map_points
-            )
 
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return Zed frame buffer template."""
-        return ZedFrameBuffer.template(width, height)
+    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
+        """Return Zed frame buffer layout."""
+        return ZedFrameBuffer.layout(width, height)
 
     def grab_images(self) -> None:
         """Read the latest main frame, and the latest point cloud / spatial map if enabled.

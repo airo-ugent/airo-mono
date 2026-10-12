@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from airo_camera_toolkit.cameras.multiprocess.frame_data import (
     FpsIdl,
+    FrameLayout,
     PointCloudBuffer,
     ResolutionIdl,
     RGBDFrameBuffer,
@@ -17,25 +18,26 @@ from airo_camera_toolkit.cameras.multiprocess.frame_data import (
     StereoRGBDFrameBuffer,
     StereoRGBDFrameBufferWithPointCloud,
     ZedFrameBuffer,
-    deserialize_frame,
-    validate_frame,
 )
 
 W, H = 64, 48  # small resolution for fast tests
 
 
-def serialize_frame(obj: Any, template: Any = None) -> bytes:
-    """Reference (non-production) serializer used to build test payloads for deserialize_frame.
+def serialize_frame(layout: FrameLayout, obj: Any) -> bytes:
+    """Serialize *obj* with the production code path that ZenohWriter uses."""
+    layout.validate(obj)
+    buf = bytearray(layout.nbytes)
+    layout.write_into(obj, buf)
+    return bytes(buf)
 
-    Concatenates all numpy fields in dataclass field declaration order, mirroring the wire
-    format that ZenohWriter produces (by writing each field directly into an SHM buffer instead).
-    """
-    if template is not None:
-        validate_frame(template, obj)
-    parts = [getattr(obj, f.name).ravel().view(np.uint8) for f in dataclasses.fields(obj)]
-    flat = np.empty(sum(p.nbytes for p in parts), dtype=np.uint8)
-    np.concatenate(parts, out=flat)
-    return bytes(flat)
+
+def _round_trip(layout: FrameLayout, obj: Any) -> Any:
+    return layout.deserialize(serialize_frame(layout, obj))
+
+
+def _raw_concat(obj: Any) -> bytes:
+    """Concatenate the fields of *obj* without validation, to simulate a misbehaving publisher."""
+    return b"".join(getattr(obj, f.name).tobytes() for f in dataclasses.fields(obj))
 
 
 def _assert_frame_equal(a, b) -> None:
@@ -50,13 +52,13 @@ def _assert_frame_equal(a, b) -> None:
 
 def test_fps_idl_round_trip():
     obj = FpsIdl(fps=np.array([42.0], dtype=np.float64))
-    result = deserialize_frame(FpsIdl.template(), serialize_frame(obj))
+    result = _round_trip(FpsIdl.layout(), obj)
     assert result.fps.item() == pytest.approx(42.0)
 
 
 def test_resolution_idl_round_trip():
     obj = ResolutionIdl(resolution=np.array([1920, 1080], dtype=np.int32))
-    result = deserialize_frame(ResolutionIdl.template(), serialize_frame(obj))
+    result = _round_trip(ResolutionIdl.layout(), obj)
     np.testing.assert_array_equal(result.resolution, [1920, 1080])
 
 
@@ -74,7 +76,7 @@ def test_rgb_frame_buffer_round_trip():
         rgb=rgb,
         intrinsics=intrinsics,
     )
-    result = deserialize_frame(RGBFrameBuffer.template(W, H), serialize_frame(obj))
+    result = _round_trip(RGBFrameBuffer.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -87,7 +89,7 @@ def test_rgbd_frame_buffer_round_trip():
         depth_image=np.zeros((H, W, 3), dtype=np.uint8),
         depth=np.ones((H, W), dtype=np.float32) * 2.5,
     )
-    result = deserialize_frame(RGBDFrameBuffer.template(W, H), serialize_frame(obj))
+    result = _round_trip(RGBDFrameBuffer.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -104,7 +106,7 @@ def test_rgbd_frame_buffer_with_pointcloud_round_trip():
         point_cloud_colors=np.zeros((n, 3), dtype=np.uint8),
         num_valid_points=np.array([n // 2], dtype=np.int32),
     )
-    result = deserialize_frame(RGBDFrameBufferWithPointCloud.template(W, H), serialize_frame(obj))
+    result = _round_trip(RGBDFrameBufferWithPointCloud.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -120,7 +122,7 @@ def test_stereo_rgbd_frame_buffer_round_trip():
         intrinsics_right=np.eye(3, dtype=np.float64) * 2.0,
         pose_right_in_left=np.eye(4, dtype=np.float64),
     )
-    result = deserialize_frame(StereoRGBDFrameBuffer.template(W, H), serialize_frame(obj))
+    result = _round_trip(StereoRGBDFrameBuffer.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -140,7 +142,7 @@ def test_stereo_rgbd_frame_buffer_with_pointcloud_round_trip():
         point_cloud_colors=np.zeros((n, 3), dtype=np.uint8),
         num_valid_points=np.array([n], dtype=np.int32),
     )
-    result = deserialize_frame(StereoRGBDFrameBufferWithPointCloud.template(W, H), serialize_frame(obj))
+    result = _round_trip(StereoRGBDFrameBufferWithPointCloud.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -157,7 +159,7 @@ def test_zed_frame_buffer_round_trip():
         pose_right_in_left=np.eye(4, dtype=np.float64),
         camera_pose=np.eye(4, dtype=np.float64),
     )
-    result = deserialize_frame(ZedFrameBuffer.template(W, H), serialize_frame(obj))
+    result = _round_trip(ZedFrameBuffer.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -170,7 +172,7 @@ def test_point_cloud_buffer_round_trip():
         point_cloud_colors=np.zeros((n, 3), dtype=np.uint8),
         point_cloud_valid=np.array([n // 2], dtype=np.int32),
     )
-    result = deserialize_frame(PointCloudBuffer.template(W, H), serialize_frame(obj))
+    result = _round_trip(PointCloudBuffer.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -185,7 +187,7 @@ def test_spatial_map_buffer_round_trip():
         point_positions=np.random.rand(max_points, 3).astype(np.float32),
         point_colors=np.zeros((max_points, 3), dtype=np.uint8),
     )
-    result = deserialize_frame(SpatialMapBuffer.template(max_chunks, max_points), serialize_frame(obj))
+    result = _round_trip(SpatialMapBuffer.layout(max_chunks, max_points), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -196,8 +198,8 @@ def test_spatial_map_buffer_round_trip():
 
 def test_deserialized_arrays_are_read_only_views():
     obj = FpsIdl(fps=np.array([30.0], dtype=np.float64))
-    data = serialize_frame(obj)
-    result = deserialize_frame(FpsIdl.template(), data)
+    data = serialize_frame(FpsIdl.layout(), obj)
+    result = FpsIdl.layout().deserialize(data)
 
     assert not result.fps.flags.writeable
     with pytest.raises(ValueError):
@@ -206,7 +208,7 @@ def test_deserialized_arrays_are_read_only_views():
     # A copy is writable and independent of the payload.
     writable = result.fps.copy()
     writable[0] = 99.0
-    assert deserialize_frame(FpsIdl.template(), data).fps.item() == pytest.approx(30.0)
+    assert FpsIdl.layout().deserialize(data).fps.item() == pytest.approx(30.0)
 
 
 def test_deserialized_arrays_do_not_copy_the_payload():
@@ -218,8 +220,8 @@ def test_deserialized_arrays_do_not_copy_the_payload():
         rgb=rgb,
         intrinsics=np.eye(3, dtype=np.float64),
     )
-    data = serialize_frame(obj, RGBFrameBuffer.template(W, H))
-    result = deserialize_frame(RGBFrameBuffer.template(W, H), data)
+    data = serialize_frame(RGBFrameBuffer.layout(W, H), obj)
+    result = RGBFrameBuffer.layout(W, H).deserialize(data)
 
     def root_buffer(arr):
         """Follow the view chain (reshape adds one level) to the object owning the memory."""
@@ -237,7 +239,7 @@ def test_deserialized_views_outlive_the_local_payload_reference():
 
     def make():
         obj = FpsIdl(fps=np.array([30.0], dtype=np.float64))
-        return deserialize_frame(FpsIdl.template(), serialize_frame(obj))
+        return _round_trip(FpsIdl.layout(), obj)
 
     result = make()
     gc.collect()
@@ -245,7 +247,7 @@ def test_deserialized_views_outlive_the_local_payload_reference():
 
 
 # ---------------------------------------------------------------------------
-# Schema validation: a field whose dtype or shape drifted from the template
+# Schema validation: a field whose dtype or shape drifted from the layout
 # would silently shift every field after it on the wire.
 # ---------------------------------------------------------------------------
 
@@ -262,39 +264,45 @@ def _valid_rgbd_frame():
 
 
 def test_validate_frame_accepts_matching_frame():
-    validate_frame(RGBDFrameBuffer.template(W, H), _valid_rgbd_frame())
+    RGBDFrameBuffer.layout(W, H).validate(_valid_rgbd_frame())
 
 
 def test_validate_frame_rejects_wrong_dtype():
     obj = _valid_rgbd_frame()
     obj.depth = obj.depth.astype(np.float64)
     with pytest.raises(ValueError, match="depth"):
-        validate_frame(RGBDFrameBuffer.template(W, H), obj)
+        RGBDFrameBuffer.layout(W, H).validate(obj)
 
 
 def test_validate_frame_rejects_wrong_shape():
     obj = _valid_rgbd_frame()
     obj.rgb = np.zeros((H, W, 4), dtype=np.uint8)
     with pytest.raises(ValueError, match="rgb"):
-        validate_frame(RGBDFrameBuffer.template(W, H), obj)
+        RGBDFrameBuffer.layout(W, H).validate(obj)
 
 
 def test_validate_frame_rejects_wrong_type():
     with pytest.raises(TypeError):
-        validate_frame(RGBDFrameBuffer.template(W, H), FpsIdl(fps=np.array([1.0])))
-
-
-def test_serialize_frame_validates_against_template():
-    obj = _valid_rgbd_frame()
-    obj.depth = obj.depth.astype(np.float64)
-    with pytest.raises(ValueError, match="depth"):
-        serialize_frame(obj, RGBDFrameBuffer.template(W, H))
+        RGBDFrameBuffer.layout(W, H).validate(FpsIdl(fps=np.array([1.0])))
 
 
 def test_deserialize_frame_rejects_wrong_length():
     """A dtype mismatch used to deserialize silently, corrupting every later field."""
     obj = _valid_rgbd_frame()
     obj.depth = obj.depth.astype(np.float64)
-    data = serialize_frame(obj)  # unvalidated: simulates a publisher without validation
+    data = _raw_concat(obj)  # unvalidated: simulates a publisher without validation
     with pytest.raises(ValueError, match="wire format"):
-        deserialize_frame(RGBDFrameBuffer.template(W, H), data)
+        RGBDFrameBuffer.layout(W, H).deserialize(data)
+
+
+def test_layout_must_describe_exactly_the_dataclass_fields():
+    with pytest.raises(TypeError, match="describes fields"):
+        FrameLayout.of(FpsIdl, {"fps": (np.float64, (1,)), "extra": (np.int32, (1,))})
+
+
+def test_layouts_follow_field_declaration_order():
+    """Point cloud mixin fields come after the inherited RGB-D fields on the wire."""
+    names = [field.name for field in RGBDFrameBufferWithPointCloud.layout(W, H).fields]
+    assert names == [f.name for f in dataclasses.fields(RGBDFrameBufferWithPointCloud)]
+    assert names[:2] == ["frame_id", "frame_timestamp"]
+    assert names[-3:] == ["point_cloud_positions", "point_cloud_colors", "num_valid_points"]

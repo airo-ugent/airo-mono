@@ -9,6 +9,7 @@ import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.base_receiver import BaseCameraReceiver
 from airo_camera_toolkit.cameras.multiprocess.frame_data import (
+    FrameLayout,
     StereoRGBDFrameBuffer,
     StereoRGBDFrameBufferWithPointCloud,
 )
@@ -44,12 +45,12 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
         self.enable_pointcloud = enable_pointcloud
         super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
 
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return stereo RGBD frame buffer template."""
+    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
+        """Return stereo RGBD frame buffer layout."""
         if self.enable_pointcloud:
-            return StereoRGBDFrameBufferWithPointCloud.template(width, height)
+            return StereoRGBDFrameBufferWithPointCloud.layout(width, height)
         else:
-            return StereoRGBDFrameBuffer.template(width, height)
+            return StereoRGBDFrameBuffer.layout(width, height)
 
     def _setup(self) -> None:
         """Set up camera and prepare point cloud buffers and static camera parameters."""
@@ -130,12 +131,12 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
         self.enable_pointcloud = enable_pointcloud
         super().__init__(shared_memory_namespace, timeout=timeout)
 
-    def _get_frame_buffer_template(self, width: int, height: int) -> Any:
-        """Return stereo RGBD frame buffer template."""
+    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
+        """Return stereo RGBD frame buffer layout."""
         if self.enable_pointcloud:
-            return StereoRGBDFrameBufferWithPointCloud.template(width, height)
+            return StereoRGBDFrameBufferWithPointCloud.layout(width, height)
         else:
-            return StereoRGBDFrameBuffer.template(width, height)
+            return StereoRGBDFrameBuffer.layout(width, height)
 
     def retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self.retrieve_rgb_image_as_int(view=view)).image_in_numpy_format
