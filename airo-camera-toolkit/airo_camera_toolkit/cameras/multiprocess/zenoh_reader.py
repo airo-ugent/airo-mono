@@ -1,6 +1,5 @@
 """Zenoh-based reader for inter-process frame buffer communication."""
 
-import atexit
 import threading
 import time
 from typing import Any, Tuple
@@ -26,6 +25,10 @@ class ZenohReader:
     :class:`threading.Lock` guards access to the latest received bytes so the
     calling thread can safely call :meth:`__call__` at any time.
     The constructor blocks until the first message on *key_expr* arrives.
+
+    Call :meth:`stop` (or close the session) when done. Zenoh runs the callback on a non-daemon
+    thread that Python joins *before* running ``atexit`` handlers, so a subscriber that is never
+    undeclared keeps the interpreter from exiting.
 
     Args:
         session: An open :class:`zenoh.Session`.
@@ -58,7 +61,6 @@ class ZenohReader:
         except TimeoutError:
             self._subscriber.undeclare()
             raise
-        atexit.register(self.stop)
 
     @property
     def frame_count(self) -> int:
@@ -149,4 +151,3 @@ class ZenohReader:
             self._subscriber.undeclare()
         except Exception as e:  # pragma: no cover - shutdown-only path
             logger.debug(f"ZenohReader: error while undeclaring subscriber: {e}")
-        atexit.unregister(self.stop)

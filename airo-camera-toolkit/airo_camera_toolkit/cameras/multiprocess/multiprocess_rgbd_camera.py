@@ -133,39 +133,40 @@ if __name__ == "__main__":
 
     publisher.start()
     receiver = MultiprocessRGBDReceiver("camera")
+    try:
+        cv2.namedWindow("RGB", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("DEPTH", cv2.WINDOW_NORMAL)
 
-    cv2.namedWindow("RGB", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("DEPTH", cv2.WINDOW_NORMAL)
+        time_current = None
+        time_previous = None
 
-    time_current = None
-    time_previous = None
+        while True:
+            time_previous = time_current
+            time_current = time.time()
 
-    while True:
-        time_previous = time_current
-        time_current = time.time()
+            receiver.grab_images()
+            pcd = receiver.retrieve_colored_point_cloud()
+            depth_image = receiver.retrieve_depth_map()
 
-        receiver.grab_images()
-        pcd = receiver.retrieve_colored_point_cloud()
-        depth_image = receiver.retrieve_depth_map()
+            image_rgb = receiver.retrieve_rgb_image_as_int()
+            image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
+            cv2.imshow("RGB", image)
+            cv2.imshow("DEPTH", depth_image)
+            key = cv2.waitKey(10)
+            if key == ord("q"):
+                break
 
-        image_rgb = receiver.retrieve_rgb_image_as_int()
-        image = ImageConverter.from_numpy_int_format(image_rgb).image_in_opencv_format
-        cv2.imshow("RGB", image)
-        cv2.imshow("DEPTH", depth_image)
-        key = cv2.waitKey(10)
-        if key == ord("q"):
-            break
+            if time_previous is not None:
+                fps = 1 / (time_current - time_previous)
 
-        if time_previous is not None:
-            fps = 1 / (time_current - time_previous)
-
-            fps_str = f"{fps:.2f}".rjust(6, " ")
-            camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
-            if fps < 0.9 * camera_fps:
-                logger.warning(f"FPS: {fps_str} / {camera_fps_str} (too slow)")
-            else:
-                logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
-
-    publisher.stop()
-    publisher.join()
-    cv2.destroyAllWindows()
+                fps_str = f"{fps:.2f}".rjust(6, " ")
+                camera_fps_str = f"{camera_fps:.2f}".rjust(6, " ")
+                if fps < 0.9 * camera_fps:
+                    logger.warning(f"FPS: {fps_str} / {camera_fps_str} (too slow)")
+                else:
+                    logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
+    finally:
+        receiver.stop()
+        publisher.stop()
+        publisher.join()
+        cv2.destroyAllWindows()

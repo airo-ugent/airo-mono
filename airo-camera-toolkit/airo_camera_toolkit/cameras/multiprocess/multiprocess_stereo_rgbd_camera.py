@@ -197,71 +197,72 @@ if __name__ == "__main__":
 
     publisher.start()
     receiver = MultiprocessStereoRGBDReceiver("camera")
-
-    # while not receiver.is_ready():
-    #     logger.warning("Waiting for receiver to be ready...")
-    #     time.sleep(1.0)
-
-    receiver.grab_images()
-
-    with np.printoptions(precision=3, suppress=True):
-        print("Intrinsics left:\n", receiver.intrinsics_matrix())
-        print(
-            "Intrinsics right:\n",
-            receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB),
-        )
-        print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
-
-    cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("RGB Image Right", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
-    # cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
-
-    import rerun as rr
-
-    rr.init(f"{MultiprocessStereoRGBDReceiver.__name__} - Point cloud", spawn=True)
-
-    log_point_cloud = False
-
-    time_current = None
-    time_previous = None
-
-    while True:
-        time_previous = time_current
-        time_current = time.time()
+    try:
+        # while not receiver.is_ready():
+        #     logger.warning("Waiting for receiver to be ready...")
+        #     time.sleep(1.0)
 
         receiver.grab_images()
-        image = receiver.retrieve_rgb_image_as_int()
-        image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
-        depth_map = receiver.retrieve_depth_map()
-        depth_image = receiver.retrieve_depth_image()
-        # confidence_map = receiver.retrieve_confidence_map()
-        point_cloud = receiver.retrieve_colored_point_cloud()
 
-        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
-
-        cv2.imshow("RGB Image", image_bgr)
-        cv2.imshow("RGB Image Right", image_right_bgr)
-        cv2.imshow("Depth Map", depth_map)
-        cv2.imshow("Depth Image", depth_image)
-        # cv2.imshow("Confidence Map", confidence_map)
-
-        if log_point_cloud:
-            point_cloud.points[np.isnan(point_cloud.points)] = 0
-            if point_cloud.colors is not None:
-                point_cloud.colors[np.isnan(point_cloud.colors)] = 0
-            rr.log(
-                "point_cloud",
-                rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors),
+        with np.printoptions(precision=3, suppress=True):
+            print("Intrinsics left:\n", receiver.intrinsics_matrix())
+            print(
+                "Intrinsics right:\n",
+                receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB),
             )
+            print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
 
-        key = cv2.waitKey(10)
-        if key == ord("q"):
-            break
-        elif key == ord("l"):
-            log_point_cloud = not log_point_cloud
+        cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("RGB Image Right", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
+        # cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
 
-    publisher.stop()
-    publisher.join()
+        import rerun as rr
+
+        rr.init(f"{MultiprocessStereoRGBDReceiver.__name__} - Point cloud", spawn=True)
+
+        log_point_cloud = False
+
+        time_current = None
+        time_previous = None
+
+        while True:
+            time_previous = time_current
+            time_current = time.time()
+
+            receiver.grab_images()
+            image = receiver.retrieve_rgb_image_as_int()
+            image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+            depth_map = receiver.retrieve_depth_map()
+            depth_image = receiver.retrieve_depth_image()
+            # confidence_map = receiver.retrieve_confidence_map()
+            point_cloud = receiver.retrieve_colored_point_cloud()
+
+            image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
+
+            cv2.imshow("RGB Image", image_bgr)
+            cv2.imshow("RGB Image Right", image_right_bgr)
+            cv2.imshow("Depth Map", depth_map)
+            cv2.imshow("Depth Image", depth_image)
+            # cv2.imshow("Confidence Map", confidence_map)
+
+            if log_point_cloud:
+                point_cloud.points[np.isnan(point_cloud.points)] = 0
+                if point_cloud.colors is not None:
+                    point_cloud.colors[np.isnan(point_cloud.colors)] = 0
+                rr.log(
+                    "point_cloud",
+                    rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors),
+                )
+
+            key = cv2.waitKey(10)
+            if key == ord("q"):
+                break
+            elif key == ord("l"):
+                log_point_cloud = not log_point_cloud
+    finally:
+        receiver.stop()
+        publisher.stop()
+        publisher.join()

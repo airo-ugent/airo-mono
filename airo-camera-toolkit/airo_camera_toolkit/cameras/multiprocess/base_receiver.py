@@ -2,7 +2,7 @@
 
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Self
 
 import zenoh
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import _make_zenoh_config
@@ -16,9 +16,9 @@ from loguru import logger
 class BaseCameraReceiver(RGBCamera, ABC):
     """Base class for camera receivers that read frame data published over Zenoh.
 
-    Each receiver owns a Zenoh session. Call :meth:`stop` when you are done with a receiver
-    (or use it as a context manager) to undeclare its subscribers and close the session
-    explicitly, rather than relying on interpreter exit.
+    Each receiver owns a Zenoh session. You must call :meth:`stop` when you are done with a
+    receiver (or use it as a context manager): the session's subscriber threads are not daemon
+    threads, so a receiver that is never stopped keeps the Python interpreter from exiting.
 
     The arrays returned by the ``retrieve_*`` methods are read-only views into
     the last received frame, so they are not copied out of the payload.  Call
@@ -216,7 +216,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
             self._reader = None
         self._session.close()
 
-    def __enter__(self) -> "BaseCameraReceiver":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args: Any) -> None:

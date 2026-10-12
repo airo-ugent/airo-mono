@@ -1,6 +1,5 @@
 """Zenoh-based writer for inter-process frame buffer communication."""
 
-import atexit
 from typing import Any
 
 import zenoh
@@ -82,7 +81,6 @@ class ZenohWriter:
             congestion_control=zenoh.CongestionControl.DROP,
         )
         self._key_expr = key_expr
-        atexit.register(self.stop)
 
     @staticmethod
     def _create_shm_provider(key_expr: str, pool_bytes: int) -> Any:
@@ -160,4 +158,3 @@ class ZenohWriter:
             self._publisher.undeclare()
         except Exception as e:  # pragma: no cover - shutdown-only path
             logger.debug(f"ZenohWriter '{self._key_expr}': error while undeclaring publisher: {e}")
-        atexit.unregister(self.stop)

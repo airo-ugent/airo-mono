@@ -226,10 +226,11 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
     def run(self) -> None:
         """Main loop of the publisher process."""
         logger.info(f"{self.__class__.__name__} process started.")
-        self._setup()
-        logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
 
         try:
+            self._setup()
+            logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
+
             while not self.shutdown_event.is_set():
                 self._publish_metadata()
 
@@ -247,7 +248,9 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             raise
         finally:
             self._stop_writers()
-            self._session.close()
+            # The session does not exist yet if _setup() failed before opening it.
+            if hasattr(self, "_session"):
+                self._session.close()
             logger.info(f"{self.__class__.__name__} process terminated.")
 
     @abstractmethod

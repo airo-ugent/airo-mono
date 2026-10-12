@@ -365,126 +365,127 @@ if __name__ == "__main__":
     publisher.start()
 
     receiver = MultiprocessZedReceiver("camera", enable_positional_tracking=True, enable_spatial_mapping=True)
+    try:
+        # while not receiver.is_ready():
+        #     logger.warning("Waiting for receiver to be ready...")
+        #     time.sleep(1.0)
 
-    # while not receiver.is_ready():
-    #     logger.warning("Waiting for receiver to be ready...")
-    #     time.sleep(1.0)
-
-    receiver.grab_images()
-
-    with np.printoptions(precision=3, suppress=True):
-        print("Intrinsics left:\n", receiver.intrinsics_matrix())
-        print(
-            "Intrinsics right:\n",
-            receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB),
-        )
-        print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
-
-    cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("RGB Image Right", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
-    cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
-    # cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
-
-    rr.init(f"{MultiprocessZedReceiver.__name__}")
-    rr.spawn(memory_limit="2GB")
-
-    # 1. Setup World Coordinate System (Z-Up)
-    rr.log("World", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-
-    rr.log(
-        "World/Camera/Pinhole",
-        rr.Pinhole(
-            resolution=[1280, 720],  # Arbitrary resolution for visualization
-            focal_length=700,  # Arbitrary FOV for visualization
-        ),
-        static=True,
-    )
-
-    log_point_cloud = False
-    log_spatial_map = True
-
-    time_current = None
-    time_previous = None
-
-    while True:
-        time_previous = time_current
-        time_current = time.time()
-
-        # Retrieve images and data from the last received frame
         receiver.grab_images()
-        image = receiver.retrieve_rgb_image_as_int()
-        image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
-        depth_map = receiver.retrieve_depth_map()
-        depth_image = receiver.retrieve_depth_image()
-        # confidence_map = receiver.retrieve_confidence_map()
-        point_cloud = receiver.retrieve_colored_point_cloud()
 
-        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
-
-        spatial_map = receiver.retrieve_spatial_map()
-        pose_matrix = receiver.retrieve_camera_pose()
-
-        # Visualize images using OpenCV
-        cv2.imshow("RGB Image", image_bgr)
-        cv2.imshow("RGB Image Right", image_right_bgr)
-        cv2.imshow("Depth Map", depth_map)
-        cv2.imshow("Depth Image", depth_image)
-        # cv2.imshow("Confidence Map", confidence_map)
-
-        # If enabled, log point cloud to rerun
-        if log_point_cloud:
-            point_cloud.points[np.isnan(point_cloud.points)] = 0
-            if point_cloud.colors is not None:
-                point_cloud.colors[np.isnan(point_cloud.colors)] = 0
-            rr.log(
-                "World/point_cloud",
-                rr.Points3D(
-                    positions=camera_to_rerun(point_cloud.points),
-                    colors=point_cloud.colors,
-                ),
+        with np.printoptions(precision=3, suppress=True):
+            print("Intrinsics left:\n", receiver.intrinsics_matrix())
+            print(
+                "Intrinsics right:\n",
+                receiver.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB),
             )
+            print("Pose right in left:\n", receiver.pose_of_right_view_in_left_view)
 
-        # If enabled, log spatial map to rerun
-        if log_spatial_map:
-            full_pointcloud = spatial_map.full_pointcloud
-            rr.log(
-                "World/spatial_map",
-                rr.Points3D(
-                    positions=camera_to_rerun(full_pointcloud.points),
-                    colors=full_pointcloud.colors,
-                ),
-            )
+        cv2.namedWindow("RGB Image", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("RGB Image Right", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Depth Map", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Depth Image", cv2.WINDOW_NORMAL)
+        # cv2.namedWindow("Confidence Map", cv2.WINDOW_NORMAL)
 
-        # Visualize camera pose in Rerun
+        rr.init(f"{MultiprocessZedReceiver.__name__}")
+        rr.spawn(memory_limit="2GB")
 
-        # Extract Translation (first 3 rows, 4th column)
-        translation = pose_matrix[:3, 3]
+        # 1. Setup World Coordinate System (Z-Up)
+        rr.log("World", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
-        # Extract Rotation Matrix (3x3 top-left)
-        rotation_mat = pose_matrix[:3, :3]
-
-        R_x_90 = np.array(
-            [
-                [1, 0, 0],
-                [0, 0, 1],
-                [0, -1, 0],
-            ],
-            dtype=float,
+        rr.log(
+            "World/Camera/Pinhole",
+            rr.Pinhole(
+                resolution=[1280, 720],  # Arbitrary resolution for visualization
+                focal_length=700,  # Arbitrary FOV for visualization
+            ),
+            static=True,
         )
 
-        rotation_mat = rotation_mat @ R_x_90
+        log_point_cloud = False
+        log_spatial_map = True
 
-        # Log the transform.
-        # This moves "World/Camera" (and its child "Pinhole") to the new location.
-        rr.log("World/Camera", rr.Transform3D(translation=translation, mat3x3=rotation_mat))
+        time_current = None
+        time_previous = None
 
-        key = cv2.waitKey(10)
-        if key == ord("q"):
-            break
-        elif key == ord("l"):
-            log_point_cloud = not log_point_cloud
+        while True:
+            time_previous = time_current
+            time_current = time.time()
 
-    publisher.stop()
-    publisher.join()
+            # Retrieve images and data from the last received frame
+            receiver.grab_images()
+            image = receiver.retrieve_rgb_image_as_int()
+            image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)
+            depth_map = receiver.retrieve_depth_map()
+            depth_image = receiver.retrieve_depth_image()
+            # confidence_map = receiver.retrieve_confidence_map()
+            point_cloud = receiver.retrieve_colored_point_cloud()
+
+            image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            image_right_bgr = cv2.cvtColor(image_right, cv2.COLOR_RGB2BGR)
+
+            spatial_map = receiver.retrieve_spatial_map()
+            pose_matrix = receiver.retrieve_camera_pose()
+
+            # Visualize images using OpenCV
+            cv2.imshow("RGB Image", image_bgr)
+            cv2.imshow("RGB Image Right", image_right_bgr)
+            cv2.imshow("Depth Map", depth_map)
+            cv2.imshow("Depth Image", depth_image)
+            # cv2.imshow("Confidence Map", confidence_map)
+
+            # If enabled, log point cloud to rerun
+            if log_point_cloud:
+                point_cloud.points[np.isnan(point_cloud.points)] = 0
+                if point_cloud.colors is not None:
+                    point_cloud.colors[np.isnan(point_cloud.colors)] = 0
+                rr.log(
+                    "World/point_cloud",
+                    rr.Points3D(
+                        positions=camera_to_rerun(point_cloud.points),
+                        colors=point_cloud.colors,
+                    ),
+                )
+
+            # If enabled, log spatial map to rerun
+            if log_spatial_map:
+                full_pointcloud = spatial_map.full_pointcloud
+                rr.log(
+                    "World/spatial_map",
+                    rr.Points3D(
+                        positions=camera_to_rerun(full_pointcloud.points),
+                        colors=full_pointcloud.colors,
+                    ),
+                )
+
+            # Visualize camera pose in Rerun
+
+            # Extract Translation (first 3 rows, 4th column)
+            translation = pose_matrix[:3, 3]
+
+            # Extract Rotation Matrix (3x3 top-left)
+            rotation_mat = pose_matrix[:3, :3]
+
+            R_x_90 = np.array(
+                [
+                    [1, 0, 0],
+                    [0, 0, 1],
+                    [0, -1, 0],
+                ],
+                dtype=float,
+            )
+
+            rotation_mat = rotation_mat @ R_x_90
+
+            # Log the transform.
+            # This moves "World/Camera" (and its child "Pinhole") to the new location.
+            rr.log("World/Camera", rr.Transform3D(translation=translation, mat3x3=rotation_mat))
+
+            key = cv2.waitKey(10)
+            if key == ord("q"):
+                break
+            elif key == ord("l"):
+                log_point_cloud = not log_point_cloud
+    finally:
+        receiver.stop()
+        publisher.stop()
+        publisher.join()
