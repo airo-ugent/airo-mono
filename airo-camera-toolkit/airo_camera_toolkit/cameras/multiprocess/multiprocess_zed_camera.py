@@ -178,8 +178,6 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
 
     def stop(self) -> None:
         """Undeclare the spatial map reader, then the base reader and session."""
-        if self._stopped:
-            return
         if self._reader_spatial_map is not None:
             self._reader_spatial_map.stop()
             self._reader_spatial_map = None

@@ -61,7 +61,8 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self._reader: ZenohReader[Any] | None = None
         # The frame read by the last grab_images(); the constructor grabs the first one.
         self._last_frame: Any = None
-        self._stopped = False
+        # Open while connected; None once stopped.
+        self._session: zenoh.Session | None = None
 
         self._connect()
 
@@ -74,7 +75,6 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """
         # Open a Zenoh session for receiving
         self._session = zenoh.open(_make_zenoh_config())
-        self._stopped = False
 
         try:
             # Read static camera information
@@ -124,13 +124,15 @@ class BaseCameraReceiver(RGBCamera, ABC):
                 which means this receiver was configured differently from the publisher.
         """
         self._metadata.check_stream(key_expr, layout)
-        return ZenohReader(self._session, key_expr, layout, timeout=self._timeout)
+        return ZenohReader(self._open_session, key_expr, layout, timeout=self._timeout)
 
     def _read_metadata(self) -> PublisherMetadata:
         """Read the resolution, fps and stream layouts announced by the publisher."""
         key_expr = f"{self._shared_memory_namespace}_metadata"
         logger.info(f"Reading publisher metadata from {key_expr}")
-        metadata = PublisherMetadata.from_json(receive_one(self._session, key_expr, timeout=self._timeout).decode())
+        metadata = PublisherMetadata.from_json(
+            receive_one(self._open_session, key_expr, timeout=self._timeout).decode()
+        )
         logger.info(f"Camera resolution: {metadata.resolution}, FPS: {metadata.fps}")
         return metadata
 
@@ -184,15 +186,21 @@ class BaseCameraReceiver(RGBCamera, ABC):
         Safe to call more than once. After stopping, :meth:`grab_images` raises until
         :meth:`reconnect` is called.
         """
-        if self._stopped:
+        if self._session is None:
             return
-        self._stopped = True
         # The frame reader does not exist yet when the connection failed before
         # it was set up.
         if self._reader is not None:
             self._reader.stop()
             self._reader = None
         self._session.close()
+        self._session = None
+
+    @property
+    def _open_session(self) -> zenoh.Session:
+        if self._session is None:
+            raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
+        return self._session
 
     def __enter__(self) -> Self:
         return self

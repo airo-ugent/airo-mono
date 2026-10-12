@@ -229,6 +229,22 @@ def test_failed_receiver_construction_does_not_break_later_receivers(receiver_fa
     np.testing.assert_array_equal(receiver.retrieve_rgb_image_as_int(), _MOCK_RGB_VALUE)
 
 
+def test_stopped_receiver_refuses_to_grab(receiver_factory):
+    """stop() is idempotent, and a stopped receiver raises instead of returning stale frames."""
+    receiver = receiver_factory()
+    receiver.stop()
+    receiver.stop()
+    with pytest.raises(RuntimeError, match="stopped"):
+        receiver.grab_images()
+
+
+def test_receiver_context_manager_stops_it(publisher, namespace):
+    with MultiprocessRGBReceiver(namespace, timeout=_STARTUP_TIMEOUT) as receiver:
+        receiver.grab_images()
+    with pytest.raises(RuntimeError, match="stopped"):
+        receiver.grab_images()
+
+
 def test_grab_images_times_out_when_no_new_frame_arrives(receiver_factory):
     """grab_images() must not block forever when frames stop arriving.
 
