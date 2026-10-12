@@ -249,12 +249,11 @@ if __name__ == "__main__":
             # cv2.imshow("Confidence Map", confidence_map)
 
             if log_point_cloud:
-                point_cloud.points[np.isnan(point_cloud.points)] = 0
-                if point_cloud.colors is not None:
-                    point_cloud.colors[np.isnan(point_cloud.colors)] = 0
+                # Received arrays are read-only views, so replace NaNs in a copy. Colors are uint8 and cannot be NaN.
+                positions = np.nan_to_num(point_cloud.points)
                 rr.log(
                     "point_cloud",
-                    rr.Points3D(positions=point_cloud.points, colors=point_cloud.colors),
+                    rr.Points3D(positions=positions, colors=point_cloud.colors),
                 )
 
             key = cv2.waitKey(10)

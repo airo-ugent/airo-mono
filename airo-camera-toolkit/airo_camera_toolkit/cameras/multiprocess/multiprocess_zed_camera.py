@@ -435,13 +435,12 @@ if __name__ == "__main__":
 
             # If enabled, log point cloud to rerun
             if log_point_cloud:
-                point_cloud.points[np.isnan(point_cloud.points)] = 0
-                if point_cloud.colors is not None:
-                    point_cloud.colors[np.isnan(point_cloud.colors)] = 0
+                # Received arrays are read-only views, so replace NaNs in a copy. Colors are uint8 and cannot be NaN.
+                positions = np.nan_to_num(point_cloud.points)
                 rr.log(
                     "World/point_cloud",
                     rr.Points3D(
-                        positions=camera_to_rerun(point_cloud.points),
+                        positions=camera_to_rerun(positions),
                         colors=point_cloud.colors,
                     ),
                 )
