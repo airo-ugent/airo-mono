@@ -1,4 +1,4 @@
-from __future__ import annotations
+from typing import Self
 
 import numpy as np
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType
@@ -41,7 +41,7 @@ class CameraIntrinsics(BaseModel):
     @classmethod
     def from_matrix_and_resolution(
         cls, intrinsics_matrix: CameraIntrinsicsMatrixType, resolution: tuple[int, int]
-    ) -> CameraIntrinsics:
+    ) -> Self:
         """Creates a CameraIntrinsics object from a 3x3 matrix and an image resolution (width, height)."""
         fx = intrinsics_matrix[0, 0]
         fy = intrinsics_matrix[1, 1]

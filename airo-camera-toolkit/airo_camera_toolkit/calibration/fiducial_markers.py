@@ -161,7 +161,7 @@ def detect_charuco_board(
         charuco_board: The CharucoBoardType from OpenCV that specifies the charuco board parameters.
 
     Returns:
-        Optional[HomogeneousMatrixType]: The pose of the charuco board in the camera frame, if it was detected.
+        HomogeneousMatrixType | None: The pose of the charuco board in the camera frame, if it was detected.
     """
 
     aruco_result = detect_aruco_markers(image, aruco_dict)

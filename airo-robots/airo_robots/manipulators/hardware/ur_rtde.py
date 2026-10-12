@@ -1,6 +1,6 @@
 import socket
 import time
-from enum import Enum
+from enum import StrEnum
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -37,7 +37,7 @@ class URrtde(PositionManipulator):
     control/receive interface attributes directly if you need them.
     """
 
-    class URModels(str, Enum):
+    class URModels(StrEnum):
         """
         Used by URrtde.get_model() method to identify the robot model. Every model added
         here should also have an entry in the MANIPULATOR_SPECS dictionary.

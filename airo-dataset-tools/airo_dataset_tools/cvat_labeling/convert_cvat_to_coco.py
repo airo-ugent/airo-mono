@@ -1,7 +1,5 @@
 """ module toconvert CVAT 1.1 images keypoint annotations to COCO Keypoint dataset"""
 
-from __future__ import annotations
-
 import json
 from collections import defaultdict
 

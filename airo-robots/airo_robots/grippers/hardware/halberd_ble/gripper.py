@@ -9,6 +9,8 @@ Grippers are selected by their user-assigned name, set in the Halberd sketch via
 """
 
 
+from typing import Self
+
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers.hardware.halberd_ble import protocol
@@ -81,7 +83,7 @@ class HalberdBLEGripper(ParallelPositionGripper):
         address: str | None = None,
         scan_timeout: float = 5.0,
         gripper_specs: ParallelPositionGripperSpecs | None = None,
-    ) -> "HalberdBLEGripper":
+    ) -> Self:
         """Connect to the gripper with the given user-assigned name (or address).
 
         With no filter, exactly one gripper must be in range; a name matching multiple
@@ -198,9 +200,7 @@ class GenericHalberdGripper:
         return _discover(timeout=timeout)
 
     @classmethod
-    def connect(
-        cls, name: str | None = None, address: str | None = None, scan_timeout: float = 5.0
-    ) -> "GenericHalberdGripper":
+    def connect(cls, name: str | None = None, address: str | None = None, scan_timeout: float = 5.0) -> Self:
         """Connect to the gripper with the given user-assigned name (or address)."""
         return cls(_connect(name=name, address=address, scan_timeout=scan_timeout))
 

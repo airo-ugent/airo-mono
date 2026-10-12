@@ -4,7 +4,7 @@ import importlib
 import threading
 import time
 from types import ModuleType
-from typing import Any
+from typing import Any, Self
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -124,7 +124,7 @@ class RealmanControl(PositionManipulator):
         self._raise_for_error(self.robot.rm_delete_robot_arm(), "rm_delete_robot_arm")
         self._closed = True
 
-    def __enter__(self) -> "RealmanControl":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> None:

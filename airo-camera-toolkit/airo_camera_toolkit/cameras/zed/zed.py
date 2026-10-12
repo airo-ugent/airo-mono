@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Self
 
 from loguru import logger
 
@@ -137,8 +135,8 @@ class Zed(StereoRGBDCamera):
             resolution (CameraResolutionType): Selected camera resolution. Defaults to RESOLUTION_2K.
             fps (int): Frames per second. Defaults to 15.
             depth_mode (sl.DEPTH_MODE): Selected depth mode. Defaults to NONE_DEPTH_MODE.
-            serial_number (Optional[str]): Camera serial number for device selection.
-            svo_filepath (Optional[str]): Path to SVO file for playback.
+            serial_number (str | None): Camera serial number for device selection.
+            svo_filepath (str | None): Path to SVO file for playback.
 
         Methods:
             build_zed_init_params(self) -> sl.InitParameters:
@@ -395,14 +393,14 @@ class Zed(StereoRGBDCamera):
             resolution (CameraResolutionType): The camera resolution. Defaults to InitParams.RESOLUTION_2K.
             fps (int): The frames per second for camera capture. Defaults to 15.
             depth_mode (sl.DEPTH_MODE): The depth mode for the camera. Defaults to InitParams.NONE_DEPTH_MODE.
-            serial_number (Optional[str]): The serial number of the camera to use. Defaults to None.
-            svo_filepath (Optional[str]): Path to an SVO file for playback instead of live capture. Defaults to None.
-            camera_runtime_params (Optional[RuntimeParams]): Runtime parameters for the camera.
+            serial_number (str | None): The serial number of the camera to use. Defaults to None.
+            svo_filepath (str | None): Path to an SVO file for playback instead of live capture. Defaults to None.
+            camera_runtime_params (RuntimeParams | None): Runtime parameters for the camera.
                                                                        If None, a RuntimeParams instance with default values is used.
                                                                        Defaults to None.
-            camera_tracking_params (Optional[TrackingParams]): Parameters for positional tracking.
+            camera_tracking_params (TrackingParams | None): Parameters for positional tracking.
                                                                          If None, positional tracking is disabled. Defaults to None.
-            camera_mapping_params (Optional[MappingParams]): Parameters for spatial mapping.
+            camera_mapping_params (MappingParams | None): Parameters for spatial mapping.
                                                                        If None, spatial mapping is disabled. Defaults to None.
         """
 
@@ -732,7 +730,7 @@ class Zed(StereoRGBDCamera):
     # this is important if you want to reuse the camera
     # multiple times within a python script, in which case you should release the camera before creating a new object.
     # cf. https://stackoverflow.com/questions/865115/how-do-i-correctly-clean-up-a-python-object
-    def __enter__(self) -> Zed:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:

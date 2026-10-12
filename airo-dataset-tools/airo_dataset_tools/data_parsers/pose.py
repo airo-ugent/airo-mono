@@ -1,4 +1,4 @@
-from __future__ import annotations
+from typing import Self
 
 import numpy as np
 from airo_spatial_algebra.se3 import SE3Container
@@ -31,7 +31,7 @@ class Pose(BaseModel):
     rotation_euler_xyz_in_radians: EulerAngles
 
     @classmethod
-    def from_homogeneous_matrix(cls, matrix: HomogeneousMatrixType) -> Pose:
+    def from_homogeneous_matrix(cls, matrix: HomogeneousMatrixType) -> Self:
         """Creates a Pose object from a 4x4 homogeneous transformation matrix."""
         se3_pose = SE3Container.from_homogeneous_matrix(matrix)
         position = se3_pose.translation

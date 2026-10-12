@@ -3,8 +3,6 @@
 Edit the configuration constants below to match your setup.
 """
 
-from __future__ import annotations
-
 import threading
 import time
 from collections import deque

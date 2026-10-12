@@ -17,8 +17,6 @@ Note that the attributes cannot have _ as prefix for Pydantic.
 #   timestamp: 2022-08-24T12:15:52+00:00
 # then further changed by @tlips
 
-from __future__ import annotations
-
 from typing import Any
 
 from pydantic import BaseModel, field_validator

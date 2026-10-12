@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Self
 
 import cv2
 import numpy as np
@@ -96,14 +94,14 @@ class BinarySegmentationMask:
         self.bitmap = bitmap
 
     @classmethod
-    def from_polygon(cls, polygon: list[Polygon], width: int, height: int) -> BinarySegmentationMask:
+    def from_polygon(cls, polygon: list[Polygon], width: int, height: int) -> Self:
         """Create a BinarySegmentationMask from a list of COCO polygons."""
         rles = mask.frPyObjects(polygon, height, width)
         rle = mask.merge(rles)
         return cls(mask.decode(rle))
 
     @classmethod
-    def from_rle_dict(cls, rle_dict: RLEDict, width: int, height: int) -> BinarySegmentationMask:
+    def from_rle_dict(cls, rle_dict: RLEDict, width: int, height: int) -> Self:
         """Create a BinarySegmentationMask from a COCO RLE dict (compressed or uncompressed)."""
         if isinstance(rle_dict["counts"], list):
             rle = mask.frPyObjects(rle_dict, height, width)
@@ -112,14 +110,12 @@ class BinarySegmentationMask:
         return cls(mask.decode(rle))
 
     @classmethod
-    def from_bitmap(cls, bitmap: np.ndarray) -> BinarySegmentationMask:
+    def from_bitmap(cls, bitmap: np.ndarray) -> Self:
         """Create a BinarySegmentationMask from a binary numpy array."""
         return cls(bitmap)
 
     @classmethod
-    def from_coco_segmentation_mask(
-        cls, segmentation: Segmentation, width: int, height: int
-    ) -> BinarySegmentationMask:
+    def from_coco_segmentation_mask(cls, segmentation: Segmentation, width: int, height: int) -> Self:
         """Convert a coco segmentation mask to a bitmap."""
         if isinstance(segmentation, list):
             return cls.from_polygon(segmentation, width, height)

@@ -16,6 +16,7 @@ import json
 import struct
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import Self
 
 PROTOCOL_VERSION = 1
 
@@ -109,7 +110,7 @@ class GripperDescriptor:
     sensors: tuple[SensorDescriptor, ...] = ()
 
     @classmethod
-    def from_json(cls, raw: bytes) -> "GripperDescriptor":
+    def from_json(cls, raw: bytes) -> Self:
         """Parse the descriptor characteristic value.
 
         Raises:

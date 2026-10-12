@@ -7,8 +7,6 @@ is only loaded when the attribute is actually accessed; the resulting ImportErro
 the user which extra to install (or, for ZED, where to find the SDK install instructions).
 """
 
-from __future__ import annotations
-
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 

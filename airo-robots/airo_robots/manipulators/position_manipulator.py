@@ -117,7 +117,7 @@ class PositionManipulator(ABC):
 
         Args:
             tcp_pose (HomogeneousMatrixType): desired tcp pose
-            joint_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default linear speed is used.
+            joint_speed (float | None, optional): speed to use for the movement. Defaults to None, in which case the default linear speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired pose.
@@ -132,7 +132,7 @@ class PositionManipulator(ABC):
 
         Args:
             tcp_pose (HomogeneousMatrixType): desired tcp pose
-            linear_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
+            linear_speed (float | None, optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired pose.
@@ -149,7 +149,7 @@ class PositionManipulator(ABC):
 
         Args:
             joint_configuration (JointConfigurationType): desired joint configuration
-            joint_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
+            joint_speed (float | None, optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired joint configuration.
@@ -209,12 +209,12 @@ class PositionManipulator(ABC):
 
         Args:
             tcp_pose (HomogeneousMatrixType): desired tcp pose
-            joint_configuration_near (Optional[JointConfigurationType], optional):joint configuration to filter to closest solution,
+            joint_configuration_near (JointConfigurationType | None, optional):joint configuration to filter to closest solution,
               since there are usually multiple solutions.
             Defaults to None, in which case the current joint configuration is used.
 
         Returns:
-            Optional[JointConfigurationType]: joint configuration that is closest to the desired tcp pose. None if no solution is found.
+            JointConfigurationType | None: joint configuration that is closest to the desired tcp pose. None if no solution is found.
         """
 
     @abstractmethod

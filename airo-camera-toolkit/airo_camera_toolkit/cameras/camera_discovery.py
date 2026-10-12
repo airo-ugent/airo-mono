@@ -73,8 +73,8 @@ def click_camera_options(f: Callable) -> Callable:
     Usage:
         @click.command()
         @click_camera_options
-        def my_command(camera_brand: Optional[str] = None,
-                       camera_serial_number: Optional[str] = None,):
+        def my_command(camera_brand: str | None = None,
+                       camera_serial_number: str | None = None,):
             ...
 
     Args:

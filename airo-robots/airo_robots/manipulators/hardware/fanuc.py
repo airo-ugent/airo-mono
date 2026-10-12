@@ -4,7 +4,7 @@ import importlib
 import time
 from collections.abc import Callable
 from types import ModuleType
-from typing import Any, NoReturn
+from typing import Any, NoReturn, Self
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -158,7 +158,7 @@ class Fanuc(PositionManipulator):
         self._closed = True
         self.driver.close()
 
-    def __enter__(self) -> "Fanuc":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> None:

@@ -31,6 +31,7 @@ with open("annotations.json", "w") as file:
 """
 
 from collections.abc import Sequence
+from typing import Self
 
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -149,7 +150,7 @@ class CocoKeypointAnnotation(CocoInstanceAnnotation):
         return v
 
     @model_validator(mode="after")
-    def num_keypoints_matches_amount_of_labeled_keypoints(self) -> "CocoKeypointAnnotation":
+    def num_keypoints_matches_amount_of_labeled_keypoints(self) -> Self:
         labeled_keypoints = 0
         for v in self.keypoints[2::3]:
             if v > 0:
@@ -187,7 +188,7 @@ class CocoInstancesDataset(BaseModel):
 
     # skip on failure becasue this validator requires the annotations list to be non-empty
     @model_validator(mode="after")
-    def annotations_catergory_id_exist_in_categories(self) -> "CocoInstancesDataset":
+    def annotations_catergory_id_exist_in_categories(self) -> Self:
         category_ids = {category.id for category in self.categories}
         for annotation in self.annotations:
             if annotation.category_id not in category_ids:
@@ -206,7 +207,7 @@ class CocoKeypointsDataset(CocoInstancesDataset):
 
     # skip on failure becasue this validator requires the annotations list to be non-empty
     @model_validator(mode="after")
-    def num_keypoints_matches_annotations(self) -> "CocoKeypointsDataset":
+    def num_keypoints_matches_annotations(self) -> Self:
         category_dict = {category.id: category for category in self.categories}
         for annotation in self.annotations:
             if len(annotation.keypoints) // 3 != len(category_dict[annotation.category_id].keypoints):
