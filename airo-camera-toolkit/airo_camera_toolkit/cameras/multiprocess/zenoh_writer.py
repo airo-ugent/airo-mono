@@ -40,14 +40,9 @@ def _pool_size(frame_size: int, max_pool_bytes: int = _MAX_POOL_BYTES) -> int:
 class ZenohWriter(Generic[Frame]):
     """Publishes frame buffer dataclass instances over a Zenoh key expression.
 
-    By default, each frame is allocated from a :class:`zenoh.shm.ShmProvider`
-    pool and serialized into shared memory field-by-field.  The Zenoh transport
-    then hands the SHM reference to subscribers without an additional copy.
-
-    Per-field copying (``arr.tobytes()`` followed by a slice assignment into
-    the destination buffer) keeps each field's bytes hot in CPU cache between
-    the two copies, which is measurably faster than first concatenating
-    everything into a flat buffer.
+    Each frame is serialized field by field into a buffer that is reused across frames (Zenoh
+    copies it when publishing), or, with ``shm``, into a buffer allocated from a
+    :class:`zenoh.shm.ShmProvider` pool, which Zenoh hands to subscribers without a copy.
 
     If the SHM pool is momentarily full (all buffers still in flight to slow
     consumers) the frame is dropped and a warning is logged.  This matches
@@ -59,10 +54,7 @@ class ZenohWriter(Generic[Frame]):
         layout: The frame layout (e.g. from ``RGBFrameBuffer.layout()``) that
             defines the wire format and the SHM pool allocation size.
         shm: Whether to use the SHM provider. Disabled by default, like the
-            ``AIRO_ZENOH_SHM`` environment variable the publishers read it from. The provider ``mlock()``s its pool, which requires
-            the process's ``ulimit -l`` to accommodate the frame pool size;
-            when ``False`` a plain, non-mlock'ed ``bytes`` buffer is published
-            instead.
+            ``AIRO_ZENOH_SHM`` environment variable the publishers read it from.
 
     Raises:
         RuntimeError: If ``shm`` is ``True`` and the SHM pool could not be
@@ -72,13 +64,26 @@ class ZenohWriter(Generic[Frame]):
     def __init__(self, session: zenoh.Session, key_expr: str, layout: FrameLayout[Frame], shm: bool = False) -> None:
         self._layout = layout
         self._frame_size = layout.nbytes
-        self._shm = shm
         self._provider = self._create_shm_provider(key_expr, _pool_size(self._frame_size)) if shm else None
+        # Without SHM, frames are serialized into this one buffer, which ZBytes copies on publishing.
+        self._buffer = bytearray(0 if shm else self._frame_size)
+        self._buffer_view = memoryview(self._buffer)
         self._publisher = session.declare_publisher(
             key_expr,
             congestion_control=zenoh.CongestionControl.DROP,
         )
         self._key_expr = key_expr
+
+    @property
+    def layout(self) -> FrameLayout[Frame]:
+        """The layout of the frames this writer publishes."""
+        return self._layout
+
+    @property
+    def has_subscribers(self) -> bool:
+        """Whether any subscriber currently matches this writer's key expression."""
+        # The stubs type matching_status as bool, but it is a MatchingStatus (which is always truthy).
+        return bool(self._publisher.matching_status.matching)  # type: ignore[attr-defined]
 
     @staticmethod
     def _create_shm_provider(key_expr: str, pool_bytes: int) -> Any:
@@ -104,10 +109,6 @@ class ZenohWriter(Generic[Frame]):
     def __call__(self, msg: Frame) -> None:
         """Serialize *msg* into a buffer and publish it.
 
-        Each numpy field is copied directly from the field's memory into the
-        destination buffer, keeping it in CPU cache between the two
-        operations.
-
         Args:
             msg: A frame buffer dataclass instance (of the layout's frame type).
 
@@ -122,16 +123,12 @@ class ZenohWriter(Generic[Frame]):
         # whose dtype or shape drifted from the layout.
         self._layout.validate(msg)
 
-        buf: Any
-
-        if not self._shm:
-            buf = bytearray(self._frame_size)
-            self._layout.write_into(msg, buf)
-            self._publisher.put(zenoh.ZBytes(bytes(buf)))
+        if self._provider is None:
+            self._layout.write_into(msg, self._buffer_view)
+            self._publisher.put(zenoh.ZBytes(self._buffer))
             return
 
         try:
-            assert isinstance(self._provider, zenoh.shm.ShmProvider)  # for mypy
             buf = self._provider.alloc(self._frame_size, zenoh.shm.GarbageCollect())
         except zenoh.ZError:
             logger.warning(f"ZenohWriter: SHM pool full, dropping frame on '{self._key_expr}'")

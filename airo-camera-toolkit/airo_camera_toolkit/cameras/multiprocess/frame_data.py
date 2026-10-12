@@ -8,6 +8,7 @@ format (each field's dtype and shape) without allocating any arrays.
 import dataclasses
 import json
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, Generic, Self, TypeVar
 
 import numpy as np
@@ -55,10 +56,20 @@ class FrameLayout(Generic[Frame]):
             frame_type, tuple(FieldLayout(name, np.dtype(specs[name][0]), specs[name][1]) for name in names)
         )
 
+    @cached_property
+    def _spans(self) -> tuple[tuple[FieldLayout, int, int], ...]:
+        """``(field, start, end)`` byte range of every field in a serialized frame."""
+        spans = []
+        offset = 0
+        for field in self.fields:
+            spans.append((field, offset, offset + field.nbytes))
+            offset += field.nbytes
+        return tuple(spans)
+
     @property
     def nbytes(self) -> int:
         """Size of a serialized frame in bytes."""
-        return sum(field.nbytes for field in self.fields)
+        return self._spans[-1][2] if self._spans else 0
 
     def describe(self) -> list[list[Any]]:
         """A JSON-serializable ``[[name, dtype, shape], ...]`` description of the wire format."""
@@ -96,12 +107,16 @@ class FrameLayout(Generic[Frame]):
 
         Args:
             frame: A frame that passed :meth:`validate`.
-            buf: A writable buffer supporting slice assignment of ``bytes``.
+            buf: A writable buffer supporting slice assignment of ``bytes``. A ``memoryview`` is
+                filled straight from the arrays' memory, without a temporary ``bytes`` copy per field.
         """
-        offset = 0
-        for field in self.fields:
-            buf[offset : offset + field.nbytes] = getattr(frame, field.name).tobytes()
-            offset += field.nbytes
+        for field, start, end in self._spans:
+            arr = getattr(frame, field.name)
+            if isinstance(buf, memoryview) and arr.flags.c_contiguous:
+                buf[start:end] = memoryview(arr).cast("B")
+            else:
+                # Zenoh's SHM buffers only accept bytes, as do non-contiguous arrays.
+                buf[start:end] = arr.tobytes()
 
     def deserialize(self, data: bytes) -> Frame:
         """Deserialize raw bytes back into a frame buffer dataclass instance.
@@ -128,15 +143,11 @@ class FrameLayout(Generic[Frame]):
             )
 
         kwargs: dict[str, np.ndarray] = {}
-        offset = 0
-        for field in self.fields:
+        for field, start, end in self._spans:
             # np.frombuffer views into data (rather than slicing it, which copies) and
             # keeps it alive through arr.base.  The view is read-only because bytes is.
-            count = field.nbytes // field.dtype.itemsize
-            kwargs[field.name] = np.frombuffer(data, dtype=field.dtype, count=count, offset=offset).reshape(
-                field.shape
-            )
-            offset += field.nbytes
+            count = (end - start) // field.dtype.itemsize
+            kwargs[field.name] = np.frombuffer(data, dtype=field.dtype, count=count, offset=start).reshape(field.shape)
         return self.frame_type(**kwargs)
 
 
