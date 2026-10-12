@@ -2,7 +2,7 @@
 
 import multiprocessing
 import time
-from typing import Any, Optional
+from typing import Any
 
 import loguru
 import numpy as np
@@ -125,7 +125,7 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
         self,
         shared_memory_namespace: str,
         enable_pointcloud: bool = True,
-        timeout: Optional[float] = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+        timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
     ) -> None:
         self.enable_pointcloud = enable_pointcloud
         super().__init__(shared_memory_namespace, timeout=timeout)

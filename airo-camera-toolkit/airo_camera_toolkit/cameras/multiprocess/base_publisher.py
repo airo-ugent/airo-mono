@@ -5,7 +5,7 @@ import multiprocessing
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import zenoh
@@ -30,7 +30,7 @@ _LOCALHOST = "127.0.0.1"
 _SHM_ENABLED_VALUES = {"1", "true", "yes", "on"}
 
 
-def _shm_enabled(explicit: Optional[bool] = None) -> bool:
+def _shm_enabled(explicit: bool | None = None) -> bool:
     """Resolve whether Zenoh shared memory transport should be used.
 
     Args:
@@ -53,7 +53,7 @@ def _shm_enabled(explicit: Optional[bool] = None) -> bool:
     return False
 
 
-def _make_zenoh_config(shm: Optional[bool] = None, router_endpoint: Optional[str] = None) -> zenoh.Config:
+def _make_zenoh_config(shm: bool | None = None, router_endpoint: str | None = None) -> zenoh.Config:
     """Return the Zenoh configuration used by the multiprocess publishers and receivers.
 
     By default, the session is confined to the local host. You can opt in to cross-host

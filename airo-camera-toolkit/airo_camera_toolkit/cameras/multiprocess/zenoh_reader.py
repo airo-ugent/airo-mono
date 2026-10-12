@@ -3,7 +3,7 @@
 import atexit
 import threading
 import time
-from typing import Any, Optional, Tuple
+from typing import Any, Tuple
 
 import zenoh
 from airo_camera_toolkit.cameras.multiprocess.frame_data import deserialize_frame
@@ -44,11 +44,11 @@ class ZenohReader:
         session: zenoh.Session,
         key_expr: str,
         template: Any,
-        timeout: Optional[float] = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+        timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
         warn_every: int = 10,
     ) -> None:
         self._template = template
-        self._latest_bytes: Optional[bytes] = None
+        self._latest_bytes: bytes | None = None
         self._frame_count: int = 0
         self._lock = threading.Lock()
 
@@ -81,7 +81,7 @@ class ZenohReader:
     def _wait_for_first_message(
         self,
         key_expr: str,
-        timeout: Optional[float],
+        timeout: float | None,
         warn_every: int,
     ) -> None:
         """Block until the first message is received."""

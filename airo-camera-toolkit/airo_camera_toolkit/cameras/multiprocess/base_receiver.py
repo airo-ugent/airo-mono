@@ -2,7 +2,7 @@
 
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 import zenoh
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import _make_zenoh_config
@@ -29,7 +29,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self,
         shared_memory_namespace: str,
         block_until_new_frame: bool = True,
-        timeout: Optional[float] = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+        timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
     ) -> None:
         """Initialize the camera receiver.
 
@@ -48,7 +48,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self._shared_memory_namespace = shared_memory_namespace
         self._block_until_new_frame = block_until_new_frame
         self._timeout = timeout
-        self._reader: Optional[ZenohReader] = None
+        self._reader: ZenohReader | None = None
         self._stopped = False
 
         self._connect()
