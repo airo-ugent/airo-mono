@@ -2,8 +2,9 @@
 
 import importlib
 import time
+from collections.abc import Callable
 from types import ModuleType
-from typing import Any, Callable, NoReturn, Optional
+from typing import Any, NoReturn, Self
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -91,8 +92,8 @@ class Fanuc(PositionManipulator):
         self,
         ip_address: str,
         policy: Any,
-        manipulator_specs: Optional[ManipulatorSpecs] = None,
-        gripper: Optional[ParallelPositionGripper] = None,
+        manipulator_specs: ManipulatorSpecs | None = None,
+        gripper: ParallelPositionGripper | None = None,
     ) -> None:
         self.ip_address = ip_address
         self._fanuc = _import_airo_fanuc()
@@ -132,7 +133,7 @@ class Fanuc(PositionManipulator):
             f"Gripper: {type(self.gripper).__name__ if self.gripper is not None else 'none'}."
         )
 
-    def _build_default_gripper(self) -> Optional[ParallelPositionGripper]:
+    def _build_default_gripper(self) -> ParallelPositionGripper | None:
         """Wrap the driver's gripper worker when it is driving the Robotiq 2F-85 preset.
 
         The driver builds a register worker for whatever ``gripper_protocol`` the policy names; only
@@ -157,7 +158,7 @@ class Fanuc(PositionManipulator):
         self._closed = True
         self.driver.close()
 
-    def __enter__(self) -> "Fanuc":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> None:
@@ -257,7 +258,7 @@ class Fanuc(PositionManipulator):
     def move_to_joint_configuration(
         self,
         joint_configuration: JointConfigurationType,
-        joint_speed: Optional[float] = None,
+        joint_speed: float | None = None,
     ) -> AwaitableAction:
         """Move to a joint configuration with a jerk-limited point-to-point profile.
 
@@ -363,14 +364,12 @@ class Fanuc(PositionManipulator):
             ) from exception
         self._assert_motion_result_is_done(result, f"trajectory of {duration:.1f}s")
 
-    def move_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None
-    ) -> AwaitableAction:
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: float | None = None) -> AwaitableAction:
         """Not supported: this would need inverse kinematics."""
         _raise_no_kinematics("move_to_tcp_pose")
 
     def move_linear_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
+        self, tcp_pose: HomogeneousMatrixType, linear_speed: float | None = None
     ) -> AwaitableAction:
         """Not supported: the driver has no Cartesian motion mode either."""
         _raise_no_kinematics(
@@ -394,8 +393,8 @@ class Fanuc(PositionManipulator):
     def inverse_kinematics(
         self,
         tcp_pose: HomogeneousMatrixType,
-        joint_configuration_near: Optional[JointConfigurationType] = None,
-    ) -> Optional[JointConfigurationType]:
+        joint_configuration_near: JointConfigurationType | None = None,
+    ) -> JointConfigurationType | None:
         """Not supported."""
         _raise_no_kinematics("inverse_kinematics")
 

@@ -2,7 +2,6 @@ import datetime
 import glob
 import json
 import os
-from typing import List, Optional, Tuple
 
 import click
 import cv2
@@ -31,8 +30,8 @@ cv2_CALIBRATION_METHODS = {
 
 
 def compute_hand_eye_calibration_error(
-    tcp_poses_in_base: List[HomogeneousMatrixType],
-    board_poses_in_camera: List[HomogeneousMatrixType],
+    tcp_poses_in_base: list[HomogeneousMatrixType],
+    board_poses_in_camera: list[HomogeneousMatrixType],
     camera_pose: HomogeneousMatrixType,
 ) -> float:
     """Compute the error between the left and right side of the AX=XB equation to have an estimate of the error of the
@@ -60,10 +59,10 @@ def compute_hand_eye_calibration_error(
 
 
 def eye_in_hand_pose_estimation(
-    tcp_poses_in_base: List[HomogeneousMatrixType],
-    board_poses_in_camera: List[HomogeneousMatrixType],
+    tcp_poses_in_base: list[HomogeneousMatrixType],
+    board_poses_in_camera: list[HomogeneousMatrixType],
     method: int = cv2.CALIB_HAND_EYE_ANDREFF,
-) -> Tuple[Optional[HomogeneousMatrixType], Optional[float]]:
+) -> tuple[HomogeneousMatrixType | None, float | None]:
     """Wrapper around the opencv eye-in-hand extrinsics calibration function.
 
     Args:
@@ -123,10 +122,10 @@ def eye_in_hand_pose_estimation(
 
 
 def eye_to_hand_pose_estimation(
-    tcp_poses_in_base: List[HomogeneousMatrixType],
-    board_poses_in_camera: List[HomogeneousMatrixType],
+    tcp_poses_in_base: list[HomogeneousMatrixType],
+    board_poses_in_camera: list[HomogeneousMatrixType],
     method: int = cv2.CALIB_HAND_EYE_ANDREFF,
-) -> Tuple[Optional[HomogeneousMatrixType], Optional[float]]:
+) -> tuple[HomogeneousMatrixType | None, float | None]:
     """Wrapper around the opencv eye-to-hand extrinsics calibration function.
 
     Args:
@@ -146,11 +145,11 @@ def eye_to_hand_pose_estimation(
 
 
 def compute_calibration(
-    board_poses_in_camera: List[HomogeneousMatrixType],
-    tcp_poses_in_base: List[HomogeneousMatrixType],
+    board_poses_in_camera: list[HomogeneousMatrixType],
+    tcp_poses_in_base: list[HomogeneousMatrixType],
     mode: str = "eye_in_hand",
     method: int = cv2.CALIB_HAND_EYE_ANDREFF,
-) -> Tuple[Optional[HomogeneousMatrixType], Optional[float]]:
+) -> tuple[HomogeneousMatrixType | None, float | None]:
     """Compute the calibration for a given mode and method.
 
     Args:
@@ -177,8 +176,8 @@ def compute_calibration(
 
 def save_board_detections(
     results_dir: str,
-    board_poses_in_camera: List[Optional[HomogeneousMatrixType]],
-    images: List[OpenCVIntImageType],
+    board_poses_in_camera: list[HomogeneousMatrixType | None],
+    images: list[OpenCVIntImageType],
     intrinsics: CameraIntrinsicsMatrixType,
 ) -> None:
     """Convenience function to that saves jpg images of with the board pose drawn on it.
@@ -204,9 +203,9 @@ def save_board_detections(
 def draw_base_pose_on_image(
     image: OpenCVIntImageType,
     intrinsics: CameraIntrinsicsMatrixType,
-    camera_pose: Optional[HomogeneousMatrixType],
+    camera_pose: HomogeneousMatrixType | None,
     mode: str = "eye_in_hand",
-    tcp_pose: Optional[HomogeneousMatrixType] = None,
+    tcp_pose: HomogeneousMatrixType | None = None,
 ) -> None:
     """Draws the robot's base pose on an image, using the camera_pose resulting from the calibration.
 
@@ -239,13 +238,13 @@ def draw_base_pose_on_image(
 
 def compute_calibration_all_methods(
     results_dir: str,
-    images: List[OpenCVIntImageType],
-    tcp_poses_in_base: List[HomogeneousMatrixType],
+    images: list[OpenCVIntImageType],
+    tcp_poses_in_base: list[HomogeneousMatrixType],
     intrinsics: CameraIntrinsicsMatrixType,
     mode: str = "eye_in_hand",
     aruco_dict: ArucoDictType = AIRO_DEFAULT_ARUCO_DICT,
     charuco_board: CharucoBoardType = AIRO_DEFAULT_CHARUCO_BOARD,
-) -> Tuple[dict, dict]:
+) -> tuple[dict, dict]:
     """Computes the calibration solution for all methods available in OpenCV and saves the results to a directory.
 
     Args:
@@ -275,7 +274,7 @@ def compute_calibration_all_methods(
     tcp_poses_in_base = [
         tcp_poses_in_base[i] for i, board_pose in enumerate(board_poses_in_camera) if board_pose is not None
     ]
-    detected_board_poses_in_camera: List[HomogeneousMatrixType] = [
+    detected_board_poses_in_camera: list[HomogeneousMatrixType] = [
         board_pose for board_pose in board_poses_in_camera if board_pose is not None
     ]
     logger.info(f"Board poses were detected in {len(detected_board_poses_in_camera)} of the calibration samples.")
@@ -327,7 +326,7 @@ def compute_calibration_all_methods(
 
 def load_calibration_data(
     calibration_dir: str,
-) -> Tuple[List[OpenCVIntImageType], List[HomogeneousMatrixType], CameraIntrinsicsMatrixType, CameraResolutionType,]:
+) -> tuple[list[OpenCVIntImageType], list[HomogeneousMatrixType], CameraIntrinsicsMatrixType, CameraResolutionType,]:
     """Function to load calibration samples and camera parameters from a "data" directory in a calibration_dir
 
     Args:
@@ -340,7 +339,7 @@ def load_calibration_data(
 
     # Loading the intrinsics and resolution
     intrinsics_path = os.path.join(data_dir, "intrinsics.json")
-    with open(intrinsics_path, "r") as f:
+    with open(intrinsics_path) as f:
         camera_intrinsics = CameraIntrinsics.model_validate_json(f.read())
 
     resolution = camera_intrinsics.image_resolution.as_tuple()
@@ -357,7 +356,7 @@ def load_calibration_data(
         images.append(image)
     tcp_poses = []
     for filepath in pose_paths:
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             pose = Pose.model_validate_json(f.read())
         tcp_poses.append(pose.as_homogeneous_matrix())
 

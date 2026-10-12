@@ -34,7 +34,7 @@ def test_camera_intrinsics_save_and_load(tmp_path: pathlib.Path):
     with open(tmp_path / "camera_intrinsics.json", "w") as file:
         json.dump(camera_intrinsics.model_dump(exclude_none=True), file, indent=4)
 
-    with open(tmp_path / "camera_intrinsics.json", "r") as file:
+    with open(tmp_path / "camera_intrinsics.json") as file:
         camera_intrinsics2 = CameraIntrinsics.model_validate_json(file.read())
 
     assert camera_intrinsics2.image_resolution.width == 2208

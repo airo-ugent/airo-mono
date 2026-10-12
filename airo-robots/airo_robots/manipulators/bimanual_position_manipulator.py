@@ -1,6 +1,5 @@
 import time
 from abc import ABC
-from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -71,14 +70,14 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
     def _move_to_tcp_pose_shared(
         self,
         move_linear: bool,
-        left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
-        right_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
-        speed: Optional[float] = None,
+        left_tcp_pose_in_base: HomogeneousMatrixType | None,
+        right_tcp_pose_in_base: HomogeneousMatrixType | None,
+        speed: float | None = None,
     ) -> AwaitableAction:
         """Shared implementation for move_to_tcp_pose and move_linear_to_tcp_pose. Do not call directly."""
         if left_tcp_pose_in_base is None and right_tcp_pose_in_base is None:
             raise ValueError("At least one of the TCP poses should be specified")
-        awaitables: List[AwaitableAction] = []
+        awaitables: list[AwaitableAction] = []
         if left_tcp_pose_in_base is not None:
             left_tcp_pose_left_base = self.transform_pose_to_left_arm_base(left_tcp_pose_in_base)
 
@@ -109,9 +108,9 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
     def move_to_tcp_pose(
         self,
-        left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
-        right_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
-        joint_speed: Optional[float] = None,
+        left_tcp_pose_in_base: HomogeneousMatrixType | None,
+        right_tcp_pose_in_base: HomogeneousMatrixType | None,
+        joint_speed: float | None = None,
     ) -> AwaitableAction:
         """Move both arms to a given TCP pose in the base frame. You can specify None to not move one of the arms.
         Args:
@@ -126,9 +125,9 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
     def move_linear_to_tcp_pose(
         self,
-        left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
-        right_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
-        linear_speed: Optional[float] = None,
+        left_tcp_pose_in_base: HomogeneousMatrixType | None,
+        right_tcp_pose_in_base: HomogeneousMatrixType | None,
+        linear_speed: float | None = None,
     ) -> AwaitableAction:
         """Move both arms to a given TCP pose in the base frame. You can specify None to not move one of the arms.
         Args:
@@ -143,8 +142,8 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
 
     def servo_to_tcp_pose(
         self,
-        left_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
-        right_tcp_pose_in_base: Union[HomogeneousMatrixType, None],
+        left_tcp_pose_in_base: HomogeneousMatrixType | None,
+        right_tcp_pose_in_base: HomogeneousMatrixType | None,
         time: float,
     ) -> AwaitableAction:
         """
@@ -160,7 +159,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         if left_tcp_pose_in_base is None and right_tcp_pose_in_base is None:
             raise RobotConfigurationException("At least one of the TCP poses should be specified")
 
-        awaitables: List[AwaitableAction] = []
+        awaitables: list[AwaitableAction] = []
         if left_tcp_pose_in_base is not None:
             left_tcp_pose_left_base = self.transform_pose_to_left_arm_base(left_tcp_pose_in_base)
             left_awaitable = self._left_manipulator.servo_to_tcp_pose(left_tcp_pose_left_base, time)
@@ -201,7 +200,7 @@ class DualArmPositionManipulator(BimanualPositionManipulator):
         """
         left_awaitable = self._left_manipulator.servo_to_joint_configuration(left_joint_configuration, time)
         right_awaitable = self._right_manipulator.servo_to_joint_configuration(right_joint_configuration, time)
-        awaitables: Tuple[AwaitableAction, AwaitableAction] = (
+        awaitables: tuple[AwaitableAction, AwaitableAction] = (
             left_awaitable,
             right_awaitable,
         )

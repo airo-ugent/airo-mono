@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import List, Optional, Tuple
+from typing import Self
 
 import numpy as np
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType
@@ -25,8 +23,8 @@ class PrincipalPoint(BaseModel):
     cy: float
 
 
-RadialDistortionCoefficients = List[float]
-TangentialDistortionCoefficients = List[float]
+RadialDistortionCoefficients = list[float]
+TangentialDistortionCoefficients = list[float]
 
 
 class CameraIntrinsics(BaseModel):
@@ -37,13 +35,13 @@ class CameraIntrinsics(BaseModel):
     principal_point_in_pixels: PrincipalPoint
 
     # Distortion coefficients are stored so you can add as many as you want.
-    radial_distortion_coefficients: Optional[RadialDistortionCoefficients] = None
-    tangential_distortion_coefficients: Optional[TangentialDistortionCoefficients] = None
+    radial_distortion_coefficients: RadialDistortionCoefficients | None = None
+    tangential_distortion_coefficients: TangentialDistortionCoefficients | None = None
 
     @classmethod
     def from_matrix_and_resolution(
-        cls, intrinsics_matrix: CameraIntrinsicsMatrixType, resolution: Tuple[int, int]
-    ) -> CameraIntrinsics:
+        cls, intrinsics_matrix: CameraIntrinsicsMatrixType, resolution: tuple[int, int]
+    ) -> Self:
         """Creates a CameraIntrinsics object from a 3x3 matrix and an image resolution (width, height)."""
         fx = intrinsics_matrix[0, 0]
         fy = intrinsics_matrix[1, 1]

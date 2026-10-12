@@ -1,8 +1,7 @@
-from __future__ import annotations
+from typing import TypeGuard
 
 import numpy as np
 from airo_typing import NumpyFloatImageType, NumpyIntImageType, OpenCVIntImageType, TorchFloatImageType
-from typing_extensions import TypeGuard
 
 
 def is_image_array(image: object) -> TypeGuard[np.ndarray]:
@@ -64,7 +63,7 @@ class ImageConverter:
         self._image_in_numpy_float_format = image_in_numpy_float_format
 
     @classmethod
-    def from_numpy_format(cls, image: NumpyFloatImageType) -> ImageConverter:
+    def from_numpy_format(cls, image: NumpyFloatImageType) -> "ImageConverter":
         if not is_float_image_array(image):
             raise TypeError("image must be a valid float image array")
         if image.shape[2] != 3:
@@ -74,7 +73,7 @@ class ImageConverter:
         return ImageConverter(image)
 
     @classmethod
-    def from_numpy_int_format(cls, image: NumpyIntImageType) -> ImageConverter:
+    def from_numpy_int_format(cls, image: NumpyIntImageType) -> "ImageConverter":
         if not is_int_image_array(image):
             raise TypeError("image must be a valid int image array")
         if image.shape[2] != 3:
@@ -84,7 +83,7 @@ class ImageConverter:
         return ImageConverter(image)
 
     @classmethod
-    def from_opencv_format(cls, image: OpenCVIntImageType) -> ImageConverter:
+    def from_opencv_format(cls, image: OpenCVIntImageType) -> "ImageConverter":
         if not is_int_image_array(image):
             raise TypeError("image must be a valid int image array")
         if image.shape[2] != 3:
@@ -100,7 +99,7 @@ class ImageConverter:
         return ImageConverter(image)
 
     @classmethod
-    def from_torch_format(cls, image: TorchFloatImageType) -> ImageConverter:
+    def from_torch_format(cls, image: TorchFloatImageType) -> "ImageConverter":
         if not is_float_image_array(image):
             raise TypeError("image must be a valid float image array")
         if image.shape[0] != 3:

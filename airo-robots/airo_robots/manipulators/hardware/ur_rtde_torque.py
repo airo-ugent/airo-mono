@@ -26,7 +26,6 @@ from dataclasses import dataclass
 from multiprocessing import Array, Lock, Process, Value
 from multiprocessing.sharedctypes import Synchronized, SynchronizedArray
 from multiprocessing.synchronize import Lock as LockType
-from typing import Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -223,10 +222,10 @@ class URrtdeTorque(URrtde):
     def __init__(
         self,
         ip_address: str,
-        manipulator_specs: Optional[ManipulatorSpecs] = None,
-        gripper: Optional[ParallelPositionGripper] = None,
-        kp: Optional[np.ndarray] = None,
-        kd: Optional[np.ndarray] = None,
+        manipulator_specs: ManipulatorSpecs | None = None,
+        gripper: ParallelPositionGripper | None = None,
+        kp: np.ndarray | None = None,
+        kd: np.ndarray | None = None,
     ) -> None:
         """
         Args:
@@ -254,7 +253,7 @@ class URrtdeTorque(URrtde):
         self._target_shared = Array("d", dof)
         self._running_flag = Value("b", False)
         self._target_lock = Lock()
-        self._torque_process: Optional[Process] = None
+        self._torque_process: Process | None = None
 
     @property
     def is_torque_control_active(self) -> bool:
@@ -359,14 +358,12 @@ class URrtdeTorque(URrtde):
     # While torque control is active, the worker process owns the robot's control script, so all methods that rely
     # on the parent's rtde_control interface are unavailable and raise a RuntimeError.
 
-    def move_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None
-    ) -> AwaitableAction:
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: float | None = None) -> AwaitableAction:
         self._assert_torque_control_inactive("move_to_tcp_pose")
         return super().move_to_tcp_pose(tcp_pose, joint_speed)
 
     def move_linear_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
+        self, tcp_pose: HomogeneousMatrixType, linear_speed: float | None = None
     ) -> AwaitableAction:
         self._assert_torque_control_inactive("move_linear_to_tcp_pose")
         return super().move_linear_to_tcp_pose(tcp_pose, linear_speed)
@@ -374,7 +371,7 @@ class URrtdeTorque(URrtde):
     def move_to_joint_configuration(
         self,
         joint_configuration: JointConfigurationType,
-        joint_speed: Optional[float] = None,
+        joint_speed: float | None = None,
     ) -> AwaitableAction:
         self._assert_torque_control_inactive("move_to_joint_configuration")
         return super().move_to_joint_configuration(joint_configuration, joint_speed)
@@ -396,7 +393,7 @@ class URrtdeTorque(URrtde):
     def inverse_kinematics(
         self,
         tcp_pose: HomogeneousMatrixType,
-        joint_configuration_guess: Optional[JointConfigurationType] = None,
+        joint_configuration_guess: JointConfigurationType | None = None,
     ) -> JointConfigurationType:
         self._assert_torque_control_inactive("inverse_kinematics")
         return super().inverse_kinematics(tcp_pose, joint_configuration_guess)

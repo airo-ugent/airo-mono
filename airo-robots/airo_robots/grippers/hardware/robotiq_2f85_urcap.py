@@ -1,7 +1,6 @@
 import asyncio
 import socket
 import time
-from typing import Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -36,7 +35,7 @@ class Robotiq2F85(ParallelPositionGripper):
     # see https://assets.robotiq.com/website-assets/support_documents/document/2F-85_2F-140_Instruction_Manual_e-Series_PDF_20190206.pdf
     ROBOTIQ_2F85_DEFAULT_SPECS = ParallelPositionGripperSpecs(0.085, 0.0, 220, 25, 0.15, 0.02)
 
-    def __init__(self, host_ip: str, port: int = 63352, fingers_max_stroke: Optional[float] = None) -> None:
+    def __init__(self, host_ip: str, port: int = 63352, fingers_max_stroke: float | None = None) -> None:
         """
         host_ip: the IP adress of the robot to which the gripper is connected.
 
@@ -63,7 +62,7 @@ class Robotiq2F85(ParallelPositionGripper):
         width = rescale_range(register_value, 0, 230, self._gripper_specs.max_width, self._gripper_specs.min_width)
         return width
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
+    def move(self, width: float, speed: float | None = None, force: float | None = None) -> AwaitableAction:
         if speed:
             self.speed = speed
         if force:
@@ -128,7 +127,7 @@ class Robotiq2F85(ParallelPositionGripper):
     ###########################
     ## non-interface classes ##
     ###########################
-    async def asyncio_move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> None:
+    async def asyncio_move(self, width: float, speed: float | None = None, force: float | None = None) -> None:
         """Asyncio (async) move"""
         if speed:
             self.speed = speed

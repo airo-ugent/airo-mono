@@ -1,5 +1,4 @@
 import pathlib
-from typing import Tuple
 
 import cv2
 import numpy as np
@@ -10,7 +9,7 @@ from airo_camera_toolkit.image_transforms.image_transform import ImageTransform
 GRADIENT_IMAGE_PATH = pathlib.Path(__file__).parent / "data" / "gradient.jpg"
 
 
-def _test_transform(point: Tuple[int, int], transform: ImageTransform):
+def _test_transform(point: tuple[int, int], transform: ImageTransform):
     transformed_point = transform.transform_point(point)
     reversed_point = transform.reverse_transform_point(transformed_point)
     assert point == reversed_point

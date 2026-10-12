@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from datetime import timedelta
-from typing import Any, ClassVar, List, Optional
+from typing import Any, ClassVar, Self
 
 import cv2
 import numpy as np
@@ -77,7 +75,7 @@ class Luxonis(RGBDCamera):
         depth_preset: Any = DEPTH_PRESET_DEFAULT,
         stereo_resolution: CameraResolutionType = STEREO_RESOLUTION_400,
         enable_undistortion: bool = True,
-        serial_number: Optional[str] = None,
+        serial_number: str | None = None,
     ) -> None:
         """Initializes the Luxonis camera.
 
@@ -179,7 +177,7 @@ class Luxonis(RGBDCamera):
                 )
             return
 
-    def __enter__(self) -> Luxonis:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
@@ -250,7 +248,7 @@ class Luxonis(RGBDCamera):
         return self._point_cloud
 
     @staticmethod
-    def list_camera_serial_numbers() -> List[str]:
+    def list_camera_serial_numbers() -> list[str]:
         """List the device IDs (MxIDs) of all available Luxonis cameras.
 
         Can be used to select a camera or to check if cameras are connected.

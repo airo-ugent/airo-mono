@@ -1,7 +1,6 @@
 import multiprocessing
 import time
 from multiprocessing.context import SpawnProcess
-from typing import Optional
 
 import loguru
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
@@ -17,8 +16,8 @@ class MultiprocessRGBRerunLogger(SpawnProcess):
         self,
         shared_memory_namespace: str,
         rerun_application_id: str = "rerun",
-        image_transform: Optional[ImageTransform] = None,
-        entity_path: Optional[str] = None,
+        image_transform: ImageTransform | None = None,
+        entity_path: str | None = None,
     ):
         super().__init__(daemon=True)
         self._shared_memory_namespace = shared_memory_namespace
@@ -67,9 +66,9 @@ class MultiprocessRGBDRerunLogger(MultiprocessRGBRerunLogger):
         self,
         shared_memory_namespace: str,
         rerun_application_id: str = "rerun",
-        image_transform: Optional[ImageTransform] = None,
-        entity_path: Optional[str] = None,
-        entity_path_depth: Optional[str] = None,
+        image_transform: ImageTransform | None = None,
+        entity_path: str | None = None,
+        entity_path_depth: str | None = None,
     ):
         super().__init__(
             shared_memory_namespace,

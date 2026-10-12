@@ -27,7 +27,7 @@ def test_coco_load_instances():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/instances_val2017_small.json")
 
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         coco_instances = CocoInstancesDataset(**data)
         # Check a few known lengths to ensure that all elements were loaded
@@ -43,7 +43,7 @@ def test_coco_load_keypoints():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small.json")
 
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         coco_keypoints = CocoKeypointsDataset(**data)
         assert len(coco_keypoints.images) == 2
@@ -58,7 +58,7 @@ def test_coco_load_keypoints_as_instances_keeps_additional_fields():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small.json")
 
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         coco_keypoints = CocoInstancesDataset(**data)
         assert len(coco_keypoints.annotations[0].keypoints) > 0
@@ -69,7 +69,7 @@ def test_coco_load_instances_incorrectly():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/instances_val2017_small.json")
 
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         with pytest.raises(Exception):
             CocoKeypointsDataset(**data)
@@ -80,7 +80,7 @@ def test_coco_load_instances_no_segmasks():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small_no_segmentations.json")
 
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         coco_instances = CocoKeypointsDataset(**data)
         # Check a few known lengths to ensure that all elements were loaded
@@ -92,7 +92,7 @@ def test_coco_load_keypoints_no_bboxes():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small_no_bbox.json")
 
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         coco_keypoints = CocoKeypointsDataset(**data)
         assert len(coco_keypoints.images) == 2

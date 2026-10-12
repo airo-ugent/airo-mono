@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import Optional  # use class as type for class methods
+from typing import Self
 
 import numpy as np
 from airo_typing import (
@@ -43,44 +41,44 @@ class SE3Container:
         self.se3 = se3
 
     @classmethod
-    def random(cls) -> SE3Container:
+    def random(cls) -> Self:
         """A random SE3 element with translations in the [-1,1]^3 cube."""
         return cls(SE3.Rand())
 
     @classmethod
-    def from_translation(cls, translation: Vector3DType) -> SE3Container:
+    def from_translation(cls, translation: Vector3DType) -> Self:
         """creates a translation-only SE3 element"""
         return cls(SE3.Trans(translation.tolist()))
 
     @classmethod
-    def from_homogeneous_matrix(cls, matrix: HomogeneousMatrixType) -> SE3Container:
+    def from_homogeneous_matrix(cls, matrix: HomogeneousMatrixType) -> Self:
         _assert_is_se3_matrix(matrix)
         return cls(SE3(matrix))
 
     @classmethod
     def from_rotation_matrix_and_translation(
-        cls, rotation_matrix: RotationMatrixType, translation: Optional[Vector3DType] = None
-    ) -> SE3Container:
+        cls, rotation_matrix: RotationMatrixType, translation: Vector3DType | None = None
+    ) -> Self:
         _assert_is_so3_matrix(rotation_matrix)
         return cls(SE3.Rt(rotation_matrix, translation))
 
     @classmethod
     def from_rotation_vector_and_translation(
-        cls, rotation_vector: RotationVectorType, translation: Optional[Vector3DType] = None
-    ) -> SE3Container:
+        cls, rotation_vector: RotationVectorType, translation: Vector3DType | None = None
+    ) -> Self:
         return cls(SE3.Rt(Rotation.from_rotvec(rotation_vector).as_matrix(), translation))
 
     @classmethod
     def from_quaternion_and_translation(
-        cls, quaternion: QuaternionType, translation: Optional[Vector3DType] = None
-    ) -> SE3Container:
+        cls, quaternion: QuaternionType, translation: Vector3DType | None = None
+    ) -> Self:
         q = UnitQuaternion(quaternion[3], quaternion[:3])  # scalar-first in math lib
         return cls(SE3.Rt(q.R, translation))
 
     @classmethod
     def from_euler_angles_and_translation(
-        cls, euler_angels: EulerAnglesType, translation: Optional[Vector3DType] = None
-    ) -> SE3Container:
+        cls, euler_angels: EulerAnglesType, translation: Vector3DType | None = None
+    ) -> Self:
         # convert from extrinsic XYZ to rotmatrix
         # bc SE3.Eul does not accept translation
         rot_matrix = Rotation.from_euler("xyz", euler_angels, degrees=False).as_matrix()
@@ -92,8 +90,8 @@ class SE3Container:
         x_axis: Vector3DType,
         y_axis: Vector3DType,
         z_axis: Vector3DType,
-        translation: Optional[Vector3DType] = None,
-    ) -> SE3Container:
+        translation: Vector3DType | None = None,
+    ) -> Self:
         # create orientation matrix with base vectors as columns
         orientation_matrix = np.zeros((3, 3))
         for i, axis in enumerate([x_axis, y_axis, z_axis]):

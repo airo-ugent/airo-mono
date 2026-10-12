@@ -1,5 +1,3 @@
-from typing import List
-
 from airo_camera_toolkit.image_transforms.image_transform import (
     HWCImageType,
     ImagePointType,
@@ -9,7 +7,7 @@ from airo_camera_toolkit.image_transforms.image_transform import (
 
 
 class ComposedTransform(ImageTransform):
-    def __init__(self, transforms: List[ImageTransform]):
+    def __init__(self, transforms: list[ImageTransform]):
         if len(transforms) == 0:
             raise ValueError("transforms must be a non-empty list.")
 

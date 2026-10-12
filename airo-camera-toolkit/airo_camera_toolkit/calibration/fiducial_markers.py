@@ -6,7 +6,6 @@ so part of the credit for this code goes to him.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 import cv2
 import numpy as np
@@ -43,7 +42,7 @@ class CharucoCornerDetectionResult(ArucoMarkerDetectionResult):
 #############
 
 
-def detect_aruco_markers(image: OpenCVIntImageType, dictionary: ArucoDictType) -> Optional[ArucoMarkerDetectionResult]:
+def detect_aruco_markers(image: OpenCVIntImageType, dictionary: ArucoDictType) -> ArucoMarkerDetectionResult | None:
     """Detect markers from `aruco_dict` dictionary in the `image`."""
     detector = aruco.ArucoDetector(dictionary)
     marker_corners, marker_ids, _ = detector.detectMarkers(image)
@@ -59,7 +58,7 @@ def detect_charuco_corners(
     image: OpenCVIntImageType,
     markers_detection_result: ArucoMarkerDetectionResult,
     charuco_board: CharucoBoardType,
-) -> Optional[CharucoCornerDetectionResult]:
+) -> CharucoCornerDetectionResult | None:
     """Detect CharuCo corners in the image using the detected markers in `markers_detection_result`."""
     charuco_detector = aruco.CharucoDetector(charuco_board)
     charuco_corners, charuco_ids, _, _ = charuco_detector.detectBoard(image)
@@ -94,8 +93,8 @@ def get_poses_of_aruco_markers(
     markers_detection_result: ArucoMarkerDetectionResult,
     marker_size: float,
     camera_matrix: CameraIntrinsicsMatrixType,
-    dist_coeffs: Optional[np.ndarray] = None,
-) -> Optional[List[HomogeneousMatrixType]]:
+    dist_coeffs: np.ndarray | None = None,
+) -> list[HomogeneousMatrixType] | None:
     """Get the poses of the detected markers in `markers_detection_result`."""
     # Object points for a single marker (top-left, top-right, bottom-right, bottom-left)
     half = marker_size / 2
@@ -117,8 +116,8 @@ def get_pose_of_charuco_board(
     charuco_corners_detection_result: CharucoCornerDetectionResult,
     charuco_board: CharucoBoardType,
     camera_matrix: CameraIntrinsicsMatrixType,
-    dist_coeffs: Optional[np.ndarray] = None,
-) -> Optional[HomogeneousMatrixType]:
+    dist_coeffs: np.ndarray | None = None,
+) -> HomogeneousMatrixType | None:
     """Get the pose of the detected CharuCo board in `charuco_corners_detection_result`.
     The origin of the charuco frame is defined in the topleft corner of the board."""
     charuco_corners = charuco_corners_detection_result.corners
@@ -148,10 +147,10 @@ def get_pose_of_charuco_board(
 def detect_charuco_board(
     image: OpenCVIntImageType,
     camera_matrix: CameraIntrinsicsMatrixType,
-    dist_coeffs: Optional[np.ndarray] = None,
+    dist_coeffs: np.ndarray | None = None,
     aruco_dict: ArucoDictType = AIRO_DEFAULT_ARUCO_DICT,
     charuco_board: CharucoBoardType = AIRO_DEFAULT_CHARUCO_BOARD,
-) -> Optional[HomogeneousMatrixType]:
+) -> HomogeneousMatrixType | None:
     """Detect the pose of a charuco board from an image and the camera's intrinsics.
 
     Args:
@@ -162,7 +161,7 @@ def detect_charuco_board(
         charuco_board: The CharucoBoardType from OpenCV that specifies the charuco board parameters.
 
     Returns:
-        Optional[HomogeneousMatrixType]: The pose of the charuco board in the camera frame, if it was detected.
+        HomogeneousMatrixType | None: The pose of the charuco board in the camera frame, if it was detected.
     """
 
     aruco_result = detect_aruco_markers(image, aruco_dict)
@@ -203,7 +202,7 @@ def visualize_aruco_detections(
     image: OpenCVIntImageType, aruco_result: ArucoMarkerDetectionResult
 ) -> OpenCVIntImageType:
     """Draws the aruco marker countours/corners and their IDs on the image"""
-    image = aruco.drawDetectedMarkers(image, [x for x in aruco_result.corners], aruco_result.ids)
+    image = aruco.drawDetectedMarkers(image, [*aruco_result.corners], aruco_result.ids)
     return image
 
 
@@ -220,7 +219,7 @@ def detect_and_visualize_charuco_pose(
     charuco_board: CharucoBoardType = AIRO_DEFAULT_CHARUCO_BOARD,
     draw_aruco_detection: bool = True,
     draw_charuco_detection: bool = True,
-) -> Optional[HomogeneousMatrixType]:
+) -> HomogeneousMatrixType | None:
     """Detects and visualizes the pose of a charuco board in an image.
 
     Args:
@@ -281,11 +280,11 @@ if __name__ == "__main__":
     @click_camera_options
     def visualize_marker_detections_live(
         aruco_marker_size: float,
-        charuco_x_count: Optional[int] = None,
-        charuco_y_count: Optional[int] = None,
-        charuco_tile_size: Optional[float] = None,
-        camera_brand: Optional[str] = None,
-        camera_serial_number: Optional[str] = None,
+        charuco_x_count: int | None = None,
+        charuco_y_count: int | None = None,
+        charuco_tile_size: float | None = None,
+        camera_brand: str | None = None,
+        camera_serial_number: str | None = None,
     ) -> None:
         aruco_dict = AIRO_DEFAULT_ARUCO_DICT
         # Only create a charuco board if all charuco related parameters were provided.

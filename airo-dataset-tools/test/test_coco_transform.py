@@ -12,7 +12,7 @@ def test_apply_transform_to_coco_dataset_empty_segmentation(tmp_path):
     annotations_path = os.path.join(test_dir, "test_data/lego-battery-resized/annotations.json")
     image_dir = os.path.join(test_dir, "test_data/lego-battery-resized")
 
-    with open(annotations_path, "r") as f:
+    with open(annotations_path) as f:
         data = json.load(f)
 
     coco_dataset = CocoInstancesDataset(**data)

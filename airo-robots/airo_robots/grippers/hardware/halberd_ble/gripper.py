@@ -8,7 +8,8 @@ Grippers are selected by their user-assigned name, set in the Halberd sketch via
 ``gripper.begin("gripper-left")``. See halberd_ble.md for setup and usage.
 """
 
-from typing import Optional
+
+from typing import Self
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -45,7 +46,7 @@ class HalberdBLEGripper(ParallelPositionGripper):
       pass ``gripper_specs`` to override.
     """
 
-    def __init__(self, client: HalberdClient, gripper_specs: Optional[ParallelPositionGripperSpecs] = None) -> None:
+    def __init__(self, client: HalberdClient, gripper_specs: ParallelPositionGripperSpecs | None = None) -> None:
         descriptor = client.descriptor
         if descriptor.profile != protocol.PARALLEL_PROFILE:
             raise ValueError(
@@ -78,11 +79,11 @@ class HalberdBLEGripper(ParallelPositionGripper):
     @classmethod
     def connect(
         cls,
-        name: Optional[str] = None,
-        address: Optional[str] = None,
+        name: str | None = None,
+        address: str | None = None,
         scan_timeout: float = 5.0,
-        gripper_specs: Optional[ParallelPositionGripperSpecs] = None,
-    ) -> "HalberdBLEGripper":
+        gripper_specs: ParallelPositionGripperSpecs | None = None,
+    ) -> Self:
         """Connect to the gripper with the given user-assigned name (or address).
 
         With no filter, exactly one gripper must be in range; a name matching multiple
@@ -116,7 +117,7 @@ class HalberdBLEGripper(ParallelPositionGripper):
         """The current opening of the fingers in meters."""
         return self._client.get_state().positions[0]
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
+    def move(self, width: float, speed: float | None = None, force: float | None = None) -> AwaitableAction:
         """Move the fingers to the desired opening [m]; speed/force persist for later moves."""
         if speed is not None:
             self.speed = speed
@@ -172,7 +173,7 @@ if __name__ == "__main__":
 
     @click.command()
     @click.option("--name", default=None, help="User-assigned gripper name (set in the sketch).")
-    def test_halberd(name: Optional[str]) -> None:
+    def test_halberd(name: str | None) -> None:
         grippers = HalberdBLEGripper.discover()
         print(f"Discovered grippers: {grippers}")
         gripper = HalberdBLEGripper.connect(name=name)
@@ -199,9 +200,7 @@ class GenericHalberdGripper:
         return _discover(timeout=timeout)
 
     @classmethod
-    def connect(
-        cls, name: Optional[str] = None, address: Optional[str] = None, scan_timeout: float = 5.0
-    ) -> "GenericHalberdGripper":
+    def connect(cls, name: str | None = None, address: str | None = None, scan_timeout: float = 5.0) -> Self:
         """Connect to the gripper with the given user-assigned name (or address)."""
         return cls(_connect(name=name, address=address, scan_timeout=scan_timeout))
 

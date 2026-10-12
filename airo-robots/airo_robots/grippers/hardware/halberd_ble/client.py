@@ -16,9 +16,10 @@ Install the BLE dependency with ``pip install "airo-robots[halberd]"``.
 
 import asyncio
 import threading
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Coroutine, Optional, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from airo_robots.grippers.hardware.halberd_ble import protocol
 from loguru import logger
@@ -79,7 +80,7 @@ class CommandStatus(Enum):
 @dataclass
 class _PendingCommand:
     status: CommandStatus = CommandStatus.PENDING
-    reason: Optional[protocol.FailureReason] = None
+    reason: protocol.FailureReason | None = None
     acked: threading.Event = None  # type: ignore[assignment]
     terminal: threading.Event = None  # type: ignore[assignment]
 
@@ -115,8 +116,8 @@ class AmbiguousGripperError(HalberdConnectionError):
 
 def select_advertisement(
     advertisements: list[HalberdAdvertisement],
-    name: Optional[str] = None,
-    address: Optional[str] = None,
+    name: str | None = None,
+    address: str | None = None,
 ) -> HalberdAdvertisement:
     """Select exactly one gripper from discovery results, failing loudly on ambiguity.
 
@@ -161,8 +162,8 @@ class HalberdClient:
         self._lock = threading.Lock()
         self._seq = 0
         self._pending: dict[int, _PendingCommand] = {}
-        self._state: Optional[protocol.GripperState] = None
-        self._sensor_values: Optional[tuple[float, ...]] = None
+        self._state: protocol.GripperState | None = None
+        self._sensor_values: tuple[float, ...] | None = None
         self._first_state = threading.Event()
         self._connected = True
 
@@ -366,10 +367,10 @@ class BleakTransport:
     def __init__(self, address: str, connect_timeout: float = 10.0) -> None:
         if not BLEAK_INSTALLED:
             raise ImportError(BLEAK_INSTALL_HINT)
-        self._event_listener: Optional[Callable[[bytes], None]] = None
-        self._state_listener: Optional[Callable[[bytes], None]] = None
-        self._sensor_listener: Optional[Callable[[bytes], None]] = None
-        self._disconnect_listener: Optional[Callable[[], None]] = None
+        self._event_listener: Callable[[bytes], None] | None = None
+        self._state_listener: Callable[[bytes], None] | None = None
+        self._sensor_listener: Callable[[bytes], None] | None = None
+        self._disconnect_listener: Callable[[], None] | None = None
 
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._loop.run_forever, name="halberd-ble", daemon=True)
@@ -461,8 +462,8 @@ def discover(timeout: float = 5.0) -> list[HalberdAdvertisement]:
 
 
 def connect(
-    name: Optional[str] = None,
-    address: Optional[str] = None,
+    name: str | None = None,
+    address: str | None = None,
     scan_timeout: float = 5.0,
 ) -> HalberdClient:
     """Discover and connect to exactly one Halberd gripper.

@@ -5,10 +5,11 @@ import setuptools
 root_folder = pathlib.Path(__file__).parents[1]
 setuptools.setup(
     name="airo_camera_toolkit",
-    version="2026.10.0",
+    version="2026.10.1",
     description="Interfaces and common functionality to work with RGB(D) cameras for robotic manipulation at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
+    python_requires=">=3.11",
     install_requires=[
         "numpy>=2.0",
         "opencv-contrib-python==4.10.0.84",  # contrib required for cv2.ximgproc (stereo disparity) and GUI functions (cv2.imshow)

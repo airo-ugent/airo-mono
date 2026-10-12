@@ -3,7 +3,6 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
 
 from airo_robots.awaitable_action import AwaitableAction
 
@@ -75,7 +74,7 @@ class ParallelPositionGripper(ABC):
         """the current opening of the fingers in meters"""
 
     @abstractmethod
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
+    def move(self, width: float, speed: float | None = None, force: float | None = None) -> AwaitableAction:
         """
         move the fingers to the desired width between the fingers[m].
         Optionally provide a speed and/or force, that will be used from then on for all move commands.

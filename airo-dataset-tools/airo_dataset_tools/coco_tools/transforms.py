@@ -34,7 +34,7 @@ class PillowResize(A.Resize):  # type: ignore
     def __init__(
         self, height: int, width: int, interpolation: Any = Image.BICUBIC, always_apply: bool = False, p: float = 1.0
     ):
-        super(PillowResize, self).__init__(height, width, always_apply=always_apply, p=p)
+        super().__init__(height, width, always_apply=always_apply, p=p)
         self.height = height
         self.width = width
         self.interpolation = interpolation

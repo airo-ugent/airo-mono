@@ -17,9 +17,7 @@ Note that the attributes cannot have _ as prefix for Pydantic.
 #   timestamp: 2022-08-24T12:15:52+00:00
 # then further changed by @tlips
 
-from __future__ import annotations
-
-from typing import Any, List, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, field_validator
 
@@ -48,12 +46,12 @@ class LabelItem(BaseModel):
 
 
 class Labels(BaseModel):
-    label: Union[List[LabelItem], LabelItem]
+    label: list[LabelItem] | LabelItem
 
 
 class Job(BaseModel):
     id: str
-    name: Optional[str] = None
+    name: str | None = None
     size: str
     mode: str
     overlap: str
@@ -71,8 +69,8 @@ class Job(BaseModel):
 
 
 class Meta(BaseModel):
-    job: Optional[Job] = None
-    task: Optional[Job] = None
+    job: Job | None = None
+    task: Job | None = None
     dumped: str
 
     def get_job_or_task(self) -> Job:
@@ -89,7 +87,7 @@ class AnnotationItem(BaseModel):
     source: str
     z_order: str
     occluded: str
-    group_id: Optional[str] = "1"  # set default group id to 1.
+    group_id: str | None = "1"  # set default group id to 1.
 
 
 class Point(AnnotationItem):
@@ -119,15 +117,15 @@ class ImageItem(BaseModel):
     name: str
     width: str
     height: str
-    points: Optional[Union[List[Point], Point]] = None
-    polygon: Optional[Union[List[Polygon], Polygon]] = None
-    box: Optional[Union[List[Box], Box]] = None
+    points: list[Point] | Point | None = None
+    polygon: list[Polygon] | Polygon | None = None
+    box: list[Box] | Box | None = None
 
 
 class Annotations(BaseModel):
     version: str
     meta: Meta
-    image: List[ImageItem]
+    image: list[ImageItem]
 
 
 class CVATImagesParser(BaseModel):

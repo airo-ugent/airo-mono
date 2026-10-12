@@ -6,7 +6,7 @@ Only a few discrete openings and force classes are reachable, and nothing at all
 
 import importlib
 from types import ModuleType
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -79,7 +79,7 @@ class Robotiq2F85Fanuc(ParallelPositionGripper):
             register protocol than the Robotiq 2F-85 preset this class implements.
     """
 
-    def __init__(self, driver: Any, gripper_specs: Optional[ParallelPositionGripperSpecs] = None) -> None:
+    def __init__(self, driver: Any, gripper_specs: ParallelPositionGripperSpecs | None = None) -> None:
         if driver.gripper is None:
             raise ValueError(
                 "This FanucDriver has no gripper worker. Bring the driver up with "
@@ -92,7 +92,7 @@ class Robotiq2F85Fanuc(ParallelPositionGripper):
         self._worker = driver.gripper
         # The interface lets a caller set a force once and have it apply to every later move.
         self._close_force = FORCE_MEDIUM
-        self._last_commanded_width: Optional[float] = None
+        self._last_commanded_width: float | None = None
 
         super().__init__(gripper_specs if gripper_specs is not None else ROBOTIQ_2F85_FANUC_SPECS)
 
@@ -118,7 +118,7 @@ class Robotiq2F85Fanuc(ParallelPositionGripper):
                 f"{tuple(OPEN_WIDTHS)} and {tuple(CLOSE_FORCES)}. Update this module to match the driver."
             )
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
+    def move(self, width: float, speed: float | None = None, force: float | None = None) -> AwaitableAction:
         """Move the fingers to the reachable opening closest to ``width`` [m].
 
         A width that snaps to the closed position is sent as a *close* at the current force class, so
@@ -165,7 +165,7 @@ class Robotiq2F85Fanuc(ParallelPositionGripper):
         )
 
     @property
-    def last_commanded_width(self) -> Optional[float]:
+    def last_commanded_width(self) -> float | None:
         """The nominal opening [m] of the last command, or ``None`` before the first one.
 
         A command, not a measurement: a close that stopped on an object ends up wider than this.
@@ -214,7 +214,7 @@ class Robotiq2F85Fanuc(ParallelPositionGripper):
         raise NotImplementedError(f"Grasp detection is not available on a FANUC. {_NO_FEEDBACK_MESSAGE}")
 
     @property
-    def last_result(self) -> Optional[Dict[str, Any]]:
+    def last_result(self) -> dict[str, Any] | None:
         """The dispatcher's verdict on the last command: ``{"success": bool, "message": str}``.
 
         ``success`` means the teach-pendant program said it finished, not that a width was reached or

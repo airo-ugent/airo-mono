@@ -1,5 +1,4 @@
 import time
-from typing import Optional
 
 from airo_robots.awaitable_action import AwaitableAction
 from airo_robots.grippers.parallel_position_gripper import ParallelPositionGripper, ParallelPositionGripperSpecs
@@ -17,7 +16,7 @@ class DummyParallelPositionGripper(ParallelPositionGripper):
 
         self.async_executor = AsyncExecutor()
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
+    def move(self, width: float, speed: float | None = None, force: float | None = None) -> AwaitableAction:
         if speed:
             self.gripper_speed = speed
         if force:

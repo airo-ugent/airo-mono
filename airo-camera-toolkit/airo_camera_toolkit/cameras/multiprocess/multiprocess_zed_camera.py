@@ -2,7 +2,7 @@
 
 import multiprocessing
 import time
-from typing import Any, Optional
+from typing import Any
 
 import loguru
 import numpy as np
@@ -163,14 +163,14 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         enable_spatial_mapping: bool = False,
         max_spatial_map_chunks: int = 10000,
         max_spatial_map_points: int = 1000000,
-        timeout: Optional[float] = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+        timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
     ) -> None:
         self.enable_positional_tracking = enable_positional_tracking
         self.enable_spatial_mapping = enable_spatial_mapping
         self.max_spatial_map_chunks = max_spatial_map_chunks
         self.max_spatial_map_points = max_spatial_map_points
-        self._reader_pcd: Optional[ZenohReader] = None
-        self._reader_spatial_map: Optional[ZenohReader] = None
+        self._reader_pcd: ZenohReader | None = None
+        self._reader_spatial_map: ZenohReader | None = None
 
         super().__init__(shared_memory_namespace, enable_pointcloud=enable_pointcloud, timeout=timeout)
 

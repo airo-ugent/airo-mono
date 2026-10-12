@@ -3,7 +3,6 @@ import multiprocessing
 import os
 import time
 from multiprocessing.context import SpawnProcess
-from typing import Optional
 
 import cv2
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
@@ -15,8 +14,8 @@ class MultiprocessVideoRecorder(SpawnProcess):
     def __init__(
         self,
         shared_memory_namespace: str,
-        video_path: Optional[str] = None,
-        image_transform: Optional[ImageTransform] = None,
+        video_path: str | None = None,
+        image_transform: ImageTransform | None = None,
         fill_missing_frames: bool = True,
     ):
         super().__init__(daemon=True)

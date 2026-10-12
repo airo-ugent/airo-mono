@@ -7,7 +7,6 @@ inspired by https://stackoverflow.com/questions/1133857/how-accurate-is-pythons-
 """
 
 import time
-from typing import List
 
 import matplotlib.pyplot as plt
 
@@ -32,7 +31,7 @@ def measure_busywait_time(amount_in_s: float) -> float:
     return difference_in_ms
 
 
-def measure_sleeping_performance(sleep_times_in_ms: List[float]) -> dict[float, list[float]]:
+def measure_sleeping_performance(sleep_times_in_ms: list[float]) -> dict[float, list[float]]:
     sleep_time_measurements = {}
     for sleep_time in sleep_times_in_ms:
         # do 100 measurements
@@ -45,7 +44,7 @@ def measure_sleeping_performance(sleep_times_in_ms: List[float]) -> dict[float, 
     return sleep_time_measurements
 
 
-def measure_busywait_performance(sleep_times_in_ms: List[float]) -> dict[float, list[float]]:
+def measure_busywait_performance(sleep_times_in_ms: list[float]) -> dict[float, list[float]]:
     sleep_time_measurements = {}
     for sleep_time in sleep_times_in_ms:
         # do 100 measurements

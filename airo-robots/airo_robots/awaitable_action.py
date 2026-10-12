@@ -2,8 +2,8 @@ import enum
 import inspect
 import time
 import warnings
+from collections.abc import Callable
 from types import FrameType
-from typing import Callable, Optional
 
 
 class ACTION_STATUS_ENUM(enum.Enum):
@@ -50,7 +50,7 @@ class AwaitableAction:
         self._created_file = frame.f_code.co_filename
         self._created_line = frame.f_lineno
 
-    def wait(self, timeout: Optional[float] = None, sleep_resolution: Optional[float] = None) -> ACTION_STATUS_ENUM:
+    def wait(self, timeout: float | None = None, sleep_resolution: float | None = None) -> ACTION_STATUS_ENUM:
         """Busy waiting until the termination condition returns true, or until timeout.
 
         Args:
