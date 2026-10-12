@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pytest
@@ -52,15 +52,15 @@ class FakeMotionHandle:
     def result(self) -> str:
         return self._result
 
-    def wait(self, timeout: Optional[float] = None) -> str:
+    def wait(self, timeout: float | None = None) -> str:
         return self._result
 
 
 @dataclass
 class FakeGripperProtocol:
     name: str = "Robotiq 2F-85 via GRIPDISP"
-    open_modifiers: Tuple[int, ...] = (0, 1, 2)
-    close_modifiers: Tuple[int, ...] = (0, 1, 2)
+    open_modifiers: tuple[int, ...] = (0, 1, 2)
+    close_modifiers: tuple[int, ...] = (0, 1, 2)
 
 
 @dataclass
@@ -77,13 +77,13 @@ class FakeProfile:
 class FakeGripperWorker:
     def __init__(self, protocol: FakeGripperProtocol) -> None:
         self.protocol = protocol
-        self.calls: List[Tuple[str, int]] = []
+        self.calls: list[tuple[str, int]] = []
         self.last_result: dict = {"success": True, "message": "ok"}
 
-    def open_gripper(self, open_state: Optional[int] = None) -> None:
+    def open_gripper(self, open_state: int | None = None) -> None:
         self.calls.append(("open", 0 if open_state is None else open_state))
 
-    def close_gripper(self, close_force: Optional[int] = None) -> None:
+    def close_gripper(self, close_force: int | None = None) -> None:
         self.calls.append(("close", 1 if close_force is None else close_force))
 
 
@@ -94,17 +94,17 @@ class FakeFanucDriver:
         self.gripper = FakeGripperWorker(policy.gripper_protocol) if policy.enable_gripper else None
         self.q_measured = np.zeros(6)
         self.q_commanded = np.zeros(6)
-        self.tcp_pose: Optional[np.ndarray] = np.array([500.0, 0.0, 300.0, 0.0, 0.0, 90.0])
-        self.flange_pose: Optional[np.ndarray] = np.array([325.0, 0.0, 300.0, 0.0, 0.0, 90.0])
-        self.wrench: Optional[np.ndarray] = None
+        self.tcp_pose: np.ndarray | None = np.array([500.0, 0.0, 300.0, 0.0, 0.0, 90.0])
+        self.flange_pose: np.ndarray | None = np.array([325.0, 0.0, 300.0, 0.0, 0.0, 90.0])
+        self.wrench: np.ndarray | None = None
         self.steady = True
         self.motion_result = FakeMotionResult.DONE
-        self.raise_on_submit: Optional[Exception] = None
-        self.calls: List[Tuple[Any, ...]] = []
+        self.raise_on_submit: Exception | None = None
+        self.calls: list[tuple[Any, ...]] = []
         self.closed = False
 
     # -- state ---------------------------------------------------------
-    def get_joint_configuration(self) -> Optional[np.ndarray]:
+    def get_joint_configuration(self) -> np.ndarray | None:
         return self.q_measured
 
     def get_state(self) -> dict:
@@ -117,17 +117,17 @@ class FakeFanucDriver:
             "operator_hint": None,
         }
 
-    def get_tcp_pose(self) -> Optional[np.ndarray]:
+    def get_tcp_pose(self) -> np.ndarray | None:
         return self.tcp_pose
 
-    def get_flange_pose(self) -> Optional[np.ndarray]:
+    def get_flange_pose(self) -> np.ndarray | None:
         return self.flange_pose
 
-    def get_wrench(self) -> Optional[np.ndarray]:
+    def get_wrench(self) -> np.ndarray | None:
         return self.wrench
 
     # -- motion --------------------------------------------------------
-    def move_j(self, q: np.ndarray, joint_speed: Optional[float] = None) -> FakeMotionHandle:
+    def move_j(self, q: np.ndarray, joint_speed: float | None = None) -> FakeMotionHandle:
         if self.raise_on_submit is not None:
             raise self.raise_on_submit
         self.calls.append(("move_j", np.asarray(q), joint_speed))

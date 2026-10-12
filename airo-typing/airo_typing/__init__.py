@@ -1,5 +1,5 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -14,7 +14,7 @@ Vector2DType = np.ndarray
 Vector2DArrayType = np.ndarray
 """a (N,2) np array that represents N 2D positions/translations/directions"""
 
-Vectors2DType = Union[Vector2DType, Vector2DArrayType]
+Vectors2DType = Vector2DType | Vector2DArrayType
 """a convenience type that represents a (2,) 2D vector or (N,2) array of 3D vectors."""
 
 Vector3DType = np.ndarray
@@ -23,7 +23,7 @@ Vector3DType = np.ndarray
 Vector3DArrayType = np.ndarray
 """ a (N,3) np array that represents N 3D positions/translations/directions
 """
-Vectors3DType = Union[Vector3DType, Vector3DArrayType]
+Vectors3DType = Vector3DType | Vector3DArrayType
 """ a convenience type that represents a (3,) 3D vector or (N,3) array of 3D vectors.
 """
 QuaternionType = np.ndarray
@@ -37,7 +37,7 @@ EulerAnglesType = np.ndarray
 """XYZ angles of rotation around the axes of the original frame (extrinsic).
 First rotate around X, then around Y, finally around Z.
 """
-AxisAngleType = Tuple[Vector3DType, float]
+AxisAngleType = tuple[Vector3DType, float]
 
 RotationVectorType = np.ndarray
 """ Rotation vector <x*theta,y*theta,z*theta> that represents a rotation around the <x,y,z> axis with angle <theta>
@@ -81,24 +81,24 @@ JointPathType = np.ndarray
 TimesType = np.ndarray
 """ a (T,) array of monotonically increasing times (float), corresponding to a path"""
 
-JointPathConstraintType = Tuple[Callable[[JointConfigurationType], float], float]
+JointPathConstraintType = tuple[Callable[[JointConfigurationType], float], float]
 """a tuple of a constraint function and a tolerance value: when the constraint function's absolute output is smaller than the tolerance, the constraint is satisfied."""
 
 
 @dataclass
 class JointPathContainer:
-    positions: Optional[JointPathType] = None
-    velocities: Optional[JointPathType] = None
-    accelerations: Optional[JointPathType] = None
-    efforts: Optional[JointPathType] = None
-    constraint: Optional[JointPathConstraintType] = None
+    positions: JointPathType | None = None
+    velocities: JointPathType | None = None
+    accelerations: JointPathType | None = None
+    efforts: JointPathType | None = None
+    constraint: JointPathConstraintType | None = None
 
 
 @dataclass
 class SingleArmTrajectory:
     times: TimesType  # time (seconds) from start of trajectory
     path: JointPathContainer
-    gripper_path: Optional[JointPathContainer] = None
+    gripper_path: JointPathContainer | None = None
 
 
 @dataclass
@@ -106,8 +106,8 @@ class DualArmTrajectory:
     times: TimesType  # time (seconds) from start of trajectory
     path_left: JointPathContainer
     path_right: JointPathContainer
-    gripper_path_left: Optional[JointPathContainer] = None
-    gripper_path_right: Optional[JointPathContainer] = None
+    gripper_path_left: JointPathContainer | None = None
+    gripper_path_right: JointPathContainer | None = None
 
 
 PosePathType = np.ndarray
@@ -123,7 +123,7 @@ class PoseTrajectory:
 ForwardKinematicsFunctionType = Callable[[JointConfigurationType], HomogeneousMatrixType]
 """ a function that computes the forward kinematics of a given joint configuration"""
 
-InverseKinematicsFunctionType = Callable[[HomogeneousMatrixType], List[JointConfigurationType]]
+InverseKinematicsFunctionType = Callable[[HomogeneousMatrixType], list[JointConfigurationType]]
 """ a function that computes one or more inverse kinematics solutions of a given TCP pose"""
 
 JointConfigurationCheckerType = Callable[[JointConfigurationType], bool]
@@ -148,7 +148,7 @@ NumpyDepthMapType = np.ndarray
 NumpyConfidenceMapType = np.ndarray
 """ a confidence map (higher is more confidence), float(0-1), (H,W)"""
 
-CameraResolutionType = Tuple[int, int]
+CameraResolutionType = tuple[int, int]
 """ a tuple of image (width, height) in pixels"""
 
 CameraIntrinsicsMatrixType = np.ndarray
@@ -165,7 +165,7 @@ this is the homogeneous matrix that describes the camera pose in the world frame
 # 3D and point cloud types
 ##########################
 
-BoundingBox3DType = Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+BoundingBox3DType = tuple[tuple[float, float, float], tuple[float, float, float]]
 """ a tuple of two tuples that represent the min and max corners of a 3D bounding box"""
 
 PointCloudPositionsType = Vector3DArrayType
@@ -174,12 +174,12 @@ PointCloudPositionsType = Vector3DArrayType
 PointCloudColorsType = np.ndarray
 """ a (N,3) uint8 numpy array that represents the RGB colors of a point cloud"""
 
-PointCloudAttributesType = Dict[str, np.ndarray]
+PointCloudAttributesType = dict[str, np.ndarray]
 """ a dictionary of numpy arrays that represent additional attributes of a point cloud, e.g. normals, confidence, etc. """
 
 
 @dataclass
 class PointCloud:
     points: PointCloudPositionsType
-    colors: Optional[PointCloudColorsType] = None
-    attributes: Optional[PointCloudAttributesType] = None
+    colors: PointCloudColorsType | None = None
+    attributes: PointCloudAttributesType | None = None

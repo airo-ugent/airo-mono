@@ -1,7 +1,6 @@
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -33,9 +32,9 @@ class ManipulatorSpecs:
     max_joint_torques: optional list of max joint torques in [Nm], required for torque-controlled manipulators
     """
 
-    max_joint_speeds: List[float]
+    max_joint_speeds: list[float]
     max_linear_speed: float
-    max_joint_torques: Optional[List[float]] = None
+    max_joint_torques: list[float] | None = None
 
     @property
     def dof(self) -> int:
@@ -54,7 +53,7 @@ class PositionManipulator(ABC):
     def __init__(
         self,
         manipulator_specs: ManipulatorSpecs,
-        gripper: Optional[ParallelPositionGripper] = None,
+        gripper: ParallelPositionGripper | None = None,
     ) -> None:
         self._manipulator_specs = manipulator_specs
         self._gripper = gripper
@@ -66,7 +65,7 @@ class PositionManipulator(ABC):
         return self._manipulator_specs
 
     @property
-    def gripper(self) -> Optional[ParallelPositionGripper]:
+    def gripper(self) -> ParallelPositionGripper | None:
         return self._gripper
 
     @gripper.setter
@@ -108,9 +107,7 @@ class PositionManipulator(ABC):
         pass
 
     @abstractmethod
-    def move_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None
-    ) -> AwaitableAction:
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: float | None = None) -> AwaitableAction:
         """move to a desired pose. This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory.
 
@@ -128,7 +125,7 @@ class PositionManipulator(ABC):
 
     @abstractmethod
     def move_linear_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
+        self, tcp_pose: HomogeneousMatrixType, linear_speed: float | None = None
     ) -> AwaitableAction:
         """move to desired pose in a straight line (synchronous). This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory.
@@ -145,7 +142,7 @@ class PositionManipulator(ABC):
     def move_to_joint_configuration(
         self,
         joint_configuration: JointConfigurationType,
-        joint_speed: Optional[float] = None,
+        joint_speed: float | None = None,
     ) -> AwaitableAction:
         """move to a desired joint configuration (synchronous). This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory.
@@ -206,8 +203,8 @@ class PositionManipulator(ABC):
     def inverse_kinematics(
         self,
         tcp_pose: HomogeneousMatrixType,
-        joint_configuration_near: Optional[JointConfigurationType] = None,
-    ) -> Optional[JointConfigurationType]:
+        joint_configuration_near: JointConfigurationType | None = None,
+    ) -> JointConfigurationType | None:
         """Solve inverse kinematics.
 
         Args:

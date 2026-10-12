@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional  # use class as type for class methods
-
 import numpy as np
 from airo_typing import (
     AxisAngleType,
@@ -59,27 +57,27 @@ class SE3Container:
 
     @classmethod
     def from_rotation_matrix_and_translation(
-        cls, rotation_matrix: RotationMatrixType, translation: Optional[Vector3DType] = None
+        cls, rotation_matrix: RotationMatrixType, translation: Vector3DType | None = None
     ) -> SE3Container:
         _assert_is_so3_matrix(rotation_matrix)
         return cls(SE3.Rt(rotation_matrix, translation))
 
     @classmethod
     def from_rotation_vector_and_translation(
-        cls, rotation_vector: RotationVectorType, translation: Optional[Vector3DType] = None
+        cls, rotation_vector: RotationVectorType, translation: Vector3DType | None = None
     ) -> SE3Container:
         return cls(SE3.Rt(Rotation.from_rotvec(rotation_vector).as_matrix(), translation))
 
     @classmethod
     def from_quaternion_and_translation(
-        cls, quaternion: QuaternionType, translation: Optional[Vector3DType] = None
+        cls, quaternion: QuaternionType, translation: Vector3DType | None = None
     ) -> SE3Container:
         q = UnitQuaternion(quaternion[3], quaternion[:3])  # scalar-first in math lib
         return cls(SE3.Rt(q.R, translation))
 
     @classmethod
     def from_euler_angles_and_translation(
-        cls, euler_angels: EulerAnglesType, translation: Optional[Vector3DType] = None
+        cls, euler_angels: EulerAnglesType, translation: Vector3DType | None = None
     ) -> SE3Container:
         # convert from extrinsic XYZ to rotmatrix
         # bc SE3.Eul does not accept translation
@@ -92,7 +90,7 @@ class SE3Container:
         x_axis: Vector3DType,
         y_axis: Vector3DType,
         z_axis: Vector3DType,
-        translation: Optional[Vector3DType] = None,
+        translation: Vector3DType | None = None,
     ) -> SE3Container:
         # create orientation matrix with base vectors as columns
         orientation_matrix = np.zeros((3, 3))

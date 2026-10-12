@@ -10,7 +10,6 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -64,7 +63,7 @@ class LiveSensorPlotter:
         self._poll_period_s = poll_period_s
         self._window_s = window_s
         self._stop_event = threading.Event()
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
         self._start_t = time.monotonic()
 

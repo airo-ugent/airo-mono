@@ -1,7 +1,6 @@
 import socket
 import time
 from enum import Enum
-from typing import Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -64,8 +63,8 @@ class URrtde(PositionManipulator):
     def __init__(
         self,
         ip_address: str,
-        manipulator_specs: Optional[ManipulatorSpecs] = None,
-        gripper: Optional[ParallelPositionGripper] = None,
+        manipulator_specs: ManipulatorSpecs | None = None,
+        gripper: ParallelPositionGripper | None = None,
     ) -> None:
         self.ip_address = ip_address
         max_connection_attempts = 3
@@ -143,7 +142,7 @@ class URrtde(PositionManipulator):
         return self._convert_rotvec_pose_to_homogeneous_pose(tpc_rotvec_pose)
 
     def move_linear_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
+        self, tcp_pose: HomogeneousMatrixType, linear_speed: float | None = None
     ) -> AwaitableAction:
         self.rtde_control.servoStop()  # stop any ongoing servo commands to avoid "another thread is controlling the robot" errors
         self._assert_pose_is_valid(tcp_pose)
@@ -157,9 +156,7 @@ class URrtde(PositionManipulator):
             and self._is_move_command_finished()
         )
 
-    def move_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None
-    ) -> AwaitableAction:
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: float | None = None) -> AwaitableAction:
         self.rtde_control.servoStop()  # stop any ongoing servo commands to avoid "another thread is controlling the robot" errors
         self._assert_pose_is_valid(tcp_pose)
         joint_speed = joint_speed or self.default_joint_speed
@@ -177,7 +174,7 @@ class URrtde(PositionManipulator):
         )
 
     def move_to_joint_configuration(
-        self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
+        self, joint_configuration: JointConfigurationType, joint_speed: float | None = None
     ) -> AwaitableAction:
         self.rtde_control.servoStop()  # stop any ongoing servo commands to avoid "another thread is controlling the robot" errors
         # check joint limits
@@ -249,7 +246,7 @@ class URrtde(PositionManipulator):
         )
 
     def inverse_kinematics(
-        self, tcp_pose: HomogeneousMatrixType, joint_configuration_guess: Optional[JointConfigurationType] = None
+        self, tcp_pose: HomogeneousMatrixType, joint_configuration_guess: JointConfigurationType | None = None
     ) -> JointConfigurationType:
         tcp_rotvec_pose = self._convert_homegeneous_pose_to_rotvec_pose(tcp_pose)
 

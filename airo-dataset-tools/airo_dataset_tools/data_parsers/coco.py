@@ -30,14 +30,14 @@ with open("annotations.json", "w") as file:
 
 """
 
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
 
 from pydantic import BaseModel, field_validator, model_validator
 
 # Used by CocoInfo and CocoImage
-Datetime = Union[
-    str, int
-]  # COCO uses both YYYY-MM-DD and YYYY-MM-DD HH:MM:SS for datetime, CVAT places 0 for missing values
+Datetime = (
+    str | int
+)  # COCO uses both YYYY-MM-DD and YYYY-MM-DD HH:MM:SS for datetime, CVAT places 0 for missing values
 Url = str
 
 # Used by CocoImage and CocoLicenses
@@ -56,18 +56,18 @@ ImageID = int
 # see https://www.youtube.com/watch?v=h6s61a_pqfM for a video explanation of RLE
 # see https://github.com/cocodataset/cocoapi/issues/386 for a discussion of RLE string encoding
 # RLE is Usually only used for is_crowd segmentations.
-RLEDict = Dict[str, Union[str, List]]
+RLEDict = dict[str, str | list]
 
-Polygon = List[float]  # list of vertices [x1, y1, x2, y2, ...]
-Segmentation = Union[RLEDict, List[Polygon]]
+Polygon = list[float]  # list of vertices [x1, y1, x2, y2, ...]
+Segmentation = RLEDict | list[Polygon]
 
 # Used by the Annotations
-Keypoints = List[float]  # list of keypoints [x1, y1, v1, x2, y2, v2, ...]
+Keypoints = list[float]  # list of keypoints [x1, y1, v1, x2, y2, v2, ...]
 IsCrowd = int  # 0 or 1
 
 
 class CocoInfo(BaseModel):
-    year: Union[int, str]
+    year: int | str
     version: str
     description: str
     contributor: str
@@ -80,10 +80,10 @@ class CocoImage(BaseModel):
     width: int
     height: int
     file_name: str  # relative path to image
-    license: Optional[LicenseID] = None
-    flicker_url: Optional[Url] = None
-    coco_url: Optional[Url] = None
-    date_captured: Optional[Datetime] = None
+    license: LicenseID | None = None
+    flicker_url: Url | None = None
+    coco_url: Url | None = None
+    date_captured: Datetime | None = None
     __hash__ = object.__hash__  # make hashable for use in set
 
 
@@ -95,8 +95,8 @@ class CocoCategory(BaseModel, extra="allow"):
 
 
 class CocoKeypointCategory(CocoCategory):
-    keypoints: List[str]
-    skeleton: Optional[List[List[int]]] = None
+    keypoints: list[str]
+    skeleton: list[list[int]] | None = None
 
 
 class CocoInstanceAnnotation(BaseModel, extra="allow"):  # allow extra fields, to parse subclasses
@@ -105,11 +105,11 @@ class CocoInstanceAnnotation(BaseModel, extra="allow"):  # allow extra fields, t
     image_id: ImageID
     category_id: CategoryID
 
-    bbox: Optional[Tuple[float, float, float, float]] = None
+    bbox: tuple[float, float, float, float] | None = None
 
-    segmentation: Optional[Segmentation] = None
-    area: Optional[float] = None
-    iscrowd: Optional[IsCrowd] = None
+    segmentation: Segmentation | None = None
+    area: float | None = None
+    iscrowd: IsCrowd | None = None
 
     @field_validator("iscrowd")
     @classmethod
@@ -123,10 +123,10 @@ class CocoInstanceAnnotation(BaseModel, extra="allow"):  # allow extra fields, t
 
 class CocoKeypointAnnotation(CocoInstanceAnnotation):
     keypoints: Keypoints
-    num_keypoints: Optional[int] = None
+    num_keypoints: int | None = None
 
     # make bbox optional
-    bbox: Optional[Tuple[float, float, float, float]] = None
+    bbox: tuple[float, float, float, float] | None = None
 
     @field_validator("keypoints")
     @classmethod
@@ -172,15 +172,15 @@ class CocoLicense(BaseModel):
 
 
 class CocoInstancesDataset(BaseModel):
-    info: Optional[CocoInfo] = None
-    licenses: Optional[List[CocoLicense]] = None
+    info: CocoInfo | None = None
+    licenses: list[CocoLicense] | None = None
     categories: Sequence[CocoCategory]
-    images: List[CocoImage]
+    images: list[CocoImage]
     annotations: Sequence[CocoInstanceAnnotation]
 
     @field_validator("annotations")
     @classmethod
-    def annotations_list_cannot_be_empty(cls, v: List[CocoInstanceAnnotation]) -> List[CocoInstanceAnnotation]:
+    def annotations_list_cannot_be_empty(cls, v: list[CocoInstanceAnnotation]) -> list[CocoInstanceAnnotation]:
         if len(v) == 0:
             raise ValueError("annotations list cannot be empty")
         return v
@@ -188,7 +188,7 @@ class CocoInstancesDataset(BaseModel):
     # skip on failure becasue this validator requires the annotations list to be non-empty
     @model_validator(mode="after")
     def annotations_catergory_id_exist_in_categories(self) -> "CocoInstancesDataset":
-        category_ids = set([category.id for category in self.categories])
+        category_ids = {category.id for category in self.categories}
         for annotation in self.annotations:
             if annotation.category_id not in category_ids:
                 raise ValueError(

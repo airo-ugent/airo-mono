@@ -1,11 +1,9 @@
-from typing import Union
-
 from airo_spatial_algebra.operations import _HomogeneousPoints
 from airo_typing import CameraIntrinsicsMatrixType, Vector2DArrayType, Vector3DArrayType, Vector3DType
 
 
 def project_points_to_image_plane(
-    positions_in_camera_frame: Union[Vector3DArrayType, Vector3DType],
+    positions_in_camera_frame: Vector3DArrayType | Vector3DType,
     camera_intrinsics: CameraIntrinsicsMatrixType,
 ) -> Vector2DArrayType:
     """Projects an array of points from the 3D camera frame to their 2D pixel coordinates on the image plane.

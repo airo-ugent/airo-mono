@@ -16,7 +16,6 @@ import json
 import struct
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Optional
 
 PROTOCOL_VERSION = 1
 
@@ -163,7 +162,7 @@ class Event:
 
     type: EventType
     seq: int
-    reason: Optional[FailureReason] = None
+    reason: FailureReason | None = None
 
 
 @dataclass(frozen=True)
@@ -216,7 +215,7 @@ def decode_event(frame: bytes) -> Event:
         event_type = EventType(frame[0])
     except ValueError as error:
         raise ProtocolError(f"Unknown event type 0x{frame[0]:02x}") from error
-    reason: Optional[FailureReason] = None
+    reason: FailureReason | None = None
     if event_type == EventType.FAILED:
         if len(frame) < 3:
             raise ProtocolError(f"FAILED event without reason byte: {frame.hex()}")

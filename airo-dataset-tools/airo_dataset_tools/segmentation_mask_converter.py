@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 import cv2
 import numpy as np
@@ -8,7 +8,7 @@ from airo_dataset_tools.data_parsers.coco import Polygon, RLEDict, Segmentation
 from pycocotools import mask
 
 
-def merge_multi_segment(segments: List[List[Any]]) -> List[np.ndarray]:
+def merge_multi_segment(segments: list[list[Any]]) -> list[np.ndarray]:
     """
 
     code taken from: https://github.com/ultralytics/JSON2YOLO/blob/main/general_json2yolo.py#L330
@@ -28,7 +28,7 @@ def merge_multi_segment(segments: List[List[Any]]) -> List[np.ndarray]:
         List(List): merged segments.
     """
 
-    def min_index(arr1: np.ndarray, arr2: np.ndarray) -> Tuple[Any, ...]:
+    def min_index(arr1: np.ndarray, arr2: np.ndarray) -> tuple[Any, ...]:
         """
         Find a pair of indexes with the shortest distance.
 
@@ -43,7 +43,7 @@ def merge_multi_segment(segments: List[List[Any]]) -> List[np.ndarray]:
 
     s = []
     segments_arrays = [np.array(i).reshape(-1, 2) for i in segments]
-    idx_list: List[List[int]] = [[] for _ in range(len(segments_arrays))]
+    idx_list: list[list[int]] = [[] for _ in range(len(segments_arrays))]
 
     # record the indexes with min distance between each segment
     for i in range(1, len(segments_arrays)):
@@ -96,7 +96,7 @@ class BinarySegmentationMask:
         self.bitmap = bitmap
 
     @classmethod
-    def from_polygon(cls, polygon: List[Polygon], width: int, height: int) -> BinarySegmentationMask:
+    def from_polygon(cls, polygon: list[Polygon], width: int, height: int) -> BinarySegmentationMask:
         """Create a BinarySegmentationMask from a list of COCO polygons."""
         rles = mask.frPyObjects(polygon, height, width)
         rle = mask.merge(rles)
@@ -132,14 +132,14 @@ class BinarySegmentationMask:
         return float(mask.area(self.as_compressed_rle))
 
     @property
-    def bbox(self) -> Tuple[float, float, float, float]:
+    def bbox(self) -> tuple[float, float, float, float]:
         """returns x,y,w,h of the enclosing bbox"""
 
         bbox: np.ndarray = mask.toBbox(self.as_compressed_rle)
         return (bbox[0], bbox[1], bbox[2], bbox[3])
 
     @property
-    def as_polygon(self) -> Optional[List[Polygon]]:
+    def as_polygon(self) -> list[Polygon] | None:
         # from https://github.com/cocodataset/cocoapi/issues/476#issuecomment-871804850
         contours, _ = cv2.findContours(self.bitmap, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         segmentation = []
@@ -155,7 +155,7 @@ class BinarySegmentationMask:
         return segmentation
 
     @property
-    def as_single_polygon(self) -> Optional[Polygon | List[np.ndarray]]:
+    def as_single_polygon(self) -> Polygon | list[np.ndarray] | None:
         """Convert a bitmap to a single polygon. If the bitmap contains multiple segments, they will be merged into one polygon."""
         poly = self.as_polygon
         if poly is None:

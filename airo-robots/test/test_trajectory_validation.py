@@ -1,5 +1,4 @@
 import unittest
-from typing import List, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -49,18 +48,16 @@ class DummyPositionManipulator(PositionManipulator):
     def get_joint_configuration(self) -> JointConfigurationType:
         return self.q
 
-    def move_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None
-    ) -> AwaitableAction:
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: float | None = None) -> AwaitableAction:
         pass
 
     def move_linear_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
+        self, tcp_pose: HomogeneousMatrixType, linear_speed: float | None = None
     ) -> AwaitableAction:
         pass
 
     def move_to_joint_configuration(
-        self, joint_configuration: JointConfigurationType, joint_speed: Optional[float] = None
+        self, joint_configuration: JointConfigurationType, joint_speed: float | None = None
     ) -> AwaitableAction:
         self.q = joint_configuration
         return AwaitableAction(lambda: True)
@@ -74,8 +71,8 @@ class DummyPositionManipulator(PositionManipulator):
         return AwaitableAction(lambda: True)
 
     def inverse_kinematics(
-        self, tcp_pose: HomogeneousMatrixType, joint_configuration_near: Optional[JointConfigurationType] = None
-    ) -> Optional[JointConfigurationType]:
+        self, tcp_pose: HomogeneousMatrixType, joint_configuration_near: JointConfigurationType | None = None
+    ) -> JointConfigurationType | None:
         pass
 
     def forward_kinematics(self, joint_configuration: JointConfigurationType) -> HomogeneousMatrixType:
@@ -86,7 +83,7 @@ class DummyPositionManipulator(PositionManipulator):
 
 
 def create_trajectory(
-    qs: List[JointConfigurationType], constraint: Optional[JointPathConstraintType]
+    qs: list[JointConfigurationType], constraint: JointPathConstraintType | None
 ) -> SingleArmTrajectory:
     """Creates a trajectory from a list of joint configurations."""
     times = np.arange(0, len(qs), 1.0)
@@ -94,10 +91,10 @@ def create_trajectory(
 
 
 def create_dual_arm_trajectory(
-    qs_left: List[JointConfigurationType],
-    qs_right: List[JointConfigurationType],
-    constraint_left: Optional[JointPathConstraintType] = None,
-    constraint_right: Optional[JointPathConstraintType] = None,
+    qs_left: list[JointConfigurationType],
+    qs_right: list[JointConfigurationType],
+    constraint_left: JointPathConstraintType | None = None,
+    constraint_right: JointPathConstraintType | None = None,
 ) -> DualArmTrajectory:
     """Creates a trajectory from a list of joint configurations."""
     times = np.arange(0, len(qs_left), 1.0)

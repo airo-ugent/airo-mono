@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import TypeGuard
+
 import numpy as np
 from airo_typing import NumpyFloatImageType, NumpyIntImageType, OpenCVIntImageType, TorchFloatImageType
-from typing_extensions import TypeGuard
 
 
 def is_image_array(image: object) -> TypeGuard[np.ndarray]:

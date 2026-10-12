@@ -3,7 +3,7 @@ import multiprocessing as mp
 import time
 from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -29,7 +29,7 @@ class GripperCommand:
     """Command sent to the gripper process"""
 
     cmd_type: str
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 # values obtained from https://schunk.com/be/nl/grijpsystemen/parallelgrijper/egk/egk-40-mb-m-b/p/000000000001491762
@@ -67,7 +67,7 @@ class SchunkGripperProcess(ParallelPositionGripper):
     """
 
     def __init__(
-        self, usb_interface: str = "/dev/ttyUSB0,11", gripper_specs: Optional[ParallelPositionGripperSpecs] = None
+        self, usb_interface: str = "/dev/ttyUSB0,11", gripper_specs: ParallelPositionGripperSpecs | None = None
     ):
         # Default specs for Schunk gripper if none provided
         if gripper_specs is None:
@@ -316,7 +316,7 @@ class SchunkGripperProcess(ParallelPositionGripper):
     def get_current_velocity(self) -> float:
         return self._send_command_and_wait_for_result(GripperCommand(cmd_type="get_actual_vel")) / 1000.0
 
-    def move(self, width: float, speed: Optional[float] = None, force: Optional[float] = None) -> AwaitableAction:
+    def move(self, width: float, speed: float | None = None, force: float | None = None) -> AwaitableAction:
         """
         Move the fingers to the desired width between the fingers[m].
         Optionally provide a speed and/or force, that will be used from then on for all move commands.

@@ -1,7 +1,8 @@
 """Contains code for testing implementations of the camera interfaces.
 """
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np

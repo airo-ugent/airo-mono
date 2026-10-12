@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 import cv2
 import numpy as np
@@ -46,7 +46,7 @@ class Realsense(RGBDCamera):
         enable_pointcloud: bool = True,
         enable_confidence_map: bool = False,
         enable_hole_filling: bool = True,
-        serial_number: Optional[str] = None,
+        serial_number: str | None = None,
     ) -> None:
         self._resolution = resolution
         self._fps = fps

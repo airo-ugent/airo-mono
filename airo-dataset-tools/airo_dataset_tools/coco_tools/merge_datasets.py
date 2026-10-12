@@ -137,11 +137,11 @@ def merge_coco_datasets(json_path_1: str, json_path_2: str, target_json_path: st
     merge_coco_image_folders(str(image_path_1), str(image_path_2), str(pathlib.Path(target_json_path).parent))
 
     dataset1 = None
-    with open(json_path_1, "r") as f:
+    with open(json_path_1) as f:
         dataset1 = CocoInstancesDataset(**json.load(f))
 
     dataset2 = None
-    with open(json_path_2, "r") as f:
+    with open(json_path_2) as f:
         dataset2 = CocoInstancesDataset(**json.load(f))
 
     merged_dataset = merge_coco_annotations(dataset1, dataset2)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import os
-from typing import Any, Optional, Tuple
+from typing import Any
 
 import cv2
 from airo_camera_toolkit.interfaces import RGBCamera
@@ -23,8 +23,8 @@ class OpenCVVideoCapture(RGBCamera):
 
     def __init__(
         self,
-        video_capture_args: Tuple[Any] = (0,),
-        intrinsics_matrix: Optional[CameraIntrinsicsMatrixType] = None,
+        video_capture_args: tuple[Any] = (0,),
+        intrinsics_matrix: CameraIntrinsicsMatrixType | None = None,
         resolution: CameraResolutionType = RESOLUTION_480,
         fps: int = 30,
     ) -> None:

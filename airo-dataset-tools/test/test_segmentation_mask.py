@@ -42,7 +42,7 @@ def test_polygon_creation():
 def test_coco_segmentation_loading():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/instances_val2017_small.json")
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         coco_instances = CocoInstancesDataset(**data)
         for annotation in coco_instances.annotations:

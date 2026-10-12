@@ -2,7 +2,6 @@ import datetime
 import json
 import os
 import time
-from typing import Optional, Tuple
 
 import click
 import cv2
@@ -16,7 +15,7 @@ from airo_robots.manipulators.position_manipulator import PositionManipulator
 from airo_typing import HomogeneousMatrixType, OpenCVIntImageType
 
 
-def create_calibration_data_dir(calibration_dir: Optional[str] = None) -> str:
+def create_calibration_data_dir(calibration_dir: str | None = None) -> str:
     """Ensures that a calibration_dir exists and has an empty "data" subfolder where new calibration samples can be
     stored.
 
@@ -45,7 +44,7 @@ def create_calibration_data_dir(calibration_dir: Optional[str] = None) -> str:
 
 def save_calibration_sample(
     sample_index: int, robot: PositionManipulator, camera: RGBCamera, data_dir: str
-) -> Tuple[HomogeneousMatrixType, OpenCVIntImageType]:
+) -> tuple[HomogeneousMatrixType, OpenCVIntImageType]:
     """Collect a single calibration sample and save to the data_dir.
     A calibration data sample consists of an image and a TCP pose.
 
@@ -87,7 +86,7 @@ def save_calibration_sample(
     return tcp_pose, image_bgr
 
 
-def collect_calibration_data(robot: PositionManipulator, camera: RGBCamera, calibration_dir: Optional[str]) -> None:
+def collect_calibration_data(robot: PositionManipulator, camera: RGBCamera, calibration_dir: str | None) -> None:
     """Collect calibration data samples for hand-eye calibration.
 
     Args:
@@ -142,9 +141,9 @@ def collect_calibration_data(robot: PositionManipulator, camera: RGBCamera, cali
 @click_camera_options
 def collect_calibration_data_with_ur(
     robot_ip: str,
-    calibration_dir: Optional[str] = None,
-    camera_brand: Optional[str] = None,
-    camera_serial_number: Optional[str] = None,
+    calibration_dir: str | None = None,
+    camera_brand: str | None = None,
+    camera_serial_number: str | None = None,
 ) -> None:
     """Script to collect calibration data for hand-eye calibration with a UR robot."""
     from airo_robots.manipulators.hardware.ur_rtde import URrtde

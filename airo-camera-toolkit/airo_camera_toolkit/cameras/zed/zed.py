@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, ClassVar, List, Optional
+from typing import Any, ClassVar
 
 from loguru import logger
 
@@ -193,8 +193,8 @@ class Zed(StereoRGBDCamera):
         resolution: CameraResolutionType
         fps: int
         depth_mode: sl.DEPTH_MODE
-        serial_number: Optional[str]
-        svo_filepath: Optional[str]
+        serial_number: str | None
+        svo_filepath: str | None
 
         def build_zed_init_params(self) -> sl.InitParameters:
             init_params = sl.InitParameters()
@@ -306,7 +306,7 @@ class Zed(StereoRGBDCamera):
 
         # ---------------- Instance attributes and methods ----------------
 
-        initial_world_transform: Optional[HomogeneousMatrixType] = None
+        initial_world_transform: HomogeneousMatrixType | None = None
         enable_pose_smoothing: bool = False
         set_floor_as_origin: bool = False
         align_with_gravity: bool = False
@@ -376,11 +376,11 @@ class Zed(StereoRGBDCamera):
         resolution: CameraResolutionType = InitParams.RESOLUTION_2K,
         fps: int = 15,
         depth_mode: sl.DEPTH_MODE = InitParams.NONE_DEPTH_MODE,
-        serial_number: Optional[str] = None,
-        svo_filepath: Optional[str] = None,
-        camera_runtime_params: Optional[RuntimeParams] = None,
-        camera_tracking_params: Optional[TrackingParams] = None,  # If none, positional tracking is disabled
-        camera_mapping_params: Optional[MappingParams] = None,  # If none, spatial mapping is disabled
+        serial_number: str | None = None,
+        svo_filepath: str | None = None,
+        camera_runtime_params: RuntimeParams | None = None,
+        camera_tracking_params: TrackingParams | None = None,  # If none, positional tracking is disabled
+        camera_mapping_params: MappingParams | None = None,  # If none, spatial mapping is disabled
     ) -> None:
         """
         Initializes the ZED camera interface with the specified parameters.
@@ -720,7 +720,7 @@ class Zed(StereoRGBDCamera):
         return self.retrieve_spatial_map()
 
     @staticmethod
-    def list_camera_serial_numbers() -> List[str]:
+    def list_camera_serial_numbers() -> list[str]:
         """
         List all connected ZED cameras
         can be used to select a device ID or to check if cameras are connected.

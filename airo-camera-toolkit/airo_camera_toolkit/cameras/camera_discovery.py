@@ -1,8 +1,9 @@
 """Module to automatically resolve the desired connected camera.
 Useful when you want to support ZED, RealSense and Luxonis cameras in your scripts and CLIs.
 """
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 from airo_camera_toolkit.interfaces import RGBDCamera
 from loguru import logger
@@ -18,7 +19,7 @@ class CameraBrand(Enum):
 SUPPORTED_CAMERAS = [m.value for m in CameraBrand]
 
 
-def discover_camera(brand: Optional[str], serial_number: Optional[str] = None, **kwargs: Any) -> RGBDCamera:
+def discover_camera(brand: str | None, serial_number: str | None = None, **kwargs: Any) -> RGBDCamera:
     """Find a connected camera, optionally filtering by brand and serial number.
 
     Args:

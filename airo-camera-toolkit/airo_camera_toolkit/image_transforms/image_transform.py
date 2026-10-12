@@ -1,13 +1,12 @@
 from abc import ABC
-from typing import Tuple, Union
 
 from airo_typing import NumpyFloatImageType, NumpyIntImageType, OpenCVIntImageType
 
-HWCImageType = Union[OpenCVIntImageType, NumpyFloatImageType, NumpyIntImageType]
+HWCImageType = OpenCVIntImageType | NumpyFloatImageType | NumpyIntImageType
 """an image with shape (H,W,C)"""
 
-ImageShapeType = Union[Tuple[int, int, int], Tuple[int, int]]
-ImagePointType = Union[Tuple[int, int], Tuple[float, float]]
+ImageShapeType = tuple[int, int, int] | tuple[int, int]
+ImagePointType = tuple[int, int] | tuple[float, float]
 
 
 class ImageTransform(ABC):

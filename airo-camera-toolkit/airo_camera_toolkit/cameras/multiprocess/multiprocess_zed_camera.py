@@ -2,7 +2,7 @@
 
 import multiprocessing
 import time
-from typing import Any, Optional
+from typing import Any
 
 import loguru
 import numpy as np
@@ -116,7 +116,7 @@ class MultiprocessZedPublisher(BaseCameraPublisher):
             self._current_pcd_num_points = point_cloud.points.shape[0]
 
         # Capture spatial map if enabled and on refresh interval
-        self._current_spatial_map: Optional[ZedSpatialMap] = None
+        self._current_spatial_map: ZedSpatialMap | None = None
         if self.enable_spatial_mapping and frame_id % self.map_refresh_interval == 0:
             assert isinstance(self._camera, Zed)
             self._camera.request_spatial_map_update()
