@@ -4,27 +4,22 @@ import multiprocessing
 import time
 from typing import Any
 
-import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
-from airo_camera_toolkit.cameras.multiprocess.frame_data import (
-    FrameLayout,
-    RGBDFrameBuffer,
-    RGBDFrameBufferWithPointCloud,
-)
+from airo_camera_toolkit.cameras.multiprocess.frame_data import FrameLayout, RGBDFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
-from airo_camera_toolkit.cameras.multiprocess.pointcloud_buffer import (
-    allocate_pointcloud_buffers,
-    fill_pointcloud_buffers,
+from airo_camera_toolkit.cameras.multiprocess.pointcloud_stream import (
+    PointCloudPublisherMixin,
+    PointCloudReceiverMixin,
 )
 from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
-from airo_typing import NumpyDepthMapType, NumpyIntImageType, PointCloud
+from airo_typing import NumpyDepthMapType, NumpyIntImageType
 from loguru import logger
 
 
-class MultiprocessRGBDPublisher(BaseCameraPublisher):
-    """Publishes RGBD camera data over Zenoh."""
+class MultiprocessRGBDPublisher(PointCloudPublisherMixin, BaseCameraPublisher):
+    """Publishes RGBD camera data over Zenoh, and the point cloud on its own key expression if enabled."""
 
     def __init__(
         self,
@@ -38,50 +33,21 @@ class MultiprocessRGBDPublisher(BaseCameraPublisher):
 
     def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
         """Return RGBD frame buffer layout."""
-        if self.enable_pointcloud:
-            return RGBDFrameBufferWithPointCloud.layout(width, height)
-        else:
-            return RGBDFrameBuffer.layout(width, height)
-
-    def _setup(self) -> None:
-        """Set up camera and prepare point cloud buffers if needed."""
-        super()._setup()
-
-        if self.enable_pointcloud:
-            # Some cameras can return sparse point clouds. We ensure we always have
-            # a buffer for every pixel in the RGB image.
-            self._pcd_pos_buf, self._pcd_col_buf = allocate_pointcloud_buffers(*self._camera.resolution)
+        return RGBDFrameBuffer.layout(width, height)
 
     def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
-        """Capture RGB-D data and, if enabled, the point cloud."""
-        header = self._header(frame_id, frame_timestamp)
-        rgb_image = self._camera.retrieve_rgb_image_as_int()
-        depth_map = self._camera.retrieve_depth_map()
-        depth_image = self._camera.retrieve_depth_image()
-        intrinsics = self._camera.intrinsics_matrix()
-
-        if not self.enable_pointcloud:
-            return RGBDFrameBuffer(
-                **header, rgb=rgb_image, intrinsics=intrinsics, depth=depth_map, depth_image=depth_image
-            )
-
-        point_cloud = self._camera.retrieve_colored_point_cloud()
-        num_valid_points = fill_pointcloud_buffers(self._pcd_pos_buf, self._pcd_col_buf, point_cloud)
-
-        return RGBDFrameBufferWithPointCloud(
-            **header,
-            rgb=rgb_image,
-            intrinsics=intrinsics,
-            depth=depth_map,
-            depth_image=depth_image,
-            point_cloud_positions=self._pcd_pos_buf,
-            point_cloud_colors=self._pcd_col_buf,
-            num_valid_points=np.array([num_valid_points], dtype=np.int32),
+        """Capture the RGB-D data."""
+        return RGBDFrameBuffer(
+            **self._header(frame_id, frame_timestamp),
+            rgb=self._camera.retrieve_rgb_image_as_int(),
+            intrinsics=self._camera.intrinsics_matrix(),
+            depth=self._camera.retrieve_depth_map(),
+            depth_image=self._camera.retrieve_depth_image(),
         )
 
 
-class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
-    """Receives RGBD camera data over Zenoh."""
+class MultiprocessRGBDReceiver(PointCloudReceiverMixin, MultiprocessRGBReceiver, RGBDCamera):
+    """Receives RGBD camera data over Zenoh, and the matching point clouds if enabled."""
 
     def __init__(
         self,
@@ -94,25 +60,13 @@ class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
 
     def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
         """Return RGBD frame buffer layout."""
-        if self.enable_pointcloud:
-            return RGBDFrameBufferWithPointCloud.layout(width, height)
-        else:
-            return RGBDFrameBuffer.layout(width, height)
+        return RGBDFrameBuffer.layout(width, height)
 
     def retrieve_depth_map(self) -> NumpyDepthMapType:
         return self._last_frame.depth
 
     def retrieve_depth_image(self) -> NumpyIntImageType:
         return self._last_frame.depth_image
-
-    def retrieve_colored_point_cloud(self) -> PointCloud:
-        if not self.enable_pointcloud:
-            raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
-        num_points = self._last_frame.num_valid_points.item()
-        positions = self._last_frame.point_cloud_positions[:num_points]
-        colors = self._last_frame.point_cloud_colors[:num_points]
-        point_cloud = PointCloud(positions, colors)
-        return point_cloud
 
 
 if __name__ == "__main__":

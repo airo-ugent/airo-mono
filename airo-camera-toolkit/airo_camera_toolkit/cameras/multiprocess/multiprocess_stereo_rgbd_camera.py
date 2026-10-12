@@ -8,14 +8,10 @@ import loguru
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.base_receiver import BaseCameraReceiver
-from airo_camera_toolkit.cameras.multiprocess.frame_data import (
-    FrameLayout,
-    StereoRGBDFrameBuffer,
-    StereoRGBDFrameBufferWithPointCloud,
-)
-from airo_camera_toolkit.cameras.multiprocess.pointcloud_buffer import (
-    allocate_pointcloud_buffers,
-    fill_pointcloud_buffers,
+from airo_camera_toolkit.cameras.multiprocess.frame_data import FrameLayout, StereoRGBDFrameBuffer
+from airo_camera_toolkit.cameras.multiprocess.pointcloud_stream import (
+    PointCloudPublisherMixin,
+    PointCloudReceiverMixin,
 )
 from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
@@ -26,22 +22,19 @@ from airo_typing import (
     NumpyDepthMapType,
     NumpyFloatImageType,
     NumpyIntImageType,
-    PointCloud,
 )
 
 logger = loguru.logger
 
 
-class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
-    """Publishes stereo RGBD camera data over Zenoh.
+class MultiprocessStereoRGBDPublisher(PointCloudPublisherMixin, BaseCameraPublisher):
+    """Publishes stereo RGBD camera data over Zenoh, and the point cloud on its own key expression if enabled.
 
-    Subclasses can publish extra per-frame fields by setting the frame types (with and without
-    point cloud) to frame buffers that add those fields, and returning them from
-    ``_capture_extra_fields()``.
+    Subclasses can publish extra per-frame fields by setting ``_frame_type`` to a frame buffer
+    that adds those fields, and returning them from ``_capture_extra_fields()``.
     """
 
     _frame_type: type[StereoRGBDFrameBuffer] = StereoRGBDFrameBuffer
-    _frame_type_with_pointcloud: type[StereoRGBDFrameBuffer] = StereoRGBDFrameBufferWithPointCloud
 
     def __init__(
         self,
@@ -55,11 +48,10 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
 
     def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
         """Return stereo RGBD frame buffer layout."""
-        frame_type = self._frame_type_with_pointcloud if self.enable_pointcloud else self._frame_type
-        return frame_type.layout(width, height)
+        return self._frame_type.layout(width, height)
 
     def _setup(self) -> None:
-        """Set up camera and prepare point cloud buffers and static camera parameters."""
+        """Set up camera, point cloud publishing and static camera parameters."""
         super()._setup()
 
         # Cache static camera parameters
@@ -68,46 +60,30 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
         self._intrinsics_left = self._camera.intrinsics_matrix(view=StereoRGBDCamera.LEFT_RGB)
         self._intrinsics_right = self._camera.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB)
 
-        if self.enable_pointcloud:
-            self._pcd_pos_buf, self._pcd_col_buf = allocate_pointcloud_buffers(*self._camera.resolution)
-
     def _capture_extra_fields(self) -> dict[str, np.ndarray]:
-        """Capture the fields a subclass's frame types add to :class:`StereoRGBDFrameBuffer`."""
+        """Capture the fields a subclass's ``_frame_type`` adds to :class:`StereoRGBDFrameBuffer`."""
         return {}
 
     def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
-        """Capture stereo RGB-D data and, if enabled, the point cloud."""
-        fields = {
+        """Capture the stereo RGB-D data."""
+        return self._frame_type(
             **self._header(frame_id, frame_timestamp),
-            "rgb": self._camera.retrieve_rgb_image_as_int(),
-            "rgb_right": self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB),
-            "intrinsics": self._intrinsics_left,
-            "intrinsics_right": self._intrinsics_right,
-            "pose_right_in_left": self._pose_right_in_left,
-            "depth": self._camera.retrieve_depth_map(),
-            "depth_image": self._camera.retrieve_depth_image(),
+            rgb=self._camera.retrieve_rgb_image_as_int(),
+            rgb_right=self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB),
+            intrinsics=self._intrinsics_left,
+            intrinsics_right=self._intrinsics_right,
+            pose_right_in_left=self._pose_right_in_left,
+            depth=self._camera.retrieve_depth_map(),
+            depth_image=self._camera.retrieve_depth_image(),
             **self._capture_extra_fields(),
-        }
-
-        if not self.enable_pointcloud:
-            return self._frame_type(**fields)
-
-        point_cloud = self._camera.retrieve_colored_point_cloud()
-        num_valid_points = fill_pointcloud_buffers(self._pcd_pos_buf, self._pcd_col_buf, point_cloud)
-        pointcloud_fields = {
-            "point_cloud_positions": self._pcd_pos_buf,
-            "point_cloud_colors": self._pcd_col_buf,
-            "num_valid_points": np.array([num_valid_points], dtype=np.int32),
-        }
-        return self._frame_type_with_pointcloud(**fields, **pointcloud_fields)
+        )
 
 
-class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
-    """Receives stereo RGBD camera data over Zenoh."""
+class MultiprocessStereoRGBDReceiver(PointCloudReceiverMixin, BaseCameraReceiver, StereoRGBDCamera):
+    """Receives stereo RGBD camera data over Zenoh, and the matching point clouds if enabled."""
 
-    # Must match the publisher's frame types; see MultiprocessStereoRGBDPublisher.
+    # Must match the publisher's frame type; see MultiprocessStereoRGBDPublisher.
     _frame_type: type[StereoRGBDFrameBuffer] = StereoRGBDFrameBuffer
-    _frame_type_with_pointcloud: type[StereoRGBDFrameBuffer] = StereoRGBDFrameBufferWithPointCloud
 
     def __init__(
         self,
@@ -120,8 +96,7 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
 
     def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
         """Return stereo RGBD frame buffer layout."""
-        frame_type = self._frame_type_with_pointcloud if self.enable_pointcloud else self._frame_type
-        return frame_type.layout(width, height)
+        return self._frame_type.layout(width, height)
 
     def retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self.retrieve_rgb_image_as_int(view=view)).image_in_numpy_format
@@ -149,15 +124,6 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
     def retrieve_depth_image(self) -> NumpyIntImageType:
         """Retrieve depth image from frame buffer."""
         return self._last_frame.depth_image
-
-    def retrieve_colored_point_cloud(self) -> PointCloud:
-        if not self.enable_pointcloud:
-            raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
-        num_points = self._last_frame.num_valid_points.item()
-        positions = self._last_frame.point_cloud_positions[:num_points]
-        colors = self._last_frame.point_cloud_colors[:num_points]
-        point_cloud = PointCloud(positions, colors)
-        return point_cloud
 
 
 if __name__ == "__main__":

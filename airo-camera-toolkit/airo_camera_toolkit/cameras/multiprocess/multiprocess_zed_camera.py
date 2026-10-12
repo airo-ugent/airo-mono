@@ -6,12 +6,7 @@ from typing import Any
 
 import loguru
 import numpy as np
-from airo_camera_toolkit.cameras.multiprocess.frame_data import (
-    SpatialMapBuffer,
-    StereoRGBDFrameBuffer,
-    ZedFrameBuffer,
-    ZedFrameBufferWithPointCloud,
-)
+from airo_camera_toolkit.cameras.multiprocess.frame_data import SpatialMapBuffer, StereoRGBDFrameBuffer, ZedFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera import (
     MultiprocessStereoRGBDPublisher,
     MultiprocessStereoRGBDReceiver,
@@ -32,7 +27,6 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
     """
 
     _frame_type: type[StereoRGBDFrameBuffer] = ZedFrameBuffer
-    _frame_type_with_pointcloud: type[StereoRGBDFrameBuffer] = ZedFrameBufferWithPointCloud
 
     def __init__(
         self,
@@ -72,17 +66,15 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
         )
         return {"camera_pose": camera_pose}
 
-    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
-        """Capture the Zed frame, and publish the spatial map (if enabled) on the side."""
-        frame = super()._capture_frame(frame_id, frame_timestamp)
+    def _publish_side_streams(self, frame_id: int, frame_timestamp: float) -> None:
+        """Publish the point cloud (if enabled) and, every few frames, the spatial map (if enabled)."""
+        super()._publish_side_streams(frame_id, frame_timestamp)
 
         if self.enable_spatial_mapping and frame_id % self.map_refresh_interval == 0:
             assert isinstance(self._camera, Zed)
             self._camera.request_spatial_map_update()
             spatial_map = self._camera.retrieve_spatial_map()
             self._write_spatial_map(frame_id, frame_timestamp, spatial_map)
-
-        return frame
 
     def _write_spatial_map(self, frame_id: int, frame_timestamp: float, spatial_map: ZedSpatialMap) -> None:
         """Stage *spatial_map* into the spatial map buffers and publish it."""
@@ -130,7 +122,6 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
     """Receives Zed camera data over Zenoh."""
 
     _frame_type: type[StereoRGBDFrameBuffer] = ZedFrameBuffer
-    _frame_type_with_pointcloud: type[StereoRGBDFrameBuffer] = ZedFrameBufferWithPointCloud
 
     def __init__(
         self,

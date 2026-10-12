@@ -9,15 +9,13 @@ import numpy as np
 import pytest
 from airo_camera_toolkit.cameras.multiprocess.frame_data import (
     FrameLayout,
+    PointCloudFrameBuffer,
     PublisherMetadata,
     RGBDFrameBuffer,
-    RGBDFrameBufferWithPointCloud,
     RGBFrameBuffer,
     SpatialMapBuffer,
     StereoRGBDFrameBuffer,
-    StereoRGBDFrameBufferWithPointCloud,
     ZedFrameBuffer,
-    ZedFrameBufferWithPointCloud,
 )
 
 W, H = 64, 48  # small resolution for fast tests
@@ -70,7 +68,7 @@ def _metadata(**streams: FrameLayout) -> PublisherMetadata:
 
 
 def test_publisher_metadata_json_round_trip():
-    metadata = _metadata(camera=RGBDFrameBufferWithPointCloud.layout(W, H))
+    metadata = _metadata(camera=RGBDFrameBuffer.layout(W, H), camera_pointcloud=PointCloudFrameBuffer.layout(W, H))
     assert PublisherMetadata.from_json(metadata.to_json()) == metadata
 
 
@@ -86,10 +84,10 @@ def test_publisher_metadata_rejects_missing_stream():
 
 
 def test_publisher_metadata_rejects_different_layout():
-    """E.g. a receiver with enable_pointcloud=True for a publisher with enable_pointcloud=False."""
-    metadata = _metadata(camera=RGBDFrameBuffer.layout(W, H))
+    """E.g. an RGBD receiver for a stereo publisher."""
+    metadata = _metadata(camera=StereoRGBDFrameBuffer.layout(W, H))
     with pytest.raises(ValueError, match="different wire format"):
-        metadata.check_stream("camera", RGBDFrameBufferWithPointCloud.layout(W, H))
+        metadata.check_stream("camera", RGBDFrameBuffer.layout(W, H))
 
 
 def test_publisher_metadata_rejects_different_resolution():
@@ -129,23 +127,6 @@ def test_rgbd_frame_buffer_round_trip():
     _assert_frame_equal(obj, result)
 
 
-def test_rgbd_frame_buffer_with_pointcloud_round_trip():
-    n = H * W
-    obj = RGBDFrameBufferWithPointCloud(
-        frame_id=np.array([2], dtype=np.uint64),
-        frame_timestamp=np.array([1.0], dtype=np.float64),
-        rgb=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics=np.eye(3, dtype=np.float64),
-        depth_image=np.zeros((H, W, 3), dtype=np.uint8),
-        depth=np.zeros((H, W), dtype=np.float32),
-        point_cloud_positions=np.random.rand(n, 3).astype(np.float32),
-        point_cloud_colors=np.zeros((n, 3), dtype=np.uint8),
-        num_valid_points=np.array([n // 2], dtype=np.int32),
-    )
-    result = _round_trip(RGBDFrameBufferWithPointCloud.layout(W, H), obj)
-    _assert_frame_equal(obj, result)
-
-
 def test_stereo_rgbd_frame_buffer_round_trip():
     obj = StereoRGBDFrameBuffer(
         frame_id=np.array([3], dtype=np.uint64),
@@ -159,26 +140,6 @@ def test_stereo_rgbd_frame_buffer_round_trip():
         pose_right_in_left=np.eye(4, dtype=np.float64),
     )
     result = _round_trip(StereoRGBDFrameBuffer.layout(W, H), obj)
-    _assert_frame_equal(obj, result)
-
-
-def test_stereo_rgbd_frame_buffer_with_pointcloud_round_trip():
-    n = H * W
-    obj = StereoRGBDFrameBufferWithPointCloud(
-        frame_id=np.array([4], dtype=np.uint64),
-        frame_timestamp=np.array([3.0], dtype=np.float64),
-        rgb=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics=np.eye(3, dtype=np.float64),
-        depth_image=np.zeros((H, W, 3), dtype=np.uint8),
-        depth=np.zeros((H, W), dtype=np.float32),
-        rgb_right=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics_right=np.eye(3, dtype=np.float64),
-        pose_right_in_left=np.eye(4, dtype=np.float64),
-        point_cloud_positions=np.random.rand(n, 3).astype(np.float32),
-        point_cloud_colors=np.zeros((n, 3), dtype=np.uint8),
-        num_valid_points=np.array([n], dtype=np.int32),
-    )
-    result = _round_trip(StereoRGBDFrameBufferWithPointCloud.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -199,24 +160,16 @@ def test_zed_frame_buffer_round_trip():
     _assert_frame_equal(obj, result)
 
 
-def test_zed_frame_buffer_with_pointcloud_round_trip():
+def test_point_cloud_frame_buffer_round_trip():
     n = H * W
-    obj = ZedFrameBufferWithPointCloud(
+    obj = PointCloudFrameBuffer(
         frame_id=np.array([6], dtype=np.uint64),
         frame_timestamp=np.array([5.0], dtype=np.float64),
-        rgb=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics=np.eye(3, dtype=np.float64),
-        depth_image=np.zeros((H, W, 3), dtype=np.uint8),
-        depth=np.zeros((H, W), dtype=np.float32),
-        rgb_right=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics_right=np.eye(3, dtype=np.float64),
-        pose_right_in_left=np.eye(4, dtype=np.float64),
-        camera_pose=np.eye(4, dtype=np.float64) * 2.0,
         point_cloud_positions=np.random.rand(n, 3).astype(np.float32),
         point_cloud_colors=np.zeros((n, 3), dtype=np.uint8),
         num_valid_points=np.array([n // 2], dtype=np.int32),
     )
-    result = _round_trip(ZedFrameBufferWithPointCloud.layout(W, H), obj)
+    result = _round_trip(PointCloudFrameBuffer.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
@@ -342,11 +295,3 @@ def test_deserialize_frame_rejects_wrong_length():
 def test_layout_must_describe_exactly_the_dataclass_fields():
     with pytest.raises(TypeError, match="describes fields"):
         FrameLayout.of(_Scalar, {"value": (np.float64, (1,)), "extra": (np.int32, (1,))})
-
-
-def test_layouts_follow_field_declaration_order():
-    """Point cloud mixin fields come after the inherited RGB-D fields on the wire."""
-    names = [field.name for field in RGBDFrameBufferWithPointCloud.layout(W, H).fields]
-    assert names == [f.name for f in dataclasses.fields(RGBDFrameBufferWithPointCloud)]
-    assert names[:2] == ["frame_id", "frame_timestamp"]
-    assert names[-3:] == ["point_cloud_positions", "point_cloud_colors", "num_valid_points"]

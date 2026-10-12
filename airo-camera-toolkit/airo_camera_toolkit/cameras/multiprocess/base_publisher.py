@@ -173,6 +173,14 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         self._stream_layouts[key_expr] = layout
         return writer
 
+    def _publish_side_streams(self, frame_id: int, frame_timestamp: float) -> None:
+        """Publish data that goes on its own key expression, such as a point cloud, for the current frame.
+
+        Runs right after :meth:`_capture_frame`, before the frame itself is written. Subclasses that
+        publish side streams should override this and call ``super()._publish_side_streams()``.
+        Side streams let receivers that do not need the data skip receiving it.
+        """
+
     def _publisher_config(self) -> dict[str, Any]:
         """Publisher options that receivers must agree with but that do not show in the wire format.
 
@@ -239,8 +247,10 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
                 frame_timestamp = time.time()
                 frame_id = self._next_frame_id()
 
-                # Capture and write the frame
+                # Capture the frame, publish its side streams and then the frame itself, so a
+                # receiver that has the frame normally already has its side streams too.
                 frame = self._capture_frame(frame_id, frame_timestamp)
+                self._publish_side_streams(frame_id, frame_timestamp)
                 self._writer(frame)
 
         except Exception as e:

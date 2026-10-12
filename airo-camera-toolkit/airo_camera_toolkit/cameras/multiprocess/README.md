@@ -27,7 +27,10 @@ The receiver is subclass of `RGBCamera` which ensures that it follows the interf
 ## Matching the publisher's options
 
 Alongside its frames, a publisher announces its resolution, fps and the layout of every frame it publishes on `<namespace>_metadata`.
-A receiver created with options that do not match its publisher's (e.g. `enable_pointcloud`, or `enable_positional_tracking` for the Zed) raises a `ValueError` when it is constructed.
+A receiver created with options its publisher does not support (e.g. `enable_pointcloud` for a publisher without point clouds, or `enable_positional_tracking` for a Zed publisher without tracking) raises a `ValueError` when it is constructed.
+
+Point clouds are published on their own key expression, `<namespace>_pointcloud`, so a receiver created with `enable_pointcloud=False` does not receive them at all, even when the publisher publishes them.
+Receivers that do want them get, with every frame, the point cloud with the same `frame_id`.
 
 ## Read-only frames
 

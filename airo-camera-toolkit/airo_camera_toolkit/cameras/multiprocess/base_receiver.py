@@ -170,14 +170,21 @@ class BaseCameraReceiver(RGBCamera, ABC):
         if reader is None:
             raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
 
-        if self._block_until_new_frame and not reader.wait_for_message(
-            after=self._consumed_count, timeout=self._timeout
-        ):
+        if self._block_until_new_frame:
+            self._wait_for_message(reader, self._consumed_count)
+        self._last_frame, self._consumed_count = reader.read()
+
+    def _wait_for_message(self, reader: ZenohReader[Any], after: int) -> None:
+        """Block until *reader* has a message newer than message count *after*.
+
+        Raises:
+            TimeoutError: If none arrives within the receiver's timeout.
+        """
+        if not reader.wait_for_message(after=after, timeout=self._timeout):
             raise TimeoutError(
-                f"No new frame on '{self._shared_memory_namespace}' within {self._timeout}s. "
+                f"No new message on '{reader.key_expr}' within {self._timeout}s. "
                 "Is the publisher still running? Call reconnect() to re-establish the connection."
             )
-        self._last_frame, self._consumed_count = reader.read()
 
     def stop(self) -> None:
         """Undeclare the readers and close the Zenoh session.

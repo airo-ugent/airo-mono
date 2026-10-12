@@ -140,27 +140,6 @@ class FrameLayout(Generic[Frame]):
         return self.frame_type(**kwargs)
 
 
-def _pointcloud_specs(width: int, height: int) -> dict[str, _FieldSpec]:
-    """Field specs of :class:`_PointCloudFields`: one point slot per pixel."""
-    return {
-        "point_cloud_positions": (np.float32, (height * width, 3)),
-        "point_cloud_colors": (np.uint8, (height * width, 3)),
-        "num_valid_points": (np.int32, (1,)),
-    }
-
-
-@dataclass
-class _PointCloudFields:
-    """Point cloud fields, mixed into the frame buffers that embed a point cloud."""
-
-    # Point cloud positions (N x 3); entries past num_valid_points are NaN
-    point_cloud_positions: np.ndarray
-    # Point cloud colors (N x 3)
-    point_cloud_colors: np.ndarray
-    # Number of valid points in the point cloud
-    num_valid_points: np.ndarray
-
-
 @dataclass(frozen=True)
 class PublisherMetadata:
     """Static information a publisher announces alongside its frames.
@@ -197,7 +176,7 @@ class PublisherMetadata:
         Raises:
             ValueError: If the publisher does not publish on *key_expr*, or with a different layout.
         """
-        hint = "Make sure the receiver is created with the same options (e.g. enable_pointcloud) as the publisher."
+        hint = "Make sure the receiver is created with options (e.g. enable_pointcloud) the publisher supports."
         if key_expr not in self.streams:
             raise ValueError(
                 f"The publisher does not publish '{key_expr}' (it publishes {sorted(self.streams)}). {hint}"
@@ -274,15 +253,6 @@ class RGBDFrameBuffer(RGBFrameBuffer):
 
 
 @dataclass
-class RGBDFrameBufferWithPointCloud(_PointCloudFields, RGBDFrameBuffer):
-    """Frame buffer containing RGB-D data along with point cloud data."""
-
-    @classmethod
-    def _field_specs(cls, width: int, height: int) -> dict[str, _FieldSpec]:
-        return {**super()._field_specs(width, height), **_pointcloud_specs(width, height)}
-
-
-@dataclass
 class StereoRGBDFrameBuffer(RGBDFrameBuffer):
     """Frame buffer containing stereo RGB-D data (left + right cameras)."""
 
@@ -304,15 +274,6 @@ class StereoRGBDFrameBuffer(RGBDFrameBuffer):
 
 
 @dataclass
-class StereoRGBDFrameBufferWithPointCloud(_PointCloudFields, StereoRGBDFrameBuffer):
-    """Frame buffer containing stereo RGB-D data along with point cloud data."""
-
-    @classmethod
-    def _field_specs(cls, width: int, height: int) -> dict[str, _FieldSpec]:
-        return {**super()._field_specs(width, height), **_pointcloud_specs(width, height)}
-
-
-@dataclass
 class ZedFrameBuffer(StereoRGBDFrameBuffer):
     """Frame buffer containing Zed camera data including camera pose."""
 
@@ -325,12 +286,30 @@ class ZedFrameBuffer(StereoRGBDFrameBuffer):
 
 
 @dataclass
-class ZedFrameBufferWithPointCloud(_PointCloudFields, ZedFrameBuffer):
-    """Frame buffer containing Zed camera data along with point cloud data."""
+class PointCloudFrameBuffer(BaseFrameBuffer):
+    """A camera's point cloud, published next to its frames with the same ``frame_id``.
+
+    The buffers have one point slot per pixel, since cameras can return sparse point clouds.
+    """
+
+    # Point cloud positions (N x 3); entries past num_valid_points are NaN
+    point_cloud_positions: np.ndarray
+    # Point cloud colors (N x 3)
+    point_cloud_colors: np.ndarray
+    # Number of valid points in the point cloud
+    num_valid_points: np.ndarray
 
     @classmethod
-    def _field_specs(cls, width: int, height: int) -> dict[str, _FieldSpec]:
-        return {**super()._field_specs(width, height), **_pointcloud_specs(width, height)}
+    def layout(cls, width: int, height: int) -> FrameLayout[Self]:
+        return FrameLayout.of(
+            cls,
+            {
+                **cls._header_specs(),
+                "point_cloud_positions": (np.float32, (height * width, 3)),
+                "point_cloud_colors": (np.uint8, (height * width, 3)),
+                "num_valid_points": (np.int32, (1,)),
+            },
+        )
 
 
 @dataclass

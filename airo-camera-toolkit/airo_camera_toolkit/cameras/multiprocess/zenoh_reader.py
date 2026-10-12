@@ -117,6 +117,7 @@ class ZenohReader(Generic[Frame]):
         warn_every: float = 10,
     ) -> None:
         self._layout = layout
+        self._key_expr = key_expr
         self._latest_payload: zenoh.ZBytes | None = None
         # (frame count, bytes) of the payload last copied out by read(), so reading
         # the same message again does not copy it again.
@@ -133,6 +134,11 @@ class ZenohReader(Generic[Frame]):
             # Also on e.g. KeyboardInterrupt: a subscriber left declared keeps the interpreter from exiting.
             self._subscriber.undeclare()
             raise
+
+    @property
+    def key_expr(self) -> str:
+        """The key expression this reader subscribes to."""
+        return self._key_expr
 
     @property
     def frame_count(self) -> int:

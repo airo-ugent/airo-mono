@@ -259,6 +259,8 @@ def test_grab_images_times_out_when_no_new_frame_arrives(receiver_factory):
     real_reader = receiver._reader
 
     class FrozenReader:
+        key_expr = real_reader.key_expr
+
         def wait_for_message(self, after: int, timeout: float | None) -> bool:
             time.sleep(timeout)
             return False
