@@ -2,15 +2,15 @@
 
 import dataclasses
 import gc
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 import pytest
 from airo_camera_toolkit.cameras.multiprocess.frame_data import (
-    FpsIdl,
     FrameLayout,
     PointCloudBuffer,
-    ResolutionIdl,
+    PublisherMetadata,
     RGBDFrameBuffer,
     RGBDFrameBufferWithPointCloud,
     RGBFrameBuffer,
@@ -45,21 +45,57 @@ def _assert_frame_equal(a, b) -> None:
         np.testing.assert_array_equal(getattr(a, f.name), getattr(b, f.name), err_msg=f"field '{f.name}' mismatch")
 
 
+@dataclass
+class _Scalar:
+    """A minimal frame buffer."""
+
+    value: np.ndarray
+
+
+_SCALAR_LAYOUT = FrameLayout.of(_Scalar, {"value": (np.float64, (1,))})
+
+
 # ---------------------------------------------------------------------------
-# Metadata buffers
+# Publisher metadata
 # ---------------------------------------------------------------------------
 
 
-def test_fps_idl_round_trip():
-    obj = FpsIdl(fps=np.array([42.0], dtype=np.float64))
-    result = _round_trip(FpsIdl.layout(), obj)
-    assert result.fps.item() == pytest.approx(42.0)
+def _metadata(**streams: FrameLayout) -> PublisherMetadata:
+    return PublisherMetadata(
+        resolution=(W, H),
+        fps=30.0,
+        streams={key_expr: layout.describe() for key_expr, layout in streams.items()},
+        config={"positional_tracking": True},
+    )
 
 
-def test_resolution_idl_round_trip():
-    obj = ResolutionIdl(resolution=np.array([1920, 1080], dtype=np.int32))
-    result = _round_trip(ResolutionIdl.layout(), obj)
-    np.testing.assert_array_equal(result.resolution, [1920, 1080])
+def test_publisher_metadata_json_round_trip():
+    metadata = _metadata(camera=RGBDFrameBufferWithPointCloud.layout(W, H))
+    assert PublisherMetadata.from_json(metadata.to_json()) == metadata
+
+
+def test_publisher_metadata_accepts_matching_stream():
+    metadata = PublisherMetadata.from_json(_metadata(camera=RGBDFrameBuffer.layout(W, H)).to_json())
+    metadata.check_stream("camera", RGBDFrameBuffer.layout(W, H))
+
+
+def test_publisher_metadata_rejects_missing_stream():
+    metadata = _metadata(camera=RGBDFrameBuffer.layout(W, H))
+    with pytest.raises(ValueError, match="does not publish 'camera_pcd'"):
+        metadata.check_stream("camera_pcd", RGBDFrameBuffer.layout(W, H))
+
+
+def test_publisher_metadata_rejects_different_layout():
+    """E.g. a receiver with enable_pointcloud=True for a publisher with enable_pointcloud=False."""
+    metadata = _metadata(camera=RGBDFrameBuffer.layout(W, H))
+    with pytest.raises(ValueError, match="different wire format"):
+        metadata.check_stream("camera", RGBDFrameBufferWithPointCloud.layout(W, H))
+
+
+def test_publisher_metadata_rejects_different_resolution():
+    metadata = _metadata(camera=RGBFrameBuffer.layout(W, H))
+    with pytest.raises(ValueError, match="different wire format"):
+        metadata.check_stream("camera", RGBFrameBuffer.layout(W * 2, H * 2))
 
 
 # ---------------------------------------------------------------------------
@@ -197,18 +233,18 @@ def test_spatial_map_buffer_round_trip():
 
 
 def test_deserialized_arrays_are_read_only_views():
-    obj = FpsIdl(fps=np.array([30.0], dtype=np.float64))
-    data = serialize_frame(FpsIdl.layout(), obj)
-    result = FpsIdl.layout().deserialize(data)
+    obj = _Scalar(value=np.array([30.0], dtype=np.float64))
+    data = serialize_frame(_SCALAR_LAYOUT, obj)
+    result = _SCALAR_LAYOUT.deserialize(data)
 
-    assert not result.fps.flags.writeable
+    assert not result.value.flags.writeable
     with pytest.raises(ValueError):
-        result.fps[0] = 99.0
+        result.value[0] = 99.0
 
     # A copy is writable and independent of the payload.
-    writable = result.fps.copy()
+    writable = result.value.copy()
     writable[0] = 99.0
-    assert FpsIdl.layout().deserialize(data).fps.item() == pytest.approx(30.0)
+    assert _SCALAR_LAYOUT.deserialize(data).value.item() == pytest.approx(30.0)
 
 
 def test_deserialized_arrays_do_not_copy_the_payload():
@@ -238,12 +274,12 @@ def test_deserialized_views_outlive_the_local_payload_reference():
     """Fields keep the payload alive, so views stay valid after it goes out of scope."""
 
     def make():
-        obj = FpsIdl(fps=np.array([30.0], dtype=np.float64))
-        return _round_trip(FpsIdl.layout(), obj)
+        obj = _Scalar(value=np.array([30.0], dtype=np.float64))
+        return _round_trip(_SCALAR_LAYOUT, obj)
 
     result = make()
     gc.collect()
-    assert result.fps.item() == pytest.approx(30.0)
+    assert result.value.item() == pytest.approx(30.0)
 
 
 # ---------------------------------------------------------------------------
@@ -283,7 +319,7 @@ def test_validate_frame_rejects_wrong_shape():
 
 def test_validate_frame_rejects_wrong_type():
     with pytest.raises(TypeError):
-        RGBDFrameBuffer.layout(W, H).validate(FpsIdl(fps=np.array([1.0])))
+        RGBDFrameBuffer.layout(W, H).validate(_Scalar(value=np.array([1.0])))
 
 
 def test_deserialize_frame_rejects_wrong_length():
@@ -297,7 +333,7 @@ def test_deserialize_frame_rejects_wrong_length():
 
 def test_layout_must_describe_exactly_the_dataclass_fields():
     with pytest.raises(TypeError, match="describes fields"):
-        FrameLayout.of(FpsIdl, {"fps": (np.float64, (1,)), "extra": (np.int32, (1,))})
+        FrameLayout.of(_Scalar, {"value": (np.float64, (1,)), "extra": (np.int32, (1,))})
 
 
 def test_layouts_follow_field_declaration_order():

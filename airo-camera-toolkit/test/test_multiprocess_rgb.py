@@ -22,6 +22,7 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import (
     MultiprocessRGBPublisher,
     MultiprocessRGBReceiver,
 )
+from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import MultiprocessRGBDReceiver
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_typing import CameraIntrinsicsMatrixType, CameraResolutionType, NumpyFloatImageType, NumpyIntImageType
 
@@ -129,6 +130,14 @@ def test_receiver_reads_resolution_and_fps(receiver_factory):
     receiver = receiver_factory()
     assert receiver.resolution == _MOCK_RESOLUTION
     assert receiver.fps == _MOCK_FPS
+
+
+def test_receiver_with_a_different_wire_format_fails_up_front(publisher, namespace):
+    """A receiver expecting other frames than the publisher sends must raise, not time out or misread frames."""
+    t0 = time.monotonic()
+    with pytest.raises(ValueError, match="different wire format"):
+        MultiprocessRGBDReceiver(namespace, timeout=_STARTUP_TIMEOUT)
+    assert time.monotonic() - t0 < _STARTUP_TIMEOUT
 
 
 def test_receiver_gets_rgb_image(receiver_factory):

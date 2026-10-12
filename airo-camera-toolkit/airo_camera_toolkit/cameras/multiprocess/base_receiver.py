@@ -5,8 +5,12 @@ from typing import Any, Self
 
 import zenoh
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import _make_zenoh_config
-from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, FrameLayout, ResolutionIdl
-from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT, ZenohReader
+from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout, PublisherMetadata
+from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import (
+    DEFAULT_FIRST_MESSAGE_TIMEOUT,
+    ZenohReader,
+    receive_one,
+)
 from airo_camera_toolkit.interfaces import RGBCamera
 from airo_typing import CameraResolutionType
 from loguru import logger
@@ -72,8 +76,9 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
         try:
             # Read static camera information
-            self._resolution = self._read_resolution(self._shared_memory_namespace)
-            self._fps = self._read_fps(self._shared_memory_namespace)
+            self._metadata = self._read_metadata()
+            self._resolution = self._metadata.resolution
+            self._fps = int(self._metadata.fps)
 
             # Set up the frame reader
             self._setup_frame_reader(self._resolution)
@@ -103,43 +108,29 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         """Set up the main frame data reader."""
-        self._reader = ZenohReader(
-            session=self._session,
-            key_expr=self._shared_memory_namespace,
-            layout=self._get_frame_layout(resolution[0], resolution[1]),
-            timeout=self._timeout,
+        self._reader = self._declare_reader(
+            self._shared_memory_namespace, self._get_frame_layout(resolution[0], resolution[1])
         )
         # Message count of the frame in self._last_frame; 0 means "nothing read yet".
         self._consumed_count = 0
 
-    def _read_fps(self, shared_memory_namespace: str) -> int:
-        """Read the camera FPS published by the publisher."""
-        logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
-        fps_reader = ZenohReader(
-            self._session, f"{shared_memory_namespace}_fps", FpsIdl.layout(), timeout=self._timeout
-        )
-        fps_data = fps_reader()
-        fps_reader.stop()
-        assert isinstance(fps_data, FpsIdl)  # for mypy
-        fps = int(fps_data.fps.item())
-        logger.info(f"Camera FPS: {fps}")
-        return fps
+    def _declare_reader(self, key_expr: str, layout: FrameLayout[Frame]) -> ZenohReader[Frame]:
+        """Subscribe to *key_expr*, after checking that the publisher writes frames with *layout* to it.
 
-    def _read_resolution(self, shared_memory_namespace: str) -> CameraResolutionType:
-        """Read the camera resolution published by the publisher."""
-        logger.info(f"Reading resolution from {shared_memory_namespace}_resolution")
-        resolution_reader = ZenohReader(
-            self._session, f"{shared_memory_namespace}_resolution", ResolutionIdl.layout(), timeout=self._timeout
-        )
-        resolution_data = resolution_reader()
-        resolution_reader.stop()
-        assert isinstance(resolution_data, ResolutionIdl)  # for mypy
-        resolution = (
-            int(resolution_data.resolution[0]),
-            int(resolution_data.resolution[1]),
-        )
-        logger.info(f"Camera resolution: {resolution}")
-        return resolution
+        Raises:
+            ValueError: If the publisher does not publish on *key_expr*, or with a different layout,
+                which means this receiver was configured differently from the publisher.
+        """
+        self._metadata.check_stream(key_expr, layout)
+        return ZenohReader(self._session, key_expr, layout, timeout=self._timeout)
+
+    def _read_metadata(self) -> PublisherMetadata:
+        """Read the resolution, fps and stream layouts announced by the publisher."""
+        key_expr = f"{self._shared_memory_namespace}_metadata"
+        logger.info(f"Reading publisher metadata from {key_expr}")
+        metadata = PublisherMetadata.from_json(receive_one(self._session, key_expr, timeout=self._timeout).decode())
+        logger.info(f"Camera resolution: {metadata.resolution}, FPS: {metadata.fps}")
+        return metadata
 
     @property
     def fps(self) -> int:

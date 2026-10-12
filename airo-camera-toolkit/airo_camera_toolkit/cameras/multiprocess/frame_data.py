@@ -6,6 +6,7 @@ format (each field's dtype and shape) without allocating any arrays.
 """
 
 import dataclasses
+import json
 from dataclasses import dataclass
 from typing import Any, Generic, Self, TypeVar
 
@@ -58,6 +59,10 @@ class FrameLayout(Generic[Frame]):
     def nbytes(self) -> int:
         """Size of a serialized frame in bytes."""
         return sum(field.nbytes for field in self.fields)
+
+    def describe(self) -> list[list[Any]]:
+        """A JSON-serializable ``[[name, dtype, shape], ...]`` description of the wire format."""
+        return [[field.name, field.dtype.str, list(field.shape)] for field in self.fields]
 
     def validate(self, frame: Any) -> None:
         """Check that *frame* matches this layout.
@@ -156,26 +161,60 @@ class _PointCloudFields:
     num_valid_points: np.ndarray
 
 
-@dataclass
-class FpsIdl:
-    """Frame rate metadata published alongside camera frames."""
+@dataclass(frozen=True)
+class PublisherMetadata:
+    """Static information a publisher announces alongside its frames.
 
-    fps: np.ndarray
+    Besides the camera's resolution and fps, it describes the wire format of every key expression
+    the publisher writes to, and the publisher's options that do not show in the wire format, so a
+    receiver configured differently from its publisher fails with a clear error up front instead
+    of timing out, failing on every frame, or reading placeholder data.
+    """
 
-    @classmethod
-    def layout(cls) -> FrameLayout[Self]:
-        return FrameLayout.of(cls, {"fps": (np.float64, (1,))})
+    resolution: tuple[int, int]
+    fps: float
+    # Key expression -> FrameLayout.describe() of the frames published on it.
+    streams: dict[str, list[list[Any]]]
+    # Publisher options, e.g. whether positional tracking is enabled.
+    config: dict[str, Any]
+
+    def to_json(self) -> str:
+        return json.dumps(dataclasses.asdict(self))
+
+    @staticmethod
+    def from_json(data: str) -> "PublisherMetadata":
+        fields = json.loads(data)
+        return PublisherMetadata(
+            resolution=(int(fields["resolution"][0]), int(fields["resolution"][1])),
+            fps=float(fields["fps"]),
+            streams=fields["streams"],
+            config=fields["config"],
+        )
+
+    def check_stream(self, key_expr: str, layout: FrameLayout[Any]) -> None:
+        """Check that the publisher writes frames with *layout* to *key_expr*.
+
+        Raises:
+            ValueError: If the publisher does not publish on *key_expr*, or with a different layout.
+        """
+        hint = "Make sure the receiver is created with the same options (e.g. enable_pointcloud) as the publisher."
+        if key_expr not in self.streams:
+            raise ValueError(
+                f"The publisher does not publish '{key_expr}' (it publishes {sorted(self.streams)}). {hint}"
+            )
+        published = self.streams[key_expr]
+        expected = layout.describe()
+        if published != expected:
+            raise ValueError(
+                f"The publisher writes a different wire format to '{key_expr}' than this receiver expects.\n"
+                f"  Published: {_format_description(published)}\n"
+                f"  Expected:  {_format_description(expected)}\n"
+                f"{hint}"
+            )
 
 
-@dataclass
-class ResolutionIdl:
-    """Resolution metadata published alongside camera frames."""
-
-    resolution: np.ndarray
-
-    @classmethod
-    def layout(cls) -> FrameLayout[Self]:
-        return FrameLayout.of(cls, {"resolution": (np.int32, (2,))})
+def _format_description(description: list[list[Any]]) -> str:
+    return ", ".join(f"{name}: {dtype}{tuple(shape)}" for name, dtype, shape in description)
 
 
 @dataclass

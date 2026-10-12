@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 import zenoh
-from airo_camera_toolkit.cameras.multiprocess.frame_data import FpsIdl, FrameLayout, ResolutionIdl
+from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout, PublisherMetadata
 from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.interfaces import RGBCamera
 from loguru import logger
@@ -107,6 +107,9 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
     - _get_frame_layout(): Return the layout of the frame buffer this camera type publishes
     - _capture_frame(): Retrieve all data for a single frame and return it as a frame buffer,
       which ``run()`` then publishes
+
+    Writers for extra key expressions should be created with ``_declare_writer()``, so that their
+    layout is announced to receivers and they are stopped on shutdown.
     """
 
     def __init__(
@@ -131,6 +134,9 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
         self.shutdown_event = multiprocessing.Event()
         self._frame_id = 0
+        # Filled in by _declare_writer(), in the publisher process.
+        self._writers: dict[str, ZenohWriter[Any]] = {}
+        self._stream_layouts: dict[str, FrameLayout[Any]] = {}
 
     def _setup(self) -> None:
         """Initialize the camera and Zenoh publishing infrastructure.
@@ -139,15 +145,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         """
         self._shm_enabled = _shm_enabled()
         self._session = zenoh.open(_make_zenoh_config(shm=self._shm_enabled))
-        self._resolution_writer = ZenohWriter(
-            self._session,
-            f"{self._shared_memory_namespace}_resolution",
-            ResolutionIdl.layout(),
-            shm=self._shm_enabled,
-        )
-        self._fps_writer = ZenohWriter(
-            self._session, f"{self._shared_memory_namespace}_fps", FpsIdl.layout(), shm=self._shm_enabled
-        )
+        self._metadata_publisher = self._session.declare_publisher(f"{self._shared_memory_namespace}_metadata")
 
         # Instantiate the camera
         logger.info(f"Instantiating a {self._camera_cls.__name__} camera.")
@@ -163,37 +161,35 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
     def _setup_frame_writer(self) -> None:
         """Set up the main frame data writer."""
-        self._writer = ZenohWriter(
-            session=self._session,
-            key_expr=self._shared_memory_namespace,
-            layout=self._get_frame_layout(self._camera.resolution[0], self._camera.resolution[1]),
-            shm=self._shm_enabled,
+        self._writer = self._declare_writer(
+            self._shared_memory_namespace,
+            self._get_frame_layout(self._camera.resolution[0], self._camera.resolution[1]),
         )
+
+    def _declare_writer(self, key_expr: str, layout: FrameLayout[Frame]) -> ZenohWriter[Frame]:
+        """Create a writer on *key_expr*, announce its layout in the metadata and stop it on shutdown."""
+        writer = ZenohWriter(self._session, key_expr, layout, shm=self._shm_enabled)
+        self._writers[key_expr] = writer
+        self._stream_layouts[key_expr] = layout
+        return writer
+
+    def _publisher_config(self) -> dict[str, Any]:
+        """Publisher options that receivers must agree with but that do not show in the wire format.
+
+        Subclasses with such options should override this and extend ``super()._publisher_config()``.
+        """
+        return {}
 
     def _publish_metadata(self) -> None:
-        """Publish camera metadata (resolution and FPS)."""
-        self._resolution_writer(
-            ResolutionIdl(
-                resolution=np.array(
-                    [self._camera.resolution[0], self._camera.resolution[1]],
-                    dtype=np.int32,
-                ),
-            )
-        )
-        self._fps_writer(FpsIdl(fps=np.array([self._camera.fps], dtype=np.float64)))
+        """Publish the camera metadata, so receivers that start late can still read it."""
+        self._metadata_publisher.put(self._metadata_json)
 
     def _stop_writers(self) -> None:
-        """Stop all ZenohWriters before closing the session.
-
-        Subclasses that create additional writers should override this,
-        stop their own writers, and call ``super()._stop_writers()``.
-        """
-        if hasattr(self, "_writer"):
-            self._writer.stop()
-        if hasattr(self, "_resolution_writer"):
-            self._resolution_writer.stop()
-        if hasattr(self, "_fps_writer"):
-            self._fps_writer.stop()
+        """Stop all writers and the metadata publisher before closing the session."""
+        for writer in self._writers.values():
+            writer.stop()
+        if hasattr(self, "_metadata_publisher"):
+            self._metadata_publisher.undeclare()
 
     def _next_frame_id(self) -> int:
         """Get the next frame ID and increment the counter."""
@@ -227,6 +223,12 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
         try:
             self._setup()
+            self._metadata_json = PublisherMetadata(
+                resolution=(self._camera.resolution[0], self._camera.resolution[1]),
+                fps=float(self._camera.fps),
+                streams={key_expr: layout.describe() for key_expr, layout in self._stream_layouts.items()},
+                config=self._publisher_config(),
+            ).to_json()
             logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
 
             while not self.shutdown_event.is_set():

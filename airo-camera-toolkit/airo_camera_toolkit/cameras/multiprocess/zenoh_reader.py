@@ -47,6 +47,38 @@ def wait_logging_progress(
         logger.warning(f"Still waiting for the first message on '{key_expr}' after {waited:.0f}s ({remaining}).")
 
 
+def receive_one(
+    session: zenoh.Session,
+    key_expr: str,
+    timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+    warn_every: float = 10,
+) -> bytes:
+    """Wait for the next message on *key_expr* and return its payload.
+
+    Args:
+        session: An open :class:`zenoh.Session`.
+        key_expr: Zenoh key expression to subscribe to.
+        timeout: Maximum seconds to wait, or ``None`` to wait indefinitely.
+        warn_every: Log a warning every this many seconds while waiting.
+
+    Raises:
+        TimeoutError: If no message arrives within *timeout*.
+    """
+    payloads: list[zenoh.ZBytes] = []
+    received = threading.Event()
+
+    def callback(sample: zenoh.Sample) -> None:
+        payloads.append(sample.payload)
+        received.set()
+
+    subscriber = session.declare_subscriber(key_expr, callback)
+    try:
+        wait_logging_progress(received.wait, key_expr, timeout, warn_every)
+    finally:
+        subscriber.undeclare()
+    return payloads[0].to_bytes()
+
+
 class ZenohReader(Generic[Frame]):
     """Subscribes to a Zenoh key expression and deserializes the latest frame.
 

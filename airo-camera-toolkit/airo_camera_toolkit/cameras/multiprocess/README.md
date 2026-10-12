@@ -24,6 +24,11 @@ Two classes are at the core of our solution:
 Note that the publisher is a subclass of `multiprocessing.Process`, this way it can publish uninterrupted.
 The receiver is subclass of `RGBCamera` which ensures that it follows the interface of a regular airo-camera-toolkit camera.
 
+## Matching the publisher's options
+
+Alongside its frames, a publisher announces its resolution, fps and the layout of every frame it publishes on `<namespace>_metadata`.
+A receiver created with options that do not match its publisher's (e.g. `enable_pointcloud`, or `enable_positional_tracking` for the Zed) raises a `ValueError` when it is constructed.
+
 ## Read-only frames
 
 The arrays a receiver returns (images, depth maps, intrinsics, point clouds) are read-only views into the frame it received; nothing is copied out of the payload.

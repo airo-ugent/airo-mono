@@ -17,7 +17,6 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera im
     MultiprocessStereoRGBDReceiver,
 )
 from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT, ZenohReader
-from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.cameras.zed.zed import Zed, ZedSpatialMap
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
 from airo_typing import CameraResolutionType, HomogeneousMatrixType, NumpyDepthMapType, NumpyIntImageType, PointCloud
@@ -64,11 +63,8 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             # Published on its own key expression rather than embedded in the main frame buffer,
             # unlike MultiprocessStereoRGBDPublisher, so receivers that only need the Zed frame
             # itself are not forced to also receive (and deserialize) the point cloud.
-            self._pcd_writer = ZenohWriter(
-                session=self._session,
-                key_expr=f"{self._shared_memory_namespace}_pcd",
-                layout=PointCloudBuffer.layout(*self._camera.resolution),
-                shm=self._shm_enabled,
+            self._pcd_writer = self._declare_writer(
+                f"{self._shared_memory_namespace}_pcd", PointCloudBuffer.layout(*self._camera.resolution)
             )
 
         if self.enable_spatial_mapping:
@@ -76,11 +72,9 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             self._spatial_map_chunk_sizes = np.zeros(self.max_spatial_map_chunks, dtype=np.int32)
             self._spatial_map_point_positions = np.zeros((self.max_spatial_map_points, 3), dtype=np.float32)
             self._spatial_map_point_colors = np.zeros((self.max_spatial_map_points, 3), dtype=np.uint8)
-            self._spatial_map_writer = ZenohWriter(
-                session=self._session,
-                key_expr=f"{self._shared_memory_namespace}_spatial_map",
-                layout=SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
-                shm=self._shm_enabled,
+            self._spatial_map_writer = self._declare_writer(
+                f"{self._shared_memory_namespace}_spatial_map",
+                SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
     def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
@@ -149,12 +143,8 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
             )
         )
 
-    def _stop_writers(self) -> None:
-        if hasattr(self, "_pcd_writer"):
-            self._pcd_writer.stop()
-        if hasattr(self, "_spatial_map_writer"):
-            self._spatial_map_writer.stop()
-        super()._stop_writers()
+    def _publisher_config(self) -> dict[str, Any]:
+        return {**super()._publisher_config(), "positional_tracking": self.enable_positional_tracking}
 
 
 class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
@@ -174,28 +164,30 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         self.enable_spatial_mapping = enable_spatial_mapping
         self.max_spatial_map_chunks = max_spatial_map_chunks
         self.max_spatial_map_points = max_spatial_map_points
-        self._reader_pcd: ZenohReader | None = None
-        self._reader_spatial_map: ZenohReader | None = None
+        self._reader_pcd: ZenohReader[PointCloudBuffer] | None = None
+        self._reader_spatial_map: ZenohReader[SpatialMapBuffer] | None = None
 
         super().__init__(shared_memory_namespace, enable_pointcloud=enable_pointcloud, timeout=timeout)
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
+        # The camera pose is part of every frame, so a mismatch would not show in the wire format:
+        # without tracking, the publisher fills in an identity pose.
+        if self.enable_positional_tracking and not self._metadata.config.get("positional_tracking", False):
+            raise ValueError(
+                "enable_positional_tracking is set, but the publisher was not created with camera_tracking_params."
+            )
+
         super()._setup_frame_reader(resolution)
 
         if self.enable_pointcloud:
-            self._reader_pcd = ZenohReader(
-                session=self._session,
-                key_expr=f"{self._shared_memory_namespace}_pcd",
-                layout=PointCloudBuffer.layout(resolution[0], resolution[1]),
-                timeout=self._timeout,
+            self._reader_pcd = self._declare_reader(
+                f"{self._shared_memory_namespace}_pcd", PointCloudBuffer.layout(resolution[0], resolution[1])
             )
 
         if self.enable_spatial_mapping:
-            self._reader_spatial_map = ZenohReader(
-                session=self._session,
-                key_expr=f"{self._shared_memory_namespace}_spatial_map",
-                layout=SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
-                timeout=self._timeout,
+            self._reader_spatial_map = self._declare_reader(
+                f"{self._shared_memory_namespace}_spatial_map",
+                SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
     def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
