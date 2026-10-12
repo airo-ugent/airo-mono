@@ -21,9 +21,14 @@ class WaitingForFirstMessageException(Exception):
 class ZenohReader:
     """Subscribes to a Zenoh key expression and deserializes the latest frame.
 
-    The subscriber callback runs in a Zenoh-managed background thread; a
-    :class:`threading.Lock` guards access to the latest received bytes so the
-    calling thread can safely call :meth:`__call__` at any time.
+    The subscriber callback runs in a Zenoh-managed background thread and only
+    stores a reference to the latest payload, so it keeps up with the publisher
+    even when the consuming thread is busy: Zenoh queues samples without bound
+    for a callback that falls behind. The payload is copied out of Zenoh (which
+    cannot be avoided, since Zenoh payloads do not expose the buffer protocol)
+    only when it is read, so frames that are never read are never copied.
+    A :class:`threading.Lock` guards the latest payload so the calling thread
+    can safely call :meth:`__call__` at any time.
     The constructor blocks until the first message on *key_expr* arrives.
 
     Call :meth:`stop` (or close the session) when done. Zenoh runs the callback on a non-daemon
@@ -51,7 +56,10 @@ class ZenohReader:
         warn_every: int = 10,
     ) -> None:
         self._template = template
-        self._latest_bytes: bytes | None = None
+        self._latest_payload: zenoh.ZBytes | None = None
+        # (frame count, bytes) of the payload last copied out by read(), so reading
+        # the same message again does not copy it again.
+        self._read_cache: tuple[int, bytes] | None = None
         self._frame_count: int = 0
         self._lock = threading.Lock()
 
@@ -72,12 +80,10 @@ class ZenohReader:
     # Internal helpers
 
     def _callback(self, sample: zenoh.Sample) -> None:
-        # Copy payload to local bytes BEFORE acquiring the lock.
-        # This keeps the lock acquisition brief and avoids blocking __call__
-        # while the SHM-to-bytes copy is in progress.
-        data = sample.payload.to_bytes()
+        # Keep this callback trivial: any work here lets Zenoh's per-subscriber
+        # queue grow when frames arrive faster than the callback runs.
         with self._lock:
-            self._latest_bytes = data
+            self._latest_payload = sample.payload
             self._frame_count += 1
 
     def _wait_for_first_message(
@@ -92,7 +98,7 @@ class ZenohReader:
 
         while True:
             with self._lock:
-                if self._latest_bytes is not None:
+                if self._latest_payload is not None:
                     return
 
             elapsed = time.time() - t0
@@ -128,12 +134,17 @@ class ZenohReader:
                 (should not happen after ``__init__`` returns).
         """
         with self._lock:
-            if self._latest_bytes is None:
+            if self._latest_payload is None:
                 raise WaitingForFirstMessageException("No data received yet — was the publisher started?")
-            data = self._latest_bytes
+            payload = self._latest_payload
             count = self._frame_count
-        # Deserialize outside the lock so the Zenoh callback can update
-        # _latest_bytes concurrently without blocking here.
+        # Copy and deserialize outside the lock so the Zenoh callback is never blocked here.
+        cache = self._read_cache
+        if cache is not None and cache[0] == count:
+            data = cache[1]
+        else:
+            data = payload.to_bytes()
+            self._read_cache = (count, data)
         return deserialize_frame(self._template, data), count
 
     def __call__(self) -> Any:
