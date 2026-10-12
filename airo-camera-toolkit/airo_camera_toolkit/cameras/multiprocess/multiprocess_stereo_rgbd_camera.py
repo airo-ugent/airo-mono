@@ -57,7 +57,6 @@ class MultiprocessStereoRGBDPublisher(PointCloudPublisherMixin, BaseCameraPublis
         # Cache static camera parameters
         assert isinstance(self._camera, StereoRGBDCamera)
         self._pose_right_in_left = self._camera.pose_of_right_view_in_left_view
-        self._intrinsics_left = self._camera.intrinsics_matrix(view=StereoRGBDCamera.LEFT_RGB)
         self._intrinsics_right = self._camera.intrinsics_matrix(view=StereoRGBDCamera.RIGHT_RGB)
 
     def _capture_extra_fields(self) -> dict[str, np.ndarray]:
@@ -70,7 +69,7 @@ class MultiprocessStereoRGBDPublisher(PointCloudPublisherMixin, BaseCameraPublis
             **self._header(frame_id, frame_timestamp),
             rgb=self._camera.retrieve_rgb_image_as_int(),
             rgb_right=self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB),
-            intrinsics=self._intrinsics_left,
+            intrinsics=self._intrinsics,
             intrinsics_right=self._intrinsics_right,
             pose_right_in_left=self._pose_right_in_left,
             depth=self._camera.retrieve_depth_map(),

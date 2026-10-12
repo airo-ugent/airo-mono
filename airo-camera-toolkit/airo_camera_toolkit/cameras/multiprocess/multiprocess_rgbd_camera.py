@@ -40,7 +40,7 @@ class MultiprocessRGBDPublisher(PointCloudPublisherMixin, BaseCameraPublisher):
         return RGBDFrameBuffer(
             **self._header(frame_id, frame_timestamp),
             rgb=self._camera.retrieve_rgb_image_as_int(),
-            intrinsics=self._camera.intrinsics_matrix(),
+            intrinsics=self._intrinsics,
             depth=self._camera.retrieve_depth_map(),
             depth_image=self._camera.retrieve_depth_image(),
         )

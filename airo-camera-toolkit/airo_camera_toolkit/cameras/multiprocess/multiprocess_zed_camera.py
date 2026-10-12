@@ -70,7 +70,11 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
         """Publish the point cloud (if enabled) and, every few frames, the spatial map (if enabled)."""
         super()._publish_side_streams(frame_id, frame_timestamp)
 
-        if self.enable_spatial_mapping and frame_id % self.map_refresh_interval == 0:
+        if (
+            self.enable_spatial_mapping
+            and frame_id % self.map_refresh_interval == 0
+            and self._spatial_map_writer.has_subscribers
+        ):
             assert isinstance(self._camera, Zed)
             self._camera.request_spatial_map_update()
             spatial_map = self._camera.retrieve_spatial_map()
@@ -95,11 +99,11 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
                 f"Spatial map has {spatial_map.size} points, exceeding the maximum of {self.max_spatial_map_points}."
             )
 
-        self._spatial_map_chunks_updated[:num_chunks] = np.array(chunks_updated)
-        self._spatial_map_chunk_sizes[:num_chunks] = np.array(chunk_sizes)
-        self._spatial_map_point_positions[: spatial_map.size, :] = np.array(point_positions)
+        self._spatial_map_chunks_updated[:num_chunks] = chunks_updated
+        self._spatial_map_chunk_sizes[:num_chunks] = chunk_sizes
+        self._spatial_map_point_positions[: spatial_map.size, :] = point_positions
         if point_colors is not None:
-            self._spatial_map_point_colors[: spatial_map.size, :] = np.array(point_colors)
+            self._spatial_map_point_colors[: spatial_map.size, :] = point_colors
         else:
             self._spatial_map_point_colors[: spatial_map.size, :] = 0
 

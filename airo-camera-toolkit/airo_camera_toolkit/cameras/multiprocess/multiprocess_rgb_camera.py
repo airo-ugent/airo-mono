@@ -25,7 +25,7 @@ class MultiprocessRGBPublisher(BaseCameraPublisher):
         return RGBFrameBuffer(
             **self._header(frame_id, frame_timestamp),
             rgb=self._camera.retrieve_rgb_image_as_int(),
-            intrinsics=self._camera.intrinsics_matrix(),
+            intrinsics=self._intrinsics,
         )
 
 

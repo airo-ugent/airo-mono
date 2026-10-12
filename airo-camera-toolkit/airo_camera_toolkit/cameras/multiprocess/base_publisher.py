@@ -155,6 +155,8 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             raise TypeError(f"camera_cls must be a subclass of RGBCamera, but is {self._camera_cls.__name__}")
 
         logger.info(f"Successfully instantiated a {self._camera_cls.__name__} camera.")
+        # Intrinsics are static, and retrieving them can be costly (e.g. several SDK calls for a Zed).
+        self._intrinsics = self._camera.intrinsics_matrix()
 
         # Set up frame writer
         self._setup_frame_writer()

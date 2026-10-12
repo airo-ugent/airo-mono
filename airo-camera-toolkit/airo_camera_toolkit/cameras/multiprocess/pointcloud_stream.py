@@ -54,8 +54,8 @@ def fill_pointcloud_buffers(positions_buf: np.ndarray, colors_buf: np.ndarray, p
         The number of valid points written (``point_cloud.points.shape[0]``).
     """
     num_points = point_cloud.points.shape[0]
-    positions_buf.fill(np.nan)
     positions_buf[:num_points] = point_cloud.points
+    positions_buf[num_points:] = np.nan
     if point_cloud.colors is not None:
         colors_buf[:num_points] = point_cloud.colors
     else:
@@ -118,7 +118,8 @@ class PointCloudPublisherMixin(BaseCameraPublisher):
     def _publish_side_streams(self, frame_id: int, frame_timestamp: float) -> None:
         super()._publish_side_streams(frame_id, frame_timestamp)
 
-        if self.enable_pointcloud:
+        # Retrieving and serializing a point cloud is expensive, so skip it while nobody receives it.
+        if self.enable_pointcloud and self._pointcloud_writer.has_subscribers:
             point_cloud = self._camera.retrieve_colored_point_cloud()
             num_valid_points = fill_pointcloud_buffers(self._pcd_pos_buf, self._pcd_col_buf, point_cloud)
             self._pointcloud_writer(
