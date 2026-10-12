@@ -1,8 +1,7 @@
 """Zenoh-based reader for inter-process frame buffer communication."""
 
 import threading
-import time
-from typing import Generic
+from typing import Callable, Generic
 
 import zenoh
 from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout
@@ -16,6 +15,36 @@ DEFAULT_FIRST_MESSAGE_TIMEOUT = 30.0
 
 class WaitingForFirstMessageException(Exception):
     """Raised when no data has been received yet."""
+
+
+def wait_logging_progress(
+    wait: Callable[[float | None], bool], key_expr: str, timeout: float | None, warn_every: float
+) -> None:
+    """Block on *wait* until it succeeds, logging a warning every *warn_every* seconds.
+
+    Args:
+        wait: Blocks for at most the given number of seconds (``None``: indefinitely) and returns
+            whether the awaited message arrived.
+        key_expr: Key expression being waited on, for the log and error messages.
+        timeout: Maximum total seconds to wait, or ``None`` to wait indefinitely.
+        warn_every: Seconds between warnings while waiting.
+
+    Raises:
+        TimeoutError: If *wait* did not succeed within *timeout*.
+    """
+    waited = 0.0
+    while True:
+        chunk = warn_every if timeout is None else min(warn_every, timeout - waited)
+        if wait(chunk):
+            return
+        waited += chunk
+        if timeout is not None and waited >= timeout:
+            raise TimeoutError(
+                f"Timed out after {timeout}s waiting for the first message on '{key_expr}'. "
+                "Is the publisher running and publishing on this key expression?"
+            )
+        remaining = f"{timeout - waited:.0f}s remaining" if timeout is not None else "no timeout"
+        logger.warning(f"Still waiting for the first message on '{key_expr}' after {waited:.0f}s ({remaining}).")
 
 
 class ZenohReader(Generic[Frame]):
@@ -53,7 +82,7 @@ class ZenohReader(Generic[Frame]):
         key_expr: str,
         layout: FrameLayout[Frame],
         timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
-        warn_every: int = 10,
+        warn_every: float = 10,
     ) -> None:
         self._layout = layout
         self._latest_payload: zenoh.ZBytes | None = None
@@ -62,10 +91,12 @@ class ZenohReader(Generic[Frame]):
         self._read_cache: tuple[int, bytes] | None = None
         self._frame_count: int = 0
         self._lock = threading.Lock()
+        # Notified by the callback whenever a message arrives.
+        self._new_message = threading.Condition(self._lock)
 
         self._subscriber = session.declare_subscriber(key_expr, self._callback)
         try:
-            self._wait_for_first_message(key_expr, timeout=timeout, warn_every=warn_every)
+            wait_logging_progress(lambda t: self.wait_for_message(after=0, timeout=t), key_expr, timeout, warn_every)
         except TimeoutError:
             self._subscriber.undeclare()
             raise
@@ -82,42 +113,26 @@ class ZenohReader(Generic[Frame]):
     def _callback(self, sample: zenoh.Sample) -> None:
         # Keep this callback trivial: any work here lets Zenoh's per-subscriber
         # queue grow when frames arrive faster than the callback runs.
-        with self._lock:
+        with self._new_message:
             self._latest_payload = sample.payload
             self._frame_count += 1
-
-    def _wait_for_first_message(
-        self,
-        key_expr: str,
-        timeout: float | None,
-        warn_every: int,
-    ) -> None:
-        """Block until the first message is received."""
-        t0 = time.time()
-        warned = 0
-
-        while True:
-            with self._lock:
-                if self._latest_payload is not None:
-                    return
-
-            elapsed = time.time() - t0
-
-            if timeout is not None and elapsed >= timeout:
-                raise TimeoutError(
-                    f"ZenohReader '{key_expr}' timed out after {timeout}s waiting for the first message. "
-                    "Is the publisher running and publishing on this key expression?"
-                )
-
-            if warn_every * (warned + 1) <= elapsed:
-                warned += 1
-                remaining = f"{timeout - elapsed:.0f}s remaining" if timeout is not None else "no timeout"
-                logger.warning(f"ZenohReader '{key_expr}' has been waiting for {warned * warn_every}s ({remaining}).")
-
-            time.sleep(0.01)
+            self._new_message.notify_all()
 
     # ------------------------------------------------------------------
     # Public API
+
+    def wait_for_message(self, after: int, timeout: float | None) -> bool:
+        """Block until a message newer than message count *after* has arrived.
+
+        Args:
+            after: A message count, e.g. as returned by :meth:`read`.
+            timeout: Maximum seconds to wait, or ``None`` to wait indefinitely.
+
+        Returns:
+            Whether such a message arrived within *timeout*.
+        """
+        with self._new_message:
+            return self._new_message.wait_for(lambda: self._frame_count > after, timeout)
 
     def read(self) -> tuple[Frame, int]:
         """Return the latest frame together with the message count it belongs to.

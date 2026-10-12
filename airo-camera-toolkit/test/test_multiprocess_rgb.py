@@ -227,20 +227,21 @@ def test_grab_images_times_out_when_no_new_frame_arrives(receiver_factory):
     receiver whose publisher stopped, restarted or became unreachable spun in
     grab_images() forever instead of letting the caller reconnect.
 
-    The reader is replaced by one whose message count never advances, which is
+    The reader is replaced by one that never receives a new message, which is
     what a publisher that stopped publishing looks like from the receiver.
     """
     receiver = receiver_factory()
     real_reader = receiver._reader
 
     class FrozenReader:
-        frame_count = real_reader.frame_count
+        def wait_for_message(self, after: int, timeout: float | None) -> bool:
+            time.sleep(timeout)
+            return False
 
         def stop(self) -> None:
             real_reader.stop()
 
     receiver._reader = FrozenReader()
-    receiver._consumed_count = FrozenReader.frame_count
     receiver._timeout = 0.2
 
     with pytest.raises(TimeoutError):

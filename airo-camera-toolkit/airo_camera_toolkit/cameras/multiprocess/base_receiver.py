@@ -1,6 +1,5 @@
 """Base class for multiprocess camera receivers."""
 
-import time
 from abc import ABC, abstractmethod
 from typing import Any, Self
 
@@ -176,17 +175,13 @@ class BaseCameraReceiver(RGBCamera, ABC):
         if reader is None:
             raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
 
-        if self._block_until_new_frame:
-            t0 = time.time()
-            # Compare message counters rather than timestamps: this avoids the
-            # expensive deserialization on every poll iteration.
-            while reader.frame_count == self._consumed_count:
-                if self._timeout is not None and time.time() - t0 >= self._timeout:
-                    raise TimeoutError(
-                        f"No new frame on '{self._shared_memory_namespace}' within {self._timeout}s. "
-                        "Is the publisher still running? Call reconnect() to re-establish the connection."
-                    )
-                time.sleep(0.001)
+        if self._block_until_new_frame and not reader.wait_for_message(
+            after=self._consumed_count, timeout=self._timeout
+        ):
+            raise TimeoutError(
+                f"No new frame on '{self._shared_memory_namespace}' within {self._timeout}s. "
+                "Is the publisher still running? Call reconnect() to re-establish the connection."
+            )
         self._last_frame, self._consumed_count = reader.read()
 
     def stop(self) -> None:
