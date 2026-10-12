@@ -2,7 +2,7 @@
 
 Measures end-to-end latency from frame capture (publisher side) to
 frame availability (receiver side) for FullHD (1920×1080) RGBD images
-published at 60 FPS using Zenoh with shared-memory transport.
+published at 60 FPS using Zenoh (with shared-memory transport if ``AIRO_ZENOH_SHM=1`` is set).
 
 Frame data size (RGBDFrameBuffer, no point cloud):
   RGB image:    1920 × 1080 × 3 × uint8  =   6.2 MB

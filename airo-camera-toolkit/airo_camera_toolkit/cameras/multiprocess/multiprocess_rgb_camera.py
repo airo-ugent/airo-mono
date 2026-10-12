@@ -14,7 +14,7 @@ from loguru import logger
 
 
 class MultiprocessRGBPublisher(BaseCameraPublisher):
-    """Publishes RGB camera data to shared memory blocks."""
+    """Publishes RGB camera data over Zenoh."""
 
     def _get_frame_buffer_template(self, width: int, height: int) -> Any:
         """Return RGB frame buffer template."""
@@ -30,7 +30,7 @@ class MultiprocessRGBPublisher(BaseCameraPublisher):
 
 
 class MultiprocessRGBReceiver(BaseCameraReceiver, RGBCamera):
-    """Receives RGB camera data from shared memory."""
+    """Receives RGB camera data over Zenoh."""
 
     def _get_frame_buffer_template(self, width: int, height: int) -> Any:
         """Return RGB frame buffer template."""
@@ -97,6 +97,7 @@ if __name__ == "__main__":
             else:
                 logger.debug(f"FPS: {fps_str} / {camera_fps_str}")
 
+    receiver.stop()
     publisher.stop()
     publisher.join()
     cv2.destroyAllWindows()

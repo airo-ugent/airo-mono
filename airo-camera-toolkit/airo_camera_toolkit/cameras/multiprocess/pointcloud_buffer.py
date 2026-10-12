@@ -1,4 +1,4 @@
-"""Helpers for staging a (possibly sparse) point cloud into fixed-size shared-memory buffers.
+"""Helpers for staging a (possibly sparse) point cloud into fixed-size frame buffers.
 
 Several publishers (RGBD, stereo RGBD, Zed) embed a point cloud in their frame buffer. Since the
 buffer has a fixed size (one slot per pixel) but cameras can return fewer points than pixels, the

@@ -108,8 +108,8 @@ Often, you want to read camera images in a separate process, to control the robo
 The `multiprocess` module in the `airo-camera-toolkit` package provides a way to do this:
 see [the README](airo-camera-toolkit/README.md) for more information.
 
-For other multiprocessing needs, e.g., custom sensors or logging, we recommend using [`airo-ipc`](https://pypi.org/project/airo-ipc/).
-The `multiprocess` module in `airo-camera-toolkit` itself uses [Eclipse Zenoh](https://zenoh.io/) with shared-memory transport.
+The `multiprocess` module in `airo-camera-toolkit` uses [Eclipse Zenoh](https://zenoh.io/) (optionally with shared-memory transport) to communicate between processes.
+For other multiprocessing needs, e.g., custom sensors or logging, we recommend using Zenoh as well.
 
 #### Image operations
 

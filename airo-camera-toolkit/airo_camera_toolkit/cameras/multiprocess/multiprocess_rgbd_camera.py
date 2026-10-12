@@ -20,7 +20,7 @@ from loguru import logger
 
 
 class MultiprocessRGBDPublisher(BaseCameraPublisher):
-    """Publishes RGBD camera data to shared memory blocks."""
+    """Publishes RGBD camera data over Zenoh."""
 
     def __init__(
         self,
@@ -77,7 +77,7 @@ class MultiprocessRGBDPublisher(BaseCameraPublisher):
 
 
 class MultiprocessRGBDReceiver(MultiprocessRGBReceiver, RGBDCamera):
-    """Receives RGBD camera data from shared memory."""
+    """Receives RGBD camera data over Zenoh."""
 
     def __init__(
         self,

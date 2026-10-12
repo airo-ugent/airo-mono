@@ -18,10 +18,10 @@ To overcome these difficulties we use [Zenoh](https://zenoh.io/) to create a sol
 
 ## Implementation
 Two classes are at the core of our solution:
-* `MultiprocessRGBPublisher`: a class that write images from a camera to shared memory, from its own process.
-* `MultiprocessRGBReceiver`: a class that reads images from shared memory, but hides this complexity from its users.
+* `MultiprocessRGBPublisher`: a class that publishes images from a camera over Zenoh, from its own process.
+* `MultiprocessRGBReceiver`: a class that receives these images over Zenoh, but hides this complexity from its users.
 
-Note that the publisher is a subclass of `SpawnProcess`, this way it can publish uninterrupted.
+Note that the publisher is a subclass of `multiprocessing.Process`, this way it can publish uninterrupted.
 The receiver is subclass of `RGBCamera` which ensures that it follows the interface of a regular airo-camera-toolkit camera.
 
 ## Read-only frames
@@ -67,7 +67,7 @@ Sessions still run in Zenoh's `peer` mode, so peers that turn out to be on the s
 
 Zenoh's SHM transport is **opt-in** (disabled by default; a warning is logged when the default applies) because it `mlock()`s its frame pool so it always stays resident in physical RAM -- a page fault mid zero-copy transfer would reintroduce exactly the kind of latency spike this whole setup is trying to avoid.
 `mlock()` is capped by the process's `RLIMIT_MEMLOCK` (`ulimit -l`), which defaults to as little as 8 MB on many systems -- far less than even a single FullHD RGB frame pool needs.
-This is unrelated to `/dev/shm` capacity: plain `mmap()`-based shared memory (e.g. `multiprocessing.shared_memory`, used by `airo_ipc`) is never locked and is not subject to this limit.
+This is unrelated to `/dev/shm` capacity: plain `mmap()`-based shared memory (e.g. `multiprocessing.shared_memory`) is never locked and is not subject to this limit.
 
 Without SHM, frames are still published correctly, just as plain copied `bytes` buffers instead of zero-copy SHM references -- a bit more latency, but no special privileges required.
 
@@ -86,13 +86,28 @@ export AIRO_ZENOH_SHM=1
 
 If the pool still can't be allocated (e.g. the limit wasn't actually raised), `ZenohWriter` raises a `RuntimeError` explaining the likely `ulimit -l` cause rather than the raw `OS error 12`.
 
-This makes every `MultiprocessCameraPublisher` publish plain (copied) byte buffers instead of allocating from an SHM pool, at the cost of the single-copy latency benefit described above -- frames are otherwise unaffected.
+If `AIRO_ZENOH_SHM` is unset or `0`, every publisher (a subclass of `BaseCameraPublisher`) publishes plain (copied) byte buffers instead of allocating from an SHM pool, at the cost of the single-copy latency benefit described above -- frames are otherwise unaffected.
 
 ## Usage
 See the  main function in [multiprocess_rgb_camera.py](./multiprocess_rgb_camera.py) for a simple example of how to use these classes with a ZED camera.
 The main difference with the regular workflow is that instead of instantiating a `Zed` object, you now have to first create a `MultiprocessRGBPublisher` with the class and its kwargs, and then one or more `MultiprocessRGBReceiver`s.
 
 > :information_source: Similar to how regular `RGBCamera`s behave, `MultiprocessRGBReceiver`s will block until a new image is available.
+
+## Stopping receivers
+
+Every receiver owns a Zenoh session, so call `receiver.stop()` when you are done with it, or use it as a context manager:
+
+```python
+with MultiprocessRGBReceiver("camera") as receiver:
+    receiver.grab_images()
+    image = receiver.retrieve_rgb_image()
+```
+
+`stop()` undeclares the subscribers and closes the session; it is safe to call more than once.
+Not stopping a receiver is not fatal in a short script, since its subscribers are also cleaned up at interpreter exit, but long-running programs that create and discard receivers should stop them explicitly.
+A stopped receiver raises `RuntimeError` from `grab_images()` until you call `reconnect()`.
+Publishers are stopped with `publisher.stop()`.
 
 ## Additional features
 Logging and recording images and videos is computationally expensive.

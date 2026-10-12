@@ -21,7 +21,7 @@ logger = loguru.logger
 
 
 class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
-    """Publishes Zed camera data including positional tracking and spatial mapping to shared memory.
+    """Publishes Zed camera data including positional tracking and spatial mapping over Zenoh.
 
     Composes :class:`MultiprocessStereoRGBDPublisher` for the stereo RGB-D fields (left/right
     image, depth, intrinsics, pose) and point cloud staging shared with plain stereo cameras, and
@@ -153,7 +153,7 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
 
 
 class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
-    """Receives Zed camera data from shared memory."""
+    """Receives Zed camera data over Zenoh."""
 
     def __init__(
         self,
@@ -287,7 +287,7 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         if self._reader_spatial_map is None:
             raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
 
-        # Get the last spatial map frame from shared memory
+        # Get the last spatial map frame
         buf = self._last_spatial_map_frame
 
         # Get total chunks
@@ -302,13 +302,13 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         chunks = []
         chunks_updated = []
 
-        # Iterate through the chunks described in the shared memory
+        # Iterate through the chunks described in the spatial map frame
         for i in range(num_chunks):
             chunk_size = int(buf.chunk_sizes[i])
             has_been_updated = bool(buf.chunks_updated[i])
 
             # Slice the flattened arrays based on the current chunk size
-            # We use .copy() to decouple the PointCloud data from the shared memory buffer
+            # We use .copy() to decouple the PointCloud data from the received payload
             positions = buf.point_positions[current_offset : current_offset + chunk_size].copy()
             colors = buf.point_colors[current_offset : current_offset + chunk_size].copy()
 
@@ -411,7 +411,7 @@ if __name__ == "__main__":
         time_previous = time_current
         time_current = time.time()
 
-        # Retrieve images and data from shared memory
+        # Retrieve images and data from the last received frame
         receiver.grab_images()
         image = receiver.retrieve_rgb_image_as_int()
         image_right = receiver.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB)

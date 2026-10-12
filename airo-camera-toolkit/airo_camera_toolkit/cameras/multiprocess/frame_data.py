@@ -1,4 +1,4 @@
-"""Data structures for frame buffers used with Zenoh IPC."""
+"""Data structures for frame buffers used with Zenoh."""
 
 import dataclasses
 from dataclasses import dataclass
@@ -59,7 +59,7 @@ def _extend_template(parent: Any, **own_fields: np.ndarray) -> dict:
 
     This lets a subclass's ``template()`` build on its parent's instead of repeating every
     inherited field. ``vars(parent)`` returns the parent dataclass's field dict without copying
-    the (potentially large, shared-memory backed) array values it holds.
+    the (potentially large) array values it holds.
 
     Args:
         parent: A template instance of the parent dataclass.
@@ -167,7 +167,7 @@ class RGBFrameBuffer(BaseFrameBuffer):
 
     @staticmethod
     def template(width: int, height: int) -> Any:  # type: ignore[override]
-        """Construct a new RGBFrameBuffer with shared memory backed arrays."""
+        """Construct a new RGBFrameBuffer with pre-allocated arrays."""
         return RGBFrameBuffer(
             **_extend_template(
                 BaseFrameBuffer.template(),
@@ -188,7 +188,7 @@ class RGBDFrameBuffer(RGBFrameBuffer):
 
     @staticmethod
     def template(width: int, height: int) -> Any:  # type: ignore[override]
-        """Construct a new RGBDFrameBuffer with shared memory backed arrays."""
+        """Construct a new RGBDFrameBuffer with pre-allocated arrays."""
         return RGBDFrameBuffer(
             **_extend_template(
                 RGBFrameBuffer.template(width, height),
@@ -211,7 +211,7 @@ class RGBDFrameBufferWithPointCloud(RGBDFrameBuffer):
 
     @staticmethod
     def template(width: int, height: int) -> Any:  # type: ignore[override]
-        """Construct a new RGBDFrameBufferWithPointCloud with shared memory backed arrays."""
+        """Construct a new RGBDFrameBufferWithPointCloud with pre-allocated arrays."""
         return RGBDFrameBufferWithPointCloud(
             **_extend_template(
                 RGBDFrameBuffer.template(width, height),
@@ -235,7 +235,7 @@ class StereoRGBDFrameBuffer(RGBDFrameBuffer):
 
     @staticmethod
     def template(width: int, height: int) -> Any:  # type: ignore[override]
-        """Construct a new StereoRGBDFrameBuffer with shared memory backed arrays."""
+        """Construct a new StereoRGBDFrameBuffer with pre-allocated arrays."""
         return StereoRGBDFrameBuffer(
             **_extend_template(
                 RGBDFrameBuffer.template(width, height),
@@ -259,7 +259,7 @@ class StereoRGBDFrameBufferWithPointCloud(StereoRGBDFrameBuffer):
 
     @staticmethod
     def template(width: int, height: int) -> Any:  # type: ignore[override]
-        """Construct a new StereoRGBDFrameBufferWithPointCloud with shared memory backed arrays."""
+        """Construct a new StereoRGBDFrameBufferWithPointCloud with pre-allocated arrays."""
         return StereoRGBDFrameBufferWithPointCloud(
             **_extend_template(
                 StereoRGBDFrameBuffer.template(width, height),
@@ -279,7 +279,7 @@ class ZedFrameBuffer(StereoRGBDFrameBuffer):
 
     @staticmethod
     def template(width: int, height: int) -> Any:  # type: ignore[override]
-        """Construct a new ZedFrameBuffer with shared memory backed arrays."""
+        """Construct a new ZedFrameBuffer with pre-allocated arrays."""
         return ZedFrameBuffer(
             **_extend_template(
                 StereoRGBDFrameBuffer.template(width, height),
@@ -301,7 +301,7 @@ class PointCloudBuffer(BaseFrameBuffer):
 
     @staticmethod
     def template(width: int, height: int) -> Any:  # type: ignore[override]
-        """Construct a new PointCloudBuffer with shared memory backed arrays."""
+        """Construct a new PointCloudBuffer with pre-allocated arrays."""
         return PointCloudBuffer(
             **_extend_template(
                 BaseFrameBuffer.template(),
@@ -328,7 +328,7 @@ class SpatialMapBuffer(BaseFrameBuffer):
 
     @staticmethod
     def template(max_chunks: int, max_points: int) -> Any:  # type: ignore[override]
-        """Construct a new SpatialMapBuffer with shared memory backed arrays."""
+        """Construct a new SpatialMapBuffer with pre-allocated arrays."""
         return SpatialMapBuffer(
             **_extend_template(
                 BaseFrameBuffer.template(),

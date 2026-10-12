@@ -98,12 +98,15 @@ def _make_zenoh_config(shm: bool | None = None, router_endpoint: str | None = No
 
 
 class BaseCameraPublisher(multiprocessing.context.Process, ABC):
-    """Base class for camera publishers that write frame data to shared memory.
+    """Base class for camera publishers that publish frame data over Zenoh.
+
+    The publisher runs in its own process. Frames are published with a ``ZenohWriter``, using
+    shared memory transport if enabled (see ``AIRO_ZENOH_SHM``).
 
     Subclasses should implement:
     - _get_frame_buffer_template(): Return the appropriate frame buffer template
-    - _retrieve_frame_data(): Retrieve all data for a single frame
-    - _write_frame_data(): Write retrieved data to shared memory
+    - _capture_frame(): Retrieve all data for a single frame and return it as a frame buffer,
+      which ``run()`` then publishes
     """
 
     def __init__(
@@ -117,7 +120,8 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         Args:
             camera_cls: The camera class to instantiate (e.g., Zed, RealSense)
             camera_kwargs: Keyword arguments to pass to the camera constructor
-            shared_memory_namespace: Prefix for shared memory blocks
+            shared_memory_namespace: Zenoh key expression the frames are published on. Metadata and
+                extra data use this name with a suffix (``_resolution``, ``_fps``, ...)
         """
         super().__init__()
 

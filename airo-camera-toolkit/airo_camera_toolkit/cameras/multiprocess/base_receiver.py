@@ -14,7 +14,11 @@ from loguru import logger
 
 
 class BaseCameraReceiver(RGBCamera, ABC):
-    """Base class for camera receivers that read frame data from shared memory.
+    """Base class for camera receivers that read frame data published over Zenoh.
+
+    Each receiver owns a Zenoh session. Call :meth:`stop` when you are done with a receiver
+    (or use it as a context manager) to undeclare its subscribers and close the session
+    explicitly, rather than relying on interpreter exit.
 
     The arrays returned by the ``retrieve_*`` methods are read-only views into
     the last received frame, so they are not copied out of the payload.  Call
@@ -34,7 +38,8 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """Initialize the camera receiver.
 
         Args:
-            shared_memory_namespace: Prefix for shared memory blocks to read from
+            shared_memory_namespace: Zenoh key expression the publisher publishes on (the
+                ``shared_memory_namespace`` of the publisher)
             block_until_new_frame: Whether to block until a new frame is available
             timeout: Maximum seconds to wait for the publisher to send its first
                 message, for each of the key expressions this receiver subscribes
@@ -69,7 +74,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
             self._resolution = self._read_resolution(self._shared_memory_namespace)
             self._fps = self._read_fps(self._shared_memory_namespace)
 
-            # Set up shared memory readers
+            # Set up the frame reader
             self._setup_frame_reader(self._resolution)
 
             # Grab first frame
@@ -119,7 +124,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
                 )
 
     def _read_fps(self, shared_memory_namespace: str) -> int:
-        """Read the camera FPS from shared memory."""
+        """Read the camera FPS published by the publisher."""
         logger.info(f"Reading FPS from {shared_memory_namespace}_fps")
         fps_reader = ZenohReader(
             self._session, f"{shared_memory_namespace}_fps", FpsIdl.template(), timeout=self._timeout
@@ -132,7 +137,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         return fps
 
     def _read_resolution(self, shared_memory_namespace: str) -> CameraResolutionType:
-        """Read the camera resolution from shared memory."""
+        """Read the camera resolution published by the publisher."""
         logger.info(f"Reading resolution from {shared_memory_namespace}_resolution")
         resolution_reader = ZenohReader(
             self._session, f"{shared_memory_namespace}_resolution", ResolutionIdl.template(), timeout=self._timeout
@@ -166,7 +171,7 @@ class BaseCameraReceiver(RGBCamera, ABC):
         return self._last_frame.frame_id.item()
 
     def grab_images(self) -> None:
-        """Read the latest frame from shared memory.
+        """Read the latest frame published by the publisher.
 
         When ``block_until_new_frame`` is set, this blocks until a message newer
         than the one currently held is available.
@@ -196,7 +201,10 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     def stop(self) -> None:
         """Undeclare the readers and close the Zenoh session.
-        Safe to call more than once.
+
+        Call this when you are done with the receiver, or use the receiver as a context manager.
+        Safe to call more than once. After stopping, :meth:`grab_images` raises until
+        :meth:`reconnect` is called.
         """
         if self._stopped:
             return

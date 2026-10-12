@@ -43,8 +43,7 @@ class ZenohWriter:
 
     By default, each frame is allocated from a :class:`zenoh.shm.ShmProvider`
     pool and serialized into shared memory field-by-field.  The Zenoh transport
-    then hands the SHM reference to subscribers without an additional copy,
-    giving the same single-copy behaviour as ``airo_ipc``'s ``SMWriter``.
+    then hands the SHM reference to subscribers without an additional copy.
 
     Per-field copying (``arr.tobytes()`` followed by a slice assignment into
     the destination buffer) keeps each field's bytes hot in CPU cache between
