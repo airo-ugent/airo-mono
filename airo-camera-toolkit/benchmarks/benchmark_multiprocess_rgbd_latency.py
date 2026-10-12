@@ -38,6 +38,7 @@ import multiprocessing
 import time
 
 import numpy as np
+from airo_camera_toolkit.cameras.multiprocess.frame_data import RGBDFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgbd_camera import (
     MultiprocessRGBDPublisher,
     MultiprocessRGBDReceiver,
@@ -111,8 +112,6 @@ class MockFullHDRGBDCamera(RGBDCamera):
 
 def _receiver_worker(namespace: str, duration: float, result_queue: multiprocessing.Queue) -> None:
     """Runs in its own subprocess: connects receiver, collects latency samples."""
-    import time
-
     receiver = MultiprocessRGBDReceiver(namespace, enable_pointcloud=False)
 
     latencies_ms = []
@@ -132,14 +131,7 @@ def _receiver_worker(namespace: str, duration: float, result_queue: multiprocess
 def run_benchmark(duration: float, namespace: str, fps: float) -> None:
     multiprocessing.set_start_method("spawn", force=True)
 
-    frame_size_mb = (
-        _RGB.nbytes
-        + _DEPTH_MAP.nbytes
-        + _DEPTH_IMAGE.nbytes
-        + _INTRINSICS.nbytes
-        + 8
-        + 8  # frame_id  # frame_timestamp
-    ) / (1024**2)
+    frame_size_mb = RGBDFrameBuffer.layout(W, H).nbytes / (1024**2)
 
     print(f"\n{'─' * 60}")
     print("  Multiprocess RGBD Latency Benchmark")

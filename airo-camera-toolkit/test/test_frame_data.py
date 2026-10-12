@@ -22,10 +22,10 @@ W, H = 64, 48  # small resolution for fast tests
 
 
 def serialize_frame(layout: FrameLayout, obj: Any) -> bytes:
-    """Serialize *obj* with the production code path that ZenohWriter uses."""
+    """Serialize *obj* like ZenohWriter does without SHM: into a memoryview of a bytearray."""
     layout.validate(obj)
     buf = bytearray(layout.nbytes)
-    layout.write_into(obj, buf)
+    layout.write_into(obj, memoryview(buf))
     return bytes(buf)
 
 
@@ -100,91 +100,36 @@ def test_publisher_metadata_rejects_different_resolution():
 # ---------------------------------------------------------------------------
 
 
-def test_rgb_frame_buffer_round_trip():
-    rgb = np.random.randint(0, 255, (H, W, 3), dtype=np.uint8)
-    intrinsics = np.eye(3, dtype=np.float64) * 500.0
-    obj = RGBFrameBuffer(
-        frame_id=np.array([7], dtype=np.uint64),
-        frame_timestamp=np.array([1.23456789], dtype=np.float64),
-        rgb=rgb,
-        intrinsics=intrinsics,
+_LAYOUTS = [
+    RGBFrameBuffer.layout(W, H),
+    RGBDFrameBuffer.layout(W, H),
+    StereoRGBDFrameBuffer.layout(W, H),
+    ZedFrameBuffer.layout(W, H),
+    PointCloudFrameBuffer.layout(W, H),
+    SpatialMapBuffer.layout(10, 1000),
+]
+
+
+def _random_frame(layout: FrameLayout) -> Any:
+    rng = np.random.default_rng(0)
+    return layout.frame_type(
+        **{field.name: rng.integers(0, 100, field.shape).astype(field.dtype) for field in layout.fields}
     )
-    result = _round_trip(RGBFrameBuffer.layout(W, H), obj)
-    _assert_frame_equal(obj, result)
 
 
-def test_rgbd_frame_buffer_round_trip():
-    obj = RGBDFrameBuffer(
-        frame_id=np.array([1], dtype=np.uint64),
-        frame_timestamp=np.array([0.5], dtype=np.float64),
-        rgb=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics=np.eye(3, dtype=np.float64),
-        depth_image=np.zeros((H, W, 3), dtype=np.uint8),
-        depth=np.ones((H, W), dtype=np.float32) * 2.5,
-    )
-    result = _round_trip(RGBDFrameBuffer.layout(W, H), obj)
-    _assert_frame_equal(obj, result)
+@pytest.mark.parametrize("layout", _LAYOUTS, ids=lambda layout: layout.frame_type.__name__)
+def test_frame_buffer_round_trip(layout: FrameLayout):
+    obj = _random_frame(layout)
+    _assert_frame_equal(obj, _round_trip(layout, obj))
 
 
-def test_stereo_rgbd_frame_buffer_round_trip():
-    obj = StereoRGBDFrameBuffer(
-        frame_id=np.array([3], dtype=np.uint64),
-        frame_timestamp=np.array([2.0], dtype=np.float64),
-        rgb=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics=np.eye(3, dtype=np.float64),
-        depth_image=np.zeros((H, W, 3), dtype=np.uint8),
-        depth=np.zeros((H, W), dtype=np.float32),
-        rgb_right=np.ones((H, W, 3), dtype=np.uint8) * 128,
-        intrinsics_right=np.eye(3, dtype=np.float64) * 2.0,
-        pose_right_in_left=np.eye(4, dtype=np.float64),
-    )
-    result = _round_trip(StereoRGBDFrameBuffer.layout(W, H), obj)
-    _assert_frame_equal(obj, result)
-
-
-def test_zed_frame_buffer_round_trip():
-    obj = ZedFrameBuffer(
-        frame_id=np.array([5], dtype=np.uint64),
-        frame_timestamp=np.array([4.0], dtype=np.float64),
-        rgb=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics=np.eye(3, dtype=np.float64),
-        depth_image=np.zeros((H, W, 3), dtype=np.uint8),
-        depth=np.zeros((H, W), dtype=np.float32),
-        rgb_right=np.zeros((H, W, 3), dtype=np.uint8),
-        intrinsics_right=np.eye(3, dtype=np.float64),
-        pose_right_in_left=np.eye(4, dtype=np.float64),
-        camera_pose=np.eye(4, dtype=np.float64),
-    )
-    result = _round_trip(ZedFrameBuffer.layout(W, H), obj)
-    _assert_frame_equal(obj, result)
-
-
-def test_point_cloud_frame_buffer_round_trip():
-    n = H * W
-    obj = PointCloudFrameBuffer(
-        frame_id=np.array([6], dtype=np.uint64),
-        frame_timestamp=np.array([5.0], dtype=np.float64),
-        point_cloud_positions=np.random.rand(n, 3).astype(np.float32),
-        point_cloud_colors=np.zeros((n, 3), dtype=np.uint8),
-        num_valid_points=np.array([n // 2], dtype=np.int32),
-    )
-    result = _round_trip(PointCloudFrameBuffer.layout(W, H), obj)
-    _assert_frame_equal(obj, result)
-
-
-def test_spatial_map_buffer_round_trip():
-    max_chunks, max_points = 10, 1000
-    obj = SpatialMapBuffer(
-        frame_id=np.array([0], dtype=np.uint64),
-        frame_timestamp=np.array([6.0], dtype=np.float64),
-        num_chunks=np.array([3], dtype=np.int32),
-        chunks_updated=np.array([True, False, True] + [False] * (max_chunks - 3), dtype=np.bool_),
-        chunk_sizes=np.array([100, 200, 300] + [0] * (max_chunks - 3), dtype=np.int32),
-        point_positions=np.random.rand(max_points, 3).astype(np.float32),
-        point_colors=np.zeros((max_points, 3), dtype=np.uint8),
-    )
-    result = _round_trip(SpatialMapBuffer.layout(max_chunks, max_points), obj)
-    _assert_frame_equal(obj, result)
+@pytest.mark.parametrize("layout", _LAYOUTS, ids=lambda layout: layout.frame_type.__name__)
+def test_bytes_buffers_get_the_same_wire_format(layout: FrameLayout):
+    """Buffers that only accept bytes (like Zenoh's SHM buffers) are filled without memoryviews."""
+    obj = _random_frame(layout)
+    buf = bytearray(layout.nbytes)
+    layout.write_into(obj, buf)
+    assert bytes(buf) == serialize_frame(layout, obj)
 
 
 # ---------------------------------------------------------------------------

@@ -44,6 +44,6 @@ def test_empty_router_environment_variable_is_ignored(monkeypatch):
     assert json.loads(conf.get_json("listen/endpoints")) == ["tcp/127.0.0.1:0"]
 
 
-def test_shared_memory_can_be_disabled():
-    conf = _make_zenoh_config(shm=False)
-    assert json.loads(conf.get_json("transport/shared_memory/enabled")) is False
+def test_shared_memory_can_be_enabled():
+    conf = _make_zenoh_config(shm=True)
+    assert json.loads(conf.get_json("transport/shared_memory/enabled")) is True
