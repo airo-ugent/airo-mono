@@ -1,15 +1,16 @@
 """Base classes for multiprocess camera publishers and receivers."""
 
+import itertools
 import json
 import multiprocessing
 import os
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import zenoh
-from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout, PublisherMetadata
+from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout, PublisherMetadata, RGBFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.zenoh_writer import ZenohWriter
 from airo_camera_toolkit.interfaces import RGBCamera
 from loguru import logger
@@ -20,29 +21,15 @@ from loguru import logger
 ZENOH_ROUTER_ENV_VAR = "AIRO_ZENOH_ROUTER"
 
 # Environment variable to enable the Zenoh shared memory transport, e.g. "1" or
-# "true".  SHM buffers are mlock()ed, which requires the process's
-# RLIMIT_MEMLOCK (`ulimit -l`) to be large enough for the frame pool, so it is
-# opt-in: it defaults to disabled, and a warning is logged when that default
-# applies, since SHM gives a real latency benefit that is easy to miss.
+# "true". Opt-in, since it needs a large enough `ulimit -l` (see the README).
 ZENOH_SHM_ENV_VAR = "AIRO_ZENOH_SHM"
 
 _LOCALHOST = "127.0.0.1"
 _SHM_ENABLED_VALUES = {"1", "true", "yes", "on"}
 
 
-def _shm_enabled(explicit: bool | None = None) -> bool:
-    """Resolve whether Zenoh shared memory transport should be used.
-
-    Args:
-        explicit: Force the result if not ``None``. Otherwise this is read
-            from the ``AIRO_ZENOH_SHM`` environment variable, which defaults
-            to disabled; a warning is logged in that default case.
-
-    Returns:
-        Whether SHM should be used.
-    """
-    if explicit is not None:
-        return explicit
+def _shm_enabled() -> bool:
+    """Whether ``AIRO_ZENOH_SHM`` enables the Zenoh shared memory transport (logs a warning if unset)."""
     if ZENOH_SHM_ENV_VAR in os.environ:
         return os.environ[ZENOH_SHM_ENV_VAR].strip().lower() in _SHM_ENABLED_VALUES
     logger.warning(
@@ -66,10 +53,7 @@ def _make_zenoh_config(shm: bool | None = None, router_endpoint: str | None = No
     Args:
         shm: Whether to enable the Zenoh shared memory transport. Defaults to
             the value of ``AIRO_ZENOH_SHM`` (disabled unless set to "1",
-            "true", "yes" or "on"; a warning is logged when the default
-            applies). Shared memory buffers are mlock()ed, so enabling this
-            requires the process's ``ulimit -l`` to accommodate the frame
-            pool.
+            "true", "yes" or "on").
         router_endpoint: Zenoh endpoint of a router to connect to, e.g.
             ``"tcp/192.168.0.10:7447"``.  Defaults to the value of
             ``AIRO_ZENOH_ROUTER``; when that is unset too, the session is
@@ -78,7 +62,8 @@ def _make_zenoh_config(shm: bool | None = None, router_endpoint: str | None = No
     Returns:
         The Zenoh configuration.
     """
-    shm = _shm_enabled(shm)
+    if shm is None:
+        shm = _shm_enabled()
 
     if router_endpoint is None:
         router_endpoint = os.environ.get(ZENOH_ROUTER_ENV_VAR) or None
@@ -103,14 +88,15 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
     The publisher runs in its own process. Frames are published with a ``ZenohWriter``, using
     shared memory transport if enabled (see ``AIRO_ZENOH_SHM``).
 
-    Subclasses should implement:
-    - _get_frame_layout(): Return the layout of the frame buffer this camera type publishes
-    - _capture_frame(): Retrieve all data for a single frame and return it as a frame buffer,
-      which ``run()`` then publishes
+    Subclasses should set ``_frame_type`` to the frame buffer they publish, and implement
+    ``_capture_frame()``, which retrieves all data for a single frame and returns it as a frame
+    buffer of that type for ``run()`` to publish.
 
     Writers for extra key expressions should be created with ``_declare_writer()``, so that their
     layout is announced to receivers and they are stopped on shutdown.
     """
+
+    _frame_type: ClassVar[type[RGBFrameBuffer]]
 
     def __init__(
         self,
@@ -124,7 +110,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             camera_cls: The camera class to instantiate (e.g., Zed, RealSense)
             camera_kwargs: Keyword arguments to pass to the camera constructor
             shared_memory_namespace: Zenoh key expression the frames are published on. Metadata and
-                extra data use this name with a suffix (``_resolution``, ``_fps``, ...)
+                extra data use this name with a suffix (``_metadata``, ``_pointcloud``, ...)
         """
         super().__init__()
 
@@ -133,20 +119,14 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         self._shared_memory_namespace = shared_memory_namespace
 
         self.shutdown_event = multiprocessing.Event()
-        self._frame_id = 0
         # Filled in by _declare_writer(), in the publisher process.
         self._writers: dict[str, ZenohWriter[Any]] = {}
-        self._stream_layouts: dict[str, FrameLayout[Any]] = {}
 
     def _setup(self) -> None:
-        """Initialize the camera and Zenoh publishing infrastructure.
+        """Instantiate the camera and declare the frame writer.
 
         Note: Camera must be instantiated in the publisher process to retrieve images.
         """
-        self._shm_enabled = _shm_enabled()
-        self._session = zenoh.open(_make_zenoh_config(shm=self._shm_enabled))
-        self._metadata_publisher = self._session.declare_publisher(f"{self._shared_memory_namespace}_metadata")
-
         # Instantiate the camera
         logger.info(f"Instantiating a {self._camera_cls.__name__} camera.")
         self._camera = self._camera_cls(**self._camera_kwargs)
@@ -158,21 +138,14 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         # Intrinsics are static, and retrieving them can be costly (e.g. several SDK calls for a Zed).
         self._intrinsics = self._camera.intrinsics_matrix()
 
-        # Set up frame writer
-        self._setup_frame_writer()
-
-    def _setup_frame_writer(self) -> None:
-        """Set up the main frame data writer."""
         self._writer = self._declare_writer(
-            self._shared_memory_namespace,
-            self._get_frame_layout(self._camera.resolution[0], self._camera.resolution[1]),
+            self._shared_memory_namespace, self._frame_type.layout(*self._camera.resolution)
         )
 
     def _declare_writer(self, key_expr: str, layout: FrameLayout[Frame]) -> ZenohWriter[Frame]:
         """Create a writer on *key_expr*, announce its layout in the metadata and stop it on shutdown."""
         writer = ZenohWriter(self._session, key_expr, layout, shm=self._shm_enabled)
         self._writers[key_expr] = writer
-        self._stream_layouts[key_expr] = layout
         return writer
 
     def _publish_side_streams(self, frame_id: int, frame_timestamp: float) -> None:
@@ -189,23 +162,6 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         Subclasses with such options should override this and extend ``super()._publisher_config()``.
         """
         return {}
-
-    def _publish_metadata(self) -> None:
-        """Publish the camera metadata, so receivers that start late can still read it."""
-        self._metadata_publisher.put(self._metadata_json)
-
-    def _stop_writers(self) -> None:
-        """Stop all writers and the metadata publisher before closing the session."""
-        for writer in self._writers.values():
-            writer.stop()
-        if hasattr(self, "_metadata_publisher"):
-            self._metadata_publisher.undeclare()
-
-    def _next_frame_id(self) -> int:
-        """Get the next frame ID and increment the counter."""
-        frame_id = self._frame_id
-        self._frame_id += 1
-        return frame_id
 
     @staticmethod
     def _header(frame_id: int, frame_timestamp: float) -> dict:
@@ -230,24 +186,29 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
     def run(self) -> None:
         """Main loop of the publisher process."""
         logger.info(f"{self.__class__.__name__} process started.")
+        self._shm_enabled = _shm_enabled()
+        self._session = zenoh.open(_make_zenoh_config(shm=self._shm_enabled))
+        metadata_publisher = self._session.declare_publisher(f"{self._shared_memory_namespace}_metadata")
 
         try:
             self._setup()
-            self._metadata_json = PublisherMetadata(
+            metadata_json = PublisherMetadata(
                 resolution=(self._camera.resolution[0], self._camera.resolution[1]),
                 fps=float(self._camera.fps),
-                streams={key_expr: layout.describe() for key_expr, layout in self._stream_layouts.items()},
+                streams={key_expr: writer.layout.describe() for key_expr, writer in self._writers.items()},
                 config=self._publisher_config(),
             ).to_json()
             logger.info(f'{self.__class__.__name__} starting to publish to "{self._shared_memory_namespace}".')
 
-            while not self.shutdown_event.is_set():
-                self._publish_metadata()
+            for frame_id in itertools.count():
+                if self.shutdown_event.is_set():
+                    break
+                # Republished with every frame, so receivers that start late can still read it.
+                metadata_publisher.put(metadata_json)
 
                 # Capture frame with timestamp
                 self._camera.grab_images()
                 frame_timestamp = time.time()
-                frame_id = self._next_frame_id()
 
                 # Capture the frame, publish its side streams and then the frame itself, so a
                 # receiver that has the frame normally already has its side streams too.
@@ -259,23 +220,11 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
             logger.error(f"Error in {self.__class__.__name__}: {e}")
             raise
         finally:
-            self._stop_writers()
-            # The session does not exist yet if _setup() failed before opening it.
-            if hasattr(self, "_session"):
-                self._session.close()
+            for writer in self._writers.values():
+                writer.stop()
+            metadata_publisher.undeclare()
+            self._session.close()
             logger.info(f"{self.__class__.__name__} process terminated.")
-
-    @abstractmethod
-    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
-        """Return the frame buffer layout for this camera type.
-
-        Args:
-            width: Image width
-            height: Image height
-
-        Returns:
-            The frame buffer layout
-        """
 
     @abstractmethod
     def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
@@ -285,8 +234,8 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
         `get_`, since `grab_images()` has already been called by `run()` and calling a `get_`
         method would trigger an extra, unwanted frame capture.
 
-        Implementations may also publish extra data on their own writers (e.g. a point cloud or
-        spatial map on a side key expression) before returning.
+        Data on other key expressions, such as a point cloud, is published by
+        :meth:`_publish_side_streams` instead.
 
         Args:
             frame_id: Monotonically increasing frame identifier

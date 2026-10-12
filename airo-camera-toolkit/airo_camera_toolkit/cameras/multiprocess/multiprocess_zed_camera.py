@@ -2,7 +2,7 @@
 
 import multiprocessing
 import time
-from typing import Any
+from typing import Any, ClassVar
 
 import loguru
 import numpy as np
@@ -26,7 +26,7 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
     and the spatial map (if enabled) on the ``<namespace>_spatial_map`` key expression.
     """
 
-    _frame_type: type[StereoRGBDFrameBuffer] = ZedFrameBuffer
+    _frame_type: ClassVar[type[StereoRGBDFrameBuffer]] = ZedFrameBuffer
 
     def __init__(
         self,
@@ -125,7 +125,7 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
 class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
     """Receives Zed camera data over Zenoh."""
 
-    _frame_type: type[StereoRGBDFrameBuffer] = ZedFrameBuffer
+    _frame_type: ClassVar[type[StereoRGBDFrameBuffer]] = ZedFrameBuffer
 
     def __init__(
         self,
@@ -169,14 +169,7 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
         """
         super().grab_images()
         if self._reader_spatial_map is not None:
-            self._last_spatial_map_frame = self._reader_spatial_map()
-
-    def stop(self) -> None:
-        """Undeclare the spatial map reader, then the base reader and session."""
-        if self._reader_spatial_map is not None:
-            self._reader_spatial_map.stop()
-            self._reader_spatial_map = None
-        super().stop()
+            self._last_spatial_map_frame, _ = self._reader_spatial_map.read()
 
     def retrieve_camera_pose(self) -> np.ndarray:
         """Returns the 4x4 global pose matrix of the camera if tracking is enabled."""
@@ -194,42 +187,20 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
         """
         if not self.enable_spatial_mapping:
             raise RuntimeError("Cannot retrieve spatial map when it is not enabled.")
-        if self._reader_spatial_map is None:
-            raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
 
-        # Get the last spatial map frame
         buf = self._last_spatial_map_frame
-
-        # Get total chunks
         num_chunks = int(buf.num_chunks.item())
-
-        # If no chunks, return empty spatial map
-        if num_chunks == 0:
-            return ZedSpatialMap([], [])
-
-        current_offset = 0
-
-        chunks = []
-        chunks_updated = []
-
-        # Iterate through the chunks described in the spatial map frame
-        for i in range(num_chunks):
-            chunk_size = int(buf.chunk_sizes[i])
-            has_been_updated = bool(buf.chunks_updated[i])
-
-            # Slice the flattened arrays based on the current chunk size
-            # We use .copy() to decouple the PointCloud data from the received payload
-            positions = buf.point_positions[current_offset : current_offset + chunk_size].copy()
-            colors = buf.point_colors[current_offset : current_offset + chunk_size].copy()
-
-            # Reconstruct the ZedSpatialMap
-            chunks.append(PointCloud(positions, colors))
-            chunks_updated.append(has_been_updated)
-
-            # Increment offset for the next chunk
-            current_offset += chunk_size
-
-        return ZedSpatialMap(chunks, chunks_updated)
+        chunk_sizes = buf.chunk_sizes[:num_chunks]
+        # Split the concatenated points at the chunk boundaries. The copies decouple the chunks
+        # from the received payload.
+        boundaries = np.cumsum(chunk_sizes)[:-1]
+        num_points = int(chunk_sizes.sum())
+        positions = np.split(buf.point_positions[:num_points].copy(), boundaries)
+        colors = np.split(buf.point_colors[:num_points].copy(), boundaries)
+        chunks = [
+            PointCloud(chunk_positions, chunk_colors) for chunk_positions, chunk_colors in zip(positions, colors)
+        ]
+        return ZedSpatialMap(chunks, [bool(updated) for updated in buf.chunks_updated[:num_chunks]])
 
 
 if __name__ == "__main__":

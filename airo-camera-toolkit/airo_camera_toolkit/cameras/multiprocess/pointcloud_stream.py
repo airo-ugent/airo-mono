@@ -12,7 +12,7 @@ import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.base_receiver import BaseCameraReceiver
 from airo_camera_toolkit.cameras.multiprocess.frame_data import PointCloudFrameBuffer
-from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import ZenohReader
+from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT, ZenohReader
 from airo_typing import CameraResolutionType, PointCloud
 
 
@@ -102,7 +102,15 @@ def read_matching_point_cloud(
 class PointCloudPublisherMixin(BaseCameraPublisher):
     """Publishes the camera's point cloud on its own key expression when ``enable_pointcloud`` is set."""
 
-    enable_pointcloud: bool
+    def __init__(
+        self,
+        camera_cls: type,
+        camera_kwargs: dict = {},
+        shared_memory_namespace: str = "camera",
+        enable_pointcloud: bool = True,
+    ):
+        self.enable_pointcloud = enable_pointcloud
+        super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
 
     def _setup(self) -> None:
         super()._setup()
@@ -135,8 +143,16 @@ class PointCloudPublisherMixin(BaseCameraPublisher):
 class PointCloudReceiverMixin(BaseCameraReceiver):
     """Receives the point cloud matching each frame when ``enable_pointcloud`` is set."""
 
-    enable_pointcloud: bool
-    _pointcloud_reader: ZenohReader[PointCloudFrameBuffer] | None = None
+    def __init__(
+        self,
+        shared_memory_namespace: str,
+        enable_pointcloud: bool = True,
+        timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+    ) -> None:
+        self.enable_pointcloud = enable_pointcloud
+        self._pointcloud_reader: ZenohReader[PointCloudFrameBuffer] | None = None
+        # Connects, so the attributes above must be set first.
+        super().__init__(shared_memory_namespace, timeout=timeout)
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         super()._setup_frame_reader(resolution)
@@ -155,12 +171,6 @@ class PointCloudReceiverMixin(BaseCameraReceiver):
             self._last_frame, self._consumed_count, self._last_point_cloud = read_matching_point_cloud(
                 self._reader, self._last_frame, self._consumed_count, self._pointcloud_reader, self._wait_for_message
             )
-
-    def stop(self) -> None:
-        if self._pointcloud_reader is not None:
-            self._pointcloud_reader.stop()
-            self._pointcloud_reader = None
-        super().stop()
 
     def retrieve_colored_point_cloud(self) -> PointCloud:
         if not self.enable_pointcloud:

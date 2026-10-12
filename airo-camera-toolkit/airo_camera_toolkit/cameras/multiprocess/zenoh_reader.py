@@ -11,30 +11,25 @@ from loguru import logger
 # turns a publisher that crashed, was never started, or that cannot be reached
 # (e.g. multicast scouting blocked in a container) into a silent hang.
 DEFAULT_FIRST_MESSAGE_TIMEOUT = 30.0
+# Seconds between warnings while waiting for a first message.
+_WARN_EVERY = 10.0
 
 
-class WaitingForFirstMessageException(Exception):
-    """Raised when no data has been received yet."""
-
-
-def wait_logging_progress(
-    wait: Callable[[float | None], bool], key_expr: str, timeout: float | None, warn_every: float
-) -> None:
-    """Block on *wait* until it succeeds, logging a warning every *warn_every* seconds.
+def wait_logging_progress(wait: Callable[[float | None], bool], key_expr: str, timeout: float | None) -> None:
+    """Block on *wait* until it succeeds, logging a warning every ``_WARN_EVERY`` seconds.
 
     Args:
         wait: Blocks for at most the given number of seconds (``None``: indefinitely) and returns
             whether the awaited message arrived.
         key_expr: Key expression being waited on, for the log and error messages.
         timeout: Maximum total seconds to wait, or ``None`` to wait indefinitely.
-        warn_every: Seconds between warnings while waiting.
 
     Raises:
         TimeoutError: If *wait* did not succeed within *timeout*.
     """
     waited = 0.0
     while True:
-        chunk = warn_every if timeout is None else min(warn_every, timeout - waited)
+        chunk = _WARN_EVERY if timeout is None else min(_WARN_EVERY, timeout - waited)
         if wait(chunk):
             return
         waited += chunk
@@ -51,7 +46,6 @@ def receive_one(
     session: zenoh.Session,
     key_expr: str,
     timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
-    warn_every: float = 10,
 ) -> bytes:
     """Wait for the next message on *key_expr* and return its payload.
 
@@ -59,7 +53,6 @@ def receive_one(
         session: An open :class:`zenoh.Session`.
         key_expr: Zenoh key expression to subscribe to.
         timeout: Maximum seconds to wait, or ``None`` to wait indefinitely.
-        warn_every: Log a warning every this many seconds while waiting.
 
     Raises:
         TimeoutError: If no message arrives within *timeout*.
@@ -73,7 +66,7 @@ def receive_one(
 
     subscriber = session.declare_subscriber(key_expr, callback)
     try:
-        wait_logging_progress(received.wait, key_expr, timeout, warn_every)
+        wait_logging_progress(received.wait, key_expr, timeout)
     finally:
         subscriber.undeclare()
     return payloads[0].to_bytes()
@@ -105,7 +98,6 @@ class ZenohReader(Generic[Frame]):
         timeout: Maximum seconds to wait for the first message.  ``None``
             means wait indefinitely (use with care).  Defaults to
             :data:`DEFAULT_FIRST_MESSAGE_TIMEOUT`.
-        warn_every: Log a warning every this many seconds while waiting.
     """
 
     def __init__(
@@ -114,22 +106,22 @@ class ZenohReader(Generic[Frame]):
         key_expr: str,
         layout: FrameLayout[Frame],
         timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
-        warn_every: float = 10,
     ) -> None:
         self._layout = layout
         self._key_expr = key_expr
-        self._latest_payload: zenoh.ZBytes | None = None
+        # Replaced by the first message, which the constructor waits for.
+        self._latest_payload = zenoh.ZBytes(b"")
         # (frame count, bytes) of the payload last copied out by read(), so reading
         # the same message again does not copy it again.
         self._read_cache: tuple[int, bytes] | None = None
-        self._frame_count: int = 0
+        self._message_count: int = 0
         self._lock = threading.Lock()
         # Notified by the callback whenever a message arrives.
         self._new_message = threading.Condition(self._lock)
 
         self._subscriber = session.declare_subscriber(key_expr, self._callback)
         try:
-            wait_logging_progress(lambda t: self.wait_for_message(after=0, timeout=t), key_expr, timeout, warn_every)
+            wait_logging_progress(lambda t: self.wait_for_message(after=0, timeout=t), key_expr, timeout)
         except BaseException:
             # Also on e.g. KeyboardInterrupt: a subscriber left declared keeps the interpreter from exiting.
             self._subscriber.undeclare()
@@ -140,12 +132,6 @@ class ZenohReader(Generic[Frame]):
         """The key expression this reader subscribes to."""
         return self._key_expr
 
-    @property
-    def frame_count(self) -> int:
-        """Number of messages received so far (monotonically increasing)."""
-        with self._lock:
-            return self._frame_count
-
     # ------------------------------------------------------------------
     # Internal helpers
 
@@ -154,7 +140,7 @@ class ZenohReader(Generic[Frame]):
         # queue grow when frames arrive faster than the callback runs.
         with self._new_message:
             self._latest_payload = sample.payload
-            self._frame_count += 1
+            self._message_count += 1
             self._new_message.notify_all()
 
     # ------------------------------------------------------------------
@@ -171,27 +157,20 @@ class ZenohReader(Generic[Frame]):
             Whether such a message arrived within *timeout*.
         """
         with self._new_message:
-            return self._new_message.wait_for(lambda: self._frame_count > after, timeout)
+            return self._new_message.wait_for(lambda: self._message_count > after, timeout)
 
     def read(self) -> tuple[Frame, int]:
-        """Return the latest frame together with the message count it belongs to.
+        """Return the latest frame together with its message count.
 
-        The count is sampled under the same lock as the payload, so callers can
-        use it to tell whether a later :attr:`frame_count` means a genuinely
-        newer message has arrived.
+        The count is sampled under the same lock as the payload, so it can be passed to
+        :meth:`wait_for_message` to wait for a genuinely newer message.
 
         Returns:
-            A ``(frame, frame_count)`` tuple.
-
-        Raises:
-            WaitingForFirstMessageException: If no data has been received yet
-                (should not happen after ``__init__`` returns).
+            A ``(frame, message_count)`` tuple.
         """
         with self._lock:
-            if self._latest_payload is None:
-                raise WaitingForFirstMessageException("No data received yet — was the publisher started?")
             payload = self._latest_payload
-            count = self._frame_count
+            count = self._message_count
         # Copy and deserialize outside the lock so the Zenoh callback is never blocked here.
         cache = self._read_cache
         if cache is not None and cache[0] == count:
@@ -200,15 +179,6 @@ class ZenohReader(Generic[Frame]):
             data = payload.to_bytes()
             self._read_cache = (count, data)
         return self._layout.deserialize(data), count
-
-    def __call__(self) -> Frame:
-        """Return the most recently received frame, deserialized from bytes.
-
-        Raises:
-            WaitingForFirstMessageException: If no data has been received yet
-                (should not happen after ``__init__`` returns).
-        """
-        return self.read()[0]
 
     def stop(self) -> None:
         """Undeclare the subscriber and release its resources."""

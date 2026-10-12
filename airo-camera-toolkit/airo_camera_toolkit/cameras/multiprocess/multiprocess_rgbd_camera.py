@@ -4,36 +4,22 @@ import multiprocessing
 import time
 from typing import Any
 
-from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
-from airo_camera_toolkit.cameras.multiprocess.frame_data import FrameLayout, RGBDFrameBuffer
+from airo_camera_toolkit.cameras.multiprocess.frame_data import RGBDFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_rgb_camera import MultiprocessRGBReceiver
 from airo_camera_toolkit.cameras.multiprocess.pointcloud_stream import (
     PointCloudPublisherMixin,
     PointCloudReceiverMixin,
 )
-from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT
 from airo_camera_toolkit.interfaces import RGBDCamera
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import NumpyDepthMapType, NumpyIntImageType
 from loguru import logger
 
 
-class MultiprocessRGBDPublisher(PointCloudPublisherMixin, BaseCameraPublisher):
+class MultiprocessRGBDPublisher(PointCloudPublisherMixin):
     """Publishes RGBD camera data over Zenoh, and the point cloud on its own key expression if enabled."""
 
-    def __init__(
-        self,
-        camera_cls: type,
-        camera_kwargs: dict = {},
-        shared_memory_namespace: str = "camera",
-        enable_pointcloud: bool = True,
-    ):
-        self.enable_pointcloud = enable_pointcloud
-        super().__init__(camera_cls, camera_kwargs, shared_memory_namespace)
-
-    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
-        """Return RGBD frame buffer layout."""
-        return RGBDFrameBuffer.layout(width, height)
+    _frame_type = RGBDFrameBuffer
 
     def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
         """Capture the RGB-D data."""
@@ -49,18 +35,7 @@ class MultiprocessRGBDPublisher(PointCloudPublisherMixin, BaseCameraPublisher):
 class MultiprocessRGBDReceiver(PointCloudReceiverMixin, MultiprocessRGBReceiver, RGBDCamera):
     """Receives RGBD camera data over Zenoh, and the matching point clouds if enabled."""
 
-    def __init__(
-        self,
-        shared_memory_namespace: str,
-        enable_pointcloud: bool = True,
-        timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
-    ) -> None:
-        self.enable_pointcloud = enable_pointcloud
-        super().__init__(shared_memory_namespace, timeout=timeout)
-
-    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
-        """Return RGBD frame buffer layout."""
-        return RGBDFrameBuffer.layout(width, height)
+    _frame_type = RGBDFrameBuffer
 
     def retrieve_depth_map(self) -> NumpyDepthMapType:
         return self._last_frame.depth

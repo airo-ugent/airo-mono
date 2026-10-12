@@ -2,12 +2,11 @@
 
 import multiprocessing
 import time
-from typing import Any
+from typing import Any, ClassVar
 
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import BaseCameraPublisher
 from airo_camera_toolkit.cameras.multiprocess.base_receiver import BaseCameraReceiver
-from airo_camera_toolkit.cameras.multiprocess.frame_data import FrameLayout, RGBFrameBuffer
-from airo_camera_toolkit.interfaces import RGBCamera
+from airo_camera_toolkit.cameras.multiprocess.frame_data import RGBFrameBuffer
 from airo_camera_toolkit.utils.image_converter import ImageConverter
 from airo_typing import CameraIntrinsicsMatrixType, NumpyFloatImageType, NumpyIntImageType
 from loguru import logger
@@ -16,9 +15,7 @@ from loguru import logger
 class MultiprocessRGBPublisher(BaseCameraPublisher):
     """Publishes RGB camera data over Zenoh."""
 
-    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
-        """Return RGB frame buffer layout."""
-        return RGBFrameBuffer.layout(width, height)
+    _frame_type: ClassVar[type[RGBFrameBuffer]] = RGBFrameBuffer
 
     def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
         """Capture the RGB image and intrinsics for the current frame."""
@@ -29,12 +26,10 @@ class MultiprocessRGBPublisher(BaseCameraPublisher):
         )
 
 
-class MultiprocessRGBReceiver(BaseCameraReceiver, RGBCamera):
+class MultiprocessRGBReceiver(BaseCameraReceiver):
     """Receives RGB camera data over Zenoh."""
 
-    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
-        """Return RGB frame buffer layout."""
-        return RGBFrameBuffer.layout(width, height)
+    _frame_type: ClassVar[type[RGBFrameBuffer]] = RGBFrameBuffer
 
     def retrieve_rgb_image(self) -> NumpyFloatImageType:
         image = self.retrieve_rgb_image_as_int()

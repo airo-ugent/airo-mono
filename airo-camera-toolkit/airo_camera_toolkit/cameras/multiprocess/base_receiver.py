@@ -1,11 +1,11 @@
 """Base class for multiprocess camera receivers."""
 
-from abc import ABC, abstractmethod
-from typing import Any, Self
+from abc import ABC
+from typing import Any, ClassVar, Self
 
 import zenoh
 from airo_camera_toolkit.cameras.multiprocess.base_publisher import _make_zenoh_config
-from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout, PublisherMetadata
+from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout, PublisherMetadata, RGBFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import (
     DEFAULT_FIRST_MESSAGE_TIMEOUT,
     ZenohReader,
@@ -28,9 +28,10 @@ class BaseCameraReceiver(RGBCamera, ABC):
     ``.copy()`` on one if you need to modify it in place.  Views from a previous
     ``grab_images()`` stay valid, since each frame keeps its own payload alive.
 
-    Subclasses should implement:
-    - _get_frame_layout(): Return the layout of the frame buffer this camera type publishes
+    Subclasses should set ``_frame_type`` to the frame buffer their publisher publishes.
     """
+
+    _frame_type: ClassVar[type[RGBFrameBuffer]]
 
     def __init__(
         self,
@@ -59,6 +60,8 @@ class BaseCameraReceiver(RGBCamera, ABC):
         self._block_until_new_frame = block_until_new_frame
         self._timeout = timeout
         self._reader: ZenohReader[Any] | None = None
+        # Every reader declared with _declare_reader(), undeclared by stop().
+        self._readers: list[ZenohReader[Any]] = []
         # The frame read by the last grab_images(); the constructor grabs the first one.
         self._last_frame: Any = None
         # Open while connected; None once stopped.
@@ -110,21 +113,23 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         """Set up the main frame data reader."""
-        self._reader = self._declare_reader(
-            self._shared_memory_namespace, self._get_frame_layout(resolution[0], resolution[1])
-        )
+        self._reader = self._declare_reader(self._shared_memory_namespace, self._frame_type.layout(*resolution))
         # Message count of the frame in self._last_frame; 0 means "nothing read yet".
         self._consumed_count = 0
 
     def _declare_reader(self, key_expr: str, layout: FrameLayout[Frame]) -> ZenohReader[Frame]:
         """Subscribe to *key_expr*, after checking that the publisher writes frames with *layout* to it.
 
+        The reader is undeclared by :meth:`stop`.
+
         Raises:
             ValueError: If the publisher does not publish on *key_expr*, or with a different layout,
                 which means this receiver was configured differently from the publisher.
         """
         self._metadata.check_stream(key_expr, layout)
-        return ZenohReader(self._open_session, key_expr, layout, timeout=self._timeout)
+        reader = ZenohReader(self._open_session, key_expr, layout, timeout=self._timeout)
+        self._readers.append(reader)
+        return reader
 
     def _read_metadata(self) -> PublisherMetadata:
         """Read the resolution, fps and stream layouts announced by the publisher."""
@@ -195,11 +200,10 @@ class BaseCameraReceiver(RGBCamera, ABC):
         """
         if self._session is None:
             return
-        # The frame reader does not exist yet when the connection failed before
-        # it was set up.
-        if self._reader is not None:
-            self._reader.stop()
-            self._reader = None
+        for reader in self._readers:
+            reader.stop()
+        self._readers.clear()
+        self._reader = None
         self._session.close()
         self._session = None
 
@@ -214,15 +218,3 @@ class BaseCameraReceiver(RGBCamera, ABC):
 
     def __exit__(self, *args: Any) -> None:
         self.stop()
-
-    @abstractmethod
-    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
-        """Return the frame buffer layout for this camera type.
-
-        Args:
-            width: Image width
-            height: Image height
-
-        Returns:
-            The frame buffer layout
-        """
