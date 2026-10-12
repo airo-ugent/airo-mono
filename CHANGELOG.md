@@ -7,6 +7,10 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+## 2026.10.1
+
+Released: 2026-10-12
+
 ### Breaking changes
 - All packages: dropped Python 3.10 support as it has reached end of life status with the release of Python 3.15. airo-mono now requires Python 3.11 or 3.12. Newer versions may work but are not yet supported, because of some dependencies (like ur-rtde) not supporting them either. If you need Python 3.10 for your project, you can pin airo-mono dependencies to `2026.10.0`, e.g., `airo-robots<=2026.10.0`.
 
