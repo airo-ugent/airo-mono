@@ -58,8 +58,8 @@ class ZenohWriter(Generic[Frame]):
         key_expr: Zenoh key expression (topic name) to publish on.
         layout: The frame layout (e.g. from ``RGBFrameBuffer.layout()``) that
             defines the wire format and the SHM pool allocation size.
-        shm: Whether to use the SHM provider (see ``AIRO_ZENOH_SHM``, disabled
-            by default). The provider ``mlock()``s its pool, which requires
+        shm: Whether to use the SHM provider. Disabled by default, like the
+            ``AIRO_ZENOH_SHM`` environment variable the publishers read it from. The provider ``mlock()``s its pool, which requires
             the process's ``ulimit -l`` to accommodate the frame pool size;
             when ``False`` a plain, non-mlock'ed ``bytes`` buffer is published
             instead.
@@ -69,7 +69,7 @@ class ZenohWriter(Generic[Frame]):
             allocated, most commonly because ``ulimit -l`` is too small.
     """
 
-    def __init__(self, session: zenoh.Session, key_expr: str, layout: FrameLayout[Frame], shm: bool = True) -> None:
+    def __init__(self, session: zenoh.Session, key_expr: str, layout: FrameLayout[Frame], shm: bool = False) -> None:
         self._layout = layout
         self._frame_size = layout.nbytes
         self._shm = shm

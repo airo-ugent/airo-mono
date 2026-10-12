@@ -129,7 +129,8 @@ class ZenohReader(Generic[Frame]):
         self._subscriber = session.declare_subscriber(key_expr, self._callback)
         try:
             wait_logging_progress(lambda t: self.wait_for_message(after=0, timeout=t), key_expr, timeout, warn_every)
-        except TimeoutError:
+        except BaseException:
+            # Also on e.g. KeyboardInterrupt: a subscriber left declared keeps the interpreter from exiting.
             self._subscriber.undeclare()
             raise
 

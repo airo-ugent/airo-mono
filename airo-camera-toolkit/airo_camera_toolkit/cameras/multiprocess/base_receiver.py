@@ -46,7 +46,9 @@ class BaseCameraReceiver(RGBCamera, ABC):
             block_until_new_frame: Whether to block until a new frame is available
             timeout: Maximum seconds to wait for the publisher to send its first
                 message, for each of the key expressions this receiver subscribes
-                to.  ``None`` waits indefinitely.
+                to, and for a new frame in :meth:`grab_images` when
+                *block_until_new_frame* is set.  ``None`` waits indefinitely, so
+                ``grab_images()`` then blocks forever if the publisher stops.
 
         Raises:
             TimeoutError: If the publisher does not publish within *timeout*.
