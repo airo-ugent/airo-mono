@@ -31,7 +31,7 @@ A receiver created with options that do not match its publisher's (e.g. `enable_
 
 ## Read-only frames
 
-The arrays a receiver returns (images, depth maps, intrinsics, point clouds) are read-only views into the frame it received; nothing is copied out of the payload.
+The arrays a receiver returns (images, depth maps, intrinsics, point clouds) are read-only views into the frame it received, rather than separate copies of each field.
 This saves about 3 ms per FullHD RGBD frame, roughly a third of the end-to-end latency.
 
 ## Surviving a publisher restart
