@@ -2,7 +2,6 @@
 
 import json
 import os
-from typing import List, Optional
 
 import click
 from airo_dataset_tools.coco_tools.change_coco_images_prefix import change_coco_json_image_prefix
@@ -34,9 +33,7 @@ def cli() -> None:
     type=click.Choice(["detections", "segmentations", "keypoints"]),
     help="add an argument for each label type you want to load (default: all)",
 )
-def view_coco_dataset_cli(
-    annotations_json_path: str, dataset_dir: str, label_types: Optional[List[str]] = None
-) -> None:
+def view_coco_dataset_cli(annotations_json_path: str, dataset_dir: str, label_types: list[str] | None = None) -> None:
     """Explore COCO dataset with FiftyOne"""
     view_coco_dataset(annotations_json_path, dataset_dir, label_types)
 
@@ -66,7 +63,7 @@ def convert_cvat_to_coco_cli(
 @click.option("--height", type=int, required=True)
 @click.option("--target-dataset-dir", type=str, required=False)
 def resize_coco_dataset_cli(
-    annotations_json_path: str, width: int, height: int, target_dataset_dir: Optional[str]
+    annotations_json_path: str, width: int, height: int, target_dataset_dir: str | None
 ) -> None:
     """Resize a COCO dataset. Will create a new directory with the resized dataset at the specified target_dataset_dir.
     Dataset is assumed to be
@@ -91,7 +88,7 @@ def coco_intances_to_yolo(coco_json: str, target_dir: str, use_segmentation: boo
 @click.argument("json-path", type=click.Path(exists=True))
 @click.option("--split-ratio", type=float, multiple=True, required=True)
 @click.option("--shuffle-before-splitting", is_flag=True, default=True)
-def split_coco_dataset_cli(json_path: str, split_ratio: List[float], shuffle_before_splitting: bool) -> None:
+def split_coco_dataset_cli(json_path: str, split_ratio: list[float], shuffle_before_splitting: bool) -> None:
     """Split a COCO dataset into subsets according to the specified relative ratios and save them to disk.
     Images are split with their corresponding annotations. No guarantees on class balance or annotation ratios.
 
@@ -109,7 +106,7 @@ def split_coco_dataset_cli(json_path: str, split_ratio: List[float], shuffle_bef
 @click.option("--new-prefix", type=str, required=True)
 @click.option("--target-json-path", type=str)
 def change_coco_images_prefix_cli(
-    coco_json: str, current_prefix: str, new_prefix: str, target_json_path: Optional[str] = None
+    coco_json: str, current_prefix: str, new_prefix: str, target_json_path: str | None = None
 ) -> None:
     """change the prefix of images in a coco dataset."""
     return change_coco_json_image_prefix(coco_json, current_prefix, new_prefix, target_json_path)
@@ -123,7 +120,7 @@ def change_coco_images_prefix_cli(
     type=str,
     help="optional path to save the merged dataset to. If none is provided, a new directory will be created in the parent directory of coco-json-1 ",
 )
-def merge_coco_datasets_cli(coco_json_1: str, coco_json_2: str, target_json_path: Optional[str] = None) -> None:
+def merge_coco_datasets_cli(coco_json_1: str, coco_json_2: str, target_json_path: str | None = None) -> None:
     """merge two coco datasets into a single dataset."""
     if not target_json_path:
         target_json_path = os.path.join(os.path.dirname(coco_json_1), "merged")

@@ -10,7 +10,7 @@ def test_keypoints_split():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small.json")
 
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         coco_keypoints = CocoInstancesDataset(**data)
         datasets = split_coco_dataset(coco_keypoints, [0.5, 0.5], shuffle_before_splitting=False)
@@ -26,7 +26,7 @@ def test_empty_annotations_split_raises_error():
     test_dir = os.path.dirname(os.path.realpath(__file__))
     annotations = os.path.join(test_dir, "test_data/person_keypoints_val2017_small.json")
 
-    with open(annotations, "r") as file:
+    with open(annotations) as file:
         data = json.load(file)
         coco_keypoints = CocoInstancesDataset(**data)
         with pytest.raises(ValueError):

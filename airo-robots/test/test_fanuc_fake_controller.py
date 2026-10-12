@@ -10,8 +10,8 @@ motion, so they are slower than the rest of the suite.
 """
 
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, Tuple
 
 import numpy as np
 import pytest
@@ -58,7 +58,7 @@ def robot() -> Iterator[Fanuc]:
 
 def _raised_cosine(
     start_configuration: np.ndarray, amplitude: float, duration: float, knots: int = 121
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """A path that starts and ends at rest, so its first knot is inside the capture envelope."""
     times = np.linspace(0.0, duration, knots)
     omega = 2 * np.pi / duration

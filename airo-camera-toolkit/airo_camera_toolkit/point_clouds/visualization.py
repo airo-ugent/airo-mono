@@ -1,11 +1,11 @@
-from typing import Any, Tuple
+from typing import Any
 
 import open3d as o3d
 from airo_typing import Vector3DType
 
 
 def open3d_point(
-    position: Vector3DType, color: Tuple[float, float, float], radius: float = 0.01
+    position: Vector3DType, color: tuple[float, float, float], radius: float = 0.01
 ) -> Any:  # Change Any back to o3d.geometry.TriangleMesh
     """Creates a small sphere mesh for visualization in open3d.
 

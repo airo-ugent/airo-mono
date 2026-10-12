@@ -1,7 +1,6 @@
 """Function for the hand-eye calibration tool. Both eye-in-hand and eye-to-hand are supported."""
 import json
 import os
-from typing import List, Optional
 
 import cv2
 from airo_camera_toolkit.calibration.collect_calibration_data import (
@@ -31,7 +30,7 @@ def do_camera_robot_calibration(
     charuco_board: CharucoBoardType,
     camera: RGBCamera,
     robot: PositionManipulator,
-    calibration_dir: Optional[str],
+    calibration_dir: str | None,
 ) -> None:
     """Do hand-eye calibration, both eye-in-hand and eye-to-hand are supported.
 
@@ -66,8 +65,8 @@ def do_camera_robot_calibration(
     robot.start_freedrive()
 
     MIN_POSES = 3
-    tcp_poses_in_base: List[HomogeneousMatrixType] = []
-    images: List[OpenCVIntImageType] = []
+    tcp_poses_in_base: list[HomogeneousMatrixType] = []
+    images: list[OpenCVIntImageType] = []
     camera_pose_best = None
 
     while True:

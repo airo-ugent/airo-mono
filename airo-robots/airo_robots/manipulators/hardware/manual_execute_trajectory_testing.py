@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 from airo_robots.grippers import Robotiq2F85
 from airo_robots.manipulators.position_manipulator import PositionManipulator
@@ -8,7 +6,7 @@ from airo_robots.manipulators.position_manipulator import PositionManipulator
 np.set_printoptions(precision=3)
 
 
-def _create_scene() -> Tuple:
+def _create_scene() -> tuple:
     from airo_drake import add_floor, add_manipulator, add_meshcat, finish_build  # type: ignore
     from pydrake.planning import RobotDiagramBuilder  # type: ignore
 

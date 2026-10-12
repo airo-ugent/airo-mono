@@ -43,7 +43,7 @@ def create_yolo_dataset_from_coco_instances_dataset(
     _target_directory = pathlib.Path(target_directory)
 
     # load the json file into the coco dataset object
-    annotations = json.load(open(_coco_dataset_json_path, "r"))
+    annotations = json.load(open(_coco_dataset_json_path))
     coco_dataset = CocoInstancesDataset(**annotations)
 
     target_dir = pathlib.Path(_target_directory)

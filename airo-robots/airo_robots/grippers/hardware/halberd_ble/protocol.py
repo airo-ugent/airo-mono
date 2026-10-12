@@ -16,7 +16,7 @@ import json
 import struct
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Optional
+from typing import Self
 
 PROTOCOL_VERSION = 1
 
@@ -110,7 +110,7 @@ class GripperDescriptor:
     sensors: tuple[SensorDescriptor, ...] = ()
 
     @classmethod
-    def from_json(cls, raw: bytes) -> "GripperDescriptor":
+    def from_json(cls, raw: bytes) -> Self:
         """Parse the descriptor characteristic value.
 
         Raises:
@@ -163,7 +163,7 @@ class Event:
 
     type: EventType
     seq: int
-    reason: Optional[FailureReason] = None
+    reason: FailureReason | None = None
 
 
 @dataclass(frozen=True)
@@ -216,7 +216,7 @@ def decode_event(frame: bytes) -> Event:
         event_type = EventType(frame[0])
     except ValueError as error:
         raise ProtocolError(f"Unknown event type 0x{frame[0]:02x}") from error
-    reason: Optional[FailureReason] = None
+    reason: FailureReason | None = None
     if event_type == EventType.FAILED:
         if len(frame) < 3:
             raise ProtocolError(f"FAILED event without reason byte: {frame.hex()}")

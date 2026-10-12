@@ -3,7 +3,7 @@ transport that simulates the HalberdGripper firmware (ACK/DONE lifecycle, state
 snapshots), so no Bluetooth hardware is needed."""
 
 import struct
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import pytest
 from airo_robots.awaitable_action import ACTION_STATUS_ENUM
@@ -42,7 +42,7 @@ class FakeHalberdTransport:
         self.descriptor_json = descriptor_json
         self.positions = list(initial_positions)
         self.sent_frames: list[bytes] = []
-        self.pending_motion_seq: Optional[int] = None
+        self.pending_motion_seq: int | None = None
         self._event_listener: Callable[[bytes], None] = lambda frame: None
         self._state_listener: Callable[[bytes], None] = lambda frame: None
         self._sensor_listener: Callable[[bytes], None] = lambda frame: None
@@ -83,7 +83,7 @@ class FakeHalberdTransport:
 
     # test helpers --------------------------------------------------------
 
-    def emit_event(self, event_type: protocol.EventType, seq: int, reason: Optional[int] = None) -> None:
+    def emit_event(self, event_type: protocol.EventType, seq: int, reason: int | None = None) -> None:
         frame = bytes([event_type, seq]) + (bytes([reason]) if reason is not None else b"")
         self._event_listener(frame)
 
@@ -96,7 +96,7 @@ class FakeHalberdTransport:
         frame = bytes([len(values)]) + struct.pack(f"<{len(values)}f", *values)
         self._sensor_listener(frame)
 
-    def complete_motion(self, final_positions: Optional[tuple] = None) -> None:
+    def complete_motion(self, final_positions: tuple | None = None) -> None:
         assert self.pending_motion_seq is not None, "no motion in flight"
         if final_positions is not None:
             self.positions = list(final_positions)

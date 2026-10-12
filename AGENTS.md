@@ -123,7 +123,7 @@ Three GitHub Actions workflows:
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
 | `pre-commit.yaml` | Every push | Format checks |
-| `pytest.yaml` | PRs / main | Tests (Python 3.10, 3.11, 3.12 × each package) |
+| `pytest.yaml` | PRs / main | Tests (Python 3.11, 3.12 × each package) |
 | `mypy.yaml` | PRs / main | Static type checking |
 
 ## Versioning & Releases
@@ -134,7 +134,7 @@ Three GitHub Actions workflows:
 
 ## Key Dependencies
 
-- **Python** ≥ 3.10
+- **Python** ≥ 3.11
 - **numpy** ≥ 2.0
 - **opencv-contrib-python** == 4.10.0.84 (pinned — contrib modules + ArUco API)
 - **pydantic** > 2.0

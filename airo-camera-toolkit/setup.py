@@ -9,6 +9,7 @@ setuptools.setup(
     description="Interfaces and common functionality to work with RGB(D) cameras for robotic manipulation at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
+    python_requires=">=3.11",
     install_requires=[
         "numpy>=2.0",
         "opencv-contrib-python==4.10.0.84",  # contrib required for cv2.ximgproc (stereo disparity) and GUI functions (cv2.imshow)

@@ -1,8 +1,9 @@
 import gc
 import time
+from collections.abc import Callable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from loguru import logger
 from typing_extensions import deprecated

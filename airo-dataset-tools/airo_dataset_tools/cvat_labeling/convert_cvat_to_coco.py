@@ -1,10 +1,7 @@
 """ module toconvert CVAT 1.1 images keypoint annotations to COCO Keypoint dataset"""
 
-from __future__ import annotations
-
 import json
 from collections import defaultdict
-from typing import List, Tuple
 
 import tqdm
 from airo_dataset_tools.cvat_labeling.load_xml_to_dict import get_dict_from_xml
@@ -41,12 +38,12 @@ def cvat_image_to_coco(  # noqa: C901, too complex
     cvat_parsed = CVATImagesParser(**cvat_dict)
 
     # create a COCO Dataset Model
-    coco_images: List[CocoImage] = []
-    coco_annotations: List[CocoKeypointAnnotation] = []
-    coco_categories: List[CocoKeypointCategory] = []
+    coco_images: list[CocoImage] = []
+    coco_annotations: list[CocoKeypointAnnotation] = []
+    coco_categories: list[CocoKeypointCategory] = []
 
     # load the COCO categories from the configuration file
-    with open(coco_configuration_json_path, "r") as file:
+    with open(coco_configuration_json_path) as file:
         coco_categories_config = json.load(file)
     for category_dict in coco_categories_config["categories"]:
         category = CocoKeypointCategory(**category_dict)
@@ -115,7 +112,7 @@ def cvat_image_to_coco(  # noqa: C901, too complex
 
 
 def _validate_coco_categories_are_in_cvat(
-    cvat_parsed: CVATImagesParser, coco_categories: List[CocoKeypointCategory], add_bbox: bool, add_segmentation: bool
+    cvat_parsed: CVATImagesParser, coco_categories: list[CocoKeypointCategory], add_bbox: bool, add_segmentation: bool
 ) -> None:
     # gather the annotation from CVAT
     cvat_categories_dict = defaultdict(list)
@@ -143,7 +140,7 @@ def _validate_coco_categories_are_in_cvat(
 
 
 def _validate_coco_category_is_present(
-    category_str: str, coco_categories: List[CocoKeypointCategory], semantic_types: List[str]
+    category_str: str, coco_categories: list[CocoKeypointCategory], semantic_types: list[str]
 ) -> None:
     # find the matching COCO category
     coco_category = None
@@ -211,7 +208,7 @@ def _get_semantic_type_from_cvat_label(label: str) -> str:
 
 def _get_bbox_for_instance_from_cvat_image(
     cvat_image: ImageItem, instance_id: int
-) -> Tuple[float, float, float, float]:
+) -> tuple[float, float, float, float]:
     """returns the bbox for the instance in the cvat image."""
     instance_id_str = str(instance_id)
     if cvat_image.box is None:
@@ -237,7 +234,7 @@ def _get_bbox_for_instance_from_cvat_image(
     raise ValueError("bbox annotations are required for image {cvat_image.name}")
 
 
-def _get_segmentation_for_instance_from_cvat_image(cvat_image: ImageItem, instance_id: int) -> List[List[float]]:
+def _get_segmentation_for_instance_from_cvat_image(cvat_image: ImageItem, instance_id: int) -> list[list[float]]:
     """returns the segmentation polygon for the instance in the cvat image."""
     instance_id_str = str(instance_id)
     if cvat_image.polygon is None:
@@ -259,7 +256,7 @@ def _get_segmentation_for_instance_from_cvat_image(cvat_image: ImageItem, instan
 
 def _get_semantic_type_keypoint_for_instance_from_cvat_image(
     cvat_image: ImageItem, semantic_type: str, instance_id: int
-) -> List[float]:
+) -> list[float]:
     """Finds the keypoint of the given semantic type for this instance in the image.
     Returns [0,0,0] if the keypoint is not annotated for this instance.
 
@@ -291,7 +288,7 @@ def _get_semantic_type_keypoint_for_instance_from_cvat_image(
     return [0.0, 0.0, 0]
 
 
-def _extract_coco_keypoint_from_cvat_point(cvat_point: Point) -> List:
+def _extract_coco_keypoint_from_cvat_point(cvat_point: Point) -> list:
     """extract keypoint in coco format (u,v,f) from cvat annotation point.
     Args:
         cvat_point (Point): _description_

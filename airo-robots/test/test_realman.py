@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any, Callable, Optional
+from typing import Any
 
 import numpy as np
 import pytest
@@ -20,7 +21,7 @@ class FakeRealmanRobot:
         self.dof = dof
         self.model = model
         self.handle = SimpleNamespace(id=1)
-        self.callback: Optional[Callable[[Any], None]] = None
+        self.callback: Callable[[Any], None] | None = None
         self.joints_degrees = np.zeros(dof)
         self.pose = np.zeros(6)
         self.last_call: tuple[Any, ...] = ()

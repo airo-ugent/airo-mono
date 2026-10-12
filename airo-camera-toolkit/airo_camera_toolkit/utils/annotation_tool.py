@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 import cv2
 import numpy as np
@@ -25,7 +25,7 @@ min_clicks_required = {
 }
 
 # Colors for drawing
-BGRColorType = Tuple[int, int, int]
+BGRColorType = tuple[int, int, int]
 RED = (0, 0, 255)
 YELLOW = (0, 255, 255)
 GREEN = (0, 255, 0)
@@ -42,8 +42,8 @@ class AnnotationWindow:
         self.polygon_close_distance = 10
 
         # State variables
-        self.current_mouse_position: Tuple[int, int] = (0, 0)
-        self.clicked_points: List[Tuple[int, int]] = []
+        self.current_mouse_position: tuple[int, int] = (0, 0)
+        self.clicked_points: list[tuple[int, int]] = []
 
     def mouse_callback(self, event: Any, x: int, y: int, flags: Any, parm: Any) -> None:
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -86,13 +86,13 @@ class AnnotationWindow:
         self,
         image: OpenCVIntImageType,
         text: str,
-        origin: Tuple[int, int],
+        origin: tuple[int, int],
         color: BGRColorType = GREEN,
     ) -> None:
         cv2.putText(image, text, origin, self.font, self.font_scale_annotation, color, self.thickness, self.line_type)
 
     def draw_keypoint(
-        self, image: OpenCVIntImageType, point: Tuple[int, int], name: str, color: BGRColorType = GREEN
+        self, image: OpenCVIntImageType, point: tuple[int, int], name: str, color: BGRColorType = GREEN
     ) -> None:
         text_location = (point[0] + self.text_offset, point[1] - self.text_offset)
         cv2.circle(image, point, self.keypoint_size, color, self.keypoint_thickness, self.line_type)
@@ -101,8 +101,8 @@ class AnnotationWindow:
     def draw_line_segment(
         self,
         image: OpenCVIntImageType,
-        point0: Tuple[int, int],
-        point1: Tuple[int, int],
+        point0: tuple[int, int],
+        point1: tuple[int, int],
         name: str,
         color: BGRColorType = GREEN,
     ) -> None:
@@ -113,7 +113,7 @@ class AnnotationWindow:
     def draw_polygon(
         self,
         image: OpenCVIntImageType,
-        points: List[Tuple[int, int]],
+        points: list[tuple[int, int]],
         name: str,
         color: BGRColorType = GREEN,
         closed: bool = False,
@@ -128,8 +128,8 @@ class AnnotationWindow:
     def draw_line(
         self,
         image: OpenCVIntImageType,
-        point0: Tuple[int, int],
-        direction: Tuple[int, int],
+        point0: tuple[int, int],
+        direction: tuple[int, int],
         name: str,
         color: BGRColorType = GREEN,
     ) -> None:
@@ -151,8 +151,8 @@ class AnnotationWindow:
     def draw_bounding_box(
         self,
         image: OpenCVIntImageType,
-        point0: Tuple[int, int],
-        point1: Tuple[int, int],
+        point0: tuple[int, int],
+        point1: tuple[int, int],
         name: str,
         color: BGRColorType = GREEN,
     ) -> None:
@@ -237,7 +237,7 @@ class AnnotationWindow:
             elif annotation_type == Annotation.Polygon:
                 self.draw_polygon(image, annotation, name, color, closed=True)
 
-    def process_clicked_points(self, annotation_type: Annotation) -> Optional[tuple]:
+    def process_clicked_points(self, annotation_type: Annotation) -> tuple | None:
         """Process the clicked points into the annotations dictionary.
 
         Args:
@@ -268,7 +268,7 @@ class AnnotationWindow:
         self.clicked_points = []
         return annotation
 
-    def collect_annotations(self) -> Optional[dict[str, Any]]:
+    def collect_annotations(self) -> dict[str, Any] | None:
         annotation_names = list(self.annotation_spec.keys())
         annotation_types = list(self.annotation_spec.values())
         num_annotations = len(annotation_names)
@@ -314,9 +314,7 @@ class AnnotationWindow:
                 return annotations
 
 
-def get_manual_annotations(
-    image: OpenCVIntImageType, annotation_spec: dict[str, Annotation]
-) -> Optional[dict[str, Any]]:
+def get_manual_annotations(image: OpenCVIntImageType, annotation_spec: dict[str, Annotation]) -> dict[str, Any] | None:
     return AnnotationWindow(image, annotation_spec).collect_annotations()
 
 

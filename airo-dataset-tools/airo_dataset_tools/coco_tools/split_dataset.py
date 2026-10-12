@@ -2,7 +2,6 @@
 import json
 import pathlib
 import random
-from typing import List, Optional
 
 from airo_dataset_tools.data_parsers.coco import CocoImage, CocoInstanceAnnotation, CocoInstancesDataset
 from pydantic import ValidationError
@@ -10,10 +9,10 @@ from pydantic import ValidationError
 
 def split_coco_dataset(
     coco_dataset: CocoInstancesDataset,
-    split_ratios: List[float],
+    split_ratios: list[float],
     shuffle_before_splitting: bool = True,
     shuffle_seed: int = 42,
-) -> List[CocoInstancesDataset]:
+) -> list[CocoInstancesDataset]:
     """Split a COCO dataset into subsets by splitting the images according to the specified relative ratios.
     All annotations for an image will be placed in the same subset as the image.
 
@@ -35,7 +34,7 @@ def split_coco_dataset(
         rng = random.Random(shuffle_seed)
         rng.shuffle(images)
 
-    image_splits: List[List[CocoImage]] = []
+    image_splits: list[list[CocoImage]] = []
     split_sizes = [round(ratio * len(images)) for ratio in split_ratios]
     split_sizes[-1] = len(images) - sum(split_sizes[:-1])  # make sure the total number of images is correct
     print(f"Split sizes: {split_sizes}")
@@ -50,7 +49,7 @@ def split_coco_dataset(
             image_id_to_split_id[image.id] = split_id
 
     # gather the annotations for each subset
-    annotation_splits: List[List[CocoInstanceAnnotation]] = [[] for _ in range(len(split_ratios))]
+    annotation_splits: list[list[CocoInstanceAnnotation]] = [[] for _ in range(len(split_ratios))]
     for annotation in coco_dataset.annotations:
         image_id = annotation.image_id
         split_id = image_id_to_split_id[image_id]
@@ -64,7 +63,7 @@ def split_coco_dataset(
                 f"Split {split_id} is empty, which is not allowed. Please use a larger dataset or a smaller split ratio."
             )
     # create a new COCO dataset for each subset
-    coco_dataset_splits: List[CocoInstancesDataset] = []
+    coco_dataset_splits: list[CocoInstancesDataset] = []
     for annotation_split, image_split in zip(annotation_splits, image_splits):
         coco_dataset_split = CocoInstancesDataset(
             categories=coco_dataset.categories, images=image_split, annotations=annotation_split
@@ -75,7 +74,7 @@ def split_coco_dataset(
 
 
 def split_and_save_coco_dataset(
-    coco_json_path: str, split_ratios: List[float], shuffle_before_splitting: bool = True
+    coco_json_path: str, split_ratios: list[float], shuffle_before_splitting: bool = True
 ) -> None:
     """Split a COCO dataset into subsets according to the specified relative ratios and save them to disk.
     Images are split with their corresponding annotations. No guarantees on class balance or annotation ratios.
@@ -89,8 +88,8 @@ def split_and_save_coco_dataset(
     if len(split_ratios) > len(split_names):
         raise ValueError(f"Only {len(split_names)} splits are supported. {len(split_ratios)} splits were specified.")
 
-    coco_dataset: Optional[CocoInstancesDataset] = None
-    with open(coco_json_path, "r") as f:
+    coco_dataset: CocoInstancesDataset | None = None
+    with open(coco_json_path) as f:
         try:
             coco_dataset = CocoInstancesDataset(**json.load(f))
         except ValidationError as e:

@@ -2,7 +2,7 @@ import xmltodict
 
 
 def get_dict_from_xml(xml_path: str) -> dict:
-    with open(xml_path, "r") as file:
+    with open(xml_path) as file:
         # prefixes @/_ lead to issues with pydantic parsing! so simply use no prefix
         xml_dict = xmltodict.parse(file.read(), attr_prefix="")
         return xml_dict

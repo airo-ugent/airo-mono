@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 
 from airo_dataset_tools.data_parsers.coco import CocoInstancesDataset
 
@@ -28,9 +27,9 @@ def change_coco_dataset_image_prefix(
 
 
 def change_coco_json_image_prefix(
-    coco_json_file: str, current_prefix: str, target_prefix: str, target_json_file: Optional[str]
+    coco_json_file: str, current_prefix: str, target_prefix: str, target_json_file: str | None
 ) -> None:
-    with open(coco_json_file, "r") as f:
+    with open(coco_json_file) as f:
         coco_dataset = CocoInstancesDataset(**json.load(f))
 
     coco_dataset = change_coco_dataset_image_prefix(coco_dataset, current_prefix, target_prefix)

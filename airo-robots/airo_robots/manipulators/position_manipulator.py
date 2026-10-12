@@ -1,7 +1,6 @@
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -33,9 +32,9 @@ class ManipulatorSpecs:
     max_joint_torques: optional list of max joint torques in [Nm], required for torque-controlled manipulators
     """
 
-    max_joint_speeds: List[float]
+    max_joint_speeds: list[float]
     max_linear_speed: float
-    max_joint_torques: Optional[List[float]] = None
+    max_joint_torques: list[float] | None = None
 
     @property
     def dof(self) -> int:
@@ -54,7 +53,7 @@ class PositionManipulator(ABC):
     def __init__(
         self,
         manipulator_specs: ManipulatorSpecs,
-        gripper: Optional[ParallelPositionGripper] = None,
+        gripper: ParallelPositionGripper | None = None,
     ) -> None:
         self._manipulator_specs = manipulator_specs
         self._gripper = gripper
@@ -66,7 +65,7 @@ class PositionManipulator(ABC):
         return self._manipulator_specs
 
     @property
-    def gripper(self) -> Optional[ParallelPositionGripper]:
+    def gripper(self) -> ParallelPositionGripper | None:
         return self._gripper
 
     @gripper.setter
@@ -108,9 +107,7 @@ class PositionManipulator(ABC):
         pass
 
     @abstractmethod
-    def move_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None
-    ) -> AwaitableAction:
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: float | None = None) -> AwaitableAction:
         """move to a desired pose. This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory.
 
@@ -120,7 +117,7 @@ class PositionManipulator(ABC):
 
         Args:
             tcp_pose (HomogeneousMatrixType): desired tcp pose
-            joint_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default linear speed is used.
+            joint_speed (float | None, optional): speed to use for the movement. Defaults to None, in which case the default linear speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired pose.
@@ -128,14 +125,14 @@ class PositionManipulator(ABC):
 
     @abstractmethod
     def move_linear_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
+        self, tcp_pose: HomogeneousMatrixType, linear_speed: float | None = None
     ) -> AwaitableAction:
         """move to desired pose in a straight line (synchronous). This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory.
 
         Args:
             tcp_pose (HomogeneousMatrixType): desired tcp pose
-            linear_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
+            linear_speed (float | None, optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired pose.
@@ -145,14 +142,14 @@ class PositionManipulator(ABC):
     def move_to_joint_configuration(
         self,
         joint_configuration: JointConfigurationType,
-        joint_speed: Optional[float] = None,
+        joint_speed: float | None = None,
     ) -> AwaitableAction:
         """move to a desired joint configuration (synchronous). This function should be used for 'open-loop' movements as it will
         enforce an open-loop trajectory with a speed profile on the trajectory.
 
         Args:
             joint_configuration (JointConfigurationType): desired joint configuration
-            joint_speed (Optional[float], optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
+            joint_speed (float | None, optional): speed to use for the movement. Defaults to None, in which case the default speed is used.
 
         Returns:
             AwaitableAction: with termination condition that the robot has reached the desired joint configuration.
@@ -206,18 +203,18 @@ class PositionManipulator(ABC):
     def inverse_kinematics(
         self,
         tcp_pose: HomogeneousMatrixType,
-        joint_configuration_near: Optional[JointConfigurationType] = None,
-    ) -> Optional[JointConfigurationType]:
+        joint_configuration_near: JointConfigurationType | None = None,
+    ) -> JointConfigurationType | None:
         """Solve inverse kinematics.
 
         Args:
             tcp_pose (HomogeneousMatrixType): desired tcp pose
-            joint_configuration_near (Optional[JointConfigurationType], optional):joint configuration to filter to closest solution,
+            joint_configuration_near (JointConfigurationType | None, optional):joint configuration to filter to closest solution,
               since there are usually multiple solutions.
             Defaults to None, in which case the current joint configuration is used.
 
         Returns:
-            Optional[JointConfigurationType]: joint configuration that is closest to the desired tcp pose. None if no solution is found.
+            JointConfigurationType | None: joint configuration that is closest to the desired tcp pose. None if no solution is found.
         """
 
     @abstractmethod

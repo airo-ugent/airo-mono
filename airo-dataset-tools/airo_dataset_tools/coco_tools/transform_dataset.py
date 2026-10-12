@@ -1,6 +1,7 @@
 import json
 import os
-from typing import Any, Callable, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 try:
     import albumentations as A
@@ -25,11 +26,11 @@ from pydantic import ValidationError as PydanticValidationError
 
 
 def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
-    transforms: List[A.DualTransform],
+    transforms: list[A.DualTransform],
     coco_dataset: CocoInstancesDataset,
     image_path: str,
     target_image_path: str,
-    image_name_filter: Optional[Callable[[str], bool]] = None,
+    image_name_filter: Callable[[str], bool] | None = None,
 ) -> CocoInstancesDataset:
     """Apply a sequence of albumentations transforms to a coco dataset, transforming images and keypoints, bounding boxes and segmentation masks if they are present.
     Present means that all annotations in the coco dataset have a bbox annotation.
@@ -78,7 +79,7 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
 
     # create mappings between images & all corresponding annotations
     image_object_id_to_image_mapping = {image.id: image for image in coco_dataset.images}
-    image_to_annotations_mapping: dict[CocoImage, List[CocoInstanceAnnotation]] = {
+    image_to_annotations_mapping: dict[CocoImage, list[CocoInstanceAnnotation]] = {
         coco_dataset.images[i]: [] for i in range(len(coco_dataset.images))
     }
     for annotation in coco_dataset.annotations:
@@ -196,7 +197,7 @@ def apply_transform_to_coco_dataset(  # type: ignore # noqa: C901
 
 
 def resize_coco_dataset(
-    annotations_json_path: str, width: int, height: int, target_dataset_dir: Optional[str] = None
+    annotations_json_path: str, width: int, height: int, target_dataset_dir: str | None = None
 ) -> None:
     """Resize a COCO dataset. Will create a new directory at the `target_dataset_dir`with the resized dataset.
     Dataset is assumed to be
@@ -216,7 +217,7 @@ def resize_coco_dataset(
     os.makedirs(transformed_dataset_dir, exist_ok=True)
 
     transforms = [A.Resize(height, width)]
-    coco_json = json.load(open(annotations_json_path, "r"))
+    coco_json = json.load(open(annotations_json_path))
     coco_dataset = CocoInstancesDataset(**coco_json)
     transformed_dataset = apply_transform_to_coco_dataset(
         transforms, coco_dataset, coco_dataset_dir, transformed_dataset_dir

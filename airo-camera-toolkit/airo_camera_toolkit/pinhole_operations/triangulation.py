@@ -1,12 +1,10 @@
-from typing import List
-
 import numpy as np
 from airo_typing import CameraExtrinsicMatrixType, CameraIntrinsicsMatrixType, Vector2DArrayType, Vector3DType
 
 
 def multiview_triangulation_midpoint(
-    extrinsics_matrices: List[CameraExtrinsicMatrixType],
-    intrinsics_matrices: List[CameraIntrinsicsMatrixType],
+    extrinsics_matrices: list[CameraExtrinsicMatrixType],
+    intrinsics_matrices: list[CameraIntrinsicsMatrixType],
     image_coordinates: Vector2DArrayType,
 ) -> Vector3DType:
     """triangulates a point from multiple views using the midpoint method.
@@ -47,11 +45,11 @@ def multiview_triangulation_midpoint(
 
 
 def calculate_triangulation_errors(
-    extrinsics_matrices: List[CameraExtrinsicMatrixType],
-    intrinsics_matrices: List[CameraIntrinsicsMatrixType],
+    extrinsics_matrices: list[CameraExtrinsicMatrixType],
+    intrinsics_matrices: list[CameraIntrinsicsMatrixType],
     image_coordinates: Vector2DArrayType,
     point: Vector3DType,
-) -> List[float]:
+) -> list[float]:
     """calculates the Euclidean distances in the camera space between the estimated point and all rays, as a measure of triangulation error
 
     Args:

@@ -1,6 +1,5 @@
 """CLI interface for this package"""
 
-from typing import Optional
 
 import click
 from airo_camera_toolkit.calibration.fiducial_markers import AIRO_DEFAULT_ARUCO_DICT, AIRO_DEFAULT_CHARUCO_BOARD
@@ -24,9 +23,9 @@ def hand_eye_calibration(
     mode: str,
     robot_ip: str,
     robot_type: str = "ur",
-    calibration_dir: Optional[str] = None,
-    camera_brand: Optional[str] = None,
-    camera_serial_number: Optional[str] = None,
+    calibration_dir: str | None = None,
+    camera_brand: str | None = None,
+    camera_serial_number: str | None = None,
 ) -> None:
     """Do hand-eye calibration with a UR robot. Will open camera stream and visualize the detected board
     pose. Press S to capture pose, press Q to finish. Make sure the detections look good (corners/contours are
@@ -46,7 +45,7 @@ def hand_eye_calibration(
 
     aruco_dict = AIRO_DEFAULT_ARUCO_DICT
     charuco_board = AIRO_DEFAULT_CHARUCO_BOARD
-    robot: Optional[PositionManipulator] = None
+    robot: PositionManipulator | None = None
     if robot_type == "ur":
         from airo_robots.manipulators.hardware.ur_rtde import URrtde
 

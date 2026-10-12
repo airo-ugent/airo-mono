@@ -4,7 +4,7 @@ import importlib
 import threading
 import time
 from types import ModuleType
-from typing import Any, Optional
+from typing import Any, Self
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -64,8 +64,8 @@ class RealmanControl(PositionManipulator):
         self,
         ip_address: str,
         port: int = 8080,
-        manipulator_specs: Optional[ManipulatorSpecs] = None,
-        gripper: Optional[ParallelPositionGripper] = None,
+        manipulator_specs: ManipulatorSpecs | None = None,
+        gripper: ParallelPositionGripper | None = None,
     ) -> None:
         self.ip_address = ip_address
         self.port = port
@@ -124,7 +124,7 @@ class RealmanControl(PositionManipulator):
         self._raise_for_error(self.robot.rm_delete_robot_arm(), "rm_delete_robot_arm")
         self._closed = True
 
-    def __enter__(self) -> "RealmanControl":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exception_type: Any, exception: Any, traceback: Any) -> None:
@@ -175,7 +175,7 @@ class RealmanControl(PositionManipulator):
         return wrench
 
     def move_linear_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, linear_speed: Optional[float] = None
+        self, tcp_pose: HomogeneousMatrixType, linear_speed: float | None = None
     ) -> AwaitableAction:
         """Move the TCP to a pose along a Cartesian straight line."""
         self._assert_pose_is_valid(tcp_pose)
@@ -192,9 +192,7 @@ class RealmanControl(PositionManipulator):
         )
         return self._pose_motion_action(tcp_pose)
 
-    def move_to_tcp_pose(
-        self, tcp_pose: HomogeneousMatrixType, joint_speed: Optional[float] = None
-    ) -> AwaitableAction:
+    def move_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, joint_speed: float | None = None) -> AwaitableAction:
         """Move the TCP to a pose using joint-space planning."""
         self._assert_pose_is_valid(tcp_pose)
         speed = self.default_joint_speed if joint_speed is None else joint_speed
@@ -213,7 +211,7 @@ class RealmanControl(PositionManipulator):
     def move_to_joint_configuration(
         self,
         joint_configuration: JointConfigurationType,
-        joint_speed: Optional[float] = None,
+        joint_speed: float | None = None,
     ) -> AwaitableAction:
         """Move to a joint configuration using controller trajectory planning."""
         self._assert_joint_configuration_is_valid(joint_configuration)
@@ -262,8 +260,8 @@ class RealmanControl(PositionManipulator):
     def inverse_kinematics(
         self,
         tcp_pose: HomogeneousMatrixType,
-        joint_configuration_near: Optional[JointConfigurationType] = None,
-    ) -> Optional[JointConfigurationType]:
+        joint_configuration_near: JointConfigurationType | None = None,
+    ) -> JointConfigurationType | None:
         """Solve inverse kinematics for a TCP pose.
 
         The RealMan SDK solver is seeded with ``joint_configuration_near`` (the
