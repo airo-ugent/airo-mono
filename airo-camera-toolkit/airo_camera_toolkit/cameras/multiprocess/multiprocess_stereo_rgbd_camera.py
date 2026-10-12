@@ -33,7 +33,15 @@ logger = loguru.logger
 
 
 class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
-    """Publishes stereo RGBD camera data over Zenoh."""
+    """Publishes stereo RGBD camera data over Zenoh.
+
+    Subclasses can publish extra per-frame fields by setting the frame types (with and without
+    point cloud) to frame buffers that add those fields, and returning them from
+    ``_capture_extra_fields()``.
+    """
+
+    _frame_type: type[StereoRGBDFrameBuffer] = StereoRGBDFrameBuffer
+    _frame_type_with_pointcloud: type[StereoRGBDFrameBuffer] = StereoRGBDFrameBufferWithPointCloud
 
     def __init__(
         self,
@@ -47,10 +55,8 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
 
     def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
         """Return stereo RGBD frame buffer layout."""
-        if self.enable_pointcloud:
-            return StereoRGBDFrameBufferWithPointCloud.layout(width, height)
-        else:
-            return StereoRGBDFrameBuffer.layout(width, height)
+        frame_type = self._frame_type_with_pointcloud if self.enable_pointcloud else self._frame_type
+        return frame_type.layout(width, height)
 
     def _setup(self) -> None:
         """Set up camera and prepare point cloud buffers and static camera parameters."""
@@ -65,20 +71,13 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
         if self.enable_pointcloud:
             self._pcd_pos_buf, self._pcd_col_buf = allocate_pointcloud_buffers(*self._camera.resolution)
 
-    def _capture_stereo_fields(self, frame_id: int, frame_timestamp: float) -> dict:
-        """Capture the fields shared by every stereo RGB-D frame buffer (left/right image, depth, intrinsics, pose).
+    def _capture_extra_fields(self) -> dict[str, np.ndarray]:
+        """Capture the fields a subclass's frame types add to :class:`StereoRGBDFrameBuffer`."""
+        return {}
 
-        Composed by :class:`MultiprocessZedPublisher` to build its own frame buffer, which adds a
-        camera pose field on top of these.
-
-        Args:
-            frame_id: Monotonically increasing frame identifier.
-            frame_timestamp: Timestamp when the frame was captured.
-
-        Returns:
-            A dict suitable for ``**``-passing into a :class:`StereoRGBDFrameBuffer` (sub)class.
-        """
-        return {
+    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
+        """Capture stereo RGB-D data and, if enabled, the point cloud."""
+        fields = {
             **self._header(frame_id, frame_timestamp),
             "rgb": self._camera.retrieve_rgb_image_as_int(),
             "rgb_right": self._camera.retrieve_rgb_image_as_int(view=StereoRGBDCamera.RIGHT_RGB),
@@ -87,40 +86,28 @@ class MultiprocessStereoRGBDPublisher(BaseCameraPublisher):
             "pose_right_in_left": self._pose_right_in_left,
             "depth": self._camera.retrieve_depth_map(),
             "depth_image": self._camera.retrieve_depth_image(),
+            **self._capture_extra_fields(),
         }
 
-    def _capture_pointcloud_fields(self, point_cloud: PointCloud) -> dict:
-        """Stage *point_cloud* into this publisher's point cloud buffers and describe the result.
+        if not self.enable_pointcloud:
+            return self._frame_type(**fields)
 
-        Composed by :class:`MultiprocessZedPublisher`, which publishes its point cloud on a
-        separate key expression rather than embedding it in the main frame buffer.
-
-        Args:
-            point_cloud: The point cloud to stage.
-
-        Returns:
-            A dict suitable for ``**``-passing into a frame buffer with point cloud fields.
-        """
+        point_cloud = self._camera.retrieve_colored_point_cloud()
         num_valid_points = fill_pointcloud_buffers(self._pcd_pos_buf, self._pcd_col_buf, point_cloud)
-        return {
+        pointcloud_fields = {
             "point_cloud_positions": self._pcd_pos_buf,
             "point_cloud_colors": self._pcd_col_buf,
             "num_valid_points": np.array([num_valid_points], dtype=np.int32),
         }
-
-    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
-        """Capture stereo RGB-D data and, if enabled, the point cloud."""
-        stereo_fields = self._capture_stereo_fields(frame_id, frame_timestamp)
-
-        if not self.enable_pointcloud:
-            return StereoRGBDFrameBuffer(**stereo_fields)
-
-        point_cloud = self._camera.retrieve_colored_point_cloud()
-        return StereoRGBDFrameBufferWithPointCloud(**stereo_fields, **self._capture_pointcloud_fields(point_cloud))
+        return self._frame_type_with_pointcloud(**fields, **pointcloud_fields)
 
 
 class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
     """Receives stereo RGBD camera data over Zenoh."""
+
+    # Must match the publisher's frame types; see MultiprocessStereoRGBDPublisher.
+    _frame_type: type[StereoRGBDFrameBuffer] = StereoRGBDFrameBuffer
+    _frame_type_with_pointcloud: type[StereoRGBDFrameBuffer] = StereoRGBDFrameBufferWithPointCloud
 
     def __init__(
         self,
@@ -133,10 +120,8 @@ class MultiprocessStereoRGBDReceiver(BaseCameraReceiver, StereoRGBDCamera):
 
     def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
         """Return stereo RGBD frame buffer layout."""
-        if self.enable_pointcloud:
-            return StereoRGBDFrameBufferWithPointCloud.layout(width, height)
-        else:
-            return StereoRGBDFrameBuffer.layout(width, height)
+        frame_type = self._frame_type_with_pointcloud if self.enable_pointcloud else self._frame_type
+        return frame_type.layout(width, height)
 
     def retrieve_rgb_image(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyFloatImageType:
         return ImageConverter.from_numpy_int_format(self.retrieve_rgb_image_as_int(view=view)).image_in_numpy_format

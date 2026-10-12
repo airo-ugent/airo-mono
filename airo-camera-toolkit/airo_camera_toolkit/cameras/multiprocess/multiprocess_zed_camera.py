@@ -7,10 +7,10 @@ from typing import Any
 import loguru
 import numpy as np
 from airo_camera_toolkit.cameras.multiprocess.frame_data import (
-    FrameLayout,
-    PointCloudBuffer,
     SpatialMapBuffer,
+    StereoRGBDFrameBuffer,
     ZedFrameBuffer,
+    ZedFrameBufferWithPointCloud,
 )
 from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera import (
     MultiprocessStereoRGBDPublisher,
@@ -19,7 +19,7 @@ from airo_camera_toolkit.cameras.multiprocess.multiprocess_stereo_rgbd_camera im
 from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import DEFAULT_FIRST_MESSAGE_TIMEOUT, ZenohReader
 from airo_camera_toolkit.cameras.zed.zed import Zed, ZedSpatialMap
 from airo_camera_toolkit.interfaces import StereoRGBDCamera
-from airo_typing import CameraResolutionType, HomogeneousMatrixType, NumpyDepthMapType, NumpyIntImageType, PointCloud
+from airo_typing import CameraResolutionType, PointCloud
 
 logger = loguru.logger
 
@@ -27,11 +27,12 @@ logger = loguru.logger
 class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
     """Publishes Zed camera data including positional tracking and spatial mapping over Zenoh.
 
-    Composes :class:`MultiprocessStereoRGBDPublisher` for the stereo RGB-D fields (left/right
-    image, depth, intrinsics, pose) and point cloud staging shared with plain stereo cameras, and
-    adds the Zed-specific camera pose, point cloud (published on its own key expression, since its
-    staging buffers are reused here) and spatial map.
+    Publishes the frames of :class:`MultiprocessStereoRGBDPublisher` with the camera pose added,
+    and the spatial map (if enabled) on the ``<namespace>_spatial_map`` key expression.
     """
+
+    _frame_type: type[StereoRGBDFrameBuffer] = ZedFrameBuffer
+    _frame_type_with_pointcloud: type[StereoRGBDFrameBuffer] = ZedFrameBufferWithPointCloud
 
     def __init__(
         self,
@@ -50,22 +51,9 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
         self.map_refresh_interval = map_refresh_interval
         super().__init__(camera_cls, camera_kwargs, shared_memory_namespace, enable_pointcloud=enable_pointcloud)
 
-    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
-        """Return Zed frame buffer layout."""
-        return ZedFrameBuffer.layout(width, height)
-
     def _setup(self) -> None:
-        """Set up the inherited stereo RGB-D state, then the Zed-specific point cloud and spatial map writers."""
-        # Caches pose/intrinsics and allocates the point cloud buffers (if enabled).
+        """Set up the inherited stereo RGB-D state, then the spatial map writer."""
         super()._setup()
-
-        if self.enable_pointcloud:
-            # Published on its own key expression rather than embedded in the main frame buffer,
-            # unlike MultiprocessStereoRGBDPublisher, so receivers that only need the Zed frame
-            # itself are not forced to also receive (and deserialize) the point cloud.
-            self._pcd_writer = self._declare_writer(
-                f"{self._shared_memory_namespace}_pcd", PointCloudBuffer.layout(*self._camera.resolution)
-            )
 
         if self.enable_spatial_mapping:
             self._spatial_map_chunks_updated = np.zeros(self.max_spatial_map_chunks, dtype=np.bool_)
@@ -77,25 +65,16 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
                 SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
-    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
-        """Capture the Zed frame, and publish its point cloud and spatial map (if enabled) on the side."""
-        stereo_fields = self._capture_stereo_fields(frame_id, frame_timestamp)
+    def _capture_extra_fields(self) -> dict[str, np.ndarray]:
+        """Capture the camera pose (identity if positional tracking is disabled)."""
         camera_pose = (
             self._camera.retrieve_camera_pose() if self.enable_positional_tracking else np.eye(4, dtype=np.float64)
         )
-        frame = ZedFrameBuffer(**stereo_fields, camera_pose=camera_pose)
+        return {"camera_pose": camera_pose}
 
-        if self.enable_pointcloud:
-            point_cloud = self._camera.retrieve_colored_point_cloud()
-            pointcloud_fields = self._capture_pointcloud_fields(point_cloud)
-            self._pcd_writer(
-                PointCloudBuffer(
-                    **self._header(frame_id, frame_timestamp),
-                    point_cloud_positions=pointcloud_fields["point_cloud_positions"],
-                    point_cloud_colors=pointcloud_fields["point_cloud_colors"],
-                    point_cloud_valid=pointcloud_fields["num_valid_points"],
-                )
-            )
+    def _capture_frame(self, frame_id: int, frame_timestamp: float) -> Any:
+        """Capture the Zed frame, and publish the spatial map (if enabled) on the side."""
+        frame = super()._capture_frame(frame_id, frame_timestamp)
 
         if self.enable_spatial_mapping and frame_id % self.map_refresh_interval == 0:
             assert isinstance(self._camera, Zed)
@@ -147,8 +126,11 @@ class MultiprocessZedPublisher(MultiprocessStereoRGBDPublisher):
         return {**super()._publisher_config(), "positional_tracking": self.enable_positional_tracking}
 
 
-class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
+class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver):
     """Receives Zed camera data over Zenoh."""
+
+    _frame_type: type[StereoRGBDFrameBuffer] = ZedFrameBuffer
+    _frame_type_with_pointcloud: type[StereoRGBDFrameBuffer] = ZedFrameBufferWithPointCloud
 
     def __init__(
         self,
@@ -164,7 +146,6 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
         self.enable_spatial_mapping = enable_spatial_mapping
         self.max_spatial_map_chunks = max_spatial_map_chunks
         self.max_spatial_map_points = max_spatial_map_points
-        self._reader_pcd: ZenohReader[PointCloudBuffer] | None = None
         self._reader_spatial_map: ZenohReader[SpatialMapBuffer] | None = None
 
         super().__init__(shared_memory_namespace, enable_pointcloud=enable_pointcloud, timeout=timeout)
@@ -179,87 +160,30 @@ class MultiprocessZedReceiver(MultiprocessStereoRGBDReceiver, StereoRGBDCamera):
 
         super()._setup_frame_reader(resolution)
 
-        if self.enable_pointcloud:
-            self._reader_pcd = self._declare_reader(
-                f"{self._shared_memory_namespace}_pcd", PointCloudBuffer.layout(resolution[0], resolution[1])
-            )
-
         if self.enable_spatial_mapping:
             self._reader_spatial_map = self._declare_reader(
                 f"{self._shared_memory_namespace}_spatial_map",
                 SpatialMapBuffer.layout(self.max_spatial_map_chunks, self.max_spatial_map_points),
             )
 
-    def _get_frame_layout(self, width: int, height: int) -> FrameLayout[Any]:
-        """Return Zed frame buffer layout."""
-        return ZedFrameBuffer.layout(width, height)
-
     def grab_images(self) -> None:
-        """Read the latest main frame, and the latest point cloud / spatial map if enabled.
+        """Read the latest frame, and the latest spatial map if enabled.
 
-        The point cloud and spatial map are published on separate Zenoh key
-        expressions (the spatial map is only refreshed every few frames), so
-        they are not guaranteed to share the exact ``frame_id`` of the main
-        frame. Reading them here, right after the main frame, keeps all three
-        as close in time as possible.
+        The spatial map is published on a separate key expression and only refreshed every few
+        frames, so it generally belongs to an earlier ``frame_id`` than the frame.
         """
         super().grab_images()
-        if self._reader_pcd is not None:
-            self._last_pcd_frame = self._reader_pcd()
         if self._reader_spatial_map is not None:
             self._last_spatial_map_frame = self._reader_spatial_map()
 
     def stop(self) -> None:
-        """Undeclare the Zed-specific readers, then the base reader and session."""
+        """Undeclare the spatial map reader, then the base reader and session."""
         if self._stopped:
             return
-        # _reader_pcd and _reader_spatial_map can both be missing attributes if the connection
-        # failed before they were set up.
-        if self._reader_pcd is not None:
-            self._reader_pcd.stop()
-            self._reader_pcd = None
         if self._reader_spatial_map is not None:
             self._reader_spatial_map.stop()
             self._reader_spatial_map = None
         super().stop()
-
-    def retrieve_rgb_image_as_int(self, view: str = StereoRGBDCamera.LEFT_RGB) -> NumpyIntImageType:
-        """Retrieve RGB image as integer array."""
-        if view == StereoRGBDCamera.LEFT_RGB:
-            return self._last_frame.rgb
-        else:
-            return self._last_frame.rgb_right
-
-    @property
-    def pose_of_right_view_in_left_view(self) -> HomogeneousMatrixType:
-        """Get the pose of the right camera in left camera frame."""
-        return self._last_frame.pose_right_in_left
-
-    def intrinsics_matrix(self, view: str = StereoRGBDCamera.LEFT_RGB) -> np.ndarray:
-        """Get camera intrinsics matrix."""
-        if view == StereoRGBDCamera.LEFT_RGB:
-            return self._last_frame.intrinsics
-        else:
-            return self._last_frame.intrinsics_right
-
-    def retrieve_depth_map(self) -> NumpyDepthMapType:
-        """Retrieve depth map from frame buffer."""
-        return self._last_frame.depth
-
-    def retrieve_depth_image(self) -> NumpyIntImageType:
-        """Retrieve depth image from frame buffer."""
-        return self._last_frame.depth_image
-
-    def retrieve_colored_point_cloud(self) -> PointCloud:
-        """Retrieve colored point cloud from the frame captured by the last grab_images()."""
-        if not self.enable_pointcloud:
-            raise RuntimeError("Cannot retrieve point cloud when point cloud is not enabled.")
-        if self._reader_pcd is None:
-            raise RuntimeError("This receiver was stopped; call reconnect() to use it again.")
-        num_points = self._last_pcd_frame.point_cloud_valid.item()
-        positions = self._last_pcd_frame.point_cloud_positions[:num_points]
-        colors = self._last_pcd_frame.point_cloud_colors[:num_points]
-        return PointCloud(positions, colors)
 
     def retrieve_camera_pose(self) -> np.ndarray:
         """Returns the 4x4 global pose matrix of the camera if tracking is enabled."""

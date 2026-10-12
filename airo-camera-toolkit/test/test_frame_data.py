@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 from airo_camera_toolkit.cameras.multiprocess.frame_data import (
     FrameLayout,
-    PointCloudBuffer,
     PublisherMetadata,
     RGBDFrameBuffer,
     RGBDFrameBufferWithPointCloud,
@@ -18,6 +17,7 @@ from airo_camera_toolkit.cameras.multiprocess.frame_data import (
     StereoRGBDFrameBuffer,
     StereoRGBDFrameBufferWithPointCloud,
     ZedFrameBuffer,
+    ZedFrameBufferWithPointCloud,
 )
 
 W, H = 64, 48  # small resolution for fast tests
@@ -81,8 +81,8 @@ def test_publisher_metadata_accepts_matching_stream():
 
 def test_publisher_metadata_rejects_missing_stream():
     metadata = _metadata(camera=RGBDFrameBuffer.layout(W, H))
-    with pytest.raises(ValueError, match="does not publish 'camera_pcd'"):
-        metadata.check_stream("camera_pcd", RGBDFrameBuffer.layout(W, H))
+    with pytest.raises(ValueError, match="does not publish 'camera_spatial_map'"):
+        metadata.check_stream("camera_spatial_map", RGBDFrameBuffer.layout(W, H))
 
 
 def test_publisher_metadata_rejects_different_layout():
@@ -199,16 +199,24 @@ def test_zed_frame_buffer_round_trip():
     _assert_frame_equal(obj, result)
 
 
-def test_point_cloud_buffer_round_trip():
+def test_zed_frame_buffer_with_pointcloud_round_trip():
     n = H * W
-    obj = PointCloudBuffer(
+    obj = ZedFrameBufferWithPointCloud(
         frame_id=np.array([6], dtype=np.uint64),
         frame_timestamp=np.array([5.0], dtype=np.float64),
+        rgb=np.zeros((H, W, 3), dtype=np.uint8),
+        intrinsics=np.eye(3, dtype=np.float64),
+        depth_image=np.zeros((H, W, 3), dtype=np.uint8),
+        depth=np.zeros((H, W), dtype=np.float32),
+        rgb_right=np.zeros((H, W, 3), dtype=np.uint8),
+        intrinsics_right=np.eye(3, dtype=np.float64),
+        pose_right_in_left=np.eye(4, dtype=np.float64),
+        camera_pose=np.eye(4, dtype=np.float64) * 2.0,
         point_cloud_positions=np.random.rand(n, 3).astype(np.float32),
         point_cloud_colors=np.zeros((n, 3), dtype=np.uint8),
-        point_cloud_valid=np.array([n // 2], dtype=np.int32),
+        num_valid_points=np.array([n // 2], dtype=np.int32),
     )
-    result = _round_trip(PointCloudBuffer.layout(W, H), obj)
+    result = _round_trip(ZedFrameBufferWithPointCloud.layout(W, H), obj)
     _assert_frame_equal(obj, result)
 
 
