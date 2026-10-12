@@ -7,19 +7,19 @@ This package contains code for controlling robot manipulators and grippers, spec
 The following combinations of hardware and communication options are currently implemented:
 | Hardware | Communication | Implementation |
 |----------|:----------|----------------|
-| UR robots | RTDE | [ur_rtde.py](airo_robots/manipulators/hardware/ur_rtde.py) |
-| RealMan robots | RealMan Python API | [realman.py](airo_robots/manipulators/hardware/realman.py) |
-| FANUC robots | airo-fanuc API (Stream Motion + RMI) | [fanuc.py](airo_robots/manipulators/hardware/fanuc.py) |
-|Schunk EGK gripper | Modbus-USB converter | [schunk_process.py](airo_robots/grippers/hardware/schunk_process.py) |
-| Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
-| Robotiq 2F85 gripper on a FANUC | airo-fanuc API (RMI registers + a teach-pendant program) | [robotiq_2f85_fanuc.py](airo_robots/grippers/hardware/robotiq_2f85_fanuc.py) |
-| KELO Robile platform | airo-tulip API | [kelo_robile.py](airo_robots/drives/hardware/kelo_robile.py) |
-| Halberd platform | AIRO gripper protocol (AGP) over BLE | [gripper.py](airo_robots/grippers/hardware/halberd_ble/gripper.py) |
+| UR robots | RTDE | [ur_rtde.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/ur_rtde.py) |
+| RealMan robots | RealMan Python API | [realman.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/realman.py) |
+| FANUC robots | airo-fanuc API (Stream Motion + RMI) | [fanuc.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/fanuc.py) |
+|Schunk EGK gripper | Modbus-USB converter | [schunk_process.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/schunk_process.py) |
+| Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
+| Robotiq 2F85 gripper on a FANUC | airo-fanuc API (RMI registers + a teach-pendant program) | [robotiq_2f85_fanuc.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/robotiq_2f85_fanuc.py) |
+| KELO Robile platform | airo-tulip API | [kelo_robile.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/drives/hardware/kelo_robile.py) |
+| Halberd platform | AIRO gripper protocol (AGP) over BLE | [gripper.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/halberd_ble/gripper.py) |
 
 Each hardware implementation module will have a `__main__` codeblock that runs the tests for that hardware implementation. This is useful to check if the hardware is connected correctly and the implementation is working as expected. But it is also the place to be to get an idea of how to use the implementation.
 
 ## Async interactions
-Certain hardware commands can require some time before completion. Think about sending a move command to a robot, the exact time will depend on the velocity (profile) and the distance between the current pose and target pose, but it can easily be multiple seconds. You might nog want to be busy waiting on that command to complete before the method returns. For this reason, certain commands will send the command to the hardware, formulate a condition that signals when the command has finished and then return an [`AwaitableAction`](airo_robots/awaitable_action.py). You can then decide when (and if) you want to start busy waiting on the command to finish (according to the specified condition). This allows you to do some other useful things in the meantime.
+Certain hardware commands can require some time before completion. Think about sending a move command to a robot, the exact time will depend on the velocity (profile) and the distance between the current pose and target pose, but it can easily be multiple seconds. You might nog want to be busy waiting on that command to complete before the method returns. For this reason, certain commands will send the command to the hardware, formulate a condition that signals when the command has finished and then return an [`AwaitableAction`](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/awaitable_action.py). You can then decide when (and if) you want to start busy waiting on the command to finish (according to the specified condition). This allows you to do some other useful things in the meantime.
 
 When you decide to wait you have to specify the max waiting time (the timeout value) and the granularity of the waiting. Make sure to take a look in the code so that you understand these values and can use appropriate values, especially have a look at the part about the `time.sleep` accuracy. An example interaction might look like this:
 

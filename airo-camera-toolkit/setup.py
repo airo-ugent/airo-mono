@@ -7,6 +7,8 @@ setuptools.setup(
     name="airo_camera_toolkit",
     version="2026.10.1",
     description="Interfaces and common functionality to work with RGB(D) cameras for robotic manipulation at the Ghent University AI and Robotics Lab",
+    long_description=(pathlib.Path(__file__).parent / "README.md").read_text(encoding="utf-8"),
+    long_description_content_type="text/markdown",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
     python_requires=">=3.11",

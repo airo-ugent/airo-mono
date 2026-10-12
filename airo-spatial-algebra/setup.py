@@ -7,6 +7,8 @@ setuptools.setup(
     name="airo_spatial_algebra",
     version="2026.10.1",
     description="Code for working with SE3 poses, transforms... for robotic manipulation at the Ghent University AI and Robotics Lab",
+    long_description=(pathlib.Path(__file__).parent / "README.md").read_text(encoding="utf-8"),
+    long_description_content_type="text/markdown",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
     python_requires=">=3.11",

@@ -23,9 +23,9 @@ pip install .
 This will already allow you to use the hardare-independent functionality of this package, e.g. image conversion and projection.
 Depending on the hardware you are using, you might need to complete additional installation.
 Instructions can be found in the following files:
-* [ZED Installation](airo_camera_toolkit/cameras/zed/installation.md)
-* [RealSense Installation](airo_camera_toolkit/cameras/realsense/realsense_installation.md)
-* [Luxonis Installation](airo_camera_toolkit/cameras/luxonis/luxonis_installation.md)
+* [ZED Installation](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/airo_camera_toolkit/cameras/zed/installation.md)
+* [RealSense Installation](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/airo_camera_toolkit/cameras/realsense/realsense_installation.md)
+* [Luxonis Installation](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/airo_camera_toolkit/cameras/luxonis/luxonis_installation.md)
 
 Additionally, to ensure you have `airo-robots` installed for the hand-eye calibration, install the extra dependencies:
 ```
@@ -63,13 +63,13 @@ depth = camera.retrieve_depth_map()  # Read the frame from timestamp T.
 
 ## Hand-eye calibration
 
-Find the pose of a camera relative to a robot. In the [`calibration`](./airo_camera_toolkit/calibration/) folder, run this to get started:
+Find the pose of a camera relative to a robot. In the [`calibration`](https://github.com/airo-ugent/airo-mono/tree/main/airo-camera-toolkit/airo_camera_toolkit/calibration) folder, run this to get started:
 
 ```shell
 airo-camera-toolkit hand-eye-calibration --help
 ```
 
-See [calibration/README.md](./airo_camera_toolkit/calibration/README.md) for more details.
+See [calibration/README.md](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/airo_camera_toolkit/calibration/README.md) for more details.
 
 
 
@@ -93,28 +93,28 @@ image_bgr = ImageConverter.from_numpy_int_format(image_rgb_int).image_in_opencv_
 
 ### Annotation tool
 
-See [annotation_tool.md](./airo_camera_toolkit/annotation_tool.md) for usage instructions.
+See [annotation_tool.md](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/airo_camera_toolkit/utils/annotation_tool.md) for usage instructions.
 
 
 ## Pinhole Operations
 
-2D - 3D geometric operations using the pinhole model. See [readme](./airo_camera_toolkit/pinhole_operations/Readme.md) for more information.
+2D - 3D geometric operations using the pinhole model. See [readme](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/airo_camera_toolkit/pinhole_operations/Readme.md) for more information.
 
 
 ## Image Transforms
 
-See the [README](./airo_camera_toolkit/image_transforms/README.md) in the `image_transforms` folder for more details.
+See the [README](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/airo_camera_toolkit/image_transforms/README.md) in the `image_transforms` folder for more details.
 
 ## Real-time visualisation
-For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](notebooks/rerun_tutorial.ipynb).
-See this [README](./docs/rerun.md) for more details.
+For realtime visualisation of robotics data we  strongly encourage using [rerun.io](https://www.rerun.io/) instead of manually hacking something together with opencv/pyqt/... No wrappers are needed here, just pip install the SDK. An example notebook to get to know this tool and its potential can be found [here](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/notebooks/rerun_tutorial.ipynb).
+See this [README](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/docs/rerun.md) for more details.
 
 ## Point clouds
-See the tutorial notebook [here](notebooks/point_cloud_tutorial.ipynb) for an introduction.
+See the tutorial notebook [here](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/notebooks/point_cloud_tutorial.ipynb) for an introduction.
 
 ## Multiprocessing
 Camera processing can be computationally expensive.
-If this is a problem for your application, see [multiprocess/README.md](./airo_camera_toolkit/cameras/multiprocess/README.md).
+If this is a problem for your application, see [multiprocess/README.md](https://github.com/airo-ugent/airo-mono/blob/main/airo-camera-toolkit/airo_camera_toolkit/cameras/multiprocess/README.md).
 
 ## References
 For more background on cameras, in particular on the meaning of intrinsics, extrinics, distortion coefficients, pinhole (and other) camera models, see:

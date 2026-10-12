@@ -9,6 +9,8 @@ setuptools.setup(
     author="Victor-Louis De Gusseme",
     author_email="victorlouisdg@gmail.com",
     description="Scripts for loading and converting datasets for the Ghent University AI and Robotics Lab",
+    long_description=(pathlib.Path(__file__).parent / "README.md").read_text(encoding="utf-8"),
+    long_description_content_type="text/markdown",
     install_requires=[
         "numpy>=2.0",
         "pydantic>2.0.0",  # pydantic 2.0.0 has a lot of breaking changes
