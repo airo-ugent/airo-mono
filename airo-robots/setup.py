@@ -9,6 +9,7 @@ setuptools.setup(
     description="Interfaces, hardware implementations of those interfaces and other functionalities to control robot manipulators and grippers at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
+    python_requires=">=3.11",
     install_requires=[
         "numpy>=2.0",
         "click",

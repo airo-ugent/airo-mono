@@ -27,6 +27,7 @@ setuptools.setup(
         "airo-typing>=2026.1.0",
         "airo-spatial-algebra>=2026.1.0",
     ],
+    python_requires=">=3.11",
     extras_require={
         "augmentations": ["albumentations"],
         "fiftyone": ["fiftyone"],

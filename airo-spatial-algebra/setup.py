@@ -9,11 +9,12 @@ setuptools.setup(
     description="Code for working with SE3 poses, transforms... for robotic manipulation at the Ghent University AI and Robotics Lab",
     author="Thomas Lips",
     author_email="thomas.lips@ugent.be",
+    python_requires=">=3.11",
     install_requires=[
         "numpy>=2.0",
         "scipy",
         "spatialmath-python",
-        "airo-typing>=2026.01.0",
+        "airo-typing>=2026.1.0",
     ],
     packages=setuptools.find_packages(exclude=["test"]),
     # include py.typed to declare type information is available, see
