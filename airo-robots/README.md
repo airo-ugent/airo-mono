@@ -10,6 +10,7 @@ The following combinations of hardware and communication options are currently i
 | UR robots | RTDE | [ur_rtde.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/ur_rtde.py) |
 | RealMan robots | RealMan Python API | [realman.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/realman.py) |
 | FANUC robots | airo-fanuc API (Stream Motion + RMI) | [fanuc.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/fanuc.py) |
+| KUKA KRC4 robots | KUKA.DeviceConnector OPC-UA (`asyncua` + KRL motion server) | [kuka.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/kuka.py) |
 |Schunk EGK gripper | Modbus-USB converter | [schunk_process.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/schunk_process.py) |
 | Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
 | Robotiq 2F85 gripper on a FANUC | airo-fanuc API (RMI registers + a teach-pendant program) | [robotiq_2f85_fanuc.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/robotiq_2f85_fanuc.py) |
@@ -42,6 +43,7 @@ You can simply pip install this package. The vendor SDKs for the hardware implem
 pip install "airo-robots[ur]"       # UR robots (ur-rtde)
 pip install "airo-robots[realman]"  # RealMan robots (Robotic_Arm)
 pip install "airo-robots[fanuc]"    # FANUC robots, and a Robotiq 2F-85 on one (airo-fanuc)
+pip install "airo-robots[kuka]"     # KUKA KRC4 robots over OPC-UA (asyncua)
 pip install "airo-robots[schunk]"   # Schunk EGK40 gripper (bkstools)
 pip install "airo-robots[kelo]"     # KELO mobile platform (airo-tulip)
 ```
@@ -61,6 +63,8 @@ airo_robots/
             manual_gripper_testing.py       # code for manually testing hw implementations
             fanuc.py                        # implementation for FANUC robots over the airo-fanuc driver
             fanuc_setup.md                  # what a FANUC needs before this implementation can drive it
+            kuka.py                         # implementation for KUKA KRC4 robots over KUKA.DeviceConnector OPC-UA
+            kuka_setup.md                   # what a KUKA needs before this implementation can drive it
             realman.py                      # implementation for RealMan robots over the official Python API
             realman_setup.md                # what a RealMan needs before this implementation can drive it
             ur_rtde.py                      # implementation of the interfaces for UR robots over the RTDE interface

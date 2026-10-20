@@ -27,6 +27,7 @@ setuptools.setup(
         # The FANUC driver also drives the Robotiq 2F-85 that is mounted on our FANUC, over the
         # controller's registers, so this extra covers Robotiq2F85Fanuc as well.
         "fanuc": ["airo-fanuc>=0.1.0"],
+        "kuka": ["asyncua>=1.1.0"],
         "schunk": ["bkstools"],
         "halberd": ["bleak>=0.22"],
         "kelo": ["airo-tulip>=0.4.0"],

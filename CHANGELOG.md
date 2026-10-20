@@ -7,6 +7,9 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ## Unreleased
 
+### Added
+- `airo-robots`: Added `Kuka`, a `PositionManipulator` implementation for KUKA KRC4 robots (such as the KR 3 R540) over the `KUKA.DeviceConnector` OPC-UA server (`asyncua`) and a KRL motion server module (`PY_SLOW`), with analytical 6-DOF spherical-wrist forward and inverse kinematics parameterized by the controller's active `$BASE`, `$TOOL`, and machine geometry. Installed with `pip install "airo-robots[kuka]"`. See [kuka_setup.md](airo-robots/airo_robots/manipulators/hardware/kuka_setup.md).
+
 ## 2026.10.1
 
 Released: 2026-10-12
