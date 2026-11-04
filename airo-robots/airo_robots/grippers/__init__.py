@@ -5,6 +5,7 @@ from airo_robots.grippers.hardware.halberd_ble import (  # noqa: F401 - imported
     HalberdBLEGripper,
 )
 from airo_robots.grippers.hardware.robotiq_2f85_fanuc import Robotiq2F85Fanuc  # noqa: F401 - imported but unused
+from airo_robots.grippers.hardware.robotiq_2f85_realman import Robotiq2F85Realman  # noqa: F401 - imported but unused
 from airo_robots.grippers.hardware.robotiq_2f85_urcap import Robotiq2F85  # noqa: F401 - imported but unused
 from airo_robots.grippers.parallel_position_gripper import (  # noqa: F401 - imported but unused
     ParallelPositionGripper,
