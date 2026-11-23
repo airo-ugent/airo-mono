@@ -4,7 +4,7 @@ from abc import ABC
 from typing import Any, ClassVar, Self
 
 import zenoh
-from airo_camera_toolkit.cameras.multiprocess.base_publisher import _make_zenoh_config
+from airo_camera_toolkit.cameras.multiprocess.base_publisher import _make_zenoh_config, _shm_enabled
 from airo_camera_toolkit.cameras.multiprocess.frame_data import Frame, FrameLayout, PublisherMetadata, RGBFrameBuffer
 from airo_camera_toolkit.cameras.multiprocess.zenoh_reader import (
     DEFAULT_FIRST_MESSAGE_TIMEOUT,
@@ -77,7 +77,9 @@ class BaseCameraReceiver(RGBCamera, ABC):
                 receiver's timeout.
         """
         # Open a Zenoh session for receiving
-        self._session = zenoh.open(_make_zenoh_config())
+        # The receiver keeps SHM enabled when the publisher does, or it would not receive SHM frames
+        # without a copy. It does not allocate a pool, so it skips the publisher's "SHM is off" warning.
+        self._session = zenoh.open(_make_zenoh_config(shm=_shm_enabled(warn=False)))
 
         try:
             # Read static camera information

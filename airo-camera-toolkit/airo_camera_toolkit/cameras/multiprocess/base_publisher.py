@@ -28,10 +28,17 @@ _LOCALHOST = "127.0.0.1"
 _SHM_ENABLED_VALUES = {"1", "true", "yes", "on"}
 
 
-def _shm_enabled() -> bool:
-    """Whether ``AIRO_ZENOH_SHM`` enables the Zenoh shared memory transport (logs a warning if unset)."""
+def _shm_enabled(warn: bool = True) -> bool:
+    """Whether ``AIRO_ZENOH_SHM`` enables the Zenoh shared memory transport.
+
+    Args:
+        warn: Whether to log a warning when the variable is unset. Publishers want this, since they
+            allocate the frame pool; receivers do not.
+    """
     if ZENOH_SHM_ENV_VAR in os.environ:
         return os.environ[ZENOH_SHM_ENV_VAR].strip().lower() in _SHM_ENABLED_VALUES
+    if not warn:
+        return False
     logger.warning(
         f"Zenoh shared memory transport is disabled by default (set {ZENOH_SHM_ENV_VAR}=1 to enable it for "
         "lower latency). Frames will be copied instead. Enabling shared memory transport requires the process's 'ulimit -l' (max locked memory) "
@@ -144,7 +151,7 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
 
     def _declare_writer(self, key_expr: str, layout: FrameLayout[Frame]) -> ZenohWriter[Frame]:
         """Create a writer on *key_expr*, announce its layout in the metadata and stop it on shutdown."""
-        writer = ZenohWriter(self._session, key_expr, layout, shm=self._shm_enabled)
+        writer = ZenohWriter(self._session, key_expr, layout, shm=self._use_shm)
         self._writers[key_expr] = writer
         return writer
 
@@ -179,8 +186,8 @@ class BaseCameraPublisher(multiprocessing.context.Process, ABC):
     def run(self) -> None:
         """Main loop of the publisher process."""
         logger.info(f"{self.__class__.__name__} process started.")
-        self._shm_enabled = _shm_enabled()
-        self._session = zenoh.open(_make_zenoh_config(shm=self._shm_enabled))
+        self._use_shm = _shm_enabled()
+        self._session = zenoh.open(_make_zenoh_config(shm=self._use_shm))
         metadata_publisher = self._session.declare_publisher(f"{self._shared_memory_namespace}_metadata")
 
         try:

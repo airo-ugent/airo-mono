@@ -1,5 +1,6 @@
 """Zenoh-based writer for inter-process frame buffer communication."""
 
+import time
 from typing import Any, Generic
 
 import zenoh
@@ -19,6 +20,8 @@ _MAX_POOL_FRAMES = 32
 # roughly one allocation's worth of space, so pools are sized with one frame of
 # slack and never go below this floor.
 _MIN_POOL_BYTES = 1024 * 1024  # 1 MB
+# Minimum seconds between "SHM pool full" warnings, so a stalled consumer does not flood the log at the frame rate.
+_DROP_WARNING_INTERVAL = 5.0
 
 
 def _pool_size(frame_size: int, max_pool_bytes: int = _MAX_POOL_BYTES) -> int:
@@ -73,6 +76,9 @@ class ZenohWriter(Generic[Frame]):
             congestion_control=zenoh.CongestionControl.DROP,
         )
         self._key_expr = key_expr
+        # Frames dropped since the last warning, and when that warning was logged (-inf: never).
+        self._dropped_frames = 0
+        self._last_drop_warning = float("-inf")
 
     @property
     def layout(self) -> FrameLayout[Frame]:
@@ -131,7 +137,7 @@ class ZenohWriter(Generic[Frame]):
         try:
             buf = self._provider.alloc(self._frame_size, zenoh.shm.GarbageCollect())
         except zenoh.ZError:
-            logger.warning(f"ZenohWriter: SHM pool full, dropping frame on '{self._key_expr}'")
+            self._log_dropped_frame()
             return
         # The validation above guarantees the field bytes sum to _frame_size, so
         # the buffer is written completely.  That matters because buffers come
@@ -139,6 +145,19 @@ class ZenohWriter(Generic[Frame]):
         # by an earlier frame.
         self._layout.write_into(msg, buf)
         self._publisher.put(zenoh.ZBytes(buf))
+
+    def _log_dropped_frame(self) -> None:
+        """Log a dropped frame, at most once per ``_DROP_WARNING_INTERVAL`` seconds, with the drops since the last log."""
+        self._dropped_frames += 1
+        now = time.monotonic()
+        if now - self._last_drop_warning < _DROP_WARNING_INTERVAL:
+            return
+        logger.warning(
+            f"ZenohWriter: SHM pool full, dropped {self._dropped_frames} frame(s) on '{self._key_expr}' "
+            f"since the last warning."
+        )
+        self._dropped_frames = 0
+        self._last_drop_warning = now
 
     def stop(self) -> None:
         """Undeclare the publisher and release its resources."""

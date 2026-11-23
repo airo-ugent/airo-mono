@@ -141,18 +141,23 @@ class PointCloudPublisherMixin(BaseCameraPublisher):
 
 
 class PointCloudReceiverMixin(BaseCameraReceiver):
-    """Receives the point cloud matching each frame when ``enable_pointcloud`` is set."""
+    """Receives the point cloud matching each frame when ``enable_pointcloud`` is set.
+
+    With ``enable_pointcloud``, :meth:`grab_images` may wait up to the receiver's ``timeout`` for the
+    point cloud that matches the frame, even when ``block_until_new_frame`` is ``False``.
+    """
 
     def __init__(
         self,
         shared_memory_namespace: str,
         enable_pointcloud: bool = True,
         timeout: float | None = DEFAULT_FIRST_MESSAGE_TIMEOUT,
+        block_until_new_frame: bool = True,
     ) -> None:
         self.enable_pointcloud = enable_pointcloud
         self._pointcloud_reader: ZenohReader[PointCloudFrameBuffer] | None = None
         # Connects, so the attributes above must be set first.
-        super().__init__(shared_memory_namespace, timeout=timeout)
+        super().__init__(shared_memory_namespace, block_until_new_frame=block_until_new_frame, timeout=timeout)
 
     def _setup_frame_reader(self, resolution: CameraResolutionType) -> None:
         super()._setup_frame_reader(resolution)
