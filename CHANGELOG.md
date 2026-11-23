@@ -9,6 +9,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Breaking changes
 - `airo-camera-toolkit`: the `multiprocess` module now uses [Eclipse Zenoh](https://zenoh.io/) instead of `airo-ipc`/CycloneDDS. `eclipse-zenoh>=1.7.0` is installed as a dependency, `airo-ipc` is no longer required, and the wire format changed, so publishers and receivers must both be updated.
+- `airo-camera-toolkit`: the `multiprocess` module's Zenoh sessions now stay on the local host. To publish and receive on different machines, run a Zenoh router and set `AIRO_ZENOH_ROUTER` (e.g. `tcp/192.168.0.10:7447`) on both sides. The Zenoh shared memory transport is opt-in through `AIRO_ZENOH_SHM=1`, because it needs a large enough `ulimit -l`; without it, frames are copied.
 - `airo-camera-toolkit`: the `multiprocess` module's receivers now return read-only numpy arrays that view directly into the received payload instead of copies. This cuts the end-to-end latency of a FullHD RGBD frame from ~10.4 ms to ~6.6 ms, but code that writes into a retrieved image or depth map in place (e.g. `cv2.rectangle`) must now `.copy()` it first.
 
 ### Added
