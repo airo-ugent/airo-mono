@@ -29,4 +29,4 @@ So you probably want to log some images or videos of your experiment to disk you
 ## Integration with our multiprocessing
 
 We provide a `MultiprocessRerunRGBLogger` class that can be used to log a camera feed to Rerun when using a camera through the `MultiprocessRGBPublisher` class.
-In its own process it simply checks the shared memory created by the publisher, and when it detects a new image, it logs it to Rerun.
+In its own process it simply receives the frames sent by the publisher over Zenoh, and when it detects a new image, it logs it to Rerun.

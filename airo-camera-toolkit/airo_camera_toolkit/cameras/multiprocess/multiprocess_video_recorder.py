@@ -41,72 +41,65 @@ class MultiprocessVideoRecorder(SpawnProcess):
         """main loop of the process, runs until the process is terminated"""
         import ffmpegcv  # type: ignore
 
-        receiver = MultiprocessRGBReceiver(self._shared_memory_namespace)
-        camera_fps = receiver.fps
-        camera_period = 1 / camera_fps
+        with MultiprocessRGBReceiver(self._shared_memory_namespace) as receiver:
+            camera_fps = receiver.fps
+            camera_period = 1 / camera_fps
 
-        video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", camera_fps)
+            video_writer = ffmpegcv.VideoWriter(self._video_path, "hevc", camera_fps)
 
-        logger.info(f"Recording video to {self._video_path}")
+            logger.info(f"Recording video to {self._video_path}")
 
-        receiver.grab_images()
-        image_previous = receiver.retrieve_rgb_image_as_int()
-        timestamp_prev_frame = receiver.get_current_timestamp()
-        n_consecutive_frames_dropped = 0
-
-        while not self.shutdown_event.is_set():
             receiver.grab_images()
-            timestamp_receiver = receiver.get_current_timestamp()
+            image_previous = receiver.retrieve_rgb_image_as_int()
+            timestamp_prev_frame = receiver.get_current_timestamp()
+            n_consecutive_frames_dropped = 0
 
-            if timestamp_receiver <= timestamp_prev_frame:
-                time.sleep(0.00001)  # Prevent busy waiting
-                continue
+            while not self.shutdown_event.is_set():
+                receiver.grab_images()
+                timestamp_receiver = receiver.get_current_timestamp()
+                image_rgb_new = receiver.retrieve_rgb_image_as_int()
 
-            # New frame arrived
-            image_rgb_new = receiver.retrieve_rgb_image_as_int()
+                timestamp_difference = timestamp_receiver - timestamp_prev_frame
+                missed_frames = int(timestamp_difference / camera_period) - 1
 
-            timestamp_difference = timestamp_receiver - timestamp_prev_frame
-            missed_frames = int(timestamp_difference / camera_period) - 1
+                if missed_frames > 0:
+                    logger.warning(
+                        f"Missed {missed_frames} frames (fill_missing_frames = {self.fill_missing_frames})."
+                    )
 
-            if missed_frames > 0:
-                logger.warning(f"Missed {missed_frames} frames (fill_missing_frames = {self.fill_missing_frames}).")
+                    if self.fill_missing_frames:
+                        image_fill = cv2.cvtColor(image_previous, cv2.COLOR_RGB2BGR)
+                        for _ in range(missed_frames):
+                            video_writer.write(image_fill)
+                            n_consecutive_frames_dropped += 1
 
-                if self.fill_missing_frames:
-                    image_fill = cv2.cvtColor(image_previous, cv2.COLOR_RGB2BGR)
-                    for _ in range(missed_frames):
-                        video_writer.write(image_fill)
-                        n_consecutive_frames_dropped += 1
+                timestamp_prev_frame = timestamp_receiver
+                image_previous = image_rgb_new
 
-            timestamp_prev_frame = timestamp_receiver
-            image_previous = image_rgb_new
+                image = cv2.cvtColor(image_rgb_new, cv2.COLOR_RGB2BGR)
 
-            image = cv2.cvtColor(image_rgb_new, cv2.COLOR_RGB2BGR)
+                # Known bug: vertical images still give horizontal videos
+                if self._image_transform is not None:
+                    image = self._image_transform.transform_image(image)
 
-            # Known bug: vertical images still give horizontal videos
-            if self._image_transform is not None:
-                image = self._image_transform.transform_image(image)
+                video_writer.write(image)
 
-            video_writer.write(image)
-
-        logger.info("Video recorder has detected shutdown event. Releasing video_writer.")
-        video_writer.release()
-        logger.info(f"Video saved to {self._video_path}")
-        self.recording_finished_event.set()
+            logger.info("Video recorder has detected shutdown event. Releasing video_writer.")
+            video_writer.release()
+            logger.info(f"Video saved to {self._video_path}")
+            self.recording_finished_event.set()
 
     def stop(self) -> None:
         self.shutdown_event.set()
         wait_time = 10
         logger.info("Set video recording shutdown event, waiting...")
-        for i in range(1):
-            successfully_stopped = self.recording_finished_event.wait(timeout=wait_time)
-            if successfully_stopped:
-                logger.success("Video recording stopped successfully.")
-                return
-            else:
-                self.shutdown_event.set()
-                logger.warning(f"Video recording did not stop within {(i + 1) * wait_time:.2f} seconds.")
+        successfully_stopped = self.recording_finished_event.wait(timeout=wait_time)
+        if successfully_stopped:
+            logger.success("Video recording stopped successfully.")
+            return
         logger.error(
-            "Video recording did not stop, end of video might be lost/corrupted. This seems to happen when RAM is full."
+            f"Video recording did not stop within {wait_time:.2f} seconds, end of video might be "
+            "lost/corrupted. This seems to happen when RAM is full."
         )
 
 

@@ -68,7 +68,6 @@ Repositories that follow the same style as `airo-mono` packages, but are not par
 |-----------------------------------------------------------------| -------------------------------------- |
 | 🎥 [`airo-blender`](https://github.com/airo-ugent/airo-blender) | Synthetic data generation with Blender |
 | 🐉 [`airo-drake`](https://github.com/airo-ugent/airo-drake)     | Integration with Drake                 |
-| 🔛 [`airo-ipc`](https://github.com/airo-ugent/airo-ipc)         | Inter-process communication library |
 | 🛒 [`airo-models`](https://github.com/airo-ugent/airo-models)   | Collection of robot and object models and URDFs |
 | 🧭 [`airo-planner`](https://github.com/airo-ugent/airo-planner) | Motion planning interfaces      |
 | 🎮 [`airo-teleop`](https://github.com/airo-ugent/airo-teleop/)  | Intuitive teleoperation of robot arms     |
