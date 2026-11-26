@@ -3,7 +3,7 @@
 import importlib
 import time
 from types import ModuleType
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 from airo_robots.awaitable_action import AwaitableAction
@@ -362,66 +362,94 @@ class Fairino(PositionManipulator):
     def servo_to_joint_configuration(
         self, joint_configuration: JointConfigurationType, duration: float
     ) -> AwaitableAction:
-        """Send a joint servo setpoint.
-
-        Uses ServoMoveStart/ServoJ/ServoMoveEnd lifecycle with a fixed servo period.
-        """
+        """Track a joint configuration for the requested duration."""
         self._assert_positive_duration(duration)
         target_rad = np.asarray(joint_configuration, dtype=float)
         target_deg = np.degrees(target_rad)
 
-        try:
-            error_code = self.robot.ServoMoveStart()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveStart returned error code {error_code}")
-
-            # ServoJ(joint_pos, axisPos, ..., cmdT): no external axes, cmdT is the servo period
-            error_code = self.robot.ServoJ(target_deg.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT)
-            if error_code != 0:
-                raise RuntimeError(f"ServoJ returned error code {error_code}")
-
-            error_code = self.robot.ServoMoveEnd()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
-        except Exception as exception:
-            raise RuntimeError(f"Failed to execute servo_to_joint_configuration: {exception}") from exception
-
-        action_sent_time = time.perf_counter_ns()
-        return AwaitableAction(
-            lambda: time.perf_counter_ns() - action_sent_time > duration * 1e9,
-            default_timeout=2 * duration,
-            default_sleep_resolution=0.002,
+        return self._servo_action(
+            lambda: self.robot.ServoJ(target_deg.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT),
+            duration,
+            "servo_to_joint_configuration",
         )
 
     def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, duration: float) -> AwaitableAction:
-        """Send a Cartesian servo setpoint.
-
-        Uses ServoMoveStart/ServoCart/ServoMoveEnd lifecycle.
-        """
+        """Track a Cartesian pose for the requested duration."""
         self._assert_positive_duration(duration)
         fairino_pose = self._convert_homogeneous_pose_to_fairino_pose(tcp_pose)
 
+        return self._servo_action(
+            lambda: self.robot.ServoCart(0, fairino_pose.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT),
+            duration,
+            "servo_to_tcp_pose",
+        )
+
+    def _servo_action(self, send_setpoint: Callable[[], int], duration: float, command_name: str) -> AwaitableAction:
+        servo_active = False
+
+        def end_servo() -> None:
+            nonlocal servo_active
+            if not servo_active:
+                return
+
+            servo_active = False
+            error_code = self.robot.ServoMoveEnd()
+            if error_code != 0:
+                raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
+
+        def check_setpoint() -> None:
+            error_code = send_setpoint()
+            if error_code != 0:
+                raise RuntimeError(f"Servo setpoint returned error code {error_code}")
+
         try:
+            servo_active = True
             error_code = self.robot.ServoMoveStart()
             if error_code != 0:
                 raise RuntimeError(f"ServoMoveStart returned error code {error_code}")
 
-            # ServoCart(mode, desc_pos, exaxis, ..., cmdT): mode=0 for absolute positioning in the base frame
-            error_code = self.robot.ServoCart(0, fairino_pose.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT)
-            if error_code != 0:
-                raise RuntimeError(f"ServoCart returned error code {error_code}")
-
-            error_code = self.robot.ServoMoveEnd()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
+            check_setpoint()
         except Exception as exception:
-            raise RuntimeError(f"Failed to execute servo_to_tcp_pose: {exception}") from exception
+            try:
+                end_servo()
+            except Exception as cleanup_exception:
+                raise RuntimeError(
+                    f"Failed to execute {command_name}: {exception}; servo cleanup failed: {cleanup_exception}"
+                ) from exception
+            raise RuntimeError(f"Failed to execute {command_name}: {exception}") from exception
 
-        action_sent_time = time.perf_counter_ns()
+        action_sent_time = time.perf_counter()
+        last_setpoint_time = action_sent_time
+
+        def track_setpoint() -> bool:
+            nonlocal last_setpoint_time
+            now = time.perf_counter()
+            if now - action_sent_time >= duration:
+                try:
+                    end_servo()
+                except Exception as exception:
+                    raise RuntimeError(f"Failed to execute {command_name}: {exception}") from exception
+                return True
+
+            if now - last_setpoint_time >= _SERVO_PERIOD_DEFAULT:
+                try:
+                    check_setpoint()
+                except Exception as exception:
+                    try:
+                        end_servo()
+                    except Exception as cleanup_exception:
+                        raise RuntimeError(
+                            f"Failed to execute {command_name}: {exception}; servo cleanup failed: {cleanup_exception}"
+                        ) from exception
+                    raise RuntimeError(f"Failed to execute {command_name}: {exception}") from exception
+                last_setpoint_time = time.perf_counter()
+
+            return False
+
         return AwaitableAction(
-            lambda: time.perf_counter_ns() - action_sent_time > duration * 1e9,
+            track_setpoint,
             default_timeout=2 * duration,
-            default_sleep_resolution=0.002,
+            default_sleep_resolution=_SERVO_PERIOD_DEFAULT,
         )
 
     ##############

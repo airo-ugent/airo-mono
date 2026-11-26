@@ -267,40 +267,63 @@ def test_move_to_tcp_pose(robot: fairino.Fairino, robot_rpc: FakeFairinoRPC) -> 
 
 
 def test_servo_to_joint_configuration(robot: fairino.Fairino, robot_rpc: FakeFairinoRPC) -> None:
-    """Test joint servo command."""
+    """Test repeated joint servo commands for the requested duration."""
     target = np.radians(np.full(6, 45.0))
     action = robot.servo_to_joint_configuration(target, duration=0.01)
 
+    assert [call[0] for call in robot_rpc.calls if call[0] in ("ServoMoveStart", "ServoJ", "ServoMoveEnd")] == [
+        "ServoMoveStart",
+        "ServoJ",
+    ]
+    action.wait(timeout=0.1)
+    assert action.is_done()
+
     servo_calls = [call for call in robot_rpc.calls if call[0] in ("ServoMoveStart", "ServoJ", "ServoMoveEnd")]
-    assert len(servo_calls) == 3
+    assert len(servo_calls) >= 5
     assert servo_calls[0][0] == "ServoMoveStart"
     assert servo_calls[1][0] == "ServoJ"
     assert np.allclose(servo_calls[1][1], np.degrees(target))
     assert len(servo_calls[1][2]) == 4  # no external axes
     assert servo_calls[1][3] == pytest.approx(0.003)  # servo period
-    assert servo_calls[2][0] == "ServoMoveEnd"
-
-    # Action completes after duration
-    assert action.wait(timeout=0.1)
+    assert all(call[0] == "ServoJ" for call in servo_calls[1:-1])
+    assert servo_calls[-1][0] == "ServoMoveEnd"
 
 
 def test_servo_to_tcp_pose(robot: fairino.Fairino, robot_rpc: FakeFairinoRPC) -> None:
-    """Test Cartesian servo command."""
+    """Test repeated Cartesian servo commands for the requested duration."""
     target_pose = SE3Container.from_euler_angles_and_translation(
         np.radians([5.0, 10.0, 15.0]), np.array([0.5, 0.1, 0.3])
     ).homogeneous_matrix
 
     action = robot.servo_to_tcp_pose(target_pose, duration=0.01)
 
+    assert [call[0] for call in robot_rpc.calls if call[0] in ("ServoMoveStart", "ServoCart", "ServoMoveEnd")] == [
+        "ServoMoveStart",
+        "ServoCart",
+    ]
+    action.wait(timeout=0.1)
+    assert action.is_done()
+
     servo_calls = [call for call in robot_rpc.calls if call[0] in ("ServoMoveStart", "ServoCart", "ServoMoveEnd")]
-    assert len(servo_calls) == 3
+    assert len(servo_calls) >= 5
     assert servo_calls[0][0] == "ServoMoveStart"
     assert servo_calls[1][0] == "ServoCart"
     assert len(servo_calls[1][3]) == 4  # no external axes
     assert servo_calls[1][4] == pytest.approx(0.003)  # servo period
-    assert servo_calls[2][0] == "ServoMoveEnd"
+    assert all(call[0] == "ServoCart" for call in servo_calls[1:-1])
+    assert servo_calls[-1][0] == "ServoMoveEnd"
 
-    assert action.wait(timeout=0.1)
+
+def test_servo_setpoint_failure_ends_servo_mode(robot: fairino.Fairino, robot_rpc: FakeFairinoRPC) -> None:
+    """Test that servo mode is ended when a repeated setpoint fails."""
+    action = robot.servo_to_joint_configuration(np.zeros(6), duration=0.01)
+    robot_rpc.ServoJ = lambda *args, **kwargs: 1  # type: ignore[method-assign]
+
+    with pytest.raises(RuntimeError, match="servo_to_joint_configuration"):
+        action.wait(timeout=0.1)
+
+    servo_calls = [call[0] for call in robot_rpc.calls if call[0] in ("ServoMoveStart", "ServoJ", "ServoMoveEnd")]
+    assert servo_calls[-1] == "ServoMoveEnd"
 
 
 def test_forward_kinematics(robot: fairino.Fairino, robot_rpc: FakeFairinoRPC) -> None:
