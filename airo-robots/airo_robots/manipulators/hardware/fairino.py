@@ -2,6 +2,7 @@
 
 import importlib
 import time
+from collections.abc import Callable
 from types import ModuleType
 from typing import Any, Optional
 
@@ -362,66 +363,92 @@ class Fairino(PositionManipulator):
     def servo_to_joint_configuration(
         self, joint_configuration: JointConfigurationType, duration: float
     ) -> AwaitableAction:
-        """Send a joint servo setpoint.
+        """Track a joint servo setpoint for the requested duration.
 
-        Uses ServoMoveStart/ServoJ/ServoMoveEnd lifecycle with a fixed servo period.
+        Uses ServoMoveStart/ServoJ/ServoMoveEnd lifecycle, resending the setpoint at the servo period.
         """
         self._assert_positive_duration(duration)
         target_rad = np.asarray(joint_configuration, dtype=float)
         target_deg = np.degrees(target_rad)
 
-        try:
-            error_code = self.robot.ServoMoveStart()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveStart returned error code {error_code}")
-
+        def send_setpoint() -> int:
             # ServoJ(joint_pos, axisPos, ..., cmdT): no external axes, cmdT is the servo period
-            error_code = self.robot.ServoJ(target_deg.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT)
-            if error_code != 0:
-                raise RuntimeError(f"ServoJ returned error code {error_code}")
+            return self.robot.ServoJ(target_deg.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT)
 
-            error_code = self.robot.ServoMoveEnd()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
-        except Exception as exception:
-            raise RuntimeError(f"Failed to execute servo_to_joint_configuration: {exception}") from exception
-
-        action_sent_time = time.perf_counter_ns()
-        return AwaitableAction(
-            lambda: time.perf_counter_ns() - action_sent_time > duration * 1e9,
-            default_timeout=2 * duration,
-            default_sleep_resolution=0.002,
-        )
+        return self._servo_for_duration(send_setpoint, duration, "servo_to_joint_configuration", "ServoJ")
 
     def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, duration: float) -> AwaitableAction:
-        """Send a Cartesian servo setpoint.
+        """Track a Cartesian servo setpoint for the requested duration.
 
-        Uses ServoMoveStart/ServoCart/ServoMoveEnd lifecycle.
+        Uses ServoMoveStart/ServoCart/ServoMoveEnd lifecycle, resending the setpoint at the servo period.
         """
         self._assert_positive_duration(duration)
         fairino_pose = self._convert_homogeneous_pose_to_fairino_pose(tcp_pose)
 
+        def send_setpoint() -> int:
+            # ServoCart(mode, desc_pos, exaxis, ..., cmdT): mode=0 for absolute positioning in the base frame
+            return self.robot.ServoCart(0, fairino_pose.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT)
+
+        return self._servo_for_duration(send_setpoint, duration, "servo_to_tcp_pose", "ServoCart")
+
+    def _servo_for_duration(
+        self, send_setpoint: Callable[[], int], duration: float, method_name: str, command_name: str
+    ) -> AwaitableAction:
+        servo_active = False
+
+        def end_servo() -> None:
+            nonlocal servo_active
+            if not servo_active:
+                return
+            servo_active = False
+            error_code = self.robot.ServoMoveEnd()
+            if error_code != 0:
+                raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
+
+        def send_checked_setpoint() -> None:
+            error_code = send_setpoint()
+            if error_code != 0:
+                raise RuntimeError(f"{command_name} returned error code {error_code}")
+
         try:
             error_code = self.robot.ServoMoveStart()
             if error_code != 0:
                 raise RuntimeError(f"ServoMoveStart returned error code {error_code}")
 
-            # ServoCart(mode, desc_pos, exaxis, ..., cmdT): mode=0 for absolute positioning in the base frame
-            error_code = self.robot.ServoCart(0, fairino_pose.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT)
-            if error_code != 0:
-                raise RuntimeError(f"ServoCart returned error code {error_code}")
-
-            error_code = self.robot.ServoMoveEnd()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
+            servo_active = True
+            send_checked_setpoint()
         except Exception as exception:
-            raise RuntimeError(f"Failed to execute servo_to_tcp_pose: {exception}") from exception
+            try:
+                end_servo()
+            except Exception:
+                pass
+            raise RuntimeError(f"Failed to execute {method_name}: {exception}") from exception
 
         action_sent_time = time.perf_counter_ns()
+        next_setpoint_time = action_sent_time + int(_SERVO_PERIOD_DEFAULT * 1e9)
+
+        def update_servo() -> bool:
+            nonlocal next_setpoint_time
+            try:
+                current_time = time.perf_counter_ns()
+                if current_time - action_sent_time >= duration * 1e9:
+                    end_servo()
+                    return True
+                if current_time >= next_setpoint_time:
+                    send_checked_setpoint()
+                    next_setpoint_time = time.perf_counter_ns() + int(_SERVO_PERIOD_DEFAULT * 1e9)
+                return False
+            except Exception as exception:
+                try:
+                    end_servo()
+                except Exception:
+                    pass
+                raise RuntimeError(f"Failed to execute {method_name}: {exception}") from exception
+
         return AwaitableAction(
-            lambda: time.perf_counter_ns() - action_sent_time > duration * 1e9,
+            update_servo,
             default_timeout=2 * duration,
-            default_sleep_resolution=0.002,
+            default_sleep_resolution=_SERVO_PERIOD_DEFAULT,
         )
 
     ##############
