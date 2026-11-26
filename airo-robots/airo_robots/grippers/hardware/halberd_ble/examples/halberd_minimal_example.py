@@ -16,8 +16,20 @@ import time
 from airo_robots.grippers import HalberdBLEGripper
 from airo_robots.grippers.hardware.halberd_ble.client import HalberdConnectionError
 
-GRIPPER_NAME = "gripper-left"  # the user-assigned name set in the sketch via gripper.begin()
+GRIPPER_NAME = "gripper-left-sensors"  # the user-assigned name set in the sketch via gripper.begin()
 TOF_SENSOR_NAME = "tof"  # the sensor name declared in the sketch via gripper.configureSensor()
+TOF_GRASP_THRESHOLD_MM = 20.0
+
+
+def _to_mm(value: float, unit: str) -> float:
+    unit_normalized = unit.strip().lower()
+    if unit_normalized == "mm":
+        return float(value)
+    if unit_normalized == "cm":
+        return float(value) * 10.0
+    if unit_normalized == "m":
+        return float(value) * 1000.0
+    raise ValueError(f"Unsupported TOF unit: {unit!r}")
 
 
 def wait_for_first_sensor_reading(halberd: HalberdBLEGripper, sensor_name: str, timeout: float = 10.0) -> float:
@@ -73,9 +85,11 @@ if __name__ == "__main__":
     # only arrives once the sketch reports a changed value, so wait for it explicitly.
     print(f"Sensors declared by the gripper: {gripper.sensors}")
     wait_for_first_sensor_reading(gripper, TOF_SENSOR_NAME)
-    for _ in range(10):
-        distance = gripper.get_sensor(TOF_SENSOR_NAME)
-        print(f"ToF distance: {distance * 1000:.0f} mm")
+    tof_sensor_descriptor = next(sensor for sensor in gripper.sensors if sensor.name == TOF_SENSOR_NAME)
+    for _ in range(100):
+        distance_raw = gripper.get_sensor(TOF_SENSOR_NAME)
+        distance_mm = _to_mm(distance_raw, tof_sensor_descriptor.unit)
+        print(f"ToF distance: {distance_mm:.0f} mm " f"(raw={distance_raw:.3f} {tof_sensor_descriptor.unit})")
         time.sleep(0.5)
 
     # Example: close only when something is within reach of the fingers.
@@ -83,7 +97,7 @@ if __name__ == "__main__":
         print("Object detected within 50 mm, grasping.")
         gripper.close().wait()
     else:
-        print("Nothing within 50 mm, opening.")
+        print(f"Nothing within {TOF_GRASP_THRESHOLD_MM:.0f} mm, opening.")
         gripper.open().wait()
 
     gripper.disconnect()

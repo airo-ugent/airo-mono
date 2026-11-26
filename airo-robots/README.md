@@ -7,14 +7,15 @@ This package contains code for controlling robot manipulators and grippers, spec
 The following combinations of hardware and communication options are currently implemented:
 | Hardware | Communication | Implementation |
 |----------|:----------|----------------|
-| UR robots | RTDE | [ur_rtde.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/ur_rtde.py) |
-| RealMan robots | RealMan Python API | [realman.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/realman.py) |
-| FANUC robots | airo-fanuc API (Stream Motion + RMI) | [fanuc.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/manipulators/hardware/fanuc.py) |
-|Schunk EGK gripper | Modbus-USB converter | [schunk_process.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/schunk_process.py) |
-| Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
-| Robotiq 2F85 gripper on a FANUC | airo-fanuc API (RMI registers + a teach-pendant program) | [robotiq_2f85_fanuc.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/robotiq_2f85_fanuc.py) |
-| KELO Robile platform | airo-tulip API | [kelo_robile.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/drives/hardware/kelo_robile.py) |
-| Halberd platform | AIRO gripper protocol (AGP) over BLE | [gripper.py](https://github.com/airo-ugent/airo-mono/blob/main/airo-robots/airo_robots/grippers/hardware/halberd_ble/gripper.py) |
+| UR robots | RTDE | [ur_rtde.py](airo_robots/manipulators/hardware/ur_rtde.py) |
+| RealMan robots | RealMan Python API | [realman.py](airo_robots/manipulators/hardware/realman.py) |
+| FANUC robots | airo-fanuc API (Stream Motion + RMI) | [fanuc.py](airo_robots/manipulators/hardware/fanuc.py) |
+| Fairino FR3 robots | Fairino Python SDK (XML-RPC) | [fairino.py](airo_robots/manipulators/hardware/fairino.py) |
+|Schunk EGK gripper | Modbus-USB converter | [schunk_process.py](airo_robots/grippers/hardware/schunk_process.py) |
+| Robotiq 2F85 gripper | URCap web API | [robotiq_2f85_urcap.py](airo_robots/grippers/hardware/robotiq_2f85_urcap.py) |
+| Robotiq 2F85 gripper on a FANUC | airo-fanuc API (RMI registers + a teach-pendant program) | [robotiq_2f85_fanuc.py](airo_robots/grippers/hardware/robotiq_2f85_fanuc.py) |
+| KELO Robile platform | airo-tulip API | [kelo_robile.py](airo_robots/drives/hardware/kelo_robile.py) |
+| Halberd platform | AIRO gripper protocol (AGP) over BLE | [gripper.py](airo_robots/grippers/hardware/halberd_ble/gripper.py) |
 
 Each hardware implementation module will have a `__main__` codeblock that runs the tests for that hardware implementation. This is useful to check if the hardware is connected correctly and the implementation is working as expected. But it is also the place to be to get an idea of how to use the implementation.
 
@@ -46,7 +47,7 @@ pip install "airo-robots[schunk]"   # Schunk EGK40 gripper (bkstools)
 pip install "airo-robots[kelo]"     # KELO mobile platform (airo-tulip)
 ```
 
-Extras can be combined, e.g., `pip install "airo-robots[ur,schunk]"`. The Robotiq 2F-85 gripper communicates over a plain TCP API and does not require an extra. If you instantiate a hardware class without its SDK installed, it will raise an `ImportError` that points you to the right extra.
+Extras can be combined, e.g., `pip install "airo-robots[ur,schunk]"`. The Robotiq 2F-85 gripper communicates over a plain TCP API and does not require an extra. The Fairino Python SDK is not available on PyPI and has to be installed manually. If you instantiate a hardware class without its SDK installed, it will raise an `ImportError` that points you to the right extra or installation instructions.
 
 ## Structure
 a more detailled overview of the structure and content of this package:
@@ -59,6 +60,8 @@ airo_robots/
         bimanual_position_manipulator.py    # base class for bimanual manipulators
         hardware/                           # contains the implementations of the inferfaces
             manual_gripper_testing.py       # code for manually testing hw implementations
+            examples/                       # minimal usage examples for the hw implementations
+            fairino.py                      # implementation for Fairino FR3 robots over the official Python SDK
             fanuc.py                        # implementation for FANUC robots over the airo-fanuc driver
             fanuc_setup.md                  # what a FANUC needs before this implementation can drive it
             realman.py                      # implementation for RealMan robots over the official Python API
