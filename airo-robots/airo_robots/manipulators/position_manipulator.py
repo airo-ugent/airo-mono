@@ -245,6 +245,11 @@ class PositionManipulator(ABC):
         """Take the robot out of freedrive, see `start_freedrive`."""
         raise NotImplementedError(f"{type(self).__name__} does not support freedrive.")
 
+    def servo_stop(self) -> None:
+        """Gracefully end a sequence of servo commands, e.g. after a servo loop or `execute_trajectory`.
+        The default implementation only logs a warning; override in hardware implementations that support it."""
+        logger.warning(f"{type(self).__name__} does not support servo stop.")
+
     def execute_trajectory(
         self,
         joint_trajectory: SingleArmTrajectory,
@@ -322,11 +327,7 @@ class PositionManipulator(ABC):
                         logged_lag_warning = True
 
         # This avoids the abrupt stop and "thunk" sounds at the end of paths that end with non-zero velocity.
-        # Specifically for UR robots.
-        if hasattr(self, "rtde_control"):
-            self.rtde_control.servoStop(2.0)
-        else:
-            logger.warning("Manipulator does not support servo stop.")
+        self.servo_stop()
 
         # Servo can overshoot. Do a final move to the last configuration.
         # manipulator._assert_joint_configuration_nearby(joint_trajectory.path.positions[-1])

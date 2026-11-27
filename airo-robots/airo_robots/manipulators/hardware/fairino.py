@@ -28,7 +28,9 @@ FR3_SPECS = ManipulatorSpecs(
     max_joint_torques=None,
 )
 
-_SERVO_PERIOD_DEFAULT = 0.003  # 3 ms servo control period (333 Hz)
+# Range for the servo command period (cmdT) recommended by the Fairino SDK documentation.
+_SERVO_PERIOD_MIN = 0.001
+_SERVO_PERIOD_MAX = 0.016
 _NO_EXTERNAL_AXES = [0.0, 0.0, 0.0, 0.0]  # Fairino controllers support up to 4 external axes
 
 
@@ -75,8 +77,12 @@ class Fairino(PositionManipulator):
     returned :class:`AwaitableAction` completes after GetRobotMotionDone returns
     true and the requested target is within tolerance.
 
-    Servo commands use the ServoMoveStart/ServoJ/ServoCart/ServoMoveEnd lifecycle.
-    The servo period defaults to 3 ms (333 Hz).
+    Servo commands stream setpoints within a single controller servo session: the first
+    servo call sends ServoMoveStart, subsequent calls only send ServoJ/ServoCart, and the
+    session is ended with ServoMoveEnd by :meth:`servo_stop`, by any move or freedrive
+    command, by switching between joint and Cartesian servoing, or by :meth:`close`.
+    The servo ``duration`` is passed to the controller as the command period (cmdT),
+    clipped to the SDK's recommended range of 1-16 ms.
 
     No collision checking or obstacle avoidance is performed beyond the
     checks configured on the Fairino controller.
@@ -132,6 +138,9 @@ class Fairino(PositionManipulator):
         # Active tool offset (0 = default TCP, 1 = custom tool with SetToolCoord offset)
         self._active_tool_id = 0
 
+        # Active servo session: None, "joint" (ServoJ) or "cartesian" (ServoCart)
+        self._servo_session: Optional[str] = None
+
         # Payload configuration state
         self._payload_mass = 0.0  # kg
         self._payload_cog: NDArray[np.float64] = np.zeros(3, dtype=float)  # m
@@ -144,6 +153,10 @@ class Fairino(PositionManipulator):
         """Close the connection to the robot controller."""
         if self._closed:
             return
+        try:
+            self.servo_stop()
+        except RuntimeError as exception:
+            logger.warning(f"Error while ending Fairino servo session: {exception}")
         try:
             self.robot.CloseRPC()
             self._closed = True
@@ -247,6 +260,7 @@ class Fairino(PositionManipulator):
         Uses MoveJ with non-blocking mode (blendT >= 0) and returns an AwaitableAction
         that completes when motion is done and target is reached.
         """
+        self.servo_stop()
         self._assert_joint_configuration_is_valid(joint_configuration)
         speed = self.default_joint_speed if joint_speed is None else joint_speed
         self._assert_positive_speed(speed, "joint_speed")
@@ -286,6 +300,7 @@ class Fairino(PositionManipulator):
 
         Uses MoveL with non-blocking mode.
         """
+        self.servo_stop()
         self._assert_pose_is_valid(tcp_pose)
         speed = self.default_linear_speed if linear_speed is None else linear_speed
         self._assert_positive_speed(speed, "linear_speed")
@@ -326,6 +341,7 @@ class Fairino(PositionManipulator):
 
         Uses MoveCart (PTP Cartesian move) with non-blocking mode.
         """
+        self.servo_stop()
         self._assert_pose_is_valid(tcp_pose)
         speed = self.default_joint_speed if joint_speed is None else joint_speed
         self._assert_positive_speed(speed, "joint_speed")
@@ -364,25 +380,19 @@ class Fairino(PositionManipulator):
     ) -> AwaitableAction:
         """Send a joint servo setpoint.
 
-        Uses ServoMoveStart/ServoJ/ServoMoveEnd lifecycle with a fixed servo period.
+        Starts a joint servo session on the first call and then only sends ServoJ, using
+        ``duration`` as the command period. Call :meth:`servo_stop` to end the session.
         """
         self._assert_positive_duration(duration)
         target_rad = np.asarray(joint_configuration, dtype=float)
         target_deg = np.degrees(target_rad)
 
         try:
-            error_code = self.robot.ServoMoveStart()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveStart returned error code {error_code}")
-
+            self._ensure_servo_session("joint")
             # ServoJ(joint_pos, axisPos, ..., cmdT): no external axes, cmdT is the servo period
-            error_code = self.robot.ServoJ(target_deg.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT)
+            error_code = self.robot.ServoJ(target_deg.tolist(), _NO_EXTERNAL_AXES, cmdT=self._servo_period(duration))
             if error_code != 0:
                 raise RuntimeError(f"ServoJ returned error code {error_code}")
-
-            error_code = self.robot.ServoMoveEnd()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
         except Exception as exception:
             raise RuntimeError(f"Failed to execute servo_to_joint_configuration: {exception}") from exception
 
@@ -396,24 +406,20 @@ class Fairino(PositionManipulator):
     def servo_to_tcp_pose(self, tcp_pose: HomogeneousMatrixType, duration: float) -> AwaitableAction:
         """Send a Cartesian servo setpoint.
 
-        Uses ServoMoveStart/ServoCart/ServoMoveEnd lifecycle.
+        Starts a Cartesian servo session on the first call and then only sends ServoCart, using
+        ``duration`` as the command period. Call :meth:`servo_stop` to end the session.
         """
         self._assert_positive_duration(duration)
         fairino_pose = self._convert_homogeneous_pose_to_fairino_pose(tcp_pose)
 
         try:
-            error_code = self.robot.ServoMoveStart()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveStart returned error code {error_code}")
-
+            self._ensure_servo_session("cartesian")
             # ServoCart(mode, desc_pos, exaxis, ..., cmdT): mode=0 for absolute positioning in the base frame
-            error_code = self.robot.ServoCart(0, fairino_pose.tolist(), _NO_EXTERNAL_AXES, cmdT=_SERVO_PERIOD_DEFAULT)
+            error_code = self.robot.ServoCart(
+                0, fairino_pose.tolist(), _NO_EXTERNAL_AXES, cmdT=self._servo_period(duration)
+            )
             if error_code != 0:
                 raise RuntimeError(f"ServoCart returned error code {error_code}")
-
-            error_code = self.robot.ServoMoveEnd()
-            if error_code != 0:
-                raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
         except Exception as exception:
             raise RuntimeError(f"Failed to execute servo_to_tcp_pose: {exception}") from exception
 
@@ -423,6 +429,31 @@ class Fairino(PositionManipulator):
             default_timeout=2 * duration,
             default_sleep_resolution=0.002,
         )
+
+    def servo_stop(self) -> None:
+        """End the active servo session (ServoMoveEnd), if any."""
+        if self._servo_session is None:
+            return
+        # Clear the state first: if ServoMoveEnd fails, retrying it on every command would not help.
+        self._servo_session = None
+        error_code = self.robot.ServoMoveEnd()
+        if error_code != 0:
+            raise RuntimeError(f"ServoMoveEnd returned error code {error_code}")
+
+    def _ensure_servo_session(self, session_type: str) -> None:
+        """Start a servo session of the given type, ending a session of another type first."""
+        if self._servo_session == session_type:
+            return
+        self.servo_stop()
+        error_code = self.robot.ServoMoveStart()
+        if error_code != 0:
+            raise RuntimeError(f"ServoMoveStart returned error code {error_code}")
+        self._servo_session = session_type
+
+    @staticmethod
+    def _servo_period(duration: float) -> float:
+        """Convert a servo duration to a command period (cmdT) within the SDK's recommended range."""
+        return float(np.clip(duration, _SERVO_PERIOD_MIN, _SERVO_PERIOD_MAX))
 
     ##############
     # Kinematics #
@@ -492,6 +523,7 @@ class Fairino(PositionManipulator):
 
         Switches the robot to manual mode and enables drag-teach.
         """
+        self.servo_stop()
         try:
             error_code = self.robot.Mode(1)  # 1 = manual mode
             if error_code != 0:

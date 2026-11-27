@@ -9,6 +9,7 @@ This project uses a [CalVer](https://calver.org/) versioning scheme with monthly
 
 ### Added
 - `airo-robots`: Added `Fairino`, a `PositionManipulator` implementation for Fairino FR3 robots using the official Fairino Python SDK (XML-RPC API). The SDK is not on PyPI and must be installed manually (see the `ImportError` message in `fairino.py`). Supports joint and Cartesian moves, servo control, controller-side IK/FK, freedrive (drag-teach), and payload/TCP offset configuration for external grippers (e.g., Halberd BLE). Unit conversions are handled at the SDK boundary (degrees ↔ radians, millimeters ↔ metres, percentages ↔ physical speeds). See [fairino_minimal_example.py](airo-robots/airo_robots/manipulators/hardware/examples/fairino_minimal_example.py).
+- `airo-robots`: Added `PositionManipulator.servo_stop()` to gracefully end a sequence of servo commands. `execute_trajectory` (single and dual arm) now calls this instead of checking for UR-specific attributes.
 
 ## 2026.10.1
 

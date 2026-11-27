@@ -141,6 +141,9 @@ class URrtde(PositionManipulator):
         tpc_rotvec_pose = self.rtde_receive.getActualTCPPose()
         return self._convert_rotvec_pose_to_homogeneous_pose(tpc_rotvec_pose)
 
+    def servo_stop(self) -> None:
+        self.rtde_control.servoStop(2.0)
+
     def move_linear_to_tcp_pose(
         self, tcp_pose: HomogeneousMatrixType, linear_speed: float | None = None
     ) -> AwaitableAction:
